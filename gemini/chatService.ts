@@ -1,5 +1,5 @@
 
-import { GoogleGenAI, Chat, FunctionDeclaration, Type } from "@google/genai";
+import { GoogleGenAI, Chat, FunctionDeclaration, Type, FunctionResponsePart } from "@google/genai";
 import type { Source } from '../types';
 
 export interface BotResponse {
@@ -50,7 +50,7 @@ export class ChatService {
         const functionCalls = response.functionCalls;
         if (functionCalls && functionCalls.length > 0) {
             
-            const functionResponseParts = [];
+            const functionResponseParts: FunctionResponsePart[] = [];
 
             for (const call of functionCalls) {
                 if (call.name === 'search_case_law') {
@@ -63,7 +63,7 @@ export class ChatService {
                     functionResponseParts.push({
                         functionResponse: {
                             name: call.name,
-                            response: { content: apiResult.content },
+                            response: { result: apiResult.content },
                         },
                     });
                 }
