@@ -44,40 +44,38 @@ export class ChatService {
     }
 
     async sendMessage(message: string): Promise<BotResponse> {
-        let response = await this.chat.sendMessage({ message });
+        let response = await this.chat.sendMessage(message);
         const finalSources: Source[] = [];
 
         const functionCalls = response.functionCalls;
         if (functionCalls && functionCalls.length > 0) {
-            const call = functionCalls[0];
-            if (call.name === 'search_case_law') {
-                const caseQuery = call.args.query as string;
-                
-                // --- REAL API CALL to CourtListener ---
-                const apiResult = await this.searchCourtListenerAPI(caseQuery);
-                // ------------------------------------
-                
-                // Hold on to the sources from our API call
-                finalSources.push(...apiResult.sources);
+            
+            const functionResponseParts = [];
 
-                // Send the content from our API back to the model to generate a response
-                response = await this.chat.sendMessage({
-                    message: {
-                        toolResponse: {
-                            functionResponses: {
-                                id: call.id,
-                                name: call.name,
-                                response: { content: apiResult.content }, // Only send content to the model
-                            }
-                        }
-                    }
-                });
+            for (const call of functionCalls) {
+                if (call.name === 'search_case_law') {
+                    const caseQuery = call.args.query as string;
+                    
+                    const apiResult = await this.searchCourtListenerAPI(caseQuery);
+                    
+                    finalSources.push(...apiResult.sources);
+
+                    functionResponseParts.push({
+                        functionResponse: {
+                            name: call.name,
+                            response: { content: apiResult.content },
+                        },
+                    });
+                }
+            }
+            
+            if (functionResponseParts.length > 0) {
+                 response = await this.chat.sendMessage(functionResponseParts);
             }
         }
         
         const text = response.text;
         
-        // Extract sources from Google Search grounding, if it was used
         const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
         const groundingSources: Source[] = groundingChunks
             .map((chunk: any) => {
@@ -88,10 +86,8 @@ export class ChatService {
             })
             .filter((source): source is Source => source !== null);
         
-        // Combine sources from our function call and Google Search
         finalSources.push(...groundingSources);
         
-        // Remove duplicates to ensure a clean list
         const uniqueSources = Array.from(new Map(finalSources.map(s => [s.url, s])).values());
 
         return { text, sources: uniqueSources };
@@ -133,7 +129,6 @@ export class ChatService {
                 };
             }
 
-            // Process the top 3 results to send to the AI
             const topResults = data.results.slice(0, 3);
             
             const contentForAI = topResults.map((result: any, index: number) => {
