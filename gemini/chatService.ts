@@ -72,6 +72,7 @@ INSTRUCTIONS:
 4. If only metadata is available, provide context using your legal knowledge
 5. Compare cases where relevant and identify trends or patterns
 6. Note any limitations in the analysis due to missing full text
+7. Include specific citations like "Case Name (Year)" for each case mentioned
 
 Provide a thorough legal analysis citing specific case details and explaining their relevance to the query.`;
 
@@ -133,7 +134,66 @@ Key California legal sources to reference:
                 })
                 .filter((source): source is Source => source !== null);
 
-            // Add official California legal sources if not already included
+            // Create specific source links based on citations in the response
+            const specificSources: Source[] = [];
+
+            // Parse response for legal citations and create specific links
+            const responseText = response.text;
+
+            // California Family Code citations (e.g., "Family Code § 1615(c)")
+            const familyCodeMatches = responseText.match(/Family Code § (\d+)(?:\(([^)]+)\))?/gi);
+            if (familyCodeMatches) {
+                familyCodeMatches.forEach(match => {
+                    const sectionMatch = match.match(/Family Code § (\d+)(?:\(([^)]+)\))?/i);
+                    if (sectionMatch) {
+                        const section = sectionMatch[1];
+                        const subsection = sectionMatch[2] || '';
+                        const url = `https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=FAM&sectionNum=${section}.${subsection || '00000'}`;
+                        specificSources.push({
+                            title: `Family Code § ${section}${subsection ? `(${subsection})` : ''}`,
+                            url: url
+                        });
+                    }
+                });
+            }
+
+            // California Penal Code citations
+            const penalCodeMatches = responseText.match(/Penal Code § (\d+)(?:\(([^)]+)\))?/gi);
+            if (penalCodeMatches) {
+                penalCodeMatches.forEach(match => {
+                    const sectionMatch = match.match(/Penal Code § (\d+)(?:\(([^)]+)\))?/i);
+                    if (sectionMatch) {
+                        const section = sectionMatch[1];
+                        const subsection = sectionMatch[2] || '';
+                        const url = `https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=PEN&sectionNum=${section}.${subsection || '00000'}`;
+                        specificSources.push({
+                            title: `Penal Code § ${section}${subsection ? `(${subsection})` : ''}`,
+                            url: url
+                        });
+                    }
+                });
+            }
+
+            // Case law citations (e.g., "People v. Anderson (1972)")
+            const caseMatches = responseText.match(/([A-Za-z\s]+ v\. [A-Za-z\s]+)\s*\((\d{4})\)/g);
+            if (caseMatches) {
+                caseMatches.forEach(match => {
+                    const caseMatch = match.match(/([A-Za-z\s]+ v\. [A-Za-z\s]+)\s*\((\d{4})\)/);
+                    if (caseMatch) {
+                        const caseName = caseMatch[1].trim();
+                        const year = caseMatch[2];
+                        // Create a search URL for CourtListener
+                        const searchQuery = encodeURIComponent(`${caseName} ${year}`);
+                        const url = `https://www.courtlistener.com/?q=${searchQuery}&type=o&order_by=score%20desc&stat_Precedential=on`;
+                        specificSources.push({
+                            title: `${caseName} (${year})`,
+                            url: url
+                        });
+                    }
+                });
+            }
+
+            // Add official sources as fallback
             const officialSources: Source[] = [
                 { title: 'California Family Code', url: 'https://leginfo.legislature.ca.gov/faces/codes_displayText.xhtml?lawCode=FAM' },
                 { title: 'California Legislature', url: 'https://leginfo.legislature.ca.gov/' },
@@ -141,8 +201,8 @@ Key California legal sources to reference:
                 { title: 'CourtListener', url: 'https://www.courtlistener.com/' }
             ];
 
-            // Combine and deduplicate sources
-            const allSources = [...groundingSources, ...officialSources];
+            // Combine sources: specific citations first, then official sources
+            const allSources = [...specificSources, ...groundingSources, ...officialSources];
             const uniqueSources = Array.from(new Map(allSources.map(s => [s.url, s])).values());
 
             return { text: response.text, sources: uniqueSources };
