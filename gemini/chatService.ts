@@ -24,11 +24,13 @@ const searchCaseLawTool: FunctionDeclaration = {
 
 export class ChatService {
     private chat: Chat;
+    private courtListenerApiKey: string | null;
 
-    constructor() {
+    constructor(courtListenerApiKey: string | null) {
         if (!process.env.API_KEY) {
             throw new Error("API_KEY environment variable not set.");
         }
+        this.courtListenerApiKey = courtListenerApiKey;
         const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
         this.chat = ai.chats.create({
@@ -60,22 +62,20 @@ export class ChatService {
             if (call.name === 'search_case_law') {
                 const caseQuery = call.args.query as string;
                 
-                // --- REAL API CALL to CourtListener ---
                 const apiResult = await this.searchCourtListenerAPI(caseQuery);
-                // ------------------------------------
                 
-                // Hold on to the sources from our API call
                 finalSources.push(...apiResult.sources);
 
-                // Send the content from our API back to the model to generate a response
                 response = await this.chat.sendMessage({
                     message: {
                         toolResponse: {
-                            functionResponses: {
-                                id: call.id,
-                                name: call.name,
-                                response: { content: apiResult.content }, // Only send content to the model
-                            }
+                            functionResponses: [
+                                {
+                                    id: call.id,
+                                    name: call.name,
+                                    response: { content: apiResult.content },
+                                }
+                            ]
                         }
                     }
                 });
@@ -84,7 +84,6 @@ export class ChatService {
         
         const text = response.text;
         
-        // Extract sources from Google Search grounding, if it was used
         const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
         const groundingSources: Source[] = groundingChunks
             .map((chunk: any) => {
@@ -95,38 +94,37 @@ export class ChatService {
             })
             .filter((source): source is Source => source !== null);
         
-        // Combine sources from our function call and Google Search
         finalSources.push(...groundingSources);
         
-        // Remove duplicates to ensure a clean list
         const uniqueSources = Array.from(new Map(finalSources.map(s => [s.url, s])).values());
 
         return { text, sources: uniqueSources };
     }
     
     private async searchCourtListenerAPI(query: string): Promise<{ content: string; sources: Source[] }> {
-        const apiKey = process.env.COURTLISTENER_API_KEY;
+        const apiKey = this.courtListenerApiKey;
         if (!apiKey) {
             console.warn("COURTLISTENER_API_KEY is not set. Falling back to general search.");
             return {
-                content: "The specialized CourtListener search is currently unavailable. The following results are from a general web search.",
+                content: "The specialized CourtListener search is currently unavailable because an API key has not been provided. The following results are from a general web search.",
                 sources: [],
             };
         }
 
-        const endpoint = `https://www.courtlistener.com/api/rest/v3/search/?q=${encodeURIComponent(query)}&type=o&order_by=score%20desc&stat_Precedential=on`;
+        const endpoint = `https://www.courtlistener.com/api/rest/v4/search/?q=${encodeURIComponent(query)}&type=o&order_by=score%20desc&stat_Precedential=on`;
 
         try {
             const response = await fetch(endpoint, {
                 headers: {
                     'Authorization': `Token ${apiKey}`,
+                    'User-Agent': 'California Law Chatbot/1.0',
                 },
             });
 
             if (!response.ok) {
                 console.error(`CourtListener API error: ${response.statusText}`);
                 return {
-                    content: `There was an error searching the CourtListener database.`,
+                    content: `There was an error searching the CourtListener database. The server responded with status ${response.status}. This may be due to an invalid API key.`,
                     sources: [],
                 };
             }
@@ -140,7 +138,6 @@ export class ChatService {
                 };
             }
 
-            // Process the top 3 results to send to the AI
             const topResults = data.results.slice(0, 3);
             
             const contentForAI = topResults.map((result: any, index: number) => {

@@ -1,26 +1,38 @@
-
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { ChatMessage, MessageRole } from '../types';
 import { ChatService } from '../gemini/chatService';
 
-export const useChat = () => {
+export const useChat = (courtListenerApiKey: string | null) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   
-  // Use a ref to hold the ChatService instance to keep it stable across re-renders
   const chatServiceRef = useRef<ChatService | null>(null);
 
-  // Initialize the chat service and the initial message
   useEffect(() => {
-    chatServiceRef.current = new ChatService();
-    setMessages([
-      {
-        id: 'initial-bot-message',
-        role: MessageRole.BOT,
-        text: 'Hello! I am an AI assistant for California law. You can ask me general questions or about specific case law. How can I help?',
-      },
-    ]);
-  }, []);
+    try {
+      chatServiceRef.current = new ChatService(courtListenerApiKey);
+      
+      const initialText = courtListenerApiKey
+        ? 'Hello! I am an AI assistant for California law. You can ask me general questions or about specific case law. How can I help?'
+        : 'Hello! I am an AI assistant for California law. To enable the chat and search for specific court cases, please provide a CourtListener API key in the banner above.';
+
+      setMessages([
+        {
+          id: 'initial-bot-message',
+          role: MessageRole.BOT,
+          text: initialText,
+        },
+      ]);
+    } catch (error) {
+      console.error("Failed to initialize ChatService:", error);
+      const text = error instanceof Error ? error.message : "An unknown error occurred.";
+      setMessages([{
+          id: 'init-error-message',
+          role: MessageRole.BOT,
+          text: `Critical Error: Could not start the chat service. Please check your Gemini API key configuration and console for details.\nDetails: ${text}`
+      }]);
+    }
+  }, [courtListenerApiKey]);
 
 
   const sendMessage = useCallback(async (text: string) => {
