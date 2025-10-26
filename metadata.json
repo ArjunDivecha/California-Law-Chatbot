@@ -1,0 +1,5 @@
+{
+  "name": "California Law Chatbot",
+  "description": "An intelligent chatbot that provides accurate, verifiable answers to questions about California law by integrating with real-time legal data APIs. It grounds its responses in actual statutes and case law to minimize hallucinations and provide trustworthy information with citations.",
+  "requestFramePermissions": []
+}
