@@ -7,6 +7,27 @@ export interface BotResponse {
     sources: Source[];
 }
 
+// A structured object for a single case result
+interface CaseResult {
+    caseName: string;
+    citation: string;
+    dateFiled: string;
+    snippet: string;
+}
+
+// The consistent payload structure sent back to the model.
+// It MUST always have the same shape.
+interface CourtListenerToolResponse {
+    results: CaseResult[];
+    error: string | null;
+}
+
+// The internal response structure from our API call wrapper
+interface CourtListenerAPIResponse {
+    payload: CourtListenerToolResponse;
+    sources: Source[];
+}
+
 const searchCaseLawTool: FunctionDeclaration = {
     name: "search_case_law",
     description: "Searches for and retrieves information about a specific California court case from the CourtListener database.",
@@ -34,7 +55,7 @@ export class ChatService {
         this.chat = ai.chats.create({
             model: 'gemini-2.5-flash',
             config: {
-                systemInstruction: "You are an expert legal research assistant specializing in California law. Your answers must be accurate and grounded in the provided search results or function call results. When a user asks about specific case law, use the `search_case_law` tool. For general questions or statutes, you can use Google Search. Cite your sources clearly using the format [1], [2], etc.",
+                systemInstruction: "You are an expert legal research assistant specializing in California law. Your answers must be accurate and grounded in the provided search results or function call results. When a user asks about specific case law, use the `search_case_law` tool. For general questions or statutes, you can use Google Search. When you receive structured data from a tool, synthesize it into a clear, human-readable answer. Cite your sources clearly using the format [1], [2], etc. If a tool returns an error, inform the user about the error and that you are relying on general web search instead.",
                 tools: [
                     { functionDeclarations: [searchCaseLawTool] },
                     { googleSearch: {} }
@@ -58,12 +79,14 @@ export class ChatService {
                     
                     const apiResult = await this.searchCourtListenerAPI(caseQuery);
                     
-                    finalSources.push(...apiResult.sources);
+                    if (apiResult.sources) {
+                        finalSources.push(...apiResult.sources);
+                    }
 
                     functionResponseParts.push({
                         functionResponse: {
                             name: call.name,
-                            response: { result: apiResult.content },
+                            response: apiResult.payload,
                         },
                     });
                 }
@@ -93,12 +116,15 @@ export class ChatService {
         return { text, sources: uniqueSources };
     }
     
-    private async searchCourtListenerAPI(query: string): Promise<{ content: string; sources: Source[] }> {
+    private async searchCourtListenerAPI(query: string): Promise<CourtListenerAPIResponse> {
         const apiKey = process.env.COURTLISTENER_API_KEY;
         if (!apiKey) {
             console.warn("COURTLISTENER_API_KEY is not set. Falling back to general search.");
             return {
-                content: "The specialized CourtListener search is currently unavailable. The following results are from a general web search.",
+                payload: {
+                    results: [],
+                    error: "The specialized CourtListener search is currently unavailable because the API key is not configured.",
+                },
                 sources: [],
             };
         }
@@ -113,9 +139,13 @@ export class ChatService {
             });
 
             if (!response.ok) {
-                console.error(`CourtListener API error: ${response.status} ${response.statusText}`);
+                const errorText = await response.text();
+                console.error(`CourtListener API error: ${response.status} ${response.statusText}`, errorText);
                 return {
-                    content: `I encountered an error while searching the CourtListener database. The API responded with status ${response.status}: ${response.statusText}.`,
+                     payload: {
+                        results: [],
+                        error: `I encountered an error while searching the CourtListener database. The API responded with status ${response.status}: ${response.statusText}.`,
+                    },
                     sources: [],
                 };
             }
@@ -124,20 +154,22 @@ export class ChatService {
 
             if (!data.results || data.results.length === 0) {
                 return {
-                    content: `No specific case law found on CourtListener for the query: "${query}".`,
+                    payload: {
+                        results: [],
+                        error: `No specific case law found on CourtListener for the query: "${query}".`,
+                    },
                     sources: [],
                 };
             }
 
             const topResults = data.results.slice(0, 3);
             
-            const contentForAI = topResults.map((result: any, index: number) => {
-                return `Result ${index + 1}:
-Case Name: ${result.caseName}
-Citation: ${result.citation}
-Date Filed: ${result.dateFiled}
-Snippet: ${result.snippet}`;
-            }).join('\n\n');
+            const resultsForAI: CaseResult[] = topResults.map((result: any) => ({
+                caseName: result.caseName || 'Unknown Case Name',
+                citation: result.citation?.[0] || 'No Citation',
+                dateFiled: result.date_filed || 'Unknown Date',
+                snippet: result.snippet || 'No Snippet Available',
+            }));
 
             const sources: Source[] = topResults.map((result: any) => ({
                 title: result.caseName || 'Untitled Case',
@@ -145,14 +177,20 @@ Snippet: ${result.snippet}`;
             }));
 
             return {
-                content: contentForAI,
+                payload: {
+                    results: resultsForAI,
+                    error: null,
+                },
                 sources: sources,
             };
 
         } catch (error) {
             console.error("Failed to fetch from CourtListener API:", error);
             return {
-                content: "I failed to connect to the CourtListener database due to a network error. Please check your internet connection.",
+                payload: {
+                    results: [],
+                    error: "I failed to connect to the CourtListener database due to a network error. Please check your internet connection.",
+                },
                 sources: [],
             };
         }
