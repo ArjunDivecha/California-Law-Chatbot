@@ -93,7 +93,14 @@ Provide a thorough legal analysis citing specific case details and explaining th
                     finalSources.push(...groundingSources);
                     const uniqueSources = Array.from(new Map(finalSources.map(s => [s.url, s])).values());
 
-                    return { text: response.text, sources: uniqueSources };
+                    // Perform verification of AI response against CourtListener data
+                    const verificationResult = this.verifyResponse(response.text, specificSources, apiResult.content);
+
+                    // Add verification status to response
+                    const verifiedText = response.text + (verificationResult.needsVerification ?
+                        '\n\n⚠️ Note: Some claims in this response may require verification against primary legal sources.' : '');
+
+                    return { text: verifiedText, sources: uniqueSources };
                 } else {
                     console.log('⚠️ CourtListener returned no useful results, falling back to regular chat');
                     // Fall back to regular chat if CourtListener didn't find anything useful
@@ -205,7 +212,14 @@ Key California legal sources to reference:
             const allSources = [...specificSources, ...groundingSources, ...officialSources];
             const uniqueSources = Array.from(new Map(allSources.map(s => [s.url, s])).values());
 
-            return { text: response.text, sources: uniqueSources };
+            // Perform verification of AI response against sources
+            const verificationResult = this.verifyResponse(response.text, specificSources, '');
+
+            // Add verification status to response
+            const verifiedText = response.text + (verificationResult.needsVerification ?
+                '\n\n⚠️ Note: Some claims in this response may require verification against primary legal sources.' : '');
+
+            return { text: verifiedText, sources: uniqueSources };
 
         } catch (error) {
             console.error('❌ Chat error:', error);
@@ -216,7 +230,98 @@ Key California legal sources to reference:
             };
         }
     }
-    
+
+    private verifyResponse(responseText: string, specificSources: Source[], courtListenerContent: string): { needsVerification: boolean; verifiedClaims: string[]; unverifiedClaims: string[] } {
+        const verifiedClaims: string[] = [];
+        const unverifiedClaims: string[] = [];
+
+        // Extract factual claims from response
+        const claims = this.extractClaims(responseText);
+
+        for (const claim of claims) {
+            let isVerified = false;
+
+            // Check against specific sources (citations)
+            for (const source of specificSources) {
+                if (this.claimSupportedBySource(claim, source)) {
+                    isVerified = true;
+                    verifiedClaims.push(claim);
+                    break;
+                }
+            }
+
+            // Check against CourtListener content if available
+            if (!isVerified && courtListenerContent && this.claimSupportedByCourtListener(claim, courtListenerContent)) {
+                isVerified = true;
+                verifiedClaims.push(claim);
+            }
+
+            if (!isVerified) {
+                unverifiedClaims.push(claim);
+            }
+        }
+
+        console.log('🔍 Verification Results:', {
+            totalClaims: claims.length,
+            verified: verifiedClaims.length,
+            unverified: unverifiedClaims.length,
+            needsVerification: unverifiedClaims.length > 0
+        });
+
+        return {
+            needsVerification: unverifiedClaims.length > 0,
+            verifiedClaims,
+            unverifiedClaims
+        };
+    }
+
+    private extractClaims(text: string): string[] {
+        const claims: string[] = [];
+
+        // Extract sentences that make factual claims about law
+        const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 10);
+
+        for (const sentence of sentences) {
+            // Look for sentences that mention legal requirements, definitions, or citations
+            if (sentence.match(/\b(requires?|must|shall|defines?|means?|states?|provides?)\b/i) ||
+                sentence.match(/\b(Family Code|Penal Code|Code of Civil Procedure|Evidence Code)\b/i) ||
+                sentence.match(/\b(section|§)\s*\d+/i)) {
+                claims.push(sentence.trim());
+            }
+        }
+
+        return claims;
+    }
+
+    private claimSupportedBySource(claim: string, source: Source): boolean {
+        // For statute citations, check if the source URL contains the cited section
+        if (claim.includes('Family Code') && source.url.includes('leginfo.legislature.ca.gov') && source.url.includes('FAM')) {
+            return true;
+        }
+        if (claim.includes('Penal Code') && source.url.includes('leginfo.legislature.ca.gov') && source.url.includes('PEN')) {
+            return true;
+        }
+        // For case citations, check if source is CourtListener
+        if (claim.match(/\bv\.\s/i) && source.url.includes('courtlistener.com')) {
+            return true;
+        }
+
+        return false;
+    }
+
+    private claimSupportedByCourtListener(claim: string, courtListenerContent: string): boolean {
+        // Check if the claim's key terms appear in the CourtListener content
+        const claimWords = claim.toLowerCase().split(/\s+/).filter(word =>
+            word.length > 3 && !['that', 'with', 'this', 'from', 'under', 'shall', 'must', 'requires'].includes(word)
+        );
+
+        const contentWords = courtListenerContent.toLowerCase();
+        const matchingWords = claimWords.filter(word => contentWords.includes(word));
+
+        // If more than 60% of significant words match, consider it verified
+        return matchingWords.length / claimWords.length > 0.6;
+    }
+
     private async searchCourtListenerAPI(query: string): Promise<{ content: string; sources: Source[] }> {
         const apiKey = this.courtListenerApiKey;
         console.log('🔑 CourtListener API key present:', !!apiKey);
