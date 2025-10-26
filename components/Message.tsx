@@ -62,6 +62,9 @@ const Message: React.FC<MessageProps> = ({ message }) => {
     );
   }
 
+  // Conditionally render source list only if there are no inline citations
+  const showSourceList = message.sources && message.sources.length > 0 && !message.text.match(/\[\d+\]/);
+
   return (
     <div className="flex justify-start">
       <div className="flex items-start space-x-4 max-w-xl">
@@ -70,7 +73,7 @@ const Message: React.FC<MessageProps> = ({ message }) => {
         </div>
         <div className="bg-white rounded-lg rounded-bl-none p-4 border border-gray-200 shadow-md w-full">
           {renderMessageContent(message.text, message.sources)}
-          {message.sources && message.sources.length > 0 && (
+          {showSourceList && (
             <div className="mt-4 pt-4 border-t border-gray-200">
               <h4 className="text-sm font-semibold text-gray-800 mb-2 flex items-center">
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 mr-2 text-green-600"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>

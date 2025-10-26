@@ -44,13 +44,6 @@ export class ChatService {
     }
 
     async sendMessage(message: string): Promise<BotResponse> {
-        if (message.trim().toLowerCase() === 'hello' || message.trim().toLowerCase() === 'hi') {
-            return {
-                text: "Hello! I am the California Law Chatbot. How can I help you with your legal research today?",
-                sources: []
-            };
-        }
-
         let response = await this.chat.sendMessage({ message });
         const finalSources: Source[] = [];
 
@@ -60,10 +53,9 @@ export class ChatService {
             if (call.name === 'search_case_law') {
                 const caseQuery = call.args.query as string;
                 
-                // --- MOCK API CALL to CourtListener ---
-                console.log(`Simulating API call to CourtListener for: "${caseQuery}"`);
-                const apiResult = this.mockCourtListenerAPI(caseQuery);
-                // -----------------------------------------
+                // --- REAL API CALL to CourtListener ---
+                const apiResult = await this.searchCourtListenerAPI(caseQuery);
+                // ------------------------------------
                 
                 // Hold on to the sources from our API call
                 finalSources.push(...apiResult.sources);
@@ -104,27 +96,70 @@ export class ChatService {
 
         return { text, sources: uniqueSources };
     }
-
-    private mockCourtListenerAPI(query: string): { content: string, sources: Source[] } {
-        // This is a mock response. A real API would return structured data.
-        const lowerQuery = query.toLowerCase();
-        let resultText: string;
-        let source: Source;
-
-        if (lowerQuery.includes("anderson")) {
-            resultText = "In *People v. Anderson* (1972) 6 Cal.3d 628, the California Supreme Court found the death penalty to be unconstitutional, cruel, and unusual punishment under the California Constitution.";
-            source = { title: "People v. Anderson, 6 Cal. 3d 628", url: "https://www.courtlistener.com/opinion/207000/people-v-anderson/" };
-        } else if (lowerQuery.includes("tarasoff")) {
-             resultText = "In *Tarasoff v. Regents of the University of California* (1976) 17 Cal.3d 425, the court established a 'duty to protect' for psychotherapists, requiring them to take reasonable care to protect third parties from dangers posed by a patient.";
-            source = { title: "Tarasoff v. Regents of Univ. of Cal., 17 Cal. 3d 425", url: "https://www.courtlistener.com/opinion/189728/tarasoff-v-regents-of-univ-of-cal/"};
-        } else {
-            resultText = `No specific information found for the case "${query}". The mock database only contains information for 'People v. Anderson' and 'Tarasoff v. Regents'.`;
-            source = { title: "CourtListener", url: "https://www.courtlistener.com/" };
+    
+    private async searchCourtListenerAPI(query: string): Promise<{ content: string; sources: Source[] }> {
+        const apiKey = process.env.COURTLISTENER_API_KEY;
+        if (!apiKey) {
+            console.warn("COURTLISTENER_API_KEY is not set. Falling back to general search.");
+            return {
+                content: "The specialized CourtListener search is currently unavailable. The following results are from a general web search.",
+                sources: [],
+            };
         }
 
-        return {
-            content: resultText,
-            sources: [source]
-        };
+        const endpoint = `https://www.courtlistener.com/api/rest/v3/search/?q=${encodeURIComponent(query)}&type=o&order_by=score%20desc&stat_Precedential=on`;
+
+        try {
+            const response = await fetch(endpoint, {
+                headers: {
+                    'Authorization': `Token ${apiKey}`,
+                },
+            });
+
+            if (!response.ok) {
+                console.error(`CourtListener API error: ${response.status} ${response.statusText}`);
+                return {
+                    content: `I encountered an error while searching the CourtListener database. The API responded with status ${response.status}: ${response.statusText}.`,
+                    sources: [],
+                };
+            }
+
+            const data = await response.json();
+
+            if (!data.results || data.results.length === 0) {
+                return {
+                    content: `No specific case law found on CourtListener for the query: "${query}".`,
+                    sources: [],
+                };
+            }
+
+            // Process the top 3 results to send to the AI
+            const topResults = data.results.slice(0, 3);
+            
+            const contentForAI = topResults.map((result: any, index: number) => {
+                return `Result ${index + 1}:
+Case Name: ${result.caseName}
+Citation: ${result.citation}
+Date Filed: ${result.dateFiled}
+Snippet: ${result.snippet}`;
+            }).join('\n\n');
+
+            const sources: Source[] = topResults.map((result: any) => ({
+                title: result.caseName || 'Untitled Case',
+                url: `https://www.courtlistener.com${result.absolute_url}`
+            }));
+
+            return {
+                content: contentForAI,
+                sources: sources,
+            };
+
+        } catch (error) {
+            console.error("Failed to fetch from CourtListener API:", error);
+            return {
+                content: "I failed to connect to the CourtListener database due to a network error. Please check your internet connection.",
+                sources: [],
+            };
+        }
     }
 }
