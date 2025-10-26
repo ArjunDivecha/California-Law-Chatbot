@@ -67,6 +67,13 @@ const Message: React.FC<MessageProps> = ({ message }) => {
     source.url.includes('courtlistener.com')
   );
 
+  // Check if this response includes official legal sources
+  const hasOfficialSources = message.sources && message.sources.some(source =>
+    source.url.includes('leginfo.legislature.ca.gov') ||
+    source.url.includes('courts.ca.gov') ||
+    source.url.includes('courtlistener.com')
+  );
+
   // Conditionally render source list only if there are no inline citations
   const showSourceList = message.sources && message.sources.length > 0 && !message.text.match(/\[\d+\]/);
 
@@ -77,11 +84,19 @@ const Message: React.FC<MessageProps> = ({ message }) => {
           <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6 text-gray-600"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg>
         </div>
         <div className="bg-white rounded-lg rounded-bl-none p-4 border border-gray-200 shadow-md w-full">
-          {usedCourtListener && (
+        {usedCourtListener && (
+        <div className="mb-3 flex items-center">
+        <div className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3 h-3 mr-1"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg>
+        CourtListener Enhanced
+        </div>
+        </div>
+        )}
+          {!usedCourtListener && hasOfficialSources && (
             <div className="mb-3 flex items-center">
-              <div className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3 h-3 mr-1"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg>
-                CourtListener Enhanced
+              <div className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3 h-3 mr-1"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                Legal Sources Included
               </div>
             </div>
           )}

@@ -107,7 +107,20 @@ Provide a thorough legal analysis citing specific case details and explaining th
         // Regular chat without CourtListener
         try {
             console.log('💬 Sending regular chat message to Gemini...');
-            const response = await this.chat.sendMessage({ message });
+
+            // Enhance the prompt to request citations for legal information
+            const enhancedMessage = `${message}
+
+Please provide comprehensive, accurate information. For any legal claims, statutes, or case law mentioned, include specific citations and references. Format citations as [Source Name](URL) or reference official legal sources.
+
+Key California legal sources to reference:
+- California Family Code: https://leginfo.legislature.ca.gov/faces/codes_displayText.xhtml?lawCode=FAM
+- California Civil Code: https://leginfo.legislature.ca.gov/faces/codes_displayText.xhtml?lawCode=CIV
+- California Probate Code: https://leginfo.legislature.ca.gov/faces/codes_displayText.xhtml?lawCode=PROB
+- California Courts: https://courts.ca.gov/
+- Official court opinions and case law through CourtListener`;
+
+            const response = await this.chat.sendMessage({ message: enhancedMessage });
             console.log('✅ Regular chat response received');
 
             const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
@@ -120,7 +133,19 @@ Provide a thorough legal analysis citing specific case details and explaining th
                 })
                 .filter((source): source is Source => source !== null);
 
-            return { text: response.text, sources: groundingSources };
+            // Add official California legal sources if not already included
+            const officialSources: Source[] = [
+                { title: 'California Family Code', url: 'https://leginfo.legislature.ca.gov/faces/codes_displayText.xhtml?lawCode=FAM' },
+                { title: 'California Legislature', url: 'https://leginfo.legislature.ca.gov/' },
+                { title: 'California Courts', url: 'https://courts.ca.gov/' },
+                { title: 'CourtListener', url: 'https://www.courtlistener.com/' }
+            ];
+
+            // Combine and deduplicate sources
+            const allSources = [...groundingSources, ...officialSources];
+            const uniqueSources = Array.from(new Map(allSources.map(s => [s.url, s])).values());
+
+            return { text: response.text, sources: uniqueSources };
 
         } catch (error) {
             console.error('❌ Chat error:', error);

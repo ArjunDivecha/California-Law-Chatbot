@@ -27,8 +27,9 @@ View your app in AI Studio: https://ai.studio/apps/drive/1UH1n_Box33X_j5u6KB1u_b
 - Fallback to general AI responses for other queries
 
 ### 📊 Response Indicators
-- **CourtListener Enhanced** badge appears when real case law data is used
-- Source links provide direct access to CourtListener case pages
+- **CourtListener Enhanced** badge (blue) - Real case law data from CourtListener
+- **Legal Sources Included** badge (green) - Official California legal sources
+- Source links provide direct access to official legal documents
 - Console logging shows query detection and API usage (F12 to view)
 
 ## Verification & Sources
@@ -47,15 +48,19 @@ All legal information provided by this chatbot should be verified against offici
 
 ### 🔍 How to Verify Responses
 
-**CourtListener Enhanced Responses:**
-- Look for the blue "CourtListener Enhanced" badge
+**CourtListener Enhanced Responses (Blue Badge):**
+- Real case law data retrieved from CourtListener
 - Click source links to view original case documents
 - Verify information against official court records
 
-**General AI Responses:**
-- No CourtListener badge = general legal information
-- Still accurate but based on AI training data
-- Cross-reference with official legal sources listed above
+**Legal Sources Included Responses (Green Badge):**
+- General legal information with official source references
+- Includes links to California Legislature, Courts, etc.
+- Cross-reference claims with provided official sources
+
+**General AI Responses (No Badge):**
+- Based on AI training data without specific source attribution
+- Still generally accurate but verify with official sources above
 
 **Console Logging (F12):**
 - Open browser dev tools to see detailed logs
