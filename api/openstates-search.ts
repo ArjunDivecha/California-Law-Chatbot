@@ -20,7 +20,7 @@ export default async function handler(req: any, res: any) {
 
     const graphql = {
       query: `query($q: String!) {
-        bills(first: 5, jurisdiction: "California", query: $q) {
+        bills(first: 5, jurisdiction: "California", q: $q) {
           edges { node { identifier title classification updatedAt legislativeSession { identifier jurisdiction { name } } } }
         }
       }`,
@@ -59,4 +59,3 @@ export default async function handler(req: any, res: any) {
     res.status(500).json({ error: 'Internal Server Error', message: err?.message || String(err) });
   }
 }
-
