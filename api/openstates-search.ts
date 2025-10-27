@@ -18,33 +18,14 @@ export default async function handler(req: any, res: any) {
       return;
     }
 
-    const graphql = {
-      query: `query($q: String!) {
-        search(query: $q, first: 5) {
-          edges {
-            node {
-              __typename
-              ... on Bill {
-                identifier
-                title
-                classification
-                updatedAt
-                legislativeSession { identifier jurisdiction { name } }
-              }
-            }
-          }
-        }
-      }`,
-      variables: { q: query },
-    };
+    // Use OpenStates v3 REST API for broader compatibility
+    const url = new URL('https://v3.openstates.org/bills');
+    url.searchParams.set('per_page', '5');
+    url.searchParams.set('jurisdiction', 'California');
+    url.searchParams.set('query', query);
 
-    const r = await fetch('https://openstates.org/graphql', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-API-KEY': apiKey,
-      },
-      body: JSON.stringify(graphql),
+    const r = await fetch(url.toString(), {
+      headers: { 'X-API-KEY': apiKey },
     });
 
     if (!r.ok) {
@@ -55,18 +36,16 @@ export default async function handler(req: any, res: any) {
     }
 
     const data = await r.json();
-    const edges = data?.data?.search?.edges || [];
-    const items = edges
-      .map((e: any) => e?.node)
-      .filter((n: any) => n && (n.__typename === 'Bill' || typeof n.identifier === 'string'))
-      .map((n: any) => ({
-        identifier: n.identifier,
-        title: n.title,
-        classification: n.classification,
-        session: n.legislativeSession?.identifier,
-        jurisdiction: n.legislativeSession?.jurisdiction?.name,
-        updatedAt: n.updatedAt,
-      }));
+    const results = Array.isArray(data?.results) ? data.results : [];
+    const items = results.map((b: any) => ({
+      identifier: b?.identifier,
+      title: b?.title,
+      classification: b?.classification,
+      session: b?.from_organization || b?.legislative_session || b?.session,
+      jurisdiction: b?.jurisdiction?.name || 'California',
+      updatedAt: b?.updated_at || b?.updatedAt,
+      url: b?.openstates_url || b?.sources?.[0]?.url,
+    }));
 
     res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=600');
     res.status(200).json({ query, items });
