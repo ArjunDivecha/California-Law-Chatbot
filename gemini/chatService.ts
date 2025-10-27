@@ -48,6 +48,15 @@ export class ChatService {
 
         let finalSources: Source[] = [];
 
+        const legislationData = await this.fetchLegislationData(message);
+        let legislationContextInstructions = '';
+        if (legislationData.sources.length > 0) {
+            finalSources.push(...legislationData.sources);
+        }
+        if (legislationData.context) {
+            legislationContextInstructions = `\n\nLegislative research results (validated from official sources):\n${legislationData.context}\n\nUse this verified bill information. Reference the specific bill identifiers, summarize their status accurately, and cite the provided sources.`;
+        }
+
         if (isCaseQuery && this.courtListenerApiKey) {
             try {
                 console.log('🔍 Detected case law query, searching CourtListener...');
@@ -59,7 +68,12 @@ export class ChatService {
                     finalSources.push(...apiResult.sources);
 
                     // Create enhanced prompt with CourtListener data
-                    const enhancedMessage = `${message}
+                    let enhancedMessage = `${message}`;
+                    if (legislationContextInstructions) {
+                        enhancedMessage += legislationContextInstructions;
+                    }
+
+                    enhancedMessage += `
 
 I have retrieved the following case information from CourtListener database. Please analyze these cases comprehensively:
 
@@ -94,7 +108,8 @@ Provide a thorough legal analysis citing specific case details and explaining th
                     const uniqueSources = Array.from(new Map(finalSources.map(s => [s.url, s])).values());
 
                     // Perform verification of AI response against CourtListener data
-                    const verificationResult = this.verifyResponse(response.text, specificSources, apiResult.content);
+                    const combinedVerificationSources = [...specificSources, ...finalSources];
+                    const verificationResult = this.verifyResponse(response.text, combinedVerificationSources, apiResult.content);
 
                     // Add verification status to response
                     const verifiedText = response.text + (verificationResult.needsVerification ?
@@ -117,16 +132,22 @@ Provide a thorough legal analysis citing specific case details and explaining th
             console.log('💬 Sending regular chat message to Gemini...');
 
             // Enhance the prompt to request citations for legal information
-            const enhancedMessage = `${message}
+            let enhancedMessage = `${message}`;
+            if (legislationContextInstructions) {
+                enhancedMessage += legislationContextInstructions;
+            }
 
-Please provide comprehensive, accurate information. For any legal claims, statutes, or case law mentioned, include specific citations and references. Format citations as [Source Name](URL) or reference official legal sources.
+            enhancedMessage += `
+
+Please provide comprehensive, accurate information. For any legal claims, statutes, case law, or California legislation mentioned, include specific citations and references. Format citations as [Source Name](URL) or reference official legal sources.
 
 Key California legal sources to reference:
 - California Family Code: https://leginfo.legislature.ca.gov/faces/codes_displayText.xhtml?lawCode=FAM
 - California Civil Code: https://leginfo.legislature.ca.gov/faces/codes_displayText.xhtml?lawCode=CIV
 - California Probate Code: https://leginfo.legislature.ca.gov/faces/codes_displayText.xhtml?lawCode=PROB
 - California Courts: https://courts.ca.gov/
-- Official court opinions and case law through CourtListener`;
+- Official court opinions and case law through CourtListener
+- Current California bills (AB/SB/etc.) with status and summaries drawn from the provided legislative research`;
 
             const response = await this.chat.sendMessage({ message: enhancedMessage });
             console.log('✅ Regular chat response received');
@@ -482,7 +503,7 @@ Key California legal sources to reference:
 
             // Combine sources: specific citations and grounding sources only
             // Do NOT add generic fallbacks; show only actual used sources
-            const allSources = [...specificSources, ...groundingSources];
+            const allSources = [...specificSources, ...groundingSources, ...finalSources];
             
             // Topic-based enrichment to ensure diverse, public sources when relevant keywords appear
             const lowered = response.text.toLowerCase();
@@ -529,7 +550,8 @@ Key California legal sources to reference:
             const uniqueSources = Array.from(new Map(allWithEnrichment.map(s => [s.url, s])).values());
 
             // Perform verification of AI response against sources
-            const verificationResult = this.verifyResponse(response.text, specificSources, '');
+            const combinedVerificationSources = [...specificSources, ...finalSources];
+            const verificationResult = this.verifyResponse(response.text, combinedVerificationSources, '');
 
             // Add verification status to response
             const verifiedText = response.text + (verificationResult.needsVerification ?
@@ -591,6 +613,118 @@ Key California legal sources to reference:
         };
     }
 
+    private async fetchLegislationData(message: string): Promise<{ context: string; sources: Source[] }> {
+        const billPattern = /(Assembly\s+Bill|Senate\s+Bill|Assembly\s+Joint\s+Resolution|Senate\s+Joint\s+Resolution|Assembly\s+Concurrent\s+Resolution|Senate\s+Concurrent\s+Resolution|Assembly\s+Resolution|Senate\s+Resolution|AB|SB|AJR|ACR|SCR|SJR|HR|SR)\s*-?\s*(\d+[A-Z]?)(?:\s*\((\d{4})\))?/gi;
+        const typeMap: Record<string, string> = {
+            'ASSEMBLY BILL': 'AB',
+            'SENATE BILL': 'SB',
+            'ASSEMBLY JOINT RESOLUTION': 'AJR',
+            'SENATE JOINT RESOLUTION': 'SJR',
+            'ASSEMBLY CONCURRENT RESOLUTION': 'ACR',
+            'SENATE CONCURRENT RESOLUTION': 'SCR',
+            'ASSEMBLY RESOLUTION': 'AR',
+            'SENATE RESOLUTION': 'SR',
+            'AB': 'AB',
+            'SB': 'SB',
+            'AJR': 'AJR',
+            'ACR': 'ACR',
+            'SCR': 'SCR',
+            'SJR': 'SJR',
+            'HR': 'HR',
+            'SR': 'SR'
+        };
+
+        const matches = new Map<string, { label: string; searchTerm: string; year?: string }>();
+        let match;
+        while ((match = billPattern.exec(message)) !== null) {
+            const rawType = match[1] || '';
+            const number = match[2] || '';
+            const year = match[3] || '';
+            const normalizedType = typeMap[rawType.toUpperCase()] || rawType.toUpperCase();
+            if (!normalizedType || !number) {
+                continue;
+            }
+            const label = `${normalizedType} ${number}${year ? ` (${year})` : ''}`;
+            const searchTerm = `${normalizedType} ${number}`;
+            if (!matches.has(label)) {
+                matches.set(label, { label, searchTerm, year });
+            }
+        }
+
+        if (matches.size === 0) {
+            return { context: '', sources: [] };
+        }
+
+        const summaryChunks: string[] = [];
+        const collectedSources: Source[] = [];
+
+        for (const { label, searchTerm, year } of matches.values()) {
+            const query = year ? `${searchTerm} ${year}` : searchTerm;
+            const normalized = searchTerm.toUpperCase();
+
+            const billSummaries: string[] = [];
+
+            try {
+                const openStatesResponse = await fetch(`/api/openstates-search?q=${encodeURIComponent(query)}`);
+                if (openStatesResponse.ok) {
+                    const data = await openStatesResponse.json();
+                    const items = Array.isArray(data?.items) ? data.items : [];
+                    const matchItem = items.find((item: any) => (item?.identifier || '').toUpperCase().includes(normalized));
+                    if (matchItem) {
+                        const title = matchItem.title || 'Title unavailable';
+                        const session = typeof matchItem.session === 'string' ? matchItem.session : (matchItem.session?.name || matchItem.session?.identifier || '');
+                        const updatedAt = matchItem.updatedAt ? new Date(matchItem.updatedAt).toISOString().split('T')[0] : '';
+                        const openStatesUrl = matchItem.url;
+                        billSummaries.push(`OpenStates: ${title}${session ? ` (Session: ${session})` : ''}${updatedAt ? ` [updated ${updatedAt}]` : ''}`);
+                        if (openStatesUrl) {
+                            collectedSources.push({ title: `${label} – OpenStates`, url: openStatesUrl });
+                        }
+                    }
+                } else {
+                    console.warn('OpenStates proxy error:', await openStatesResponse.text());
+                }
+            } catch (error) {
+                console.error('Failed to call OpenStates proxy:', error);
+            }
+
+            try {
+                const legiscanResponse = await fetch(`/api/legiscan-search?q=${encodeURIComponent(query)}`);
+                if (legiscanResponse.ok) {
+                    const data = await legiscanResponse.json();
+                    const resultsObj = data?.searchresult || {};
+                    const entries = Object.values(resultsObj).filter((entry: any) => entry && typeof entry === 'object' && entry.bill_number);
+                    const matchEntry = entries.find((entry: any) => (entry.bill_number || '').toUpperCase().includes(normalized));
+                    if (matchEntry) {
+                        const title = matchEntry.title || 'Title unavailable';
+                        const lastAction = matchEntry.last_action || 'Status unavailable';
+                        const lastActionDate = matchEntry.last_action_date || '';
+                        const legiscanUrl = matchEntry.url || matchEntry.text_url || matchEntry.research_url;
+                        billSummaries.push(`LegiScan: ${title}${lastActionDate ? ` (Last action: ${lastActionDate})` : ''} – ${lastAction}`);
+                        if (legiscanUrl) {
+                            collectedSources.push({ title: `${label} – LegiScan`, url: legiscanUrl });
+                        }
+                    }
+                } else {
+                    console.warn('LegiScan proxy error:', await legiscanResponse.text());
+                }
+            } catch (error) {
+                console.error('Failed to call LegiScan proxy:', error);
+            }
+
+            if (billSummaries.length > 0) {
+                summaryChunks.push(`${label}:\n${billSummaries.map(summary => `  • ${summary}`).join('\n')}`);
+            } else {
+                summaryChunks.push(`${label}: No legislative data retrieved from OpenStates or LegiScan.`);
+            }
+        }
+
+        const uniqueSources = Array.from(new Map(collectedSources.map(source => [source.url, source])).values());
+        return {
+            context: summaryChunks.join('\n\n'),
+            sources: uniqueSources,
+        };
+    }
+
     private extractClaims(text: string): string[] {
         const claims: string[] = [];
 
@@ -619,6 +753,10 @@ Key California legal sources to reference:
         }
         // For case citations, check if source is CourtListener
         if (claim.match(/\bv\.\s/i) && source.url.includes('courtlistener.com')) {
+            return true;
+        }
+        // For California legislation
+        if (claim.match(/\b(AB|SB|Assembly Bill|Senate Bill|AJR|ACR|SCR|SJR|HR|SR)\s*\d+/i) && (source.url.includes('legiscan.com') || source.url.includes('openstates.org') || source.url.includes('pluralpolicy.com'))) {
             return true;
         }
 
