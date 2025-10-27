@@ -659,56 +659,69 @@ Key California legal sources to reference:
         const collectedSources: Source[] = [];
 
         for (const { label, searchTerm, year } of matches.values()) {
-            const query = year ? `${searchTerm} ${year}` : searchTerm;
+            const queryVariants = year ? [
+                `${searchTerm} ${year}`,
+                searchTerm
+            ] : [searchTerm];
             const normalized = searchTerm.toUpperCase();
 
             const billSummaries: string[] = [];
 
-            try {
-                const openStatesResponse = await fetch(`/api/openstates-search?q=${encodeURIComponent(query)}`);
-                if (openStatesResponse.ok) {
-                    const data = await openStatesResponse.json();
-                    const items = Array.isArray(data?.items) ? data.items : [];
-                    const matchItem = items.find((item: any) => (item?.identifier || '').toUpperCase().includes(normalized));
-                    if (matchItem) {
-                        const title = matchItem.title || 'Title unavailable';
-                        const session = typeof matchItem.session === 'string' ? matchItem.session : (matchItem.session?.name || matchItem.session?.identifier || '');
-                        const updatedAt = matchItem.updatedAt ? new Date(matchItem.updatedAt).toISOString().split('T')[0] : '';
-                        const openStatesUrl = matchItem.url;
-                        billSummaries.push(`OpenStates: ${title}${session ? ` (Session: ${session})` : ''}${updatedAt ? ` [updated ${updatedAt}]` : ''}`);
-                        if (openStatesUrl) {
-                            collectedSources.push({ title: `${label} – OpenStates`, url: openStatesUrl });
+            let openStatesMatched = false;
+            for (const query of queryVariants) {
+                try {
+                    const openStatesResponse = await fetch(`/api/openstates-search?q=${encodeURIComponent(query)}`);
+                    if (openStatesResponse.ok) {
+                        const data = await openStatesResponse.json();
+                        const items = Array.isArray(data?.items) ? data.items : [];
+                        const matchItem = items.find((item: any) => (item?.identifier || '').toUpperCase().includes(normalized));
+                        if (matchItem) {
+                            const title = matchItem.title || 'Title unavailable';
+                            const session = typeof matchItem.session === 'string' ? matchItem.session : (matchItem.session?.name || matchItem.session?.identifier || '');
+                            const updatedAt = matchItem.updatedAt ? new Date(matchItem.updatedAt).toISOString().split('T')[0] : '';
+                            const openStatesUrl = matchItem.url;
+                            billSummaries.push(`OpenStates: ${title}${session ? ` (Session: ${session})` : ''}${updatedAt ? ` [updated ${updatedAt}]` : ''}`);
+                            if (openStatesUrl) {
+                                collectedSources.push({ title: `${label} – OpenStates`, url: openStatesUrl });
+                            }
+                            openStatesMatched = true;
+                            break;
                         }
+                    } else {
+                        console.warn('OpenStates proxy error:', await openStatesResponse.text());
                     }
-                } else {
-                    console.warn('OpenStates proxy error:', await openStatesResponse.text());
+                } catch (error) {
+                    console.error('Failed to call OpenStates proxy:', error);
                 }
-            } catch (error) {
-                console.error('Failed to call OpenStates proxy:', error);
             }
 
-            try {
-                const legiscanResponse = await fetch(`/api/legiscan-search?q=${encodeURIComponent(query)}`);
-                if (legiscanResponse.ok) {
-                    const data = await legiscanResponse.json();
-                    const resultsObj = data?.searchresult || {};
-                    const entries = Object.values(resultsObj).filter((entry: any) => entry && typeof entry === 'object' && entry.bill_number);
-                    const matchEntry = entries.find((entry: any) => (entry.bill_number || '').toUpperCase().includes(normalized));
-                    if (matchEntry) {
-                        const title = matchEntry.title || 'Title unavailable';
-                        const lastAction = matchEntry.last_action || 'Status unavailable';
-                        const lastActionDate = matchEntry.last_action_date || '';
-                        const legiscanUrl = matchEntry.url || matchEntry.text_url || matchEntry.research_url;
-                        billSummaries.push(`LegiScan: ${title}${lastActionDate ? ` (Last action: ${lastActionDate})` : ''} – ${lastAction}`);
-                        if (legiscanUrl) {
-                            collectedSources.push({ title: `${label} – LegiScan`, url: legiscanUrl });
+            let legiscanMatched = false;
+            for (const query of queryVariants) {
+                try {
+                    const legiscanResponse = await fetch(`/api/legiscan-search?q=${encodeURIComponent(query)}`);
+                    if (legiscanResponse.ok) {
+                        const data = await legiscanResponse.json();
+                        const resultsObj = data?.searchresult || {};
+                        const entries = Object.values(resultsObj).filter((entry: any) => entry && typeof entry === 'object' && entry.bill_number);
+                        const matchEntry = entries.find((entry: any) => (entry.bill_number || '').toUpperCase().includes(normalized.replace(' ', '')) || (entry.title || '').toUpperCase().includes(normalized));
+                        if (matchEntry) {
+                            const title = matchEntry.title || 'Title unavailable';
+                            const lastAction = matchEntry.last_action || 'Status unavailable';
+                            const lastActionDate = matchEntry.last_action_date || '';
+                            const legiscanUrl = matchEntry.url || matchEntry.text_url || matchEntry.research_url;
+                            billSummaries.push(`LegiScan: ${title}${lastActionDate ? ` (Last action: ${lastActionDate})` : ''} – ${lastAction}`);
+                            if (legiscanUrl) {
+                                collectedSources.push({ title: `${label} – LegiScan`, url: legiscanUrl });
+                            }
+                            legiscanMatched = true;
+                            break;
                         }
+                    } else {
+                        console.warn('LegiScan proxy error:', await legiscanResponse.text());
                     }
-                } else {
-                    console.warn('LegiScan proxy error:', await legiscanResponse.text());
+                } catch (error) {
+                    console.error('Failed to call LegiScan proxy:', error);
                 }
-            } catch (error) {
-                console.error('Failed to call LegiScan proxy:', error);
             }
 
             if (billSummaries.length > 0) {
