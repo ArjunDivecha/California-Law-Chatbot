@@ -639,75 +639,18 @@ Key California legal sources to reference:
     }
 
     private async searchCourtListenerAPI(query: string): Promise<{ content: string; sources: Source[] }> {
-        const apiKey = this.courtListenerApiKey;
-        console.log('🔑 CourtListener API key present:', !!apiKey);
-
-        if (!apiKey) {
-            console.warn("COURTLISTENER_API_KEY is not set. Falling back to general search.");
-            return {
-                content: "The specialized CourtListener search is currently unavailable because an API key has not been provided. The following results are from a general web search.",
-                sources: [],
-            };
-        }
-
-        const endpoint = `https://www.courtlistener.com/api/rest/v4/search/?q=${encodeURIComponent(query)}&type=o&order_by=score%20desc&stat_Precedential=on`;
-
         try {
-            const response = await fetch(endpoint, {
-                headers: {
-                    'Authorization': `Token ${apiKey}`,
-                    'User-Agent': 'California Law Chatbot/1.0',
-                },
-            });
-
-            if (!response.ok) {
-                const errorText = await response.text().catch(() => 'Unknown error');
-                console.error(`❌ CourtListener API error: ${response.status} ${response.statusText}`);
-                console.error(`Error details: ${errorText}`);
-                return {
-                    content: `ERROR: CourtListener API returned ${response.status} - ${errorText}`,
-                    sources: [],
-                };
+            const r = await fetch(`/api/courtlistener-search?q=${encodeURIComponent(query)}`);
+            if (!r.ok) {
+                const text = await r.text().catch(() => 'Unknown error');
+                console.error(`❌ CourtListener proxy error: ${r.status} ${r.statusText}`, text);
+                return { content: `ERROR: CourtListener proxy returned ${r.status}`, sources: [] };
             }
-
-            const data = await response.json();
-
-            if (!data.results || data.results.length === 0) {
-                return {
-                    content: `No specific case law found on CourtListener for the query: "${query}".`,
-                    sources: [],
-                };
-            }
-
-            const topResults = data.results.slice(0, 3);
-
-            // Debug: Log available fields
-            console.log('🔍 CourtListener result fields:', Object.keys(topResults[0] || {}));
-
-            const contentForAI = topResults.map((result: any, index: number) => {
-                return `Result ${index + 1}:
-Case Name: ${result.caseName}
-Citation: ${result.citation}
-Date Filed: ${result.dateFiled}
-Snippet: ${result.snippet}`;
-            }).join('\n\n');
-
-            const sources: Source[] = topResults.map((result: any) => ({
-                title: result.caseName || 'Untitled Case',
-                url: `https://www.courtlistener.com${result.absolute_url}`
-            }));
-
-            return {
-                content: contentForAI,
-                sources: sources,
-            };
-
+            const data = await r.json();
+            return { content: data.content || '', sources: data.sources || [] };
         } catch (error) {
-            console.error("Failed to fetch from CourtListener API:", error);
-            return {
-                content: "There was an error connecting to the CourtListener database.",
-                sources: [],
-            };
+            console.error('Failed to call CourtListener proxy:', error);
+            return { content: 'There was an error connecting to the CourtListener proxy.', sources: [] };
         }
     }
 }
