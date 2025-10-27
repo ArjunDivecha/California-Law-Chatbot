@@ -1,4 +1,6 @@
 import React from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { MessageRole } from '../types';
 import type { ChatMessage, Source } from '../types';
 
@@ -8,14 +10,18 @@ interface MessageProps {
 
 const renderMessageContent = (text: string, sources?: Source[]) => {
   if (!sources || sources.length === 0) {
-    return <p className="text-gray-800 whitespace-pre-wrap">{text}</p>;
+    return (
+      <div className="prose prose-sm max-w-none prose-headings:mt-4 prose-p:my-3 prose-li:my-1 prose-strong:font-semibold prose-a:text-blue-700 prose-a:no-underline hover:prose-a:underline">
+        <ReactMarkdown remarkPlugins={[remarkGfm]}>{text}</ReactMarkdown>
+      </div>
+    );
   }
 
   // Regex to find and capture citation numbers like [1], [2], etc.
   const parts = text.split(/(\[\d+\])/g);
 
   return (
-    <p className="text-gray-800 whitespace-pre-wrap">
+    <div className="prose prose-sm max-w-none prose-headings:mt-4 prose-p:my-3 prose-li:my-1 prose-strong:font-semibold prose-a:text-blue-700 prose-a:no-underline hover:prose-a:underline">
       {parts.map((part, index) => {
         const citationMatch = part.match(/\[(\d+)\]/);
         if (citationMatch) {
@@ -38,9 +44,9 @@ const renderMessageContent = (text: string, sources?: Source[]) => {
             );
           }
         }
-        return <span key={`text-${index}`}>{part}</span>;
+        return <ReactMarkdown key={`text-${index}`} remarkPlugins={[remarkGfm]}>{part}</ReactMarkdown>;
       })}
-    </p>
+    </div>
   );
 };
 
@@ -86,7 +92,7 @@ const Message: React.FC<MessageProps> = ({ message }) => {
         <div className="flex-shrink-0 w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
           <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6 text-gray-600"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg>
         </div>
-        <div className="bg-white rounded-lg rounded-bl-none p-4 border border-gray-200 shadow-md w-full">
+        <div className="bg-white rounded-lg rounded-bl-none p-5 border border-gray-200 shadow-md w-full">
         {usedCourtListener && (
         <div className="mb-3 flex items-center">
         <div className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
@@ -114,21 +120,22 @@ const Message: React.FC<MessageProps> = ({ message }) => {
           {renderMessageContent(message.text, message.sources)}
           {showSourceList && (
             <div className="mt-4 pt-4 border-t border-gray-200">
-              <h4 className="text-sm font-semibold text-gray-800 mb-2 flex items-center">
+              <h4 className="text-sm font-semibold text-gray-900 mb-2 flex items-center">
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 mr-2 text-green-600"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
                 Sources
               </h4>
               <ol className="list-decimal list-inside space-y-2 pl-1">
                 {message.sources.map((source, index) => (
-                  <li key={index} className="text-sm text-gray-600 truncate">
+                  <li key={index} className="text-sm text-gray-700">
                     <a
                       href={source.url}
                       target="_blank"
                       rel="noopener noreferrer"
                       title={source.url}
-                      className="text-blue-600 hover:underline hover:text-blue-800 transition-colors"
+                      className="inline-flex items-center gap-2 text-blue-700 hover:text-blue-800 hover:underline transition-colors break-words"
                     >
-                      {source.title}
+                      <span className="font-medium">{source.title}</span>
+                      <span className="text-xs text-gray-500">{new URL(source.url).hostname.replace('www.','')}</span>
                     </a>
                   </li>
                 ))}
