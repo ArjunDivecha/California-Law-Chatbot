@@ -49,6 +49,7 @@ export default async function handler(req: any, res: any) {
 
     if (!r.ok) {
       const text = await r.text().catch(() => 'Unknown error');
+      res.setHeader('Cache-Control', 'no-store');
       res.status(r.status).json({ error: `OpenStates error: ${r.status} ${r.statusText}`, details: text });
       return;
     }
