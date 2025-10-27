@@ -20,8 +20,19 @@ export default async function handler(req: any, res: any) {
 
     const graphql = {
       query: `query($q: String!) {
-        bills(first: 5, jurisdiction: "California", q: $q) {
-          edges { node { identifier title classification updatedAt legislativeSession { identifier jurisdiction { name } } } }
+        search(query: $q, first: 5) {
+          edges {
+            node {
+              __typename
+              ... on Bill {
+                identifier
+                title
+                classification
+                updatedAt
+                legislativeSession { identifier jurisdiction { name } }
+              }
+            }
+          }
         }
       }`,
       variables: { q: query },
@@ -43,15 +54,18 @@ export default async function handler(req: any, res: any) {
     }
 
     const data = await r.json();
-    const edges = data?.data?.bills?.edges || [];
-    const items = edges.map((e: any) => ({
-      identifier: e?.node?.identifier,
-      title: e?.node?.title,
-      classification: e?.node?.classification,
-      session: e?.node?.legislativeSession?.identifier,
-      jurisdiction: e?.node?.legislativeSession?.jurisdiction?.name,
-      updatedAt: e?.node?.updatedAt,
-    }));
+    const edges = data?.data?.search?.edges || [];
+    const items = edges
+      .map((e: any) => e?.node)
+      .filter((n: any) => n && (n.__typename === 'Bill' || typeof n.identifier === 'string'))
+      .map((n: any) => ({
+        identifier: n.identifier,
+        title: n.title,
+        classification: n.classification,
+        session: n.legislativeSession?.identifier,
+        jurisdiction: n.legislativeSession?.jurisdiction?.name,
+        updatedAt: n.updatedAt,
+      }));
 
     res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=600');
     res.status(200).json({ query, items });
