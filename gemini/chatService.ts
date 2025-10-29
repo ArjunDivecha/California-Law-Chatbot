@@ -51,7 +51,17 @@ export class ChatService {
 
         let finalSources: Source[] = [];
 
-        const legislationData = await this.fetchLegislationData(message);
+        // Parallelize legislation search and case law search if both are needed
+        const [legislationData, caseLawData] = await Promise.all([
+            this.fetchLegislationData(message),
+            (isCaseQuery && this.courtListenerApiKey === 'configured') 
+                ? this.searchCourtListenerAPI(message).catch(err => {
+                    console.error('CourtListener search failed:', err);
+                    return { content: '', sources: [] };
+                  })
+                : Promise.resolve({ content: '', sources: [] })
+        ]);
+
         let legislationContextInstructions = '';
         if (legislationData.sources.length > 0) {
             finalSources.push(...legislationData.sources);
@@ -60,10 +70,10 @@ export class ChatService {
             legislationContextInstructions = `\n\nLegislative research results (validated from official sources):\n${legislationData.context}\n\nUse this verified bill information. Reference the specific bill identifiers, summarize their status accurately, and cite the provided sources.`;
         }
 
-        if (isCaseQuery && this.courtListenerApiKey === 'configured') {
+        if (isCaseQuery && this.courtListenerApiKey === 'configured' && caseLawData.sources.length > 0) {
             try {
-                console.log('🔍 Detected case law query, searching CourtListener...');
-                const apiResult = await this.searchCourtListenerAPI(message);
+                console.log('🔍 Detected case law query, using CourtListener results...');
+                const apiResult = caseLawData;
 
                 // Check if CourtListener actually returned useful results
                 if (apiResult.sources.length > 0 && !apiResult.content.includes('error') && !apiResult.content.includes('No specific case law found')) {
@@ -397,14 +407,20 @@ Key California legal sources to reference:
             // California reporter citations (e.g., "61 Cal.2d 861", "196 Cal.App.4th 123")
             const reporterMatches = responseText.match(/\b(\d+)\s+Cal\.(?:App\.)?(?:\d[dth])?\s+\d+\b|\b\d+\s+Cal\.[A-Za-z.\d]+\s+\d+\b/gi);
             if (reporterMatches) {
-                for (const cite of reporterMatches) {
-                    try {
-                        const resolved = await this.searchCourtListenerAPI(cite);
-                        if (resolved.sources.length > 0) {
-                            specificSources.push({ title: cite, url: resolved.sources[0].url });
-                        }
-                    } catch {}
-                }
+                // Parallelize all citation resolutions
+                const citationPromises = reporterMatches.map(cite =>
+                    this.searchCourtListenerAPI(cite)
+                        .then(resolved => resolved.sources.length > 0 
+                            ? { title: cite, url: resolved.sources[0].url }
+                            : null
+                        )
+                        .catch(() => null)
+                );
+                
+                const citationResults = await Promise.all(citationPromises);
+                citationResults.forEach(result => {
+                    if (result) specificSources.push(result);
+                });
             }
 
             // California Penal Code citations (e.g., "Penal Code § 459", "Cal. Penal Code § 459", "Pen. Code § 459")
@@ -433,38 +449,45 @@ Key California legal sources to reference:
             //   - "Smith v. Jones, 123 Cal.App.4th 567 (2005)"
             const caseMatches = responseText.match(/([A-Z][A-Za-z\s.&'-]+ v\. [A-Z][A-Za-z\s.&'-]+)(?:,\s*\d+\s+[A-Za-z.\d]+\s+\d+)?\s*(?:\((\n?\d{4})\))?/g);
             if (caseMatches) {
-                for (const match of caseMatches) {
+                // Parallelize all case citation resolutions
+                const casePromises = caseMatches.map(match => {
                     const caseMatch = match.match(/([A-Z][A-Za-z\s.&'-]+ v\. [A-Z][A-Za-z\s.&'-]+)(?:,\s*\d+\s+[A-Za-z.\d]+\s+\d+)?\s*(?:\((\d{4})\))?/);
-                    if (caseMatch) {
-                        const caseName = caseMatch[1].trim();
-                        const year = caseMatch[2] || '';
-                        try {
-                            // Resolve to specific CourtListener opinion URL via API
-                            const query = year ? `${caseName} ${year}` : caseName;
-                            const resolved = await this.searchCourtListenerAPI(query);
+                    if (!caseMatch) return Promise.resolve(null);
+                    
+                    const caseName = caseMatch[1].trim();
+                    const year = caseMatch[2] || '';
+                    const query = year ? `${caseName} ${year}` : caseName;
+                    
+                    return this.searchCourtListenerAPI(query)
+                        .then(resolved => {
                             if (resolved.sources.length > 0) {
-                                // Use the first result (best score)
-                                specificSources.push({
+                                return {
                                     title: year ? `${caseName} (${year})` : caseName,
                                     url: resolved.sources[0].url
-                                });
+                                };
                             } else {
                                 // Fallback to search URL if nothing resolved
                                 const searchQuery = encodeURIComponent(query);
-                                specificSources.push({
+                                return {
                                     title: year ? `${caseName} (${year})` : caseName,
                                     url: `https://www.courtlistener.com/?q=${searchQuery}&type=o&order_by=score%20desc&stat_Precedential=on`
-                                });
+                                };
                             }
-                        } catch (e) {
+                        })
+                        .catch(() => {
+                            // Fallback on error
                             const searchQuery = encodeURIComponent(`${caseName} ${year}`.trim());
-                            specificSources.push({
+                            return {
                                 title: year ? `${caseName} (${year})` : caseName,
                                 url: `https://www.courtlistener.com/?q=${searchQuery}&type=o&order_by=score%20desc&stat_Precedential=on`
-                            });
-                        }
-                    }
-                }
+                            };
+                        });
+                });
+                
+                const caseResults = await Promise.all(casePromises);
+                caseResults.forEach(result => {
+                    if (result) specificSources.push(result);
+                });
             }
 
             // California Evidence Code citations (e.g., "Evidence Code § 352")
@@ -662,7 +685,8 @@ Key California legal sources to reference:
         const summaryChunks: string[] = [];
         const collectedSources: Source[] = [];
 
-        for (const { label, searchTerm, year } of matches.values()) {
+        // Parallelize all bill searches across all matches
+        const billSearchPromises = Array.from(matches.values()).map(async ({ label, searchTerm, year }) => {
             const queryVariants = year ? [
                 `${searchTerm} ${year}`,
                 searchTerm
@@ -670,70 +694,95 @@ Key California legal sources to reference:
             const normalized = searchTerm.toUpperCase();
 
             const billSummaries: string[] = [];
+            const sources: Source[] = [];
 
-            let openStatesMatched = false;
-            for (const query of queryVariants) {
-                try {
-                    const openStatesResponse = await fetch(`/api/openstates-search?q=${encodeURIComponent(query)}`);
-                    if (openStatesResponse.ok) {
-                        const data = await openStatesResponse.json();
+            // Parallelize OpenStates and LegiScan searches for each query variant
+            const searchPromises = queryVariants.flatMap(query => [
+                fetch(`/api/openstates-search?q=${encodeURIComponent(query)}`)
+                    .then(async (response) => {
+                        if (!response.ok) {
+                            const text = await response.text().catch(() => 'Unknown error');
+                            console.warn('OpenStates proxy error:', text);
+                            return null;
+                        }
+                        const data = await response.json();
                         const items = Array.isArray(data?.items) ? data.items : [];
                         const matchItem = items.find((item: any) => (item?.identifier || '').toUpperCase().includes(normalized));
-                        if (matchItem) {
-                            const title = matchItem.title || 'Title unavailable';
-                            const session = typeof matchItem.session === 'string' ? matchItem.session : (matchItem.session?.name || matchItem.session?.identifier || '');
-                            const updatedAt = matchItem.updatedAt ? new Date(matchItem.updatedAt).toISOString().split('T')[0] : '';
-                            const openStatesUrl = matchItem.url;
-                            billSummaries.push(`OpenStates: ${title}${session ? ` (Session: ${session})` : ''}${updatedAt ? ` [updated ${updatedAt}]` : ''}`);
-                            if (openStatesUrl) {
-                                collectedSources.push({ title: `${label} – OpenStates`, url: openStatesUrl });
-                            }
-                            openStatesMatched = true;
-                            break;
+                        return matchItem ? { type: 'openstates', item: matchItem } : null;
+                    })
+                    .catch(error => {
+                        console.error('Failed to call OpenStates proxy:', error);
+                        return null;
+                    }),
+                fetch(`/api/legiscan-search?q=${encodeURIComponent(query)}`)
+                    .then(async (response) => {
+                        if (!response.ok) {
+                            const text = await response.text().catch(() => 'Unknown error');
+                            console.warn('LegiScan proxy error:', text);
+                            return null;
                         }
-                    } else {
-                        console.warn('OpenStates proxy error:', await openStatesResponse.text());
-                    }
-                } catch (error) {
-                    console.error('Failed to call OpenStates proxy:', error);
-                }
-            }
-
-            let legiscanMatched = false;
-            for (const query of queryVariants) {
-                try {
-                    const legiscanResponse = await fetch(`/api/legiscan-search?q=${encodeURIComponent(query)}`);
-                    if (legiscanResponse.ok) {
-                        const data = await legiscanResponse.json();
+                        const data = await response.json();
                         const resultsObj = data?.searchresult || {};
                         const entries = Object.values(resultsObj).filter((entry: any) => entry && typeof entry === 'object' && entry.bill_number);
                         const matchEntry = entries.find((entry: any) => (entry.bill_number || '').toUpperCase().includes(normalized.replace(' ', '')) || (entry.title || '').toUpperCase().includes(normalized));
-                        if (matchEntry) {
-                            const title = matchEntry.title || 'Title unavailable';
-                            const lastAction = matchEntry.last_action || 'Status unavailable';
-                            const lastActionDate = matchEntry.last_action_date || '';
-                            const legiscanUrl = matchEntry.url || matchEntry.text_url || matchEntry.research_url;
-                            billSummaries.push(`LegiScan: ${title}${lastActionDate ? ` (Last action: ${lastActionDate})` : ''} – ${lastAction}`);
-                            if (legiscanUrl) {
-                                collectedSources.push({ title: `${label} – LegiScan`, url: legiscanUrl });
-                            }
-                            legiscanMatched = true;
-                            break;
-                        }
-                    } else {
-                        console.warn('LegiScan proxy error:', await legiscanResponse.text());
+                        return matchEntry ? { type: 'legiscan', entry: matchEntry } : null;
+                    })
+                    .catch(error => {
+                        console.error('Failed to call LegiScan proxy:', error);
+                        return null;
+                    })
+            ]);
+
+            const results = await Promise.all(searchPromises);
+            
+            let openStatesMatched = false;
+            let legiscanMatched = false;
+
+            // Process results (find first match for each service)
+            for (const result of results) {
+                if (!result) continue;
+                
+                if (result.type === 'openstates' && !openStatesMatched) {
+                    const matchItem = result.item;
+                    const title = matchItem.title || 'Title unavailable';
+                    const session = typeof matchItem.session === 'string' ? matchItem.session : (matchItem.session?.name || matchItem.session?.identifier || '');
+                    const updatedAt = matchItem.updatedAt ? new Date(matchItem.updatedAt).toISOString().split('T')[0] : '';
+                    const openStatesUrl = matchItem.url;
+                    billSummaries.push(`OpenStates: ${title}${session ? ` (Session: ${session})` : ''}${updatedAt ? ` [updated ${updatedAt}]` : ''}`);
+                    if (openStatesUrl) {
+                        sources.push({ title: `${label} – OpenStates`, url: openStatesUrl });
                     }
-                } catch (error) {
-                    console.error('Failed to call LegiScan proxy:', error);
+                    openStatesMatched = true;
+                } else if (result.type === 'legiscan' && !legiscanMatched) {
+                    const matchEntry = result.entry;
+                    const title = matchEntry.title || 'Title unavailable';
+                    const lastAction = matchEntry.last_action || 'Status unavailable';
+                    const lastActionDate = matchEntry.last_action_date || '';
+                    const legiscanUrl = matchEntry.url || matchEntry.text_url || matchEntry.research_url;
+                    billSummaries.push(`LegiScan: ${title}${lastActionDate ? ` (Last action: ${lastActionDate})` : ''} – ${lastAction}`);
+                    if (legiscanUrl) {
+                        sources.push({ title: `${label} – LegiScan`, url: legiscanUrl });
+                    }
+                    legiscanMatched = true;
                 }
+                
+                // Exit early if both matched
+                if (openStatesMatched && legiscanMatched) break;
             }
 
             if (billSummaries.length > 0) {
-                summaryChunks.push(`${label}:\n${billSummaries.map(summary => `  • ${summary}`).join('\n')}`);
+                return { label, summaries: billSummaries, sources };
             } else {
-                summaryChunks.push(`${label}: No legislative data retrieved from OpenStates or LegiScan.`);
+                return { label, summaries: [`${label}: No legislative data retrieved from OpenStates or LegiScan.`], sources: [] };
             }
-        }
+        });
+
+        // Wait for all bill searches to complete in parallel
+        const billResults = await Promise.all(billSearchPromises);
+        billResults.forEach(({ label, summaries, sources }) => {
+            summaryChunks.push(`${label}:\n${summaries.map(summary => `  • ${summary}`).join('\n')}`);
+            collectedSources.push(...sources);
+        });
 
         const uniqueSources = Array.from(new Map(collectedSources.map(source => [source.url, source])).values());
         return {
