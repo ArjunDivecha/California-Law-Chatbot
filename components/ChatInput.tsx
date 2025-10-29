@@ -44,9 +44,20 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSend, disabled }) => {
           <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
         </button>
       </form>
-      <p className="text-xs text-center text-gray-400 mt-2">
-        This is an AI research tool. Information may not be accurate. Consult a qualified professional for legal advice.
-      </p>
+      <div className="mt-3 space-y-2">
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+          <p className="text-xs font-semibold text-yellow-800 mb-1">
+            ⚠️ NOT LEGAL ADVICE • REQUIRES ATTORNEY REVIEW
+          </p>
+          <p className="text-xs text-yellow-700">
+            This tool uses <strong>Google Gemini AI</strong> and may produce inaccurate or incomplete information. 
+            All outputs must be reviewed by a qualified attorney. <strong>Do NOT input confidential client information.</strong>
+          </p>
+        </div>
+        <p className="text-xs text-center text-gray-500">
+          For court filings: Verify all citations and check local court rules for AI disclosure requirements.
+        </p>
+      </div>
     </div>
   );
 };
