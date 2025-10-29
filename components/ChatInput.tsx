@@ -31,7 +31,7 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSend, disabled }) => {
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder={disabled ? "Please enter your CourtListener API key above to begin." : "Ask a question about California law..."}
+          placeholder={disabled ? "Please wait..." : "Ask a question about California law..."}
           className="w-full h-12 p-3 pr-20 text-gray-700 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none transition-shadow disabled:bg-gray-100"
           disabled={disabled}
           rows={1}

@@ -12,9 +12,7 @@ export const useChat = (courtListenerApiKey: string | null) => {
     try {
       chatServiceRef.current = new ChatService(courtListenerApiKey);
       
-      const initialText = courtListenerApiKey
-        ? 'Hello! I am an AI assistant for California law. You can ask me general questions or about specific case law. How can I help?'
-        : 'Hello! I am an AI assistant for California law. To enable the chat and search for specific court cases, please provide a CourtListener API key in the banner above.';
+      const initialText = 'Hello! I\'m your California law research assistant. I can help you with questions about California statutes, case law, and legal research. What would you like to know?';
 
       setMessages([
         {
