@@ -2,35 +2,57 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { ChatMessage, MessageRole } from '../types';
 import { ChatService } from '../gemini/chatService';
 
-export const useChat = (courtListenerApiKey: string | null) => {
+export const useChat = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   
   const chatServiceRef = useRef<ChatService | null>(null);
+  const courtListenerApiKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
-    try {
-      chatServiceRef.current = new ChatService(courtListenerApiKey);
-      
-      const initialText = 'Hello! I\'m your California law research assistant. I can help you with questions about California statutes, case law, and legal research. What would you like to know?';
+    // Fetch configuration from server-side API
+    const fetchConfig = async () => {
+      try {
+        const response = await fetch('/api/config');
+        if (response.ok) {
+          const config = await response.json();
+          // We don't expose the actual key, just whether it exists
+          // The ChatService will handle API calls server-side
+          courtListenerApiKeyRef.current = config.hasCourtListenerKey ? 'configured' : null;
+        }
+      } catch (error) {
+        console.error('Failed to fetch config:', error);
+        courtListenerApiKeyRef.current = null;
+      }
+    };
 
-      setMessages([
-        {
-          id: 'initial-bot-message',
-          role: MessageRole.BOT,
-          text: initialText,
-        },
-      ]);
-    } catch (error) {
-      console.error("Failed to initialize ChatService:", error);
-      const text = error instanceof Error ? error.message : "An unknown error occurred.";
-      setMessages([{
-          id: 'init-error-message',
-          role: MessageRole.BOT,
-          text: `Critical Error: Could not start the chat service. Please check your Gemini API key configuration and console for details.\nDetails: ${text}`
-      }]);
-    }
-  }, [courtListenerApiKey]);
+    const initializeChat = async () => {
+      try {
+        await fetchConfig();
+        chatServiceRef.current = new ChatService(courtListenerApiKeyRef.current);
+        
+        const initialText = 'Hello! I\'m your California law research assistant. I can help you with questions about California statutes, case law, and legal research. What would you like to know?';
+
+        setMessages([
+          {
+            id: 'initial-bot-message',
+            role: MessageRole.BOT,
+            text: initialText,
+          },
+        ]);
+      } catch (error) {
+        console.error("Failed to initialize ChatService:", error);
+        const text = error instanceof Error ? error.message : "An unknown error occurred.";
+        setMessages([{
+            id: 'init-error-message',
+            role: MessageRole.BOT,
+            text: `Critical Error: Could not start the chat service. Please check your Gemini API key configuration and console for details.\nDetails: ${text}`
+        }]);
+      }
+    };
+
+    initializeChat();
+  }, []);
 
 
   const sendMessage = useCallback(async (text: string) => {

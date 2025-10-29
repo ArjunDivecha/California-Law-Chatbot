@@ -15,7 +15,10 @@ export class ChatService {
         if (!process.env.API_KEY) {
             throw new Error("API_KEY environment variable not set.");
         }
-        this.courtListenerApiKey = courtListenerApiKey;
+        // SECURITY WARNING: API_KEY is exposed to client-side code via vite.config.ts
+        // This should be moved to server-side API routes for production use
+        // For now, the key is bundled in the client code, which is a security risk
+        this.courtListenerApiKey = courtListenerApiKey === 'configured' ? 'configured' : null;
         const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
         this.chat = ai.chats.create({
@@ -57,7 +60,7 @@ export class ChatService {
             legislationContextInstructions = `\n\nLegislative research results (validated from official sources):\n${legislationData.context}\n\nUse this verified bill information. Reference the specific bill identifiers, summarize their status accurately, and cite the provided sources.`;
         }
 
-        if (isCaseQuery && this.courtListenerApiKey) {
+        if (isCaseQuery && this.courtListenerApiKey === 'configured') {
             try {
                 console.log('🔍 Detected case law query, searching CourtListener...');
                 const apiResult = await this.searchCourtListenerAPI(message);
@@ -108,7 +111,8 @@ Provide a thorough legal analysis citing specific case details and explaining th
                     const uniqueSources = Array.from(new Map(finalSources.map(s => [s.url, s])).values());
 
                     // Perform verification of AI response against CourtListener data
-                    const combinedVerificationSources = [...specificSources, ...finalSources];
+                    // Note: specificSources not yet parsed in CourtListener path, use empty array
+                    const combinedVerificationSources = [...finalSources];
                     const verificationResult = this.verifyResponse(response.text, combinedVerificationSources, apiResult.content);
 
                     // Add verification status to response
