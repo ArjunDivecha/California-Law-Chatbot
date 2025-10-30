@@ -86,8 +86,14 @@ export const useChat = () => {
     setIsLoading(true);
 
     try {
-      // Pass abort signal to ChatService
-      const botResponseData = await chatServiceRef.current.sendMessage(text, abortController.signal);
+      // Build conversation history from messages (exclude the current user message just added)
+      const conversationHistory = messages.map(msg => ({
+        role: msg.role === MessageRole.USER ? 'user' : 'assistant',
+        text: msg.text
+      }));
+      
+      // Pass conversation history and abort signal to ChatService
+      const botResponseData = await chatServiceRef.current.sendMessage(text, conversationHistory, abortController.signal);
       
       // Check if request was cancelled
       if (abortController.signal.aborted) {

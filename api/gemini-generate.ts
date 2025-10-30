@@ -17,7 +17,7 @@ export default async function handler(req: any, res: any) {
       return;
     }
 
-    const { message, systemPrompt } = req.body;
+    const { message, systemPrompt, conversationHistory } = req.body;
     
     if (!message || typeof message !== 'string' || !message.trim()) {
       res.status(400).json({ error: 'Missing or invalid message parameter' });
@@ -37,18 +37,44 @@ export default async function handler(req: any, res: any) {
     console.log('Initializing Google GenAI client for generation...');
     const ai = new GoogleGenAI({ apiKey });
 
-    console.log('Calling Gemini API with model: gemini-2.5-flash');
+    // Build conversation contents from history
+    const contents: any[] = [];
+    
+    // Add system instruction as first user message
+    if (systemPrompt) {
+      contents.push({
+        role: 'user',
+        parts: [{ text: systemPrompt }]
+      });
+      contents.push({
+        role: 'model',
+        parts: [{ text: 'Understood. I will act as an expert legal research assistant specializing in California law.' }]
+      });
+    }
+    
+    // Add conversation history (last 10 messages for context)
+    if (conversationHistory && Array.isArray(conversationHistory)) {
+      const recentHistory = conversationHistory.slice(-10);
+      for (const msg of recentHistory) {
+        if (msg.role && msg.text) {
+          contents.push({
+            role: msg.role === 'user' ? 'user' : 'model',
+            parts: [{ text: msg.text }]
+          });
+        }
+      }
+    }
+    
+    // Add current message
+    contents.push({
+      role: 'user',
+      parts: [{ text: message.trim() }]
+    });
+
+    console.log(`Calling Gemini API with model: gemini-2.5-flash (${contents.length} messages in context)`);
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
-      contents: [
-        {
-          role: 'user',
-          parts: [
-            { text: systemPrompt || `You are an expert legal research assistant specializing in California law.` },
-            { text: message.trim() }
-          ]
-        }
-      ]
+      contents: contents
     });
 
     const text = response.text;

@@ -28,9 +28,9 @@ export class ChatService {
     }
 
     /**
-     * Send message to Gemini 2.5 Flash-Lite (Generator) via server-side API
+     * Send message to Gemini 2.5 Flash (Generator) via server-side API
      */
-    private async sendToGemini(message: string, signal?: AbortSignal): Promise<{ text: string }> {
+    private async sendToGemini(message: string, conversationHistory?: Array<{role: string, text: string}>, signal?: AbortSignal): Promise<{ text: string }> {
         if (signal?.aborted) {
             throw new Error('Request cancelled');
         }
@@ -68,6 +68,7 @@ Remember: You're trained on California law. Use that knowledge to help people!`;
                     body: JSON.stringify({
                         message,
                         systemPrompt,
+                        conversationHistory: conversationHistory || [],
                     }),
                     signal, // Pass AbortSignal for cancellation
                 },
@@ -96,7 +97,7 @@ Remember: You're trained on California law. Use that knowledge to help people!`;
         }
     }
 
-    async sendMessage(message: string, signal?: AbortSignal): Promise<BotResponse> {
+    async sendMessage(message: string, conversationHistory?: Array<{role: string, text: string}>, signal?: AbortSignal): Promise<BotResponse> {
         // Check for cancellation at the start
         if (signal?.aborted) {
             throw new Error('Request cancelled');
@@ -218,7 +219,7 @@ Provide a thorough legal analysis citing specific case details and explaining th
                     }
 
                     console.log('🤖 Sending enhanced message to Gemini 2.5 Flash-Lite...');
-                    const response = await this.sendToGemini(enhancedMessage, signal);
+                    const response = await this.sendToGemini(enhancedMessage, conversationHistory, signal);
                     
                     // Check if request was cancelled during AI response
                     if (signal?.aborted) {
@@ -353,7 +354,7 @@ Key California legal sources to reference:
 - Official court opinions and case law through CourtListener
 - Current California bills (AB/SB/etc.) with status and summaries drawn from the provided legislative research`;
 
-            const response = await this.sendToGemini(enhancedMessage, signal);
+            const response = await this.sendToGemini(enhancedMessage, conversationHistory, signal);
             
             // Check if request was cancelled during AI response
             if (signal?.aborted) {

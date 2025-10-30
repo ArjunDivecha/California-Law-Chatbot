@@ -17,7 +17,7 @@ export default async function handler(req: any, res: any) {
       return;
     }
 
-    const { message, systemPrompt } = req.body;
+    const { message, systemPrompt, conversationHistory } = req.body;
     
     if (!message || typeof message !== 'string' || !message.trim()) {
       res.status(400).json({ error: 'Missing or invalid message parameter' });
@@ -38,17 +38,34 @@ export default async function handler(req: any, res: any) {
     // Initialize Anthropic (server-side only - API key never exposed to client)
     const anthropic = new Anthropic({ apiKey });
 
-      console.log('Calling Claude API with model: claude-haiku-4-5-20251001');
-      const response = await anthropic.messages.create({
-        model: 'claude-haiku-4-5-20251001',
+    // Build conversation messages from history
+    const messages: any[] = [];
+    
+    // Add conversation history (last 10 messages for context)
+    if (conversationHistory && Array.isArray(conversationHistory)) {
+      const recentHistory = conversationHistory.slice(-10);
+      for (const msg of recentHistory) {
+        if (msg.role && msg.text) {
+          messages.push({
+            role: msg.role === 'user' ? 'user' : 'assistant',
+            content: msg.text
+          });
+        }
+      }
+    }
+    
+    // Add current message
+    messages.push({
+      role: 'user',
+      content: message.trim()
+    });
+
+    console.log(`Calling Claude API with model: claude-haiku-4-5-20251001 (${messages.length} messages in context)`);
+    const response = await anthropic.messages.create({
+      model: 'claude-haiku-4-5-20251001',
       max_tokens: 4096,
       system: systemPrompt || `You are an expert legal research assistant specializing in California law.`,
-      messages: [
-        {
-          role: 'user',
-          content: message.trim()
-        }
-      ]
+      messages: messages
     });
 
       console.log('Claude API response received successfully');
