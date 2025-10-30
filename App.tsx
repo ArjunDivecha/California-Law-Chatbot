@@ -40,9 +40,9 @@ const App: React.FC = () => {
   // Don't render modals until client-side hydration is complete
   if (!isClient) {
     return (
-      <div className="flex flex-col h-screen bg-gray-50 font-sans">
+      <div className="flex flex-col h-screen" style={{ backgroundColor: '#FAFAF8', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' }}>
         <header className="bg-white border-b border-gray-200 p-4 shadow-sm">
-          <div className="max-w-4xl mx-auto flex items-center">
+          <div className="w-[85%] mx-auto flex items-center">
             <div className="flex items-center">
               <img src="https://picsum.photos/seed/lawbot/40/40" alt="CA Seal" className="w-10 h-10 rounded-full mr-4" />
               <div>
@@ -52,7 +52,7 @@ const App: React.FC = () => {
             </div>
           </div>
           {/* Fixed disclaimer header */}
-          <div className="max-w-4xl mx-auto mt-3 pt-3 border-t border-gray-200">
+          <div className="w-[85%] mx-auto mt-3 pt-3 border-t border-gray-200">
             <div className="bg-amber-50 border-l-4 border-amber-400 p-3 rounded">
               <p className="text-xs font-semibold text-amber-800">
                 ⚠️ AI legal information, not legal advice. Verify sources; consult a licensed attorney for advice.
@@ -61,7 +61,7 @@ const App: React.FC = () => {
           </div>
         </header>
         <main className="flex-1 overflow-hidden">
-          <div className="h-full max-w-4xl mx-auto flex flex-col">
+          <div className="h-full w-[85%] mx-auto flex flex-col">
             <ChatWindow messages={messages} isLoading={isLoading} />
             <ChatInput onSend={sendMessage} disabled={isLoading} />
           </div>
@@ -72,7 +72,7 @@ const App: React.FC = () => {
 
   return (
     <ErrorBoundary>
-    <div className="flex flex-col h-screen bg-gray-50 font-sans">
+    <div className="flex flex-col h-screen" style={{ backgroundColor: '#FAFAF8', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' }}>
       {/* AI Disclosure Modal */}
       {showAIDisclosure && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -159,7 +159,7 @@ const App: React.FC = () => {
       {/* Confidentiality Warning Banner */}
       {showConfidentialityWarning && !showAIDisclosure && (
         <div className="bg-red-600 text-white px-4 py-3 shadow-md">
-          <div className="max-w-4xl mx-auto flex items-center justify-between">
+          <div className="w-[85%] mx-auto flex items-center justify-between">
             <div className="flex items-center space-x-3 flex-1">
               <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0">
                 <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/>
@@ -185,7 +185,7 @@ const App: React.FC = () => {
       )}
 
        <header className="bg-white border-b border-gray-200 p-4 shadow-sm">
-        <div className="max-w-4xl mx-auto flex items-center">
+        <div className="w-[85%] mx-auto flex items-center">
           <div className="flex items-center">
             <img src="https://picsum.photos/seed/lawbot/40/40" alt="CA Seal" className="w-10 h-10 rounded-full mr-4" />
             <div>
@@ -195,7 +195,7 @@ const App: React.FC = () => {
           </div>
         </div>
         {/* Fixed disclaimer header */}
-        <div className="max-w-4xl mx-auto mt-3 pt-3 border-t border-gray-200">
+        <div className="w-[85%] mx-auto mt-3 pt-3 border-t border-gray-200">
           <div className="bg-amber-50 border-l-4 border-amber-400 p-3 rounded">
             <p className="text-xs font-semibold text-amber-800">
               ⚠️ AI legal information, not legal advice. Verify sources; consult a licensed attorney for advice.
@@ -205,7 +205,7 @@ const App: React.FC = () => {
       </header>
 
       <main className="flex-1 overflow-hidden">
-      <div className="h-full max-w-4xl mx-auto flex flex-col">
+      <div className="h-full w-[85%] mx-auto flex flex-col">
       <ChatWindow messages={messages} isLoading={isLoading} />
       <ChatInput onSend={sendMessage} disabled={isLoading} />
       </div>
