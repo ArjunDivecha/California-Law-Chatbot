@@ -353,14 +353,14 @@ Key California legal sources to reference:
 - Official court opinions and case law through CourtListener
 - Current California bills (AB/SB/etc.) with status and summaries drawn from the provided legislative research`;
 
-            const response = await this.sendToClaude(enhancedMessage, signal);
+            const response = await this.sendToGemini(enhancedMessage, signal);
             
             // Check if request was cancelled during AI response
             if (signal?.aborted) {
                 throw new Error('Request cancelled');
             }
             
-            console.log('✅ Claude response received');
+            console.log('✅ Gemini response received');
 
             // Check for cancellation after Claude call
             if (signal?.aborted) {
