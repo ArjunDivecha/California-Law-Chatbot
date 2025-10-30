@@ -28,9 +28,9 @@ export class ChatService {
     }
 
     /**
-     * Send message to Claude Haiku 4.5 (Generator) via server-side API
+     * Send message to Gemini 2.5 Flash-Lite (Generator) via server-side API
      */
-    private async sendToClaude(message: string, signal?: AbortSignal): Promise<{ text: string }> {
+    private async sendToGemini(message: string, signal?: AbortSignal): Promise<{ text: string }> {
         if (signal?.aborted) {
             throw new Error('Request cancelled');
         }
@@ -59,7 +59,7 @@ Remember: You're trained on California law. Use that knowledge to help people!`;
 
         try {
             const response = await fetchWithRetry(
-                '/api/claude-chat',
+                '/api/gemini-generate',
                 {
                     method: 'POST',
                     headers: {
@@ -217,8 +217,8 @@ Provide a thorough legal analysis citing specific case details and explaining th
                         throw new Error('Request cancelled');
                     }
 
-                    console.log('🤖 Sending enhanced message to Claude Haiku 4.5...');
-                    const response = await this.sendToClaude(enhancedMessage, signal);
+                    console.log('🤖 Sending enhanced message to Gemini 2.5 Flash-Lite...');
+                    const response = await this.sendToGemini(enhancedMessage, signal);
                     
                     // Check if request was cancelled during AI response
                     if (signal?.aborted) {
@@ -333,7 +333,7 @@ Provide a thorough legal analysis citing specific case details and explaining th
                 throw new Error('Request cancelled');
             }
 
-            console.log('💬 Sending regular chat message to Claude Haiku 4.5...');
+            console.log('💬 Sending regular chat message to Gemini 2.5 Flash-Lite...');
 
             // Enhance the prompt to request citations for legal information
             let enhancedMessage = `${message}`;

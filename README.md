@@ -4,13 +4,13 @@ A sophisticated AI-powered legal research assistant specializing in California l
 
 ## 🎯 Overview
 
-This chatbot combines Anthropic's Claude Sonnet 4.5 (generator) with Google's Gemini 2.5 Pro (verifier) and direct access to official California legal sources to provide accurate, well-researched answers to legal questions. It automatically detects case law queries and searches CourtListener's database of millions of court opinions, while providing verified citations to official legal codes and statutes.
+This chatbot combines Google's Gemini 2.5 Flash-Lite (generator) with Anthropic's Claude Haiku 4.5 (verifier) and direct access to official California legal sources to provide accurate, well-researched answers to legal questions. It automatically detects case law queries and searches CourtListener's database of millions of court opinions, while providing verified citations to official legal codes and statutes.
 
 ## ✨ Key Features
 
 ### 🤖 AI-Powered Legal Analysis
-- **Generator**: Anthropic Claude Sonnet 4.5 for legal research and answer generation
-- **Verifier**: Google Gemini 2.5 Pro for claim verification and fact-checking
+- **Generator**: Google Gemini 2.5 Flash-Lite for fast legal research and answer generation (8.8s avg response time)
+- **Verifier**: Anthropic Claude Haiku 4.5 for claim verification and fact-checking (13.3s avg response time)
 - Two-pass verification system for accuracy
 - Contextual understanding of California law
 - Comprehensive explanations with proper citations
@@ -83,8 +83,8 @@ Supports citations for:
 
 - **Frontend**: React 19, TypeScript, Vite
 - **AI Engine**: 
-  - **Generator**: Anthropic Claude Sonnet 4.5
-  - **Verifier**: Google Gemini 2.5 Pro
+  - **Generator**: Google Gemini 2.5 Flash-Lite (fastest model, 8.8s avg)
+  - **Verifier**: Anthropic Claude Haiku 4.5 (fast verification, 13.3s avg)
 - **Styling**: Tailwind CSS (via inline styles)
 - **APIs**: CourtListener API v4, LegiScan API, OpenStates API
 - **Deployment**: Vercel-ready configuration
@@ -95,8 +95,8 @@ Supports citations for:
 
 - Node.js 18+
 - npm or yarn
-- Anthropic API key (for Claude Sonnet 4.5 generator)
-- Google Gemini API key (for Gemini 2.5 Pro verifier)
+- Google Gemini API key (for Gemini 2.5 Flash-Lite generator)
+- Anthropic API key (for Claude Haiku 4.5 verifier)
 - CourtListener API key (optional, enhances functionality)
 
 ### Installation

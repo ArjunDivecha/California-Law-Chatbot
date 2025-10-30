@@ -1,16 +1,16 @@
 /**
- * Verifier Service - Two-pass verification with second LLM
+ * Verifier Service - Two-pass verification with Claude Haiku 4.5
  * 
  * INPUT FILES: None
  * OUTPUT FILES: None (utility service)
  * 
  * Implements two-pass verification system:
- * 1. Generator (A) produces answer + claims
- * 2. Verifier (V) validates claims against sources
+ * 1. Generator (Gemini 2.5 Flash-Lite) produces answer + claims
+ * 2. Verifier (Claude Haiku 4.5) validates claims against sources
  * 3. Returns verified rewrite or refusal if claims unsupported
  * 
- * Version: 1.0
- * Last Updated: 2024
+ * Version: 2.0
+ * Last Updated: October 30, 2025
  */
 
 import { fetchWithRetry } from '../utils/fetchWithRetry';
@@ -199,9 +199,9 @@ OUTPUT JSON ONLY (no markdown, no explanation):
         throw new Error('Request cancelled');
       }
       
-      // Call Gemini API via server-side endpoint
+      // Call Claude Haiku 4.5 API via server-side endpoint
       const response = await fetchWithRetry(
-        '/api/gemini-chat',
+        '/api/claude-chat',
         {
           method: 'POST',
           headers: {
