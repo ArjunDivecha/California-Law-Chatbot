@@ -458,6 +458,139 @@ Key California legal sources to reference:
             // Parse response for legal citations and create specific links
             const responseText = response.text;
 
+            // Extract bill numbers from response (e.g., "SB 53", "AB 2905", "Assembly Bill 1008")
+            // This ensures bills mentioned in the response get proper sources even if not in the original query
+            const billPattern = /(Assembly\s+Bill|Senate\s+Bill|Assembly\s+Joint\s+Resolution|Senate\s+Joint\s+Resolution|Assembly\s+Concurrent\s+Resolution|Senate\s+Concurrent\s+Resolution|Assembly\s+Resolution|Senate\s+Resolution|AB|SB|AJR|ACR|SCR|SJR|HR|SR)\s*-?\s*(\d+[A-Z]?)(?:\s*\((\d{4})\))?/gi;
+            const typeMap: Record<string, string> = {
+                'ASSEMBLY BILL': 'AB',
+                'SENATE BILL': 'SB',
+                'ASSEMBLY JOINT RESOLUTION': 'AJR',
+                'SENATE JOINT RESOLUTION': 'SJR',
+                'ASSEMBLY CONCURRENT RESOLUTION': 'ACR',
+                'SENATE CONCURRENT RESOLUTION': 'SCR',
+                'ASSEMBLY RESOLUTION': 'AR',
+                'SENATE RESOLUTION': 'SR',
+                'AB': 'AB',
+                'SB': 'SB',
+                'AJR': 'AJR',
+                'ACR': 'ACR',
+                'SCR': 'SCR',
+                'SJR': 'SJR',
+                'HR': 'HR',
+                'SR': 'SR'
+            };
+
+            const billMatches = new Set<string>();
+            let billMatch;
+            while ((billMatch = billPattern.exec(responseText)) !== null) {
+                const rawType = billMatch[1] || '';
+                const number = billMatch[2] || '';
+                const normalizedType = typeMap[rawType.toUpperCase()] || rawType.toUpperCase();
+                if (normalizedType && number) {
+                    const billKey = `${normalizedType} ${number}`;
+                    billMatches.add(billKey);
+                }
+            }
+
+            // Fetch sources for bills mentioned in response (but not already in finalSources)
+            if (billMatches.size > 0 && !signal?.aborted) {
+                console.log(`📋 Found ${billMatches.size} bill(s) mentioned in response, fetching sources...`);
+                const billSourcePromises = Array.from(billMatches).map(async (billKey) => {
+                    try {
+                        // Check if this bill is already in finalSources or specificSources
+                        const alreadyExists = finalSources.some(s => 
+                            s.title?.includes(billKey) || s.url?.includes(billKey.replace(' ', ''))
+                        ) || specificSources.some(s => 
+                            s.title?.includes(billKey) || s.url?.includes(billKey.replace(' ', ''))
+                        );
+                        if (alreadyExists) {
+                            return null;
+                        }
+
+                        // Search for this bill in OpenStates and LegiScan
+                        const [openStatesRes, legiScanRes] = await Promise.all([
+                            fetchWithRetry(
+                                `/api/openstates-search?q=${encodeURIComponent(billKey)}`,
+                                { signal },
+                                1, // maxRetries: 1 for post-processing
+                                500
+                            ).then(async (r) => {
+                                if (signal?.aborted) return null;
+                                const data = await r.json();
+                                const items = Array.isArray(data?.items) ? data.items : [];
+                                const match = items.find((item: any) => 
+                                    (item?.identifier || '').toUpperCase().includes(billKey.toUpperCase())
+                                );
+                                return match ? { type: 'openstates', item: match } : null;
+                            }).catch(() => null),
+                            fetchWithRetry(
+                                `/api/legiscan-search?q=${encodeURIComponent(billKey)}`,
+                                { signal },
+                                1,
+                                500
+                            ).then(async (r) => {
+                                if (signal?.aborted) return null;
+                                const data = await r.json();
+                                const resultsObj = data?.searchresult || {};
+                                const entries = Object.values(resultsObj).filter((entry: any) => 
+                                    entry && typeof entry === 'object' && entry.bill_number
+                                );
+                                const match = entries.find((entry: any) => 
+                                    (entry.bill_number || '').toUpperCase().includes(billKey.replace(' ', '')) ||
+                                    (entry.title || '').toUpperCase().includes(billKey)
+                                );
+                                return match ? { type: 'legiscan', entry: match } : null;
+                            }).catch(() => null)
+                        ]);
+
+                        // Prefer OpenStates, fallback to LegiScan
+                        if (openStatesRes?.item) {
+                            const item = openStatesRes.item;
+                            return {
+                                title: `${item.identifier}: ${item.title || 'California Bill'}`,
+                                url: item.url || `https://leginfo.legislature.ca.gov/faces/billNavClient.xhtml?bill_id=${billKey.replace(' ', '')}`,
+                                excerpt: `California ${billKey}`
+                            };
+                        } else if (legiScanRes?.entry) {
+                            const entry = legiScanRes.entry;
+                            return {
+                                title: `${entry.bill_number}: ${entry.title || 'California Bill'}`,
+                                url: entry.text_url || entry.url || `https://legiscan.com/CA/bill/${entry.bill_id}`,
+                                excerpt: `California ${billKey}`
+                            };
+                        } else {
+                            // Fallback: create a generic source link
+                            return {
+                                title: `${billKey}: California Bill`,
+                                url: `https://leginfo.legislature.ca.gov/faces/billNavClient.xhtml?bill_id=${billKey.replace(' ', '')}`,
+                                excerpt: `California ${billKey}`
+                            };
+                        }
+                    } catch (error) {
+                        if (signal?.aborted || error.message === 'Request cancelled') return null;
+                        console.error(`Failed to fetch source for ${billKey}:`, error);
+                        // Return fallback source
+                        return {
+                            title: `${billKey}: California Bill`,
+                            url: `https://leginfo.legislature.ca.gov/faces/billNavClient.xhtml?bill_id=${billKey.replace(' ', '')}`,
+                            excerpt: `California ${billKey}`
+                        };
+                    }
+                });
+
+                // Check if cancelled before resolving promises
+                if (signal?.aborted) {
+                    throw new Error('Request cancelled');
+                }
+
+                const billSources = await Promise.all(billSourcePromises);
+                billSources.forEach(source => {
+                    if (source && !signal?.aborted) {
+                        specificSources.push(source);
+                    }
+                });
+            }
+
             // California Family Code citations (e.g., "Family Code § 1615(c)", "Fam. Code § 1615(c)")
             const familyCodeMatches = responseText.match(/(?:Family\s+Code|Fam\.\s*Code)\s*§\s*(\d+)(?:\s*\(([^)]+)\))?/gi);
             if (familyCodeMatches) {
