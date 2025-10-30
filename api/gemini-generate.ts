@@ -40,19 +40,8 @@ export default async function handler(req: any, res: any) {
     // Build conversation contents from history
     const contents: any[] = [];
     
-    // Add system instruction as first user message
-    if (systemPrompt) {
-      contents.push({
-        role: 'user',
-        parts: [{ text: systemPrompt }]
-      });
-      contents.push({
-        role: 'model',
-        parts: [{ text: 'Understood. I will act as an expert legal research assistant specializing in California law.' }]
-      });
-    }
-    
     // Add conversation history (last 10 messages for context)
+    // Note: systemPrompt goes in config.systemInstruction, not in contents
     if (conversationHistory && Array.isArray(conversationHistory)) {
       const recentHistory = conversationHistory.slice(-10);
       for (const msg of recentHistory) {
@@ -74,29 +63,50 @@ export default async function handler(req: any, res: any) {
     console.log(`Calling Gemini API with model: gemini-2.5-flash (${contents.length} messages in context)`);
     console.log('🔍 Enabling Google Search grounding for real-time California law updates...');
     
-    // Enable Google Search grounding (correct syntax from Context7 documentation)
+    // Enable Google Search grounding - CORRECT SYNTAX from working example
+    // The model will automatically search the web and return grounding metadata
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
       contents: contents,
       config: {
         tools: [{googleSearch: {}}],
+        generationConfig: {
+          temperature: 0.2, // Keep low for legal accuracy
+        },
+        systemInstruction: {
+          role: 'system',
+          parts: [{
+            text: systemPrompt
+          }]
+        }
       }
     });
 
     const text = response.text;
 
     console.log('Gemini generator API response received successfully');
-    console.log('📊 Response object keys:', Object.keys(response));
-    console.log('📊 Full response structure:', JSON.stringify(response, null, 2).substring(0, 500));
 
-    // Extract grounding metadata if available
-    const groundingMetadata = response.groundingMetadata || (response as any).groundingMetadata;
+    // Extract grounding metadata from response.candidates[0].groundingMetadata
+    const candidate = response.candidates?.[0];
+    const groundingMetadata = candidate?.groundingMetadata;
     const hasGroundingData = !!groundingMetadata;
     
     if (hasGroundingData) {
-      console.log(`✅ Google Search grounding was used - ${JSON.stringify(groundingMetadata)}`);
+      const webSearchQueries = groundingMetadata.webSearchQueries || [];
+      const groundingChunks = groundingMetadata.groundingChunks || [];
+      console.log(`✅ Google Search grounding was used!`);
+      console.log(`   - Search queries: ${webSearchQueries.join(', ')}`);
+      console.log(`   - ${groundingChunks.length} source URLs found`);
+      
+      // Log the source URLs
+      groundingChunks.forEach((chunk: any, idx: number) => {
+        const uri = chunk?.web?.uri;
+        if (uri) {
+          console.log(`   - [${idx+1}] ${uri}`);
+        }
+      });
     } else {
-      console.log('ℹ️ No grounding metadata found in response - Google Search may not have been used');
+      console.log('ℹ️ No grounding metadata found - Google Search was not used for this query');
     }
 
     if (!text) {
