@@ -40,22 +40,26 @@ export class ChatService {
 GUIDELINES:
 1. BE HELPFUL FIRST: Always provide comprehensive, useful answers. Use your knowledge of California law to help users.
 2. CITE WHEN POSSIBLE: When sources are provided in SOURCES below, cite them using [1], [2], etc.
-3. PROVIDE CONTEXT: Give full explanations including background, requirements, procedures, and practical implications.
-4. USE YOUR KNOWLEDGE: You have extensive knowledge of California law. Use it! Provide statute numbers, case names, legal principles, and procedural requirements from your training.
-5. BE SPECIFIC: Include relevant California Code sections, legal standards, and requirements even if you don't have a specific source document - just note "Per California [Code/Case Law]" for attribution.
-6. VERIFY WHEN CRITICAL: For highly specific details (exact effective dates, precise dollar amounts, recent amendments), suggest verification with primary sources.
+3. PRIORITIZE PROVIDED SOURCES: When full bill text or statute text is provided in SOURCES, USE IT as your primary reference. This is the actual, current law.
+4. PROVIDE CONTEXT: Give full explanations including background, requirements, procedures, and practical implications.
+5. USE YOUR KNOWLEDGE: You have extensive knowledge of California law. Use it! Provide statute numbers, case names, legal principles, and procedural requirements from your training.
+6. BE SPECIFIC: Include relevant California Code sections, legal standards, and requirements even if you don't have a specific source document - just note "Per California [Code/Case Law]" for attribution.
+7. VERIFY WHEN CRITICAL: For highly specific details (exact effective dates, precise dollar amounts, recent amendments), suggest verification with primary sources.
+
+IMPORTANT - FULL BILL TEXT:
+When you see "FULL BILL TEXT" in the sources below, this is the ACTUAL, CURRENT text of a California bill. Quote directly from it and explain what it means. This text supersedes your training data for that specific bill.
 
 EXAMPLE GOOD RESPONSES:
 - "Under California Family Code § 1615, a prenuptial agreement is unenforceable if..." [then explain the requirements]
 - "California recognizes several grounds for divorce including irreconcilable differences per Family Code § 2310..."
-- "The statute of limitations for personal injury in California is generally 2 years under Code of Civil Procedure § 335.1..."
+- "According to the full text of AB 123, which states: '[quote from bill]', this means..." [when bill text is provided]
 
 DO NOT say things like:
 - "I cannot provide information without sources"
 - "I need you to provide the statute text"
 - "I can only answer if you give me materials"
 
-Remember: You're trained on California law. Use that knowledge to help people!`;
+Remember: You're trained on California law. Use that knowledge to help people! When actual bill text is provided, prioritize it over your training data.`;
 
         try {
             const response = await fetchWithRetry(
@@ -1079,8 +1083,10 @@ Key California legal sources to reference:
             
             let openStatesMatched = false;
             let legiscanMatched = false;
+            let openStatesBillId: string | null = null;
+            let legiscanBillId: string | null = null;
 
-            // Process results (find first match for each service)
+            // Process results (find first match for each service and extract bill IDs)
             for (const result of results) {
                 if (!result) continue;
                 
@@ -1090,6 +1096,7 @@ Key California legal sources to reference:
                             const session = typeof matchItem.session === 'string' ? matchItem.session : (matchItem.session?.name || matchItem.session?.identifier || '');
                             const updatedAt = matchItem.updatedAt ? new Date(matchItem.updatedAt).toISOString().split('T')[0] : '';
                             const openStatesUrl = matchItem.url;
+                            openStatesBillId = matchItem.id; // Extract bill ID for text fetching
                             billSummaries.push(`OpenStates: ${title}${session ? ` (Session: ${session})` : ''}${updatedAt ? ` [updated ${updatedAt}]` : ''}`);
                             if (openStatesUrl) {
                         sources.push({ title: `${label} – OpenStates`, url: openStatesUrl });
@@ -1101,6 +1108,7 @@ Key California legal sources to reference:
                             const lastAction = matchEntry.last_action || 'Status unavailable';
                             const lastActionDate = matchEntry.last_action_date || '';
                             const legiscanUrl = matchEntry.url || matchEntry.text_url || matchEntry.research_url;
+                            legiscanBillId = matchEntry.bill_id; // Extract bill ID for text fetching
                             billSummaries.push(`LegiScan: ${title}${lastActionDate ? ` (Last action: ${lastActionDate})` : ''} – ${lastAction}`);
                             if (legiscanUrl) {
                         sources.push({ title: `${label} – LegiScan`, url: legiscanUrl });
@@ -1112,8 +1120,59 @@ Key California legal sources to reference:
                 if (openStatesMatched && legiscanMatched) break;
             }
 
+            // Fetch full bill text if we found a match
+            let billTextContent = '';
+            
+            if (openStatesBillId) {
+                try {
+                    console.log(`📄 Fetching full bill text from OpenStates for: ${openStatesBillId}`);
+                    const textResponse = await fetchWithRetry(
+                        `/api/openstates-billtext?billId=${encodeURIComponent(openStatesBillId)}`,
+                        { signal },
+                        1, // Only 1 retry for text fetching
+                        500
+                    );
+                    if (textResponse.ok) {
+                        const textData = await textResponse.json();
+                        if (textData.text && textData.text.length > 100) {
+                            billTextContent = `\n\nFULL BILL TEXT (${textData.versionNote}):\n${textData.text}`;
+                            console.log(`✅ Retrieved ${textData.textLength} characters of bill text from OpenStates`);
+                        }
+                    }
+                } catch (error: any) {
+                    if (error.message === 'Request cancelled') throw error;
+                    console.error('Failed to fetch OpenStates bill text:', error);
+                    // Continue without bill text - not a fatal error
+                }
+            } else if (legiscanBillId) {
+                try {
+                    console.log(`📄 Fetching full bill text from LegiScan for: ${legiscanBillId}`);
+                    const textResponse = await fetchWithRetry(
+                        `/api/legiscan-billtext?billId=${encodeURIComponent(legiscanBillId)}`,
+                        { signal },
+                        1, // Only 1 retry for text fetching
+                        500
+                    );
+                    if (textResponse.ok) {
+                        const textData = await textResponse.json();
+                        if (textData.text && textData.text.length > 100) {
+                            billTextContent = `\n\nFULL BILL TEXT (updated ${textData.textDate}):\n${textData.text}`;
+                            console.log(`✅ Retrieved ${textData.textLength} characters of bill text from LegiScan`);
+                        }
+                    }
+                } catch (error: any) {
+                    if (error.message === 'Request cancelled') throw error;
+                    console.error('Failed to fetch LegiScan bill text:', error);
+                    // Continue without bill text - not a fatal error
+                }
+            }
+
             if (billSummaries.length > 0) {
-                return { label, summaries: billSummaries, sources };
+                // Append bill text to summaries if available
+                const summariesWithText = billTextContent 
+                    ? billSummaries.map(s => s + billTextContent)
+                    : billSummaries;
+                return { label, summaries: summariesWithText, sources };
             } else {
                 return { label, summaries: [`${label}: No legislative data retrieved from OpenStates or LegiScan.`], sources: [] };
             }
