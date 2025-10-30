@@ -28,7 +28,7 @@ export class ChatService {
     }
 
     /**
-     * Send message to Claude Sonnet 4.5 (Generator) via server-side API
+     * Send message to Claude 3.5 Sonnet (Generator) via server-side API
      */
     private async sendToClaude(message: string, signal?: AbortSignal): Promise<{ text: string }> {
         if (signal?.aborted) {
@@ -117,18 +117,30 @@ You have access to CourtListener database for specific case law searches and leg
         let finalSources: Source[] = [];
 
         // Parallelize legislation search and case law search if both are needed
+        console.log('🔎 Starting parallel searches...');
+        console.log('  - Legislation search: ENABLED');
+        console.log(`  - CourtListener search: ${isCaseQuery && this.courtListenerApiKey === 'configured' ? 'ENABLED' : 'DISABLED'}`);
+        
         const [legislationData, caseLawData] = await Promise.all([
-            this.fetchLegislationData(message, signal),
+            this.fetchLegislationData(message, signal).catch(err => {
+                if (signal?.aborted || err.message === 'Request cancelled') {
+                    throw err;
+                }
+                console.error('❌ Legislation search failed:', err);
+                return { context: '', sources: [] };
+            }),
             (isCaseQuery && this.courtListenerApiKey === 'configured') 
                 ? this.searchCourtListenerAPI(message, signal).catch(err => {
                     if (signal?.aborted || err.message === 'Request cancelled') {
                         throw err; // Re-throw cancellation errors
                     }
-                    console.error('CourtListener search failed:', err);
+                    console.error('❌ CourtListener search failed:', err);
                     return { content: '', sources: [] };
                   })
                 : Promise.resolve({ content: '', sources: [] })
         ]);
+        
+        console.log(`✅ Search results: ${legislationData.sources.length} legislation sources, ${caseLawData.sources.length} case law sources`);
 
         // Check if request was cancelled during parallel searches
         if (signal?.aborted) {
@@ -200,7 +212,7 @@ Provide a thorough legal analysis citing specific case details and explaining th
                         throw new Error('Request cancelled');
                     }
 
-                    console.log('🤖 Sending enhanced message to Claude Sonnet 4.5...');
+                    console.log('🤖 Sending enhanced message to Claude 3.5 Sonnet...');
                     const response = await this.sendToClaude(enhancedMessage, signal);
                     
                     // Check if request was cancelled during AI response
@@ -316,7 +328,7 @@ Provide a thorough legal analysis citing specific case details and explaining th
                 throw new Error('Request cancelled');
             }
 
-            console.log('💬 Sending regular chat message to Claude Sonnet 4.5...');
+            console.log('💬 Sending regular chat message to Claude 3.5 Sonnet...');
 
             // Enhance the prompt to request citations for legal information
             let enhancedMessage = `${message}`;
@@ -900,6 +912,7 @@ Key California legal sources to reference:
     }
 
     private async fetchLegislationData(message: string, signal?: AbortSignal): Promise<{ context: string; sources: Source[] }> {
+        console.log('📜 fetchLegislationData called for message:', message.substring(0, 100));
         const billPattern = /(Assembly\s+Bill|Senate\s+Bill|Assembly\s+Joint\s+Resolution|Senate\s+Joint\s+Resolution|Assembly\s+Concurrent\s+Resolution|Senate\s+Concurrent\s+Resolution|Assembly\s+Resolution|Senate\s+Resolution|AB|SB|AJR|ACR|SCR|SJR|HR|SR)\s*-?\s*(\d+[A-Z]?)(?:\s*\((\d{4})\))?/gi;
         const typeMap: Record<string, string> = {
             'ASSEMBLY BILL': 'AB',
