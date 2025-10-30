@@ -63,7 +63,7 @@ export default async function handler(req: any, res: any) {
     console.log(`Calling Gemini API with model: gemini-2.5-flash (${contents.length} messages in context)`);
     console.log('🔍 Enabling Google Search grounding for real-time California law updates...');
     
-    // Enable Google Search grounding - CORRECT SYNTAX from working example
+    // Enable Google Search grounding - EXACT SYNTAX from user's working example
     // The model will automatically search the web and return grounding metadata
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
@@ -72,14 +72,15 @@ export default async function handler(req: any, res: any) {
         tools: [{googleSearch: {}}],
         generationConfig: {
           temperature: 0.2, // Keep low for legal accuracy
-        },
-        systemInstruction: {
-          role: 'system',
-          parts: [{
-            text: systemPrompt
-          }]
         }
-      }
+      },
+      // systemInstruction goes at top level, NOT in config
+      systemInstruction: systemPrompt ? {
+        role: 'system',
+        parts: [{
+          text: systemPrompt
+        }]
+      } : undefined
     });
 
     const text = response.text;
