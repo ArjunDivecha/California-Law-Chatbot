@@ -72,27 +72,39 @@ export default async function handler(req: any, res: any) {
     });
 
     console.log(`Calling Gemini API with model: gemini-2.5-flash (${contents.length} messages in context)`);
-    const response = await ai.models.generateContent({
+    
+    // Try Google Search grounding with correct syntax
+    const requestConfig: any = {
       model: 'gemini-2.5-flash',
-      contents: contents,
-      tools: [{
-        googleSearchRetrieval: {
-          // Enable Google Search grounding for real-time, up-to-date information
-          // This allows Gemini to search Google for recent California law updates
-        }
-      }]
-    });
+      contents: contents
+    };
+    
+    // Attempt to enable Google Search - this may or may not be supported by @google/genai SDK
+    try {
+      requestConfig.tools = [{
+        googleSearch: {} // Try simplified syntax
+      }];
+      console.log('🔍 Attempting to enable Google Search grounding...');
+    } catch (e) {
+      console.log('⚠️ Google Search grounding not supported in this SDK version');
+    }
+    
+    const response = await ai.models.generateContent(requestConfig);
 
     const text = response.text;
 
     console.log('Gemini generator API response received successfully');
+    console.log('📊 Response object keys:', Object.keys(response));
+    console.log('📊 Full response structure:', JSON.stringify(response, null, 2).substring(0, 500));
 
     // Extract grounding metadata if available
-    const groundingMetadata = response.groundingMetadata;
+    const groundingMetadata = response.groundingMetadata || (response as any).groundingMetadata;
     const hasGroundingData = !!groundingMetadata;
     
     if (hasGroundingData) {
-      console.log(`✅ Google Search grounding was used - ${groundingMetadata?.searchEntryPoint?.renderedContent ? 'results found' : 'no results'}`);
+      console.log(`✅ Google Search grounding was used - ${JSON.stringify(groundingMetadata)}`);
+    } else {
+      console.log('ℹ️ No grounding metadata found in response - Google Search may not have been used');
     }
 
     if (!text) {
