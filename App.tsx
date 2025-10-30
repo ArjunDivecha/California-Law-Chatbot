@@ -40,7 +40,7 @@ const App: React.FC = () => {
   // Don't render modals until client-side hydration is complete
   if (!isClient) {
     return (
-      <div className="flex flex-col h-screen" style={{ backgroundColor: '#FAFAF8', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' }}>
+      <div className="flex flex-col h-screen" style={{ backgroundColor: '#FAFAF8', fontFamily: 'Georgia, "Times New Roman", serif' }}>
         <header className="bg-white border-b border-gray-200 p-4 shadow-sm">
           <div className="w-[85%] mx-auto flex items-center">
             <div className="flex items-center">
@@ -72,7 +72,7 @@ const App: React.FC = () => {
 
   return (
     <ErrorBoundary>
-    <div className="flex flex-col h-screen" style={{ backgroundColor: '#FAFAF8', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' }}>
+    <div className="flex flex-col h-screen" style={{ backgroundColor: '#FAFAF8', fontFamily: 'Georgia, "Times New Roman", serif' }}>
       {/* AI Disclosure Modal */}
       {showAIDisclosure && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">

@@ -9,6 +9,8 @@ interface MessageProps {
 }
 
 const renderMessageContent = (text: string, sources?: Source[]) => {
+  const serifFont = { fontFamily: 'Georgia, "Times New Roman", serif' };
+  
   if (!sources || sources.length === 0) {
     return (
       <div className="prose prose-sm max-w-none 
@@ -21,7 +23,8 @@ const renderMessageContent = (text: string, sources?: Source[]) => {
         prose-strong:font-semibold prose-strong:text-gray-900
         prose-a:text-blue-700 prose-a:no-underline hover:prose-a:underline
         prose-blockquote:my-6 prose-blockquote:pl-4 prose-blockquote:border-l-4 prose-blockquote:border-gray-300
-        prose-hr:my-8">
+        prose-hr:my-8"
+        style={serifFont}>
         <ReactMarkdown remarkPlugins={[remarkGfm]}>{text}</ReactMarkdown>
       </div>
     );
@@ -41,7 +44,8 @@ const renderMessageContent = (text: string, sources?: Source[]) => {
       prose-strong:font-semibold prose-strong:text-gray-900
       prose-a:text-blue-700 prose-a:no-underline hover:prose-a:underline
       prose-blockquote:my-6 prose-blockquote:pl-4 prose-blockquote:border-l-4 prose-blockquote:border-gray-300
-      prose-hr:my-8">
+      prose-hr:my-8"
+      style={serifFont}>
       {parts.map((part, index) => {
         const citationMatch = part.match(/\[(\d+)\]/);
         if (citationMatch) {
@@ -76,8 +80,8 @@ const Message: React.FC<MessageProps> = ({ message }) => {
   if (isUser) {
     return (
       <div className="flex justify-end">
-        <div className="flex items-start space-x-4 max-w-xl">
-          <div className="bg-blue-500 text-white rounded-lg rounded-br-none p-4 shadow-md">
+        <div className="flex items-start space-x-4 w-full max-w-[90%]">
+          <div className="bg-blue-500 text-white rounded-lg rounded-br-none p-4 shadow-md" style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}>
             <p className="whitespace-pre-wrap">{message.text}</p>
           </div>
           <div className="flex-shrink-0 w-10 h-10 rounded-full bg-blue-200 flex items-center justify-center">
@@ -140,11 +144,11 @@ const Message: React.FC<MessageProps> = ({ message }) => {
 
   return (
   <div className="flex justify-start">
-      <div className="flex items-start space-x-4 max-w-xl">
+      <div className="flex items-start space-x-4 w-full max-w-[90%]">
         <div className="flex-shrink-0 w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
           <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6 text-gray-600"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg>
         </div>
-        <div className="bg-white rounded-lg rounded-bl-none p-5 border border-gray-200 shadow-md w-full">
+        <div className="bg-white rounded-lg rounded-bl-none p-5 border border-gray-200 shadow-md w-full" style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}>
         {usedCourtListener && (
         <div className="mb-3 flex items-center">
         <div className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
