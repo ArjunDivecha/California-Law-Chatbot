@@ -77,9 +77,6 @@ const renderMessageContent = (text: string, sources?: Source[]) => {
   // Regex to find and capture citation numbers like [1], [2], etc.
   const parts = text.split(/(\[\d+\])/g);
 
-  const bodyFont = { fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' };
-  const headingFont = { fontFamily: 'Georgia, "Times New Roman", serif' };
-
   return (
     <>
       <style>{`
