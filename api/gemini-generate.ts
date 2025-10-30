@@ -35,17 +35,23 @@ export default async function handler(req: any, res: any) {
     }
 
     console.log('Initializing Google GenAI client for generation...');
-    const genAI = new GoogleGenAI({ apiKey });
+    const ai = new GoogleGenAI({ apiKey });
 
     console.log('Calling Gemini API with model: gemini-2.5-flash');
-    const model = genAI.getGenerativeModel({ 
+    const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
-      systemInstruction: systemPrompt || `You are an expert legal research assistant specializing in California law.`
+      contents: [
+        {
+          role: 'user',
+          parts: [
+            { text: systemPrompt || `You are an expert legal research assistant specializing in California law.` },
+            { text: message.trim() }
+          ]
+        }
+      ]
     });
 
-    const result = await model.generateContent(message.trim());
-    const response = result.response;
-    const text = response.text();
+    const text = response.text;
 
     console.log('Gemini generator API response received successfully');
 
