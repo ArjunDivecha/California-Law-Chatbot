@@ -85,6 +85,30 @@ GUIDELINES:
 6. BE SPECIFIC: Include relevant California Code sections, legal standards, and requirements even if you don't have a specific source document - just note "Per California [Code/Case Law]" for attribution.
 7. VERIFY WHEN CRITICAL: For highly specific details (exact effective dates, precise dollar amounts, recent amendments), suggest verification with primary sources.
 
+FORMATTING REQUIREMENTS:
+- Use clear markdown formatting with proper spacing
+- Use **bold** for section headings and key terms
+- Add blank lines between major sections (at least one blank line)
+- Use numbered lists (1., 2., 3.) or bullet points (-) for lists
+- Add spacing before and after headings, lists, and paragraphs
+- Use subheadings (## or ###) for organization when appropriate
+- Add an extra blank line before new major sections
+- Structure content with clear hierarchy: Introduction → Main Sections → Details → Summary
+
+EXAMPLE FORMATTING:
+\`\`\`
+## Key Requirements
+
+**Section Heading:** Content here with proper spacing.
+
+**Subsection:** More detailed content.
+
+- Bullet point one
+- Bullet point two
+
+**Next Major Section:** Content continues with clear separation.
+\`\`\`
+
 IMPORTANT - FULL BILL TEXT:
 When you see "FULL BILL TEXT" in the sources below, this is the ACTUAL, CURRENT text of a California bill. Quote directly from it and explain what it means. This text supersedes your training data for that specific bill.
 
@@ -98,7 +122,7 @@ DO NOT say things like:
 - "I need you to provide the statute text"
 - "I can only answer if you give me materials"
 
-Remember: You're trained on California law. Use that knowledge to help people! When actual bill text is provided, prioritize it over your training data.`;
+Remember: You're trained on California law. Use that knowledge to help people! When actual bill text is provided, prioritize it over your training data. Format your responses clearly with proper spacing between sections for better readability.`;
 
         try {
             const response = await fetchWithRetry(

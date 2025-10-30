@@ -11,7 +11,17 @@ interface MessageProps {
 const renderMessageContent = (text: string, sources?: Source[]) => {
   if (!sources || sources.length === 0) {
     return (
-      <div className="prose prose-sm max-w-none prose-headings:mt-4 prose-p:my-3 prose-li:my-1 prose-strong:font-semibold prose-a:text-blue-700 prose-a:no-underline hover:prose-a:underline">
+      <div className="prose prose-sm max-w-none 
+        prose-headings:mt-6 prose-headings:mb-4 
+        prose-h2:mt-8 prose-h2:mb-4 prose-h2:pb-2 prose-h2:border-b prose-h2:border-gray-300
+        prose-h3:mt-6 prose-h3:mb-3
+        prose-p:my-4 prose-p:leading-relaxed
+        prose-ul:my-4 prose-ol:my-4
+        prose-li:my-2 prose-li:leading-relaxed
+        prose-strong:font-semibold prose-strong:text-gray-900
+        prose-a:text-blue-700 prose-a:no-underline hover:prose-a:underline
+        prose-blockquote:my-6 prose-blockquote:pl-4 prose-blockquote:border-l-4 prose-blockquote:border-gray-300
+        prose-hr:my-8">
         <ReactMarkdown remarkPlugins={[remarkGfm]}>{text}</ReactMarkdown>
       </div>
     );
@@ -21,7 +31,17 @@ const renderMessageContent = (text: string, sources?: Source[]) => {
   const parts = text.split(/(\[\d+\])/g);
 
   return (
-    <div className="prose prose-sm max-w-none prose-headings:mt-4 prose-p:my-3 prose-li:my-1 prose-strong:font-semibold prose-a:text-blue-700 prose-a:no-underline hover:prose-a:underline">
+    <div className="prose prose-sm max-w-none 
+      prose-headings:mt-6 prose-headings:mb-4 
+      prose-h2:mt-8 prose-h2:mb-4 prose-h2:pb-2 prose-h2:border-b prose-h2:border-gray-300
+      prose-h3:mt-6 prose-h3:mb-3
+      prose-p:my-4 prose-p:leading-relaxed
+      prose-ul:my-4 prose-ol:my-4
+      prose-li:my-2 prose-li:leading-relaxed
+      prose-strong:font-semibold prose-strong:text-gray-900
+      prose-a:text-blue-700 prose-a:no-underline hover:prose-a:underline
+      prose-blockquote:my-6 prose-blockquote:pl-4 prose-blockquote:border-l-4 prose-blockquote:border-gray-300
+      prose-hr:my-8">
       {parts.map((part, index) => {
         const citationMatch = part.match(/\[(\d+)\]/);
         if (citationMatch) {
