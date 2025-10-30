@@ -109,23 +109,21 @@ Remember: You're trained on California law. Use that knowledge to help people!`;
             };
         }
 
-        // Check if this looks like a case law query (be more specific to avoid false positives)
-        const isCaseQuery = /\b(v\.|versus)\b/i.test(message) || // case names like "People v. Anderson"
-                           /\b\d+\s+(cal\.?|calif\.?|ca\.?|sup\.?ct\.?|app\.?|f\.(supp\.)?)\s+\d+\b/i.test(message) || // citations like "123 Cal. 456"
-                           /\bcourt.*case\b|\bcase.*law\b|\blegal.*precedent\b/i.test(message); // explicit case law requests
+        // CourtListener is now ALWAYS-ON (searches case law for every query)
+        const enableCourtListener = this.courtListenerApiKey === 'configured';
 
         console.log('🔍 Query analysis:', {
             message: message.substring(0, 50) + (message.length > 50 ? '...' : ''),
-            isCaseQuery,
+            courtListenerEnabled: enableCourtListener,
             hasCourtListenerKey: !!this.courtListenerApiKey
         });
 
         let finalSources: Source[] = [];
 
-        // Parallelize legislation search and case law search if both are needed
+        // Parallelize legislation search and case law search
         console.log('🔎 Starting parallel searches...');
         console.log('  - Legislation search: ENABLED');
-        console.log(`  - CourtListener search: ${isCaseQuery && this.courtListenerApiKey === 'configured' ? 'ENABLED' : 'DISABLED'}`);
+        console.log(`  - CourtListener search: ${enableCourtListener ? 'ENABLED (ALWAYS-ON)' : 'DISABLED (no API key)'}`);
         
         const [legislationData, caseLawData] = await Promise.all([
             this.fetchLegislationData(message, signal).catch(err => {
@@ -135,7 +133,7 @@ Remember: You're trained on California law. Use that knowledge to help people!`;
                 console.error('❌ Legislation search failed:', err);
                 return { context: '', sources: [] };
             }),
-            (isCaseQuery && this.courtListenerApiKey === 'configured') 
+            enableCourtListener 
                 ? this.searchCourtListenerAPI(message, signal).catch(err => {
                     if (signal?.aborted || err.message === 'Request cancelled') {
                         throw err; // Re-throw cancellation errors
@@ -180,9 +178,9 @@ Remember: You're trained on California law. Use that knowledge to help people!`;
             legislationContextInstructions = `\n\nLegislative research results (validated from official sources):\n${legislationData.context}\n\nUse this verified bill information. Reference the specific bill identifiers, summarize their status accurately, and cite the provided sources using [id] format.`;
         }
 
-        if (isCaseQuery && this.courtListenerApiKey === 'configured' && caseLawData.sources.length > 0) {
+        if (enableCourtListener && caseLawData.sources.length > 0) {
             try {
-                console.log('🔍 Detected case law query, using CourtListener results...');
+                console.log('🔍 CourtListener found relevant case law, including in response...');
                 const apiResult = caseLawData;
 
                 // Check if CourtListener actually returned useful results
