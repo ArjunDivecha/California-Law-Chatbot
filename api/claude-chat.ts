@@ -51,16 +51,33 @@ export default async function handler(req: any, res: any) {
       ]
     });
 
-    console.log('Claude API response received successfully');
-    // Extract text from Claude's response
-    const text = response.content
-      .filter((block: any) => block.type === 'text')
-      .map((block: any) => block.text)
-      .join('\n');
+      console.log('Claude API response received successfully');
+      
+      // Claude Sonnet 4.5 returns content blocks with types: 'thinking' and 'text'
+      // We only want the 'text' blocks for the actual response
+      const textBlocks = response.content.filter((block: any) => block.type === 'text');
+      const thinkingBlocks = response.content.filter((block: any) => block.type === 'thinking');
+      
+      console.log(`Response contains ${textBlocks.length} text blocks and ${thinkingBlocks.length} thinking blocks`);
+      
+      // Extract only the text content (not the thinking)
+      const text = textBlocks
+        .map((block: any) => block.text)
+        .join('\n')
+        .trim();
 
-    res.status(200).json({
-      text: text,
-    });
+      if (!text) {
+        console.error('No text content found in Claude response');
+        res.status(500).json({
+          error: 'No text content in response',
+          message: 'Claude returned thinking blocks but no text output'
+        });
+        return;
+      }
+
+      res.status(200).json({
+        text: text,
+      });
 
   } catch (err: any) {
     console.error('Claude Chat API error:', err);
