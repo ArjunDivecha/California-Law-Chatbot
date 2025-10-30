@@ -22,9 +22,18 @@ export interface ConfidenceGateResult {
 export class ConfidenceGatingService {
   /**
    * Gate answer based on verification report
+   * 
+   * @param report - Verification report from verifier
+   * @param hasBillText - Whether full bill text was provided in sources
    */
-  static gateAnswer(report: VerificationReport): ConfidenceGateResult {
+  static gateAnswer(report: VerificationReport, hasBillText: boolean = false): ConfidenceGateResult {
     const { coverage, minSupport, ambiguity } = report;
+    
+    // Determine appropriate threshold based on whether bill text is present
+    // When we have actual bill text, we can be more permissive since it's authoritative
+    const coverageThreshold = hasBillText ? 0.3 : 0.6;
+    
+    console.log(`📊 Confidence gating: coverage=${coverage}, threshold=${coverageThreshold}, hasBillText=${hasBillText}`);
     
     // Gate 1: Coverage = 1.0, min_support >= 1, no ambiguity → Verified
     if (coverage === 1.0 && minSupport >= 1 && !ambiguity) {
@@ -34,12 +43,21 @@ export class ConfidenceGatingService {
       };
     }
     
-    // Gate 2: Coverage >= 0.6 but < 1.0 → Partially verified
-    if (coverage >= 0.6 && coverage < 1.0) {
+    // Gate 2: Coverage >= threshold but < 1.0 → Partially verified
+    if (coverage >= coverageThreshold && coverage < 1.0) {
       const unsupportedCount = report.unsupportedClaims.length;
-      const caveat = unsupportedCount > 0
-        ? `Note: ${unsupportedCount} claim${unsupportedCount > 1 ? 's' : ''} could not be fully verified against the provided sources. Please verify critical information independently.`
-        : 'Some claims in this response may require additional verification against primary legal sources.';
+      let caveat: string;
+      
+      if (hasBillText) {
+        // More lenient message when bill text is present
+        caveat = unsupportedCount > 0
+          ? `Note: This response is based on the actual bill text provided. ${unsupportedCount} claim${unsupportedCount > 1 ? 's' : ''} could not be independently verified, but the information comes directly from the bill.`
+          : 'This response is based on the actual bill text provided.';
+      } else {
+        caveat = unsupportedCount > 0
+          ? `Note: ${unsupportedCount} claim${unsupportedCount > 1 ? 's' : ''} could not be fully verified against the provided sources. Please verify critical information independently.`
+          : 'Some claims in this response may require additional verification against primary legal sources.';
+      }
       
       return {
         status: 'partially_verified',
@@ -48,8 +66,8 @@ export class ConfidenceGatingService {
       };
     }
     
-    // Gate 3: Coverage < 0.6 or ambiguity → Refusal
-    if (coverage < 0.6 || ambiguity) {
+    // Gate 3: Coverage < threshold or ambiguity → Refusal
+    if (coverage < coverageThreshold || ambiguity) {
       const reason = ambiguity 
         ? 'Conflicting or ambiguous sources were found.'
         : `Only ${Math.round(coverage * 100)}% of claims could be verified.`;

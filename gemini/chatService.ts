@@ -273,8 +273,14 @@ Provide a thorough legal analysis citing specific case details and explaining th
                             verificationReport = verifierOutput.verificationReport;
                             finalAnswer = verifierOutput.verifiedAnswer;
                             
-                            // Apply confidence gating
-                            const gateResult = ConfidenceGatingService.gateAnswer(verificationReport);
+                            // Check if bill text is present in sources
+                            const hasBillText = sourcesWithIds.some(s => 
+                                (s.excerpt && s.excerpt.includes('FULL BILL TEXT')) ||
+                                (s.title && (s.title.includes('OpenStates') || s.title.includes('LegiScan')))
+                            );
+                            
+                            // Apply confidence gating with bill text flag
+                            const gateResult = ConfidenceGatingService.gateAnswer(verificationReport, hasBillText);
                             if (!gateResult.shouldShow && gateResult.status === 'refusal') {
                                 return {
                                     text: gateResult.caveat || "I cannot provide a verified answer. Please consult with a qualified attorney.",
@@ -816,8 +822,14 @@ Key California legal sources to reference:
                     verificationReport = verifierOutput.verificationReport;
                     finalAnswer = verifierOutput.verifiedAnswer;
                     
-                    // Apply confidence gating
-                    const gateResult = ConfidenceGatingService.gateAnswer(verificationReport);
+                    // Check if bill text is present in sources
+                    const hasBillText = sourcesWithIds.some(s => 
+                        (s.excerpt && s.excerpt.includes('FULL BILL TEXT')) ||
+                        (s.title && (s.title.includes('OpenStates') || s.title.includes('LegiScan')))
+                    );
+                    
+                    // Apply confidence gating with bill text flag
+                    const gateResult = ConfidenceGatingService.gateAnswer(verificationReport, hasBillText);
                     if (!gateResult.shouldShow && gateResult.status === 'refusal') {
                         return {
                             text: gateResult.caveat || "I cannot provide a verified answer. Please consult with a qualified attorney.",
