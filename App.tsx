@@ -40,7 +40,7 @@ const App: React.FC = () => {
   // Don't render modals until client-side hydration is complete
   if (!isClient) {
     return (
-      <div className="flex flex-col h-screen" style={{ backgroundColor: '#FAFAF8', fontFamily: 'Georgia, "Times New Roman", serif' }}>
+      <div className="flex flex-col h-screen" style={{ backgroundColor: '#FAFAF8', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' }}>
         <header className="bg-white border-b border-gray-200 p-4 shadow-sm">
           <div className="w-[85%] mx-auto flex items-center">
             <div className="flex items-center">

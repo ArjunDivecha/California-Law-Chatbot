@@ -9,43 +9,132 @@ interface MessageProps {
 }
 
 const renderMessageContent = (text: string, sources?: Source[]) => {
-  const serifFont = { fontFamily: 'Georgia, "Times New Roman", serif' };
+  const bodyFont = { fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' };
+  const headingFont = { fontFamily: 'Georgia, "Times New Roman", serif' };
   
   if (!sources || sources.length === 0) {
     return (
-      <div className="prose prose-sm max-w-none 
-        prose-headings:mt-6 prose-headings:mb-4 
-        prose-h2:mt-8 prose-h2:mb-4 prose-h2:pb-2 prose-h2:border-b prose-h2:border-gray-300
-        prose-h3:mt-6 prose-h3:mb-3
-        prose-p:my-4 prose-p:leading-relaxed
-        prose-ul:my-4 prose-ol:my-4
-        prose-li:my-2 prose-li:leading-relaxed
-        prose-strong:font-semibold prose-strong:text-gray-900
-        prose-a:text-blue-700 prose-a:no-underline hover:prose-a:underline
-        prose-blockquote:my-6 prose-blockquote:pl-4 prose-blockquote:border-l-4 prose-blockquote:border-gray-300
-        prose-hr:my-8"
-        style={serifFont}>
-        <ReactMarkdown remarkPlugins={[remarkGfm]}>{text}</ReactMarkdown>
-      </div>
+      <>
+        <style>{`
+          .prose-content {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+          }
+          .prose-content h1,
+          .prose-content h2,
+          .prose-content h3,
+          .prose-content h4 {
+            font-family: Georgia, "Times New Roman", serif;
+            font-weight: bold;
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+          }
+          .prose-content h2 {
+            font-size: 1.5rem;
+            margin-top: 2.5rem;
+          }
+          .prose-content h3 {
+            font-size: 1.25rem;
+            margin-top: 2rem;
+          }
+          .prose-content p {
+            margin-bottom: 1.5rem !important;
+            margin-top: 0 !important;
+            line-height: 1.7;
+          }
+          .prose-content p:last-child {
+            margin-bottom: 0 !important;
+          }
+          .prose-content ul,
+          .prose-content ol {
+            margin-top: 1rem;
+            margin-bottom: 1.5rem;
+            padding-left: 1.5rem;
+          }
+          .prose-content li {
+            margin-bottom: 0.75rem;
+            line-height: 1.7;
+          }
+          .prose-content ul ul,
+          .prose-content ol ol,
+          .prose-content ul ol,
+          .prose-content ol ul {
+            margin-top: 0.5rem;
+            margin-bottom: 0.75rem;
+          }
+          .prose-content strong {
+            font-weight: 600;
+            color: #1a1a1a;
+          }
+        `}</style>
+        <div className="prose prose-sm max-w-none prose-content"
+          style={bodyFont}>
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>{text}</ReactMarkdown>
+        </div>
+      </>
     );
   }
 
   // Regex to find and capture citation numbers like [1], [2], etc.
   const parts = text.split(/(\[\d+\])/g);
 
+  const bodyFont = { fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' };
+  const headingFont = { fontFamily: 'Georgia, "Times New Roman", serif' };
+
   return (
-    <div className="prose prose-sm max-w-none 
-      prose-headings:mt-6 prose-headings:mb-4 
-      prose-h2:mt-8 prose-h2:mb-4 prose-h2:pb-2 prose-h2:border-b prose-h2:border-gray-300
-      prose-h3:mt-6 prose-h3:mb-3
-      prose-p:my-4 prose-p:leading-relaxed
-      prose-ul:my-4 prose-ol:my-4
-      prose-li:my-2 prose-li:leading-relaxed
-      prose-strong:font-semibold prose-strong:text-gray-900
-      prose-a:text-blue-700 prose-a:no-underline hover:prose-a:underline
-      prose-blockquote:my-6 prose-blockquote:pl-4 prose-blockquote:border-l-4 prose-blockquote:border-gray-300
-      prose-hr:my-8"
-      style={serifFont}>
+    <>
+      <style>{`
+        .prose-content {
+          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
+        .prose-content h1,
+        .prose-content h2,
+        .prose-content h3,
+        .prose-content h4 {
+          font-family: Georgia, "Times New Roman", serif;
+          font-weight: bold;
+          margin-top: 2rem;
+          margin-bottom: 1rem;
+        }
+        .prose-content h2 {
+          font-size: 1.5rem;
+          margin-top: 2.5rem;
+        }
+        .prose-content h3 {
+          font-size: 1.25rem;
+          margin-top: 2rem;
+        }
+        .prose-content p {
+          margin-bottom: 1.5rem !important;
+          margin-top: 0 !important;
+          line-height: 1.7;
+        }
+        .prose-content p:last-child {
+          margin-bottom: 0 !important;
+        }
+        .prose-content ul,
+        .prose-content ol {
+          margin-top: 1rem;
+          margin-bottom: 1.5rem;
+          padding-left: 1.5rem;
+        }
+        .prose-content li {
+          margin-bottom: 0.75rem;
+          line-height: 1.7;
+        }
+        .prose-content ul ul,
+        .prose-content ol ol,
+        .prose-content ul ol,
+        .prose-content ol ul {
+          margin-top: 0.5rem;
+          margin-bottom: 0.75rem;
+        }
+        .prose-content strong {
+          font-weight: 600;
+          color: #1a1a1a;
+        }
+      `}</style>
+      <div className="prose prose-sm max-w-none prose-content"
+        style={bodyFont}>
       {parts.map((part, index) => {
         const citationMatch = part.match(/\[(\d+)\]/);
         if (citationMatch) {
@@ -70,7 +159,8 @@ const renderMessageContent = (text: string, sources?: Source[]) => {
         }
         return <ReactMarkdown key={`text-${index}`} remarkPlugins={[remarkGfm]}>{part}</ReactMarkdown>;
       })}
-    </div>
+      </div>
+    </>
   );
 };
 
@@ -81,7 +171,7 @@ const Message: React.FC<MessageProps> = ({ message }) => {
     return (
       <div className="flex justify-end">
         <div className="flex items-start space-x-4 w-full max-w-[90%]">
-          <div className="bg-blue-500 text-white rounded-lg rounded-br-none p-4 shadow-md" style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}>
+          <div className="bg-blue-500 text-white rounded-lg rounded-br-none p-4 shadow-md">
             <p className="whitespace-pre-wrap">{message.text}</p>
           </div>
           <div className="flex-shrink-0 w-10 h-10 rounded-full bg-blue-200 flex items-center justify-center">
@@ -148,7 +238,7 @@ const Message: React.FC<MessageProps> = ({ message }) => {
         <div className="flex-shrink-0 w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
           <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6 text-gray-600"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg>
         </div>
-        <div className="bg-white rounded-lg rounded-bl-none p-5 border border-gray-200 shadow-md w-full" style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}>
+        <div className="bg-white rounded-lg rounded-bl-none p-5 border border-gray-200 shadow-md w-full">
         {usedCourtListener && (
         <div className="mb-3 flex items-center">
         <div className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">

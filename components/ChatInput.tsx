@@ -25,7 +25,7 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSend, disabled }) => {
   };
 
   return (
-    <div className="bg-white border-t border-gray-200 p-4 sm:p-6" style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}>
+    <div className="bg-white border-t border-gray-200 p-4 sm:p-6" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' }}>
       <form onSubmit={handleSubmit} className="relative">
         <textarea
           value={text}
@@ -33,7 +33,7 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSend, disabled }) => {
           onKeyDown={handleKeyDown}
           placeholder={disabled ? "Please wait..." : "Ask a question about California law..."}
           className="w-full h-12 p-3 pr-20 text-gray-700 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none transition-shadow disabled:bg-gray-100"
-          style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}
+          style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' }}
           disabled={disabled}
           rows={1}
         />
