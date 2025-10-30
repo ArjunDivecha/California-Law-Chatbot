@@ -72,24 +72,16 @@ export default async function handler(req: any, res: any) {
     });
 
     console.log(`Calling Gemini API with model: gemini-2.5-flash (${contents.length} messages in context)`);
+    console.log('🔍 Enabling Google Search grounding for real-time California law updates...');
     
-    // Try Google Search grounding with correct syntax
-    const requestConfig: any = {
+    // Enable Google Search grounding (correct syntax from Context7 documentation)
+    const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
-      contents: contents
-    };
-    
-    // Attempt to enable Google Search - this may or may not be supported by @google/genai SDK
-    try {
-      requestConfig.tools = [{
-        googleSearch: {} // Try simplified syntax
-      }];
-      console.log('🔍 Attempting to enable Google Search grounding...');
-    } catch (e) {
-      console.log('⚠️ Google Search grounding not supported in this SDK version');
-    }
-    
-    const response = await ai.models.generateContent(requestConfig);
+      contents: contents,
+      config: {
+        tools: [{googleSearch: {}}],
+      }
+    });
 
     const text = response.text;
 
