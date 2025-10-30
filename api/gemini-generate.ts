@@ -74,12 +74,26 @@ export default async function handler(req: any, res: any) {
     console.log(`Calling Gemini API with model: gemini-2.5-flash (${contents.length} messages in context)`);
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
-      contents: contents
+      contents: contents,
+      tools: [{
+        googleSearchRetrieval: {
+          // Enable Google Search grounding for real-time, up-to-date information
+          // This allows Gemini to search Google for recent California law updates
+        }
+      }]
     });
 
     const text = response.text;
 
     console.log('Gemini generator API response received successfully');
+
+    // Extract grounding metadata if available
+    const groundingMetadata = response.groundingMetadata;
+    const hasGroundingData = !!groundingMetadata;
+    
+    if (hasGroundingData) {
+      console.log(`✅ Google Search grounding was used - ${groundingMetadata?.searchEntryPoint?.renderedContent ? 'results found' : 'no results'}`);
+    }
 
     if (!text) {
       console.error('No text content found in Gemini response');
@@ -92,6 +106,8 @@ export default async function handler(req: any, res: any) {
 
     res.status(200).json({
       text: text,
+      groundingMetadata: groundingMetadata, // Return grounding data to client
+      hasGrounding: hasGroundingData
     });
 
   } catch (err: any) {

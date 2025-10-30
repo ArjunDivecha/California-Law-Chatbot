@@ -25,15 +25,27 @@ export class ConfidenceGatingService {
    * 
    * @param report - Verification report from verifier
    * @param hasBillText - Whether full bill text was provided in sources
+   * @param hasGrounding - Whether Google Search grounding was used
    */
-  static gateAnswer(report: VerificationReport, hasBillText: boolean = false): ConfidenceGateResult {
+  static gateAnswer(report: VerificationReport, hasBillText: boolean = false, hasGrounding: boolean = false): ConfidenceGateResult {
     const { coverage, minSupport, ambiguity } = report;
     
-    // Determine appropriate threshold based on whether bill text is present
+    // Determine appropriate threshold based on data sources
+    // Priority: Google Search grounding (20%) > Bill text (30%) > Normal (60%)
+    // When Google Search grounding is used, information is real-time from Google
     // When we have actual bill text, we can be more permissive since it's authoritative
-    const coverageThreshold = hasBillText ? 0.3 : 0.6;
+    let coverageThreshold = 0.6; // Default
+    let dataSource = 'normal';
     
-    console.log(`📊 Confidence gating: coverage=${coverage}, threshold=${coverageThreshold}, hasBillText=${hasBillText}`);
+    if (hasGrounding) {
+      coverageThreshold = 0.2; // Most permissive - Google Search is current and authoritative
+      dataSource = 'Google Search grounding';
+    } else if (hasBillText) {
+      coverageThreshold = 0.3; // Permissive - bill text is authoritative
+      dataSource = 'bill text';
+    }
+    
+    console.log(`📊 Confidence gating: coverage=${coverage}, threshold=${coverageThreshold}, source=${dataSource}`);
     
     // Gate 1: Coverage = 1.0, min_support >= 1, no ambiguity → Verified
     if (coverage === 1.0 && minSupport >= 1 && !ambiguity) {
@@ -48,8 +60,13 @@ export class ConfidenceGatingService {
       const unsupportedCount = report.unsupportedClaims.length;
       let caveat: string;
       
-      if (hasBillText) {
-        // More lenient message when bill text is present
+      if (hasGrounding) {
+        // Most lenient message when Google Search grounding is used
+        caveat = unsupportedCount > 0
+          ? `Note: This response includes recent information from Google Search. ${unsupportedCount} claim${unsupportedCount > 1 ? 's' : ''} could not be independently verified, but the information is grounded in current web sources.`
+          : 'This response includes recent information from Google Search.';
+      } else if (hasBillText) {
+        // Lenient message when bill text is present
         caveat = unsupportedCount > 0
           ? `Note: This response is based on the actual bill text provided. ${unsupportedCount} claim${unsupportedCount > 1 ? 's' : ''} could not be independently verified, but the information comes directly from the bill.`
           : 'This response is based on the actual bill text provided.';

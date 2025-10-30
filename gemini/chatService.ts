@@ -30,7 +30,7 @@ export class ChatService {
     /**
      * Send message to Gemini 2.5 Flash (Generator) via server-side API
      */
-    private async sendToGemini(message: string, conversationHistory?: Array<{role: string, text: string}>, signal?: AbortSignal): Promise<{ text: string }> {
+    private async sendToGemini(message: string, conversationHistory?: Array<{role: string, text: string}>, signal?: AbortSignal): Promise<{ text: string; hasGrounding?: boolean; groundingMetadata?: any }> {
         if (signal?.aborted) {
             throw new Error('Request cancelled');
         }
@@ -92,7 +92,11 @@ Remember: You're trained on California law. Use that knowledge to help people! W
             }
 
             const data = await response.json();
-            return { text: data.text || '' };
+            return { 
+                text: data.text || '', 
+                hasGrounding: data.hasGrounding,
+                groundingMetadata: data.groundingMetadata
+            };
         } catch (error: any) {
             if (signal?.aborted || error.message === 'Request cancelled') {
                 throw new Error('Request cancelled');
@@ -279,8 +283,11 @@ Provide a thorough legal analysis citing specific case details and explaining th
                                 (s.title && (s.title.includes('OpenStates') || s.title.includes('LegiScan')))
                             );
                             
-                            // Apply confidence gating with bill text flag
-                            const gateResult = ConfidenceGatingService.gateAnswer(verificationReport, hasBillText);
+                            // Check if Google Search grounding was used
+                            const hasGrounding = response.hasGrounding || false;
+                            
+                            // Apply confidence gating with bill text and grounding flags
+                            const gateResult = ConfidenceGatingService.gateAnswer(verificationReport, hasBillText, hasGrounding);
                             if (!gateResult.shouldShow && gateResult.status === 'refusal') {
                                 return {
                                     text: gateResult.caveat || "I cannot provide a verified answer. Please consult with a qualified attorney.",
@@ -828,8 +835,11 @@ Key California legal sources to reference:
                         (s.title && (s.title.includes('OpenStates') || s.title.includes('LegiScan')))
                     );
                     
-                    // Apply confidence gating with bill text flag
-                    const gateResult = ConfidenceGatingService.gateAnswer(verificationReport, hasBillText);
+                    // Check if Google Search grounding was used
+                    const hasGrounding = response.hasGrounding || false;
+                    
+                    // Apply confidence gating with bill text and grounding flags
+                    const gateResult = ConfidenceGatingService.gateAnswer(verificationReport, hasBillText, hasGrounding);
                     if (!gateResult.shouldShow && gateResult.status === 'refusal') {
                         return {
                             text: gateResult.caveat || "I cannot provide a verified answer. Please consult with a qualified attorney.",
