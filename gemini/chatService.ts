@@ -913,6 +913,10 @@ Key California legal sources to reference:
 
     private async fetchLegislationData(message: string, signal?: AbortSignal): Promise<{ context: string; sources: Source[] }> {
         console.log('📜 fetchLegislationData called for message:', message.substring(0, 100));
+        
+        // Pattern for California code sections (e.g., "Family Code § 1615", "Penal Code 187", "Civil Code section 1942")
+        const codeSectionPattern = /(Family|Penal|Civil|Commercial|Corporations?|Business and Professions|Code of Civil Procedure|Evidence|Government|Health and Safety|Labor|Probate|Revenue and Taxation|Vehicle|Welfare and Institutions)\s+Code\s+(?:§|section|sec\.?|§§)?\s*(\d+(?:\.\d+)?)/gi;
+        
         const billPattern = /(Assembly\s+Bill|Senate\s+Bill|Assembly\s+Joint\s+Resolution|Senate\s+Joint\s+Resolution|Assembly\s+Concurrent\s+Resolution|Senate\s+Concurrent\s+Resolution|Assembly\s+Resolution|Senate\s+Resolution|AB|SB|AJR|ACR|SCR|SJR|HR|SR)\s*-?\s*(\d+[A-Z]?)(?:\s*\((\d{4})\))?/gi;
         const typeMap: Record<string, string> = {
             'ASSEMBLY BILL': 'AB',
@@ -933,6 +937,48 @@ Key California legal sources to reference:
             'SR': 'SR'
         };
 
+        const collectedSources: Source[] = [];
+        
+        // First, check for code sections and create direct links
+        let codeMatch;
+        while ((codeMatch = codeSectionPattern.exec(message)) !== null) {
+            const codeName = codeMatch[1] || '';
+            const sectionNumber = codeMatch[2] || '';
+            
+            if (codeName && sectionNumber) {
+                // Map code names to their lawCode values for leginfo.legislature.ca.gov
+                const codeMap: Record<string, string> = {
+                    'FAMILY': 'FAM',
+                    'PENAL': 'PEN',
+                    'CIVIL': 'CIV',
+                    'COMMERCIAL': 'COM',
+                    'CORPORATION': 'CORP',
+                    'CORPORATIONS': 'CORP',
+                    'BUSINESS AND PROFESSIONS': 'BPC',
+                    'CODE OF CIVIL PROCEDURE': 'CCP',
+                    'EVIDENCE': 'EVID',
+                    'GOVERNMENT': 'GOV',
+                    'HEALTH AND SAFETY': 'HSC',
+                    'LABOR': 'LAB',
+                    'PROBATE': 'PROB',
+                    'REVENUE AND TAXATION': 'RTC',
+                    'VEHICLE': 'VEH',
+                    'WELFARE AND INSTITUTIONS': 'WIC'
+                };
+                
+                const lawCode = codeMap[codeName.toUpperCase()];
+                if (lawCode) {
+                    const url = `https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=${lawCode}&sectionNum=${sectionNumber}`;
+                    collectedSources.push({
+                        title: `${codeName} Code § ${sectionNumber}`,
+                        url: url,
+                        excerpt: `California ${codeName} Code section ${sectionNumber}`
+                    });
+                    console.log(`📚 Found code section: ${codeName} Code § ${sectionNumber}`);
+                }
+            }
+        }
+        
         const matches = new Map<string, { label: string; searchTerm: string; year?: string }>();
         let match;
         while ((match = billPattern.exec(message)) !== null) {
@@ -950,12 +996,18 @@ Key California legal sources to reference:
             }
         }
 
+        // If we found code sections, return them even if no bills found
+        if (matches.size === 0 && collectedSources.length > 0) {
+            console.log(`✅ Returning ${collectedSources.length} code section sources (no bills found)`);
+            return { context: '', sources: collectedSources };
+        }
+        
         if (matches.size === 0) {
+            console.log('⚠️ No bills or code sections found in message');
             return { context: '', sources: [] };
         }
 
         const summaryChunks: string[] = [];
-        const collectedSources: Source[] = [];
 
         // Parallelize all bill searches across all matches
         const billSearchPromises = Array.from(matches.values()).map(async ({ label, searchTerm, year }) => {
