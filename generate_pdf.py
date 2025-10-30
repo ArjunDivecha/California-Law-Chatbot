@@ -46,14 +46,22 @@ def generate_pdf():
         extensions=['extra', 'tables', 'codehilite', 'toc']
     )
     
-    # Post-process HTML to add page break before User Guide section
-    # Find the User Guide heading and add page-break-before style
-    html_content = re.sub(
-        r'(<h2[^>]*>User Guide</h2>)',
-        r'<div style="page-break-before: always;"></div>\1',
-        html_content,
-        flags=re.IGNORECASE
-    )
+    # Post-process HTML to add page breaks before specific sections
+    sections_to_break = [
+        'User Guide',
+        'System Architecture',
+        'Anti-Hallucination Methodology'
+    ]
+    
+    for section in sections_to_break:
+        # Escape special regex characters in section name
+        escaped_section = re.escape(section)
+        html_content = re.sub(
+            rf'(<h2[^>]*>{escaped_section}</h2>)',
+            r'<div style="page-break-before: always;"></div>\1',
+            html_content,
+            flags=re.IGNORECASE
+        )
     
     # Beautiful CSS styling with improved pagination
     css_styles = """
@@ -84,20 +92,23 @@ def generate_pdf():
     body {
         font-family: 'Georgia', 'Times New Roman', serif;
         font-size: 11pt;
-        line-height: 1.6;
-        color: #333;
+        line-height: 1.7;
+        color: #1a1a1a;
         max-width: 100%;
         orphans: 3;
         widows: 3;
+        background-color: #FAFAF8;
     }
     
     h1 {
+        font-family: 'Georgia', 'Times New Roman', serif;
         font-size: 24pt;
-        color: #1a5490;
-        border-bottom: 3px solid #1a5490;
-        padding-bottom: 10px;
-        margin-top: 30px;
-        margin-bottom: 20px;
+        font-weight: bold;
+        color: #1a1a1a;
+        border-bottom: none;
+        padding-bottom: 0;
+        margin-top: 2rem;
+        margin-bottom: 1rem;
         page-break-after: avoid;
         page-break-inside: avoid;
         orphans: 3;
@@ -105,12 +116,14 @@ def generate_pdf():
     }
     
     h2 {
+        font-family: 'Georgia', 'Times New Roman', serif;
         font-size: 18pt;
-        color: #2c5f8d;
-        border-bottom: 2px solid #2c5f8d;
-        padding-bottom: 8px;
-        margin-top: 25px;
-        margin-bottom: 15px;
+        font-weight: bold;
+        color: #1a1a1a;
+        border-bottom: none;
+        padding-bottom: 0;
+        margin-top: 2.5rem;
+        margin-bottom: 1rem;
         page-break-after: avoid;
         page-break-inside: avoid;
         page-break-before: auto;
@@ -119,10 +132,12 @@ def generate_pdf():
     }
     
     h3 {
+        font-family: 'Georgia', 'Times New Roman', serif;
         font-size: 14pt;
-        color: #3d6fa8;
-        margin-top: 20px;
-        margin-bottom: 12px;
+        font-weight: bold;
+        color: #1a1a1a;
+        margin-top: 2rem;
+        margin-bottom: 0.75rem;
         page-break-after: avoid;
         page-break-inside: avoid;
         orphans: 3;
@@ -130,19 +145,23 @@ def generate_pdf():
     }
     
     h4 {
+        font-family: 'Georgia', 'Times New Roman', serif;
         font-size: 12pt;
-        color: #4d7fb8;
-        margin-top: 15px;
-        margin-bottom: 10px;
         font-weight: bold;
+        color: #1a1a1a;
+        margin-top: 1.5rem;
+        margin-bottom: 0.75rem;
         page-break-after: avoid;
         orphans: 3;
         widows: 3;
     }
     
     p {
-        margin-bottom: 12px;
-        text-align: justify;
+        font-family: 'Georgia', 'Times New Roman', serif;
+        margin-bottom: 1.5rem;
+        margin-top: 0;
+        text-align: left;
+        line-height: 1.7;
         orphans: 3;
         widows: 3;
     }
@@ -156,15 +175,19 @@ def generate_pdf():
     }
     
     pre {
+        font-family: 'Courier New', monospace;
         background-color: #f5f5f5;
         border: 1px solid #ddd;
         border-radius: 5px;
         padding: 15px;
+        margin-top: 1.5rem;
+        margin-bottom: 1.5rem;
         overflow-x: auto;
         page-break-inside: avoid;
         page-break-before: auto;
         page-break-after: auto;
         font-size: 10pt;
+        line-height: 1.6;
         orphans: 3;
         widows: 3;
     }
@@ -175,11 +198,15 @@ def generate_pdf():
     }
     
     blockquote {
+        font-family: 'Georgia', 'Times New Roman', serif;
         border-left: 4px solid #1a5490;
         padding-left: 20px;
         margin-left: 0;
+        margin-top: 1.5rem;
+        margin-bottom: 1.5rem;
         color: #555;
         font-style: italic;
+        line-height: 1.7;
         page-break-inside: avoid;
         orphans: 3;
         widows: 3;
@@ -201,9 +228,11 @@ def generate_pdf():
     }
     
     table {
+        font-family: 'Georgia', 'Times New Roman', serif;
         border-collapse: collapse;
         width: 100%;
-        margin: 20px 0;
+        margin-top: 1.5rem;
+        margin-bottom: 1.5rem;
         page-break-inside: avoid;
         orphans: 3;
         widows: 3;
@@ -242,17 +271,27 @@ def generate_pdf():
     }
     
     ul, ol {
-        margin-left: 25px;
-        margin-bottom: 12px;
+        font-family: 'Georgia', 'Times New Roman', serif;
+        margin-left: 1.5rem;
+        margin-top: 1rem;
+        margin-bottom: 1.5rem;
+        padding-left: 1.5rem;
         orphans: 3;
         widows: 3;
     }
     
     li {
-        margin-bottom: 8px;
+        margin-bottom: 0.75rem;
+        line-height: 1.7;
         page-break-inside: avoid;
         orphans: 2;
         widows: 2;
+    }
+    
+    /* Nested lists */
+    ul ul, ol ol, ul ol, ol ul {
+        margin-top: 0.5rem;
+        margin-bottom: 0.75rem;
     }
     
     a {
@@ -265,8 +304,8 @@ def generate_pdf():
     }
     
     strong {
-        color: #1a5490;
-        font-weight: bold;
+        font-weight: 600;
+        color: #1a1a1a;
     }
     
     em {
@@ -349,9 +388,9 @@ def generate_pdf():
     </head>
     <body>
         <div style="text-align: center; margin-bottom: 40px; page-break-after: always;">
-            <h1 style="font-size: 32pt; border: none; margin-top: 100px;">California Law Chatbot</h1>
-            <h2 style="font-size: 24pt; border: none; color: #666;">Comprehensive Guide</h2>
-            <p style="font-size: 14pt; color: #888; margin-top: 30px;">October 2025</p>
+            <h1 style="font-family: 'Georgia', 'Times New Roman', serif; font-size: 32pt; border: none; margin-top: 100px; color: #1a1a1a;">California Law Chatbot</h1>
+            <h2 style="font-family: 'Georgia', 'Times New Roman', serif; font-size: 24pt; border: none; color: #666; margin-top: 1rem;">Comprehensive Guide</h2>
+            <p style="font-family: 'Georgia', 'Times New Roman', serif; font-size: 14pt; color: #888; margin-top: 30px;">October 2025</p>
         </div>
         {html_content}
     </body>
