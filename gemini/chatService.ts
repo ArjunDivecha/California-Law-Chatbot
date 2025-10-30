@@ -28,6 +28,45 @@ export class ChatService {
     }
 
     /**
+     * Determine if a query is asking about case law (court decisions)
+     */
+    private isCaseLawQuery(message: string): boolean {
+        const lowerMessage = message.toLowerCase();
+        
+        // Exclude queries that are clearly about legislation/bills
+        const legislationKeywords = [
+            'bill', 'ab ', 'sb ', 'passed', 'legislation', 'statute', 'code section',
+            'new law', 'law passed', 'what laws', 'recent laws'
+        ];
+        
+        for (const keyword of legislationKeywords) {
+            if (lowerMessage.includes(keyword)) {
+                return false; // This is a legislative query, not case law
+            }
+        }
+        
+        // Check for case law indicators
+        const caseLawKeywords = [
+            'case', 'court', 'ruling', 'decision', 'opinion', 'judgment', 
+            'appeal', 'supreme court', 'appellate', 'v.', ' vs ', ' v ',
+            'precedent', 'holding', 'case law'
+        ];
+        
+        for (const keyword of caseLawKeywords) {
+            if (lowerMessage.includes(keyword)) {
+                return true;
+            }
+        }
+        
+        // Check for case name patterns (e.g., "Smith v. Jones")
+        if (/\b\w+\s+v\.?\s+\w+\b/i.test(message)) {
+            return true;
+        }
+        
+        return false; // Default to false for ambiguous queries
+    }
+
+    /**
      * Send message to Gemini 2.5 Flash (Generator) via server-side API
      */
     private async sendToGemini(message: string, conversationHistory?: Array<{role: string, text: string}>, signal?: AbortSignal): Promise<{ text: string; hasGrounding?: boolean; groundingMetadata?: any }> {
@@ -117,11 +156,13 @@ Remember: You're trained on California law. Use that knowledge to help people! W
             };
         }
 
-        // CourtListener is now ALWAYS-ON (searches case law for every query)
-        const enableCourtListener = this.courtListenerApiKey === 'configured';
+        // Smart CourtListener detection - only search when query is about case law
+        const isCaseLawQuery = this.isCaseLawQuery(message);
+        const enableCourtListener = this.courtListenerApiKey === 'configured' && isCaseLawQuery;
 
         console.log('🔍 Query analysis:', {
             message: message.substring(0, 50) + (message.length > 50 ? '...' : ''),
+            isCaseLawQuery,
             courtListenerEnabled: enableCourtListener,
             hasCourtListenerKey: !!this.courtListenerApiKey
         });
@@ -131,7 +172,7 @@ Remember: You're trained on California law. Use that knowledge to help people! W
         // Parallelize legislation search and case law search
         console.log('🔎 Starting parallel searches...');
         console.log('  - Legislation search: ENABLED');
-        console.log(`  - CourtListener search: ${enableCourtListener ? 'ENABLED (ALWAYS-ON)' : 'DISABLED (no API key)'}`);
+        console.log(`  - CourtListener search: ${enableCourtListener ? 'ENABLED (case law query detected)' : isCaseLawQuery ? 'DISABLED (no API key)' : 'SKIPPED (not a case law query)'}`);
         
         const [legislationData, caseLawData] = await Promise.all([
             this.fetchLegislationData(message, signal).catch(err => {
