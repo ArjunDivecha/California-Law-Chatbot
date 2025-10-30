@@ -37,9 +37,9 @@ export default async function handler(req: any, res: any) {
     console.log('Initializing Google GenAI client for generation...');
     const genAI = new GoogleGenAI({ apiKey });
 
-    console.log('Calling Gemini API with model: gemini-2.5-flash-lite');
+    console.log('Calling Gemini API with model: gemini-2.5-flash');
     const model = genAI.getGenerativeModel({ 
-      model: 'gemini-2.5-flash-lite',
+      model: 'gemini-2.5-flash',
       systemInstruction: systemPrompt || `You are an expert legal research assistant specializing in California law.`
     });
 
