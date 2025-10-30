@@ -28,7 +28,7 @@ export class ChatService {
     }
 
     /**
-     * Send message to Claude 3.5 Sonnet (Generator) via server-side API
+     * Send message to Claude Haiku 4.5 (Generator) via server-side API
      */
     private async sendToClaude(message: string, signal?: AbortSignal): Promise<{ text: string }> {
         if (signal?.aborted) {
@@ -212,7 +212,7 @@ Provide a thorough legal analysis citing specific case details and explaining th
                         throw new Error('Request cancelled');
                     }
 
-                    console.log('🤖 Sending enhanced message to Claude 3.5 Sonnet...');
+                    console.log('🤖 Sending enhanced message to Claude Haiku 4.5...');
                     const response = await this.sendToClaude(enhancedMessage, signal);
                     
                     // Check if request was cancelled during AI response
@@ -328,7 +328,7 @@ Provide a thorough legal analysis citing specific case details and explaining th
                 throw new Error('Request cancelled');
             }
 
-            console.log('💬 Sending regular chat message to Claude 3.5 Sonnet...');
+            console.log('💬 Sending regular chat message to Claude Haiku 4.5...');
 
             // Enhance the prompt to request citations for legal information
             let enhancedMessage = `${message}`;

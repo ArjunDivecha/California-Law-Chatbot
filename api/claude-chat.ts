@@ -38,9 +38,9 @@ export default async function handler(req: any, res: any) {
     // Initialize Anthropic (server-side only - API key never exposed to client)
     const anthropic = new Anthropic({ apiKey });
 
-      console.log('Calling Claude API with model: claude-3-5-sonnet-20241022');
+      console.log('Calling Claude API with model: claude-haiku-4-5-20251001');
       const response = await anthropic.messages.create({
-        model: 'claude-3-5-sonnet-20241022',
+        model: 'claude-haiku-4-5-20251001',
       max_tokens: 4096,
       system: systemPrompt || `You are an expert legal research assistant specializing in California law.`,
       messages: [
