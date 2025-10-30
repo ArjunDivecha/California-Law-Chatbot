@@ -1157,7 +1157,8 @@ Key California legal sources to reference:
         console.log('📜 fetchLegislationData called for message:', message.substring(0, 100));
         
         // Pattern for California code sections (e.g., "Family Code § 1615", "Penal Code 187", "Civil Code section 1942")
-        const codeSectionPattern = /(Family|Penal|Civil|Commercial|Corporations?|Business and Professions|Code of Civil Procedure|Evidence|Government|Health and Safety|Labor|Probate|Revenue and Taxation|Vehicle|Welfare and Institutions)\s+Code\s+(?:§|section|sec\.?|§§)?\s*(\d+(?:\.\d+)?)/gi;
+        // Note: Subsections are typically 1-2 digits (e.g., 12058.5), not years like 2024
+        const codeSectionPattern = /(Family|Penal|Civil|Commercial|Corporations?|Business and Professions|Code of Civil Procedure|Evidence|Government|Health and Safety|Labor|Probate|Revenue and Taxation|Vehicle|Welfare and Institutions)\s+Code\s+(?:§|section|sec\.?|§§)?\s*(\d+(?:\.\d{1,2})?)(?!\d)/gi;
         
         const billPattern = /(Assembly\s+Bill|Senate\s+Bill|Assembly\s+Joint\s+Resolution|Senate\s+Joint\s+Resolution|Assembly\s+Concurrent\s+Resolution|Senate\s+Concurrent\s+Resolution|Assembly\s+Resolution|Senate\s+Resolution|AB|SB|AJR|ACR|SCR|SJR|HR|SR)\s*-?\s*(\d+[A-Z]?)(?:\s*\((\d{4})\))?/gi;
         const typeMap: Record<string, string> = {
@@ -1210,13 +1211,24 @@ Key California legal sources to reference:
                 
                 const lawCode = codeMap[codeName.toUpperCase()];
                 if (lawCode) {
-                    const url = `https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=${lawCode}&sectionNum=${sectionNumber}`;
+                    // Clean section number: remove any trailing year-like patterns (e.g., "12058.2024" -> "12058")
+                    // Subsections should be 1-2 digits max, so if we see something like ".2024", it's likely a year
+                    let cleanSectionNumber = sectionNumber;
+                    // Check if section number ends with something that looks like a year (4 digits after decimal)
+                    const yearPattern = /^(\d+)\.(\d{4})$/;
+                    const yearMatch = cleanSectionNumber.match(yearPattern);
+                    if (yearMatch) {
+                        // If it matches pattern like "12058.2024", use just the base section number
+                        cleanSectionNumber = yearMatch[1];
+                    }
+                    
+                    const url = `https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=${lawCode}&sectionNum=${cleanSectionNumber}`;
                     collectedSources.push({
-                        title: `${codeName} Code § ${sectionNumber}`,
+                        title: `${codeName} Code § ${cleanSectionNumber}`,
                         url: url,
-                        excerpt: `California ${codeName} Code section ${sectionNumber}`
+                        excerpt: `California ${codeName} Code section ${cleanSectionNumber}`
                     });
-                    console.log(`📚 Found code section: ${codeName} Code § ${sectionNumber}`);
+                    console.log(`📚 Found code section: ${codeName} Code § ${cleanSectionNumber} (cleaned from ${sectionNumber})`);
                 }
             }
         }
