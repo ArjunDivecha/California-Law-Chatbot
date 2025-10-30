@@ -4,12 +4,14 @@ A sophisticated AI-powered legal research assistant specializing in California l
 
 ## 🎯 Overview
 
-This chatbot combines Google's Gemini AI with direct access to official California legal sources to provide accurate, well-researched answers to legal questions. It automatically detects case law queries and searches CourtListener's database of millions of court opinions, while providing verified citations to official legal codes and statutes.
+This chatbot combines Anthropic's Claude Sonnet 4.5 (generator) with Google's Gemini 2.5 Pro (verifier) and direct access to official California legal sources to provide accurate, well-researched answers to legal questions. It automatically detects case law queries and searches CourtListener's database of millions of court opinions, while providing verified citations to official legal codes and statutes.
 
 ## ✨ Key Features
 
 ### 🤖 AI-Powered Legal Analysis
-- Advanced legal research using Google Gemini 2.5 Flash
+- **Generator**: Anthropic Claude Sonnet 4.5 for legal research and answer generation
+- **Verifier**: Google Gemini 2.5 Pro for claim verification and fact-checking
+- Two-pass verification system for accuracy
 - Contextual understanding of California law
 - Comprehensive explanations with proper citations
 - Intelligent query analysis and response generation
@@ -80,7 +82,9 @@ Supports citations for:
 ### Tech Stack
 
 - **Frontend**: React 19, TypeScript, Vite
-- **AI Engine**: Google Gemini 2.5 Flash
+- **AI Engine**: 
+  - **Generator**: Anthropic Claude Sonnet 4.5
+  - **Verifier**: Google Gemini 2.5 Pro
 - **Styling**: Tailwind CSS (via inline styles)
 - **APIs**: CourtListener API v4, LegiScan API, OpenStates API
 - **Deployment**: Vercel-ready configuration
@@ -91,7 +95,8 @@ Supports citations for:
 
 - Node.js 18+
 - npm or yarn
-- Google Gemini API key
+- Anthropic API key (for Claude Sonnet 4.5 generator)
+- Google Gemini API key (for Gemini 2.5 Pro verifier)
 - CourtListener API key (optional, enhances functionality)
 
 ### Installation
@@ -116,8 +121,11 @@ Supports citations for:
 
    Edit `.env` and add your API keys:
    ```env
-   # Required: Google Gemini API key
-   API_KEY=your_gemini_api_key_here
+   # Required: Anthropic API key (for Claude Sonnet 4.5 generator)
+   ANTHROPIC_API_KEY=your_anthropic_api_key_here
+   
+   # Required: Google Gemini API key (for Gemini 2.5 Pro verifier)
+   GEMINI_API_KEY=your_gemini_api_key_here
 
    # Optional: CourtListener API key for enhanced case law searches
    COURTLISTENER_API_KEY=your_courtlistener_api_key_here
@@ -140,15 +148,17 @@ Supports citations for:
 
 ### Required API Keys
 
-#### Google Gemini API
+#### Anthropic API (Required - Generator)
+1. Visit [Anthropic Console](https://console.anthropic.com/)
+2. Create a new API key
+3. Add it to your `.env` file as `ANTHROPIC_API_KEY`
+4. Used by Claude Sonnet 4.5 for generating legal research answers
+
+#### Google Gemini API (Required - Verifier)
 1. Visit [Google AI Studio](https://aistudio.google.com/)
 2. Create a new API key
-3. Add it to your `.env` file as `API_KEY`
-
-#### CourtListener API (Recommended)
-1. Visit [CourtListener API](https://www.courtlistener.com/help/api/)
-2. Register for a free API key
-3. Add it to your `.env` file as `COURTLISTENER_API_KEY`
+3. Add it to your `.env` file as `GEMINI_API_KEY`
+4. Used by Gemini 2.5 Pro for verifying claims against sources
 
 #### OpenStates API (Optional)
 1. Visit [OpenStates API](https://openstates.org/api/)
@@ -333,7 +343,8 @@ The system automatically parses AI responses for legal citations and creates dir
 
 1. **Connect repository** to Vercel
 2. **Set environment variables** in Vercel dashboard:
-   - `API_KEY`: Your Gemini API key
+   - `ANTHROPIC_API_KEY`: Your Anthropic API key (for Claude Sonnet 4.5 generator)
+   - `GEMINI_API_KEY`: Your Google Gemini API key (for Gemini 2.5 Pro verifier)
    - `COURTLISTENER_API_KEY`: Your CourtListener API key (optional)
 3. **Deploy automatically** on git push
 

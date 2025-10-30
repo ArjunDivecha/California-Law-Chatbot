@@ -51,6 +51,14 @@ const App: React.FC = () => {
               </div>
             </div>
           </div>
+          {/* Fixed disclaimer header */}
+          <div className="max-w-4xl mx-auto mt-3 pt-3 border-t border-gray-200">
+            <div className="bg-amber-50 border-l-4 border-amber-400 p-3 rounded">
+              <p className="text-xs font-semibold text-amber-800">
+                ⚠️ AI legal information, not legal advice. Verify sources; consult a licensed attorney for advice.
+              </p>
+            </div>
+          </div>
         </header>
         <main className="flex-1 overflow-hidden">
           <div className="h-full max-w-4xl mx-auto flex flex-col">
@@ -64,7 +72,7 @@ const App: React.FC = () => {
 
   return (
     <ErrorBoundary>
-      <div className="flex flex-col h-screen bg-gray-50 font-sans">
+    <div className="flex flex-col h-screen bg-gray-50 font-sans">
       {/* AI Disclosure Modal */}
       {showAIDisclosure && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -184,6 +192,14 @@ const App: React.FC = () => {
               <h1 className="text-xl font-bold text-gray-800">California Law Chatbot</h1>
               <p className="text-sm text-gray-500">Your AI legal research assistant</p>
             </div>
+          </div>
+        </div>
+        {/* Fixed disclaimer header */}
+        <div className="max-w-4xl mx-auto mt-3 pt-3 border-t border-gray-200">
+          <div className="bg-amber-50 border-l-4 border-amber-400 p-3 rounded">
+            <p className="text-xs font-semibold text-amber-800">
+              ⚠️ AI legal information, not legal advice. Verify sources; consult a licensed attorney for advice.
+            </p>
           </div>
         </div>
       </header>

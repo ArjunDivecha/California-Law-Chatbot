@@ -83,6 +83,38 @@ const Message: React.FC<MessageProps> = ({ message }) => {
   // Check if response needs verification (contains warning)
   const needsVerification = message.text.includes('Some claims in this response may require verification');
 
+  // Get verification status
+  const verificationStatus = message.verificationStatus || 'unverified';
+  
+  // Determine verification badge
+  const getVerificationBadge = () => {
+    switch (verificationStatus) {
+      case 'verified':
+        return (
+          <div className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3 h-3 mr-1"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+            Verified
+          </div>
+        );
+      case 'partially_verified':
+        return (
+          <div className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3 h-3 mr-1"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            Partially Verified
+          </div>
+        );
+      case 'refusal':
+        return (
+          <div className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3 h-3 mr-1"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+            Cannot Verify
+          </div>
+        );
+      default:
+        return null;
+    }
+  };
+
   // Conditionally render source list only if there are no inline citations
   const showSourceList = message.sources && message.sources.length > 0 && !message.text.match(/\[\d+\]/);
 
@@ -101,7 +133,12 @@ const Message: React.FC<MessageProps> = ({ message }) => {
         </div>
         </div>
         )}
-          {!usedCourtListener && hasOfficialSources && !needsVerification && (
+        {getVerificationBadge() && (
+          <div className="mb-3 flex items-center">
+            {getVerificationBadge()}
+          </div>
+        )}
+          {!usedCourtListener && hasOfficialSources && !needsVerification && verificationStatus === 'unverified' && (
           <div className="mb-3 flex items-center">
           <div className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
           <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3 h-3 mr-1"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
@@ -109,7 +146,7 @@ const Message: React.FC<MessageProps> = ({ message }) => {
           </div>
           </div>
           )}
-          {needsVerification && (
+          {needsVerification && verificationStatus === 'unverified' && (
             <div className="mb-3 flex items-center">
               <div className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3 h-3 mr-1"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>

@@ -56,7 +56,7 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSend, disabled }) => {
         </div>
         <p className="text-xs text-center text-gray-500">
           For court filings: Verify all citations and check local court rules for AI disclosure requirements.
-        </p>
+      </p>
       </div>
     </div>
   );

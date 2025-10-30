@@ -1,36 +1,101 @@
 
-import { GoogleGenAI, Chat } from "@google/genai";
-import type { Source } from '../types';
+import type { Source, Claim, VerificationReport, VerificationStatus } from '../types';
+import { fetchWithRetry } from '../utils/fetchWithRetry';
+import { VerifierService } from '../services/verifierService';
+import { GuardrailsService } from '../services/guardrailsService';
+import { RetrievalPruner } from '../services/retrievalPruner';
+import { ConfidenceGatingService } from '../services/confidenceGating';
 
 export interface BotResponse {
     text: string;
     sources: Source[];
+    verificationStatus?: VerificationStatus;
+    verificationReport?: VerificationReport;
+    claims?: Claim[];
 }
 
 export class ChatService {
-    private chat: Chat;
+    private verifier: VerifierService;
     private courtListenerApiKey: string | null;
 
     constructor(courtListenerApiKey: string | null) {
-        if (!process.env.API_KEY) {
-            throw new Error("API_KEY environment variable not set.");
-        }
-        // SECURITY WARNING: API_KEY is exposed to client-side code via vite.config.ts
-        // This should be moved to server-side API routes for production use
-        // For now, the key is bundled in the client code, which is a security risk
+        // API keys are now handled server-side via API endpoints
+        // No need to check for them here
         this.courtListenerApiKey = courtListenerApiKey === 'configured' ? 'configured' : null;
-        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-
-        this.chat = ai.chats.create({
-            model: 'gemini-2.5-flash',
-            config: {
-                systemInstruction: "You are an expert legal research assistant specializing in California law. I have access to CourtListener database for specific case law searches. For general legal questions, I use web search capabilities. I provide accurate, well-researched answers with proper citations.",
-                // Removed tools - now using keyword detection instead of function calling
-            }
-        });
+        
+        // Initialize verifier service (will use API endpoint)
+        this.verifier = new VerifierService();
     }
 
-    async sendMessage(message: string): Promise<BotResponse> {
+    /**
+     * Send message to Claude Sonnet 4.5 (Generator) via server-side API
+     */
+    private async sendToClaude(message: string, signal?: AbortSignal): Promise<{ text: string }> {
+        if (signal?.aborted) {
+            throw new Error('Request cancelled');
+        }
+
+        const systemPrompt = `You are an expert legal research assistant specializing in California law.
+
+CRITICAL RULES - STRICT COMPLIANCE REQUIRED:
+1. NO SOURCE, NO CLAIM: Do not make any legal claim unless you have a source to support it from the provided SOURCES.
+2. NO NEW ENTITIES: Do not introduce case names, statute numbers, dates, dollar amounts, or thresholds NOT present in SOURCES.
+3. CITE-BEFORE-SAY: Select quotes first; every non-obvious claim requires an inline cite [id] referencing SOURCES.
+4. REFUSAL POLICY: If support is insufficient/ambiguous, say: "I can't verify this from the available sources."
+5. CA-ONLY DEFAULT: Focus on California law unless explicitly asked about federal/non-CA law.
+6. VERBATIM PREFERENCE: When possible, use exact quotes from SOURCES with [id] citations.
+
+OUTPUT FORMAT:
+- Include CLAIMS_JSON when providing structured claims
+- Use [1], [2], etc. for source citations
+- Be precise and avoid speculation
+
+You have access to CourtListener database for specific case law searches and legislative APIs for California bills.`;
+
+        try {
+            const response = await fetchWithRetry(
+                '/api/claude-chat',
+                {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        message,
+                        systemPrompt,
+                    }),
+                    signal, // Pass AbortSignal for cancellation
+                },
+                2, // maxRetries
+                1000 // baseDelay
+            );
+
+            if (signal?.aborted) {
+                throw new Error('Request cancelled');
+            }
+
+            if (!response.ok) {
+                if (response.status === 499) {
+                    throw new Error('Request cancelled');
+                }
+                throw new Error(`API error: ${response.status}`);
+            }
+
+            const data = await response.json();
+            return { text: data.text || '' };
+        } catch (error: any) {
+            if (signal?.aborted || error.message === 'Request cancelled') {
+                throw new Error('Request cancelled');
+            }
+            throw error;
+        }
+    }
+
+    async sendMessage(message: string, signal?: AbortSignal): Promise<BotResponse> {
+        // Check for cancellation at the start
+        if (signal?.aborted) {
+            throw new Error('Request cancelled');
+        }
         if (message.trim().toLowerCase() === 'hello' || message.trim().toLowerCase() === 'hi') {
             return {
                 text: "Hello! I am the California Law Chatbot. How can I help you with your legal research today?",
@@ -53,21 +118,48 @@ export class ChatService {
 
         // Parallelize legislation search and case law search if both are needed
         const [legislationData, caseLawData] = await Promise.all([
-            this.fetchLegislationData(message),
+            this.fetchLegislationData(message, signal),
             (isCaseQuery && this.courtListenerApiKey === 'configured') 
-                ? this.searchCourtListenerAPI(message).catch(err => {
+                ? this.searchCourtListenerAPI(message, signal).catch(err => {
+                    if (signal?.aborted || err.message === 'Request cancelled') {
+                        throw err; // Re-throw cancellation errors
+                    }
                     console.error('CourtListener search failed:', err);
                     return { content: '', sources: [] };
                   })
                 : Promise.resolve({ content: '', sources: [] })
         ]);
 
-        let legislationContextInstructions = '';
+        // Check if request was cancelled during parallel searches
+        if (signal?.aborted) {
+            throw new Error('Request cancelled');
+        }
+
+        // Collect all sources
         if (legislationData.sources.length > 0) {
             finalSources.push(...legislationData.sources);
         }
+        if (caseLawData.sources.length > 0) {
+            finalSources.push(...caseLawData.sources);
+        }
+
+        // Apply retrieval pruning (top-k, dedupe, rerank)
+        const prunedSources = RetrievalPruner.pruneSources(finalSources, message, 3);
+        console.log(`📊 Pruned ${finalSources.length} sources to ${prunedSources.length} top sources`);
+        
+        // Assign IDs to sources for citation mapping
+        const sourcesWithIds: Source[] = prunedSources.map((source, index) => ({
+            ...source,
+            id: String(index + 1)
+        }));
+
+        // Check for high-risk category (quotes-only mode)
+        const isHighRisk = ConfidenceGatingService.isHighRiskCategory(message, sourcesWithIds);
+        const useQuotesOnly = ConfidenceGatingService.shouldUseQuotesOnly(message, sourcesWithIds);
+
+        let legislationContextInstructions = '';
         if (legislationData.context) {
-            legislationContextInstructions = `\n\nLegislative research results (validated from official sources):\n${legislationData.context}\n\nUse this verified bill information. Reference the specific bill identifiers, summarize their status accurately, and cite the provided sources.`;
+            legislationContextInstructions = `\n\nLegislative research results (validated from official sources):\n${legislationData.context}\n\nUse this verified bill information. Reference the specific bill identifiers, summarize their status accurately, and cite the provided sources using [id] format.`;
         }
 
         if (isCaseQuery && this.courtListenerApiKey === 'configured' && caseLawData.sources.length > 0) {
@@ -103,19 +195,36 @@ INSTRUCTIONS:
 
 Provide a thorough legal analysis citing specific case details and explaining their relevance to the query.`;
 
-                    console.log('🤖 Sending enhanced message to Gemini...');
-                    const response = await this.chat.sendMessage({ message: enhancedMessage });
-                    console.log('✅ Gemini response received');
+                    // Check for cancellation before Claude call
+                    if (signal?.aborted) {
+                        throw new Error('Request cancelled');
+                    }
 
-                    const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
-                    const groundingSources: Source[] = groundingChunks
-                        .map((chunk: any) => {
-                            if (chunk.web) {
-                                return { title: chunk.web.title || 'Untitled Source', url: chunk.web.uri };
-                            }
-                            return null;
-                        })
-                        .filter((source): source is Source => source !== null);
+                    console.log('🤖 Sending enhanced message to Claude Sonnet 4.5...');
+                    const response = await this.sendToClaude(enhancedMessage, signal);
+                    
+                    // Check if request was cancelled during AI response
+                    if (signal?.aborted) {
+                        throw new Error('Request cancelled');
+                    }
+                    
+                    console.log('✅ Claude response received');
+                    
+                    // Check if request was cancelled during AI response
+                    if (signal?.aborted) {
+                        throw new Error('Request cancelled');
+                    }
+                    
+                    console.log('✅ Claude response received');
+                    
+                    // Check for cancellation after Claude call
+                    if (signal?.aborted) {
+                        throw new Error('Request cancelled');
+                    }
+
+                    // Claude doesn't have grounding metadata like Gemini, so we'll skip this
+                    // Sources are already collected from APIs and citation parsing
+                    const groundingSources: Source[] = [];
 
                     finalSources.push(...groundingSources);
                     const uniqueSources = Array.from(new Map(finalSources.map(s => [s.url, s])).values());
@@ -129,7 +238,66 @@ Provide a thorough legal analysis citing specific case details and explaining th
                     const verifiedText = response.text + (verificationResult.needsVerification ?
                         '\n\n⚠️ Note: Some claims in this response may require verification against primary legal sources.' : '');
 
-                    return { text: verifiedText, sources: uniqueSources };
+                    // Extract claims and run new verification system
+                    const claims = VerifierService.extractClaimsFromAnswer(response.text, sourcesWithIds);
+                    const shouldVerify = VerifierService.shouldVerify(message, isHighRisk);
+                    
+                    let verificationStatus: VerificationStatus = 'unverified';
+                    let verificationReport: VerificationReport | undefined;
+                    let finalAnswer = verifiedText;
+                    
+                    if (shouldVerify && claims.length > 0 && sourcesWithIds.length > 0) {
+                        try {
+                            const verifierOutput = await this.verifier.verifyClaims(response.text, claims, sourcesWithIds, signal);
+                            verificationStatus = verifierOutput.status;
+                            verificationReport = verifierOutput.verificationReport;
+                            finalAnswer = verifierOutput.verifiedAnswer;
+                            
+                            // Apply confidence gating
+                            const gateResult = ConfidenceGatingService.gateAnswer(verificationReport);
+                            if (!gateResult.shouldShow && gateResult.status === 'refusal') {
+                                return {
+                                    text: gateResult.caveat || "I cannot provide a verified answer. Please consult with a qualified attorney.",
+                                    sources: sourcesWithIds,
+                                    verificationStatus: 'refusal',
+                                    verificationReport,
+                                    claims
+                                };
+                            }
+                            
+                            if (gateResult.caveat && gateResult.status === 'partially_verified') {
+                                finalAnswer += `\n\n⚠️ ${gateResult.caveat}`;
+                            }
+                        } catch (error: any) {
+                            if (signal?.aborted || error.message === 'Request cancelled') {
+                                throw error;
+                            }
+                            console.error('Verification failed:', error);
+                        }
+                    }
+                    
+                    // Apply guardrails
+                    const guardrailResult = GuardrailsService.runAllChecks(finalAnswer, message, sourcesWithIds, claims);
+                    
+                    if (guardrailResult.blocked) {
+                        console.warn('🚫 Guardrails blocked answer:', guardrailResult.errors);
+                        // For now, log but don't block - could be enhanced to trigger rewrite
+                        if (guardrailResult.errors.length > 0) {
+                            finalAnswer += `\n\n⚠️ Warning: Some citations or entities may not be fully verified.`;
+                        }
+                    }
+                    
+                    if (guardrailResult.warnings.length > 0) {
+                        console.warn('⚠️ Guardrails warnings:', guardrailResult.warnings);
+                    }
+
+                    return { 
+                        text: finalAnswer, 
+                        sources: uniqueSources,
+                        verificationStatus,
+                        verificationReport,
+                        claims
+                    };
                 } else {
                     console.log('⚠️ CourtListener returned no useful results, falling back to regular chat');
                     // Fall back to regular chat if CourtListener didn't find anything useful
@@ -143,7 +311,12 @@ Provide a thorough legal analysis citing specific case details and explaining th
 
         // Regular chat without CourtListener
         try {
-            console.log('💬 Sending regular chat message to Gemini...');
+            // Check for cancellation before regular chat
+            if (signal?.aborted) {
+                throw new Error('Request cancelled');
+            }
+
+            console.log('💬 Sending regular chat message to Claude Sonnet 4.5...');
 
             // Enhance the prompt to request citations for legal information
             let enhancedMessage = `${message}`;
@@ -163,18 +336,23 @@ Key California legal sources to reference:
 - Official court opinions and case law through CourtListener
 - Current California bills (AB/SB/etc.) with status and summaries drawn from the provided legislative research`;
 
-            const response = await this.chat.sendMessage({ message: enhancedMessage });
-            console.log('✅ Regular chat response received');
+            const response = await this.sendToClaude(enhancedMessage, signal);
+            
+            // Check if request was cancelled during AI response
+            if (signal?.aborted) {
+                throw new Error('Request cancelled');
+            }
+            
+            console.log('✅ Claude response received');
 
-            const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
-            const groundingSources: Source[] = groundingChunks
-                .map((chunk: any) => {
-                    if (chunk.web) {
-                        return { title: chunk.web.title || 'Untitled Source', url: chunk.web.uri };
-                    }
-                    return null;
-                })
-                .filter((source): source is Source => source !== null);
+            // Check for cancellation after Claude call
+            if (signal?.aborted) {
+                throw new Error('Request cancelled');
+            }
+
+            // Claude doesn't have grounding metadata like Gemini, so we'll skip this
+            // Sources are already collected from APIs and citation parsing
+            const groundingSources: Source[] = [];
 
             // Create specific source links based on citations in the response
             const specificSources: Source[] = [];
@@ -407,17 +585,28 @@ Key California legal sources to reference:
             // California reporter citations (e.g., "61 Cal.2d 861", "196 Cal.App.4th 123")
             const reporterMatches = responseText.match(/\b(\d+)\s+Cal\.(?:App\.)?(?:\d[dth])?\s+\d+\b|\b\d+\s+Cal\.[A-Za-z.\d]+\s+\d+\b/gi);
             if (reporterMatches) {
-                // Parallelize all citation resolutions
+                // Parallelize all citation resolutions with cancellation support
                 const citationPromises = reporterMatches.map(cite =>
-                    this.searchCourtListenerAPI(cite)
-                        .then(resolved => resolved.sources.length > 0 
-                            ? { title: cite, url: resolved.sources[0].url }
-                            : null
-                        )
-                        .catch(() => null)
+                    this.searchCourtListenerAPI(cite, signal)
+                        .then(resolved => {
+                            if (signal?.aborted) return null;
+                            return resolved.sources.length > 0 
+                                ? { title: cite, url: resolved.sources[0].url }
+                                : null;
+                        })
+                        .catch(error => {
+                            if (signal?.aborted || error.message === 'Request cancelled') return null;
+                            return null;
+                        })
                 );
                 
                 const citationResults = await Promise.all(citationPromises);
+                
+                // Check if cancelled during resolution
+                if (signal?.aborted) {
+                    throw new Error('Request cancelled');
+                }
+                
                 citationResults.forEach(result => {
                     if (result) specificSources.push(result);
                 });
@@ -449,17 +638,18 @@ Key California legal sources to reference:
             //   - "Smith v. Jones, 123 Cal.App.4th 567 (2005)"
             const caseMatches = responseText.match(/([A-Z][A-Za-z\s.&'-]+ v\. [A-Z][A-Za-z\s.&'-]+)(?:,\s*\d+\s+[A-Za-z.\d]+\s+\d+)?\s*(?:\((\n?\d{4})\))?/g);
             if (caseMatches) {
-                // Parallelize all case citation resolutions
+                // Parallelize all case citation resolutions with cancellation support
                 const casePromises = caseMatches.map(match => {
                     const caseMatch = match.match(/([A-Z][A-Za-z\s.&'-]+ v\. [A-Z][A-Za-z\s.&'-]+)(?:,\s*\d+\s+[A-Za-z.\d]+\s+\d+)?\s*(?:\((\d{4})\))?/);
                     if (!caseMatch) return Promise.resolve(null);
                     
-                    const caseName = caseMatch[1].trim();
-                    const year = caseMatch[2] || '';
-                    const query = year ? `${caseName} ${year}` : caseName;
+                        const caseName = caseMatch[1].trim();
+                        const year = caseMatch[2] || '';
+                            const query = year ? `${caseName} ${year}` : caseName;
                     
-                    return this.searchCourtListenerAPI(query)
+                    return this.searchCourtListenerAPI(query, signal)
                         .then(resolved => {
+                            if (signal?.aborted) return null;
                             if (resolved.sources.length > 0) {
                                 return {
                                     title: year ? `${caseName} (${year})` : caseName,
@@ -474,17 +664,24 @@ Key California legal sources to reference:
                                 };
                             }
                         })
-                        .catch(() => {
+                        .catch(error => {
+                            if (signal?.aborted || error.message === 'Request cancelled') return null;
                             // Fallback on error
                             const searchQuery = encodeURIComponent(`${caseName} ${year}`.trim());
                             return {
                                 title: year ? `${caseName} (${year})` : caseName,
                                 url: `https://www.courtlistener.com/?q=${searchQuery}&type=o&order_by=score%20desc&stat_Precedential=on`
                             };
-                        });
+                            });
                 });
                 
                 const caseResults = await Promise.all(casePromises);
+                
+                // Check if cancelled during resolution
+                if (signal?.aborted) {
+                    throw new Error('Request cancelled');
+                }
+                
                 caseResults.forEach(result => {
                     if (result) specificSources.push(result);
                 });
@@ -584,9 +781,71 @@ Key California legal sources to reference:
             const verifiedText = response.text + (verificationResult.needsVerification ?
                 '\n\n⚠️ Note: Some claims in this response may require verification against primary legal sources.' : '');
 
-            return { text: verifiedText, sources: uniqueSources };
+            // Extract claims and run new verification system
+            const claims = VerifierService.extractClaimsFromAnswer(response.text, sourcesWithIds);
+            const shouldVerify = VerifierService.shouldVerify(message, isHighRisk);
+            
+            let verificationStatus: VerificationStatus = 'unverified';
+            let verificationReport: VerificationReport | undefined;
+            let finalAnswer = verifiedText;
+            
+            if (shouldVerify && claims.length > 0 && sourcesWithIds.length > 0) {
+                try {
+                    const verifierOutput = await this.verifier.verifyClaims(response.text, claims, sourcesWithIds, signal);
+                    verificationStatus = verifierOutput.status;
+                    verificationReport = verifierOutput.verificationReport;
+                    finalAnswer = verifierOutput.verifiedAnswer;
+                    
+                    // Apply confidence gating
+                    const gateResult = ConfidenceGatingService.gateAnswer(verificationReport);
+                    if (!gateResult.shouldShow && gateResult.status === 'refusal') {
+                        return {
+                            text: gateResult.caveat || "I cannot provide a verified answer. Please consult with a qualified attorney.",
+                            sources: sourcesWithIds,
+                            verificationStatus: 'refusal',
+                            verificationReport,
+                            claims
+                        };
+                    }
+                    
+                    if (gateResult.caveat && gateResult.status === 'partially_verified') {
+                        finalAnswer += `\n\n⚠️ ${gateResult.caveat}`;
+                    }
+                } catch (error: any) {
+                    if (signal?.aborted || error.message === 'Request cancelled') {
+                        throw error;
+                    }
+                    console.error('Verification failed:', error);
+                }
+            }
+            
+            // Apply guardrails
+            const guardrailResult = GuardrailsService.runAllChecks(finalAnswer, message, sourcesWithIds, claims);
+            
+            if (guardrailResult.blocked) {
+                console.warn('🚫 Guardrails blocked answer:', guardrailResult.errors);
+                if (guardrailResult.errors.length > 0) {
+                    finalAnswer += `\n\n⚠️ Warning: Some citations or entities may not be fully verified.`;
+                }
+            }
+            
+            if (guardrailResult.warnings.length > 0) {
+                console.warn('⚠️ Guardrails warnings:', guardrailResult.warnings);
+            }
 
-        } catch (error) {
+            return { 
+                text: finalAnswer, 
+                sources: uniqueSources,
+                verificationStatus,
+                verificationReport,
+                claims
+            };
+
+        } catch (error: any) {
+            // Don't throw error for cancelled requests
+            if (signal?.aborted || error.message === 'Request cancelled') {
+                throw new Error('Request cancelled');
+            }
             console.error('❌ Chat error:', error);
             console.error('Error details:', error.message, error.stack);
             return {
@@ -640,7 +899,7 @@ Key California legal sources to reference:
         };
     }
 
-    private async fetchLegislationData(message: string): Promise<{ context: string; sources: Source[] }> {
+    private async fetchLegislationData(message: string, signal?: AbortSignal): Promise<{ context: string; sources: Source[] }> {
         const billPattern = /(Assembly\s+Bill|Senate\s+Bill|Assembly\s+Joint\s+Resolution|Senate\s+Joint\s+Resolution|Assembly\s+Concurrent\s+Resolution|Senate\s+Concurrent\s+Resolution|Assembly\s+Resolution|Senate\s+Resolution|AB|SB|AJR|ACR|SCR|SJR|HR|SR)\s*-?\s*(\d+[A-Z]?)(?:\s*\((\d{4})\))?/gi;
         const typeMap: Record<string, string> = {
             'ASSEMBLY BILL': 'AB',
@@ -697,43 +956,57 @@ Key California legal sources to reference:
             const sources: Source[] = [];
 
             // Parallelize OpenStates and LegiScan searches for each query variant
-            const searchPromises = queryVariants.flatMap(query => [
-                fetch(`/api/openstates-search?q=${encodeURIComponent(query)}`)
-                    .then(async (response) => {
-                        if (!response.ok) {
-                            const text = await response.text().catch(() => 'Unknown error');
-                            console.warn('OpenStates proxy error:', text);
-                            return null;
-                        }
-                        const data = await response.json();
+            const searchPromises = queryVariants.flatMap(query => {
+                // Check if cancelled before starting searches
+                if (signal?.aborted) return [];
+                
+                return [
+                    fetchWithRetry(
+                        `/api/openstates-search?q=${encodeURIComponent(query)}`,
+                        { signal },
+                        2, // maxRetries: 2 for legislative APIs
+                        500 // baseDelay: 500ms (faster retries for legislative APIs)
+                    )
+                        .then(async (response) => {
+                            if (signal?.aborted) return null;
+                            const data = await response.json();
                         const items = Array.isArray(data?.items) ? data.items : [];
                         const matchItem = items.find((item: any) => (item?.identifier || '').toUpperCase().includes(normalized));
-                        return matchItem ? { type: 'openstates', item: matchItem } : null;
-                    })
-                    .catch(error => {
-                        console.error('Failed to call OpenStates proxy:', error);
-                        return null;
-                    }),
-                fetch(`/api/legiscan-search?q=${encodeURIComponent(query)}`)
-                    .then(async (response) => {
-                        if (!response.ok) {
-                            const text = await response.text().catch(() => 'Unknown error');
-                            console.warn('LegiScan proxy error:', text);
+                            return matchItem ? { type: 'openstates', item: matchItem } : null;
+                        })
+                        .catch(error => {
+                            if (error.message === 'Request cancelled') throw error;
+                            console.error('Failed to call OpenStates proxy:', error);
                             return null;
-                        }
-                        const data = await response.json();
-                        const resultsObj = data?.searchresult || {};
-                        const entries = Object.values(resultsObj).filter((entry: any) => entry && typeof entry === 'object' && entry.bill_number);
-                        const matchEntry = entries.find((entry: any) => (entry.bill_number || '').toUpperCase().includes(normalized.replace(' ', '')) || (entry.title || '').toUpperCase().includes(normalized));
-                        return matchEntry ? { type: 'legiscan', entry: matchEntry } : null;
-                    })
-                    .catch(error => {
-                        console.error('Failed to call LegiScan proxy:', error);
-                        return null;
-                    })
-            ]);
+                        }),
+                    fetchWithRetry(
+                        `/api/legiscan-search?q=${encodeURIComponent(query)}`,
+                        { signal },
+                        2, // maxRetries: 2
+                        500 // baseDelay: 500ms
+                    )
+                        .then(async (response) => {
+                            if (signal?.aborted) return null;
+                            const data = await response.json();
+                            const resultsObj = data?.searchresult || {};
+                            const entries = Object.values(resultsObj).filter((entry: any) => entry && typeof entry === 'object' && entry.bill_number);
+                            const matchEntry = entries.find((entry: any) => (entry.bill_number || '').toUpperCase().includes(normalized.replace(' ', '')) || (entry.title || '').toUpperCase().includes(normalized));
+                            return matchEntry ? { type: 'legiscan', entry: matchEntry } : null;
+                        })
+                        .catch(error => {
+                            if (error.message === 'Request cancelled') throw error;
+                            console.error('Failed to call LegiScan proxy:', error);
+                            return null;
+                        })
+                ];
+            });
 
             const results = await Promise.all(searchPromises);
+            
+            // Check if cancelled during bill searches
+            if (signal?.aborted) {
+                throw new Error('Request cancelled');
+            }
             
             let openStatesMatched = false;
             let legiscanMatched = false;
@@ -744,26 +1017,26 @@ Key California legal sources to reference:
                 
                 if (result.type === 'openstates' && !openStatesMatched) {
                     const matchItem = result.item;
-                    const title = matchItem.title || 'Title unavailable';
-                    const session = typeof matchItem.session === 'string' ? matchItem.session : (matchItem.session?.name || matchItem.session?.identifier || '');
-                    const updatedAt = matchItem.updatedAt ? new Date(matchItem.updatedAt).toISOString().split('T')[0] : '';
-                    const openStatesUrl = matchItem.url;
-                    billSummaries.push(`OpenStates: ${title}${session ? ` (Session: ${session})` : ''}${updatedAt ? ` [updated ${updatedAt}]` : ''}`);
-                    if (openStatesUrl) {
+                            const title = matchItem.title || 'Title unavailable';
+                            const session = typeof matchItem.session === 'string' ? matchItem.session : (matchItem.session?.name || matchItem.session?.identifier || '');
+                            const updatedAt = matchItem.updatedAt ? new Date(matchItem.updatedAt).toISOString().split('T')[0] : '';
+                            const openStatesUrl = matchItem.url;
+                            billSummaries.push(`OpenStates: ${title}${session ? ` (Session: ${session})` : ''}${updatedAt ? ` [updated ${updatedAt}]` : ''}`);
+                            if (openStatesUrl) {
                         sources.push({ title: `${label} – OpenStates`, url: openStatesUrl });
-                    }
-                    openStatesMatched = true;
+                            }
+                            openStatesMatched = true;
                 } else if (result.type === 'legiscan' && !legiscanMatched) {
                     const matchEntry = result.entry;
-                    const title = matchEntry.title || 'Title unavailable';
-                    const lastAction = matchEntry.last_action || 'Status unavailable';
-                    const lastActionDate = matchEntry.last_action_date || '';
-                    const legiscanUrl = matchEntry.url || matchEntry.text_url || matchEntry.research_url;
-                    billSummaries.push(`LegiScan: ${title}${lastActionDate ? ` (Last action: ${lastActionDate})` : ''} – ${lastAction}`);
-                    if (legiscanUrl) {
+                            const title = matchEntry.title || 'Title unavailable';
+                            const lastAction = matchEntry.last_action || 'Status unavailable';
+                            const lastActionDate = matchEntry.last_action_date || '';
+                            const legiscanUrl = matchEntry.url || matchEntry.text_url || matchEntry.research_url;
+                            billSummaries.push(`LegiScan: ${title}${lastActionDate ? ` (Last action: ${lastActionDate})` : ''} – ${lastAction}`);
+                            if (legiscanUrl) {
                         sources.push({ title: `${label} – LegiScan`, url: legiscanUrl });
-                    }
-                    legiscanMatched = true;
+                            }
+                            legiscanMatched = true;
                 }
                 
                 // Exit early if both matched
@@ -779,6 +1052,12 @@ Key California legal sources to reference:
 
         // Wait for all bill searches to complete in parallel
         const billResults = await Promise.all(billSearchPromises);
+        
+        // Check if cancelled during parallel bill searches
+        if (signal?.aborted) {
+            throw new Error('Request cancelled');
+            }
+        
         billResults.forEach(({ label, summaries, sources }) => {
             summaryChunks.push(`${label}:\n${summaries.map(summary => `  • ${summary}`).join('\n')}`);
             collectedSources.push(...sources);
@@ -842,17 +1121,21 @@ Key California legal sources to reference:
         return matchingWords.length / claimWords.length > 0.6;
     }
 
-    private async searchCourtListenerAPI(query: string): Promise<{ content: string; sources: Source[] }> {
+    private async searchCourtListenerAPI(query: string, signal?: AbortSignal): Promise<{ content: string; sources: Source[] }> {
         try {
-            const r = await fetch(`/api/courtlistener-search?q=${encodeURIComponent(query)}`);
-            if (!r.ok) {
-                const text = await r.text().catch(() => 'Unknown error');
-                console.error(`❌ CourtListener proxy error: ${r.status} ${r.statusText}`, text);
-                return { content: `ERROR: CourtListener proxy returned ${r.status}`, sources: [] };
-            }
+            const r = await fetchWithRetry(
+                `/api/courtlistener-search?q=${encodeURIComponent(query)}`,
+                { signal },
+                3, // maxRetries: 3 for CourtListener
+                1000 // baseDelay: 1s
+            );
+            
             const data = await r.json();
             return { content: data.content || '', sources: data.sources || [] };
-        } catch (error) {
+        } catch (error: any) {
+            if (error.message === 'Request cancelled') {
+                throw error;
+            }
             console.error('Failed to call CourtListener proxy:', error);
             return { content: 'There was an error connecting to the CourtListener proxy.', sources: [] };
         }
