@@ -79,6 +79,14 @@ export class ChatService {
 CRITICAL - REAL-TIME DATA ACCESS:
 You have Google Search grounding enabled, which gives you access to CURRENT, REAL-TIME information about California bills and legislation. You also have access to legislative APIs (OpenStates, LegiScan) that search for current bills. NEVER refuse to answer based on dates - if a user asks about "recent bills" or bills from 2025 or later, USE YOUR SEARCH CAPABILITIES to find current information. Google Search grounding will automatically search the web and return the most recent information available.
 
+CRITICAL - COMPREHENSIVE BILL SEARCHES:
+When asked about "all bills" or "bills on [topic]" that were signed/passed:
+1. Search for MULTIPLE variations: "California [topic] bills October 2025", "California [topic] legislation signed 2025", "Governor Newsom signed [topic] bills"
+2. Look for bill tracking sites, news articles, and official legislative summaries that LIST multiple bills
+3. If you find a list of 3-4 bills, that's likely INCOMPLETE - search again with different terms to find more
+4. Cross-reference: If you see "California signed 18 AI bills" but only found 4, keep searching until you find all 18
+5. Include bill numbers (AB/SB) in your response so users can verify completeness
+
 GUIDELINES:
 1. BE HELPFUL FIRST: Always provide comprehensive, useful answers. Use your knowledge of California law to help users.
 2. USE SEARCH FOR RECENT BILLS: When asked about "new bills", "recent bills", bills from 2025 or later, or current legislation, your Google Search grounding will automatically find the most current information. Trust and use this real-time data.
@@ -428,10 +436,23 @@ Provide a thorough legal analysis citing specific case details and explaining th
                 throw new Error('Request cancelled');
             }
 
-            console.log('💬 Sending regular chat message to Gemini 2.5 Flash-Lite...');
+            console.log('💬 Sending regular chat message to Gemini 2.5 Pro...');
 
             // Enhance the prompt to request citations for legal information
             let enhancedMessage = `${message}`;
+            
+            // Add comprehensive search instructions for vague queries
+            const isVagueBillQuery = /find (all |the )?(bills?|laws?|legislation)|list (all |the )?(bills?|laws?)|all (the )?(bills?|laws?)|what (bills?|laws?)/i.test(message);
+            if (isVagueBillQuery) {
+                enhancedMessage += `\n\nIMPORTANT: Use Google Search to find a COMPREHENSIVE list. Search multiple times with different queries:
+- "California [topic] bills signed October 2025"
+- "California [topic] legislation 2025 complete list"
+- "Governor Newsom [topic] bills September October 2025"
+- "[topic] bills California 2025 all"
+
+Cross-check: If you find an article saying "California signed 18 AI bills" but you only list 4, you're missing bills. Keep searching until you have a complete list. Include ALL bill numbers (AB/SB) you find.`;
+            }
+            
             if (legislationContextInstructions) {
                 enhancedMessage += legislationContextInstructions;
             }
