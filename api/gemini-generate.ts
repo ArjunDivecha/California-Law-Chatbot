@@ -60,13 +60,13 @@ export default async function handler(req: any, res: any) {
       parts: [{ text: message.trim() }]
     });
 
-    console.log(`Calling Gemini API with model: gemini-2.5-flash (${contents.length} messages in context)`);
+    console.log(`Calling Gemini API with model: gemini-2.5-pro (${contents.length} messages in context)`);
     console.log('🔍 Enabling Google Search grounding for real-time California law updates...');
     
     // Enable Google Search grounding - EXACT SYNTAX from user's working example
     // The model will automatically search the web and return grounding metadata
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-2.5-pro',
       contents: contents,
       config: {
         tools: [{googleSearch: {}}],
