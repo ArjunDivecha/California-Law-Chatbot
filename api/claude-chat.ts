@@ -60,10 +60,14 @@ export default async function handler(req: any, res: any) {
       content: message.trim()
     });
 
-    console.log(`Calling Claude API with model: claude-haiku-4-5-20251001 (${messages.length} messages in context)`);
+    console.log(`Calling Claude API with model: claude-sonnet-4-5-20250929 with extended thinking (${messages.length} messages in context)`);
     const response = await anthropic.messages.create({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 4096,
+      model: 'claude-sonnet-4-5-20250929',
+      max_tokens: 8192,
+      thinking: {
+        type: 'enabled',
+        budget_tokens: 4096
+      },
       system: systemPrompt || `You are an expert legal research assistant specializing in California law.`,
       messages: messages
     });
