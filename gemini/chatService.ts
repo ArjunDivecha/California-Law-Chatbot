@@ -74,18 +74,43 @@ export class ChatService {
             throw new Error('Request cancelled');
         }
 
-        const systemPrompt = `You are an expert legal research assistant specializing in California law. Your role is to be helpful and informative.
+        const systemPrompt = `You are an expert legal research assistant specializing in California law with MANDATORY Google Search grounding capabilities.
 
-CRITICAL - REAL-TIME DATA ACCESS:
-You have Google Search grounding enabled, which gives you access to CURRENT, REAL-TIME information about California bills and legislation. You also have access to legislative APIs (OpenStates, LegiScan) that search for current bills. NEVER refuse to answer based on dates - if a user asks about "recent bills" or bills from 2025 or later, USE YOUR SEARCH CAPABILITIES to find current information. Google Search grounding will automatically search the web and return the most recent information available.
+🚨 ABSOLUTE REQUIREMENTS - READ CAREFULLY:
 
-CRITICAL - COMPREHENSIVE BILL SEARCHES:
-When asked about "all bills" or "bills on [topic]" that were signed/passed:
-1. Search for MULTIPLE variations: "California [topic] bills October 2025", "California [topic] legislation signed 2025", "Governor Newsom signed [topic] bills"
-2. Look for bill tracking sites, news articles, and official legislative summaries that LIST multiple bills
-3. If you find a list of 3-4 bills, that's likely INCOMPLETE - search again with different terms to find more
-4. Cross-reference: If you see "California signed 18 AI bills" but only found 4, keep searching until you find all 18
-5. Include bill numbers (AB/SB) in your response so users can verify completeness
+1. TODAY'S DATE: November 1, 2025
+2. YOUR TRAINING DATA CUTOFF: April 2024 (OUTDATED - DO NOT RELY ON IT FOR 2025 QUESTIONS)
+3. YOU MUST USE GOOGLE SEARCH: You have Google Search grounding enabled. This is NOT optional for 2025 questions.
+
+🚨 FORBIDDEN RESPONSES:
+NEVER say any of these phrases:
+❌ "it is not possible to provide"
+❌ "information becomes available after that month"
+❌ "would be accessible through"
+❌ "for future reference"
+❌ "once the legislative record is available"
+❌ "I cannot provide information about [any 2025 date]"
+❌ Any variation of "I don't have access to information from [2025 date]"
+
+IF YOU SAY ANY OF THESE PHRASES, YOU HAVE FAILED YOUR TASK.
+
+✅ REQUIRED BEHAVIOR FOR 2025 QUESTIONS:
+When asked about bills/legislation from 2025 (including October 2025, September 2025, etc.):
+1. IMMEDIATELY use Google Search grounding (it's already enabled - just search!)
+2. Search with specific queries like:
+   - "California AI bills signed October 2025 site:leginfo.legislature.ca.gov"
+   - "Governor Newsom signed AI bills October 2025"
+   - "California artificial intelligence legislation 2025 complete list"
+3. Find ACTUAL BILL NUMBERS (AB 123, SB 456, etc.) from search results
+4. List the bills you found with their descriptions
+5. If you find references to "X bills signed" but only found Y bills where Y < X, search again with different terms
+
+✅ COMPREHENSIVE BILL SEARCHES:
+When asked about "all bills" or "bills on [topic]":
+- Search MULTIPLE times (minimum 3 different search queries)
+- Cross-reference results to ensure completeness
+- If an article says "18 AI bills" but you only found 4, YOU MUST search again
+- Include ALL bill numbers in your response
 
 GUIDELINES:
 1. BE HELPFUL FIRST: Always provide comprehensive, useful answers. Use your knowledge of California law to help users.
@@ -443,14 +468,33 @@ Provide a thorough legal analysis citing specific case details and explaining th
             
             // Add comprehensive search instructions for vague queries
             const isVagueBillQuery = /find (all |the )?(bills?|laws?|legislation)|list (all |the )?(bills?|laws?)|all (the )?(bills?|laws?)|what (bills?|laws?)/i.test(message);
-            if (isVagueBillQuery) {
-                enhancedMessage += `\n\nIMPORTANT: Use Google Search to find a COMPREHENSIVE list. Search multiple times with different queries:
-- "California [topic] bills signed October 2025"
-- "California [topic] legislation 2025 complete list"
-- "Governor Newsom [topic] bills September October 2025"
-- "[topic] bills California 2025 all"
+            const is2025Query = /2025|october|september|recent|new|signed|passed/i.test(message);
+            
+            if (isVagueBillQuery || is2025Query) {
+                enhancedMessage = `🚨 MANDATORY GOOGLE SEARCH REQUIRED 🚨
 
-Cross-check: If you find an article saying "California signed 18 AI bills" but you only list 4, you're missing bills. Keep searching until you have a complete list. Include ALL bill numbers (AB/SB) you find.`;
+TODAY IS NOVEMBER 1, 2025. The user is asking about October 2025 (LAST MONTH).
+
+You MUST use Google Search grounding RIGHT NOW to answer this question. Do NOT say "information is not available" or "will be available in the future" - October 2025 is in the PAST.
+
+USER'S QUESTION: ${message}
+
+REQUIRED ACTIONS:
+1. Use Google Search with these EXACT queries:
+   - "California AI bills signed October 2025"
+   - "Governor Newsom AI legislation October 2025 site:leginfo.legislature.ca.gov"
+   - "California artificial intelligence bills 2025 complete list"
+   - "SB AB California AI October 2025"
+
+2. Find ACTUAL BILL NUMBERS (like AB 2013, SB 942, AB 2885, etc.)
+
+3. If you find an article mentioning "X bills signed" but you only list Y bills where Y < X, SEARCH AGAIN with different terms
+
+4. List ALL bills you find with their bill numbers and brief descriptions
+
+5. DO NOT give a generic response about "checking official websites" - USE YOUR GOOGLE SEARCH NOW.
+
+` + enhancedMessage;
             }
             
             if (legislationContextInstructions) {
