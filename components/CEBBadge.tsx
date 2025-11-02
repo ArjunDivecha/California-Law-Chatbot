@@ -9,29 +9,14 @@
  */
 
 import React from 'react';
-import type { CEBSource } from '../types';
 
 interface CEBBadgeProps {
-  sources: (any | CEBSource)[];
-  category?: string;
+  category: string;
 }
 
-export const CEBBadge: React.FC<CEBBadgeProps> = ({ sources, category }) => {
-  // Check if any sources are CEB sources
-  const hasCEBSources = sources?.some((s): s is CEBSource => 'isCEB' in s && s.isCEB);
-  
-  if (!hasCEBSources) {
-    return null;
-  }
-
-  // Get category from sources if not provided
-  const cebCategory = category || 
-    (sources?.find((s): s is CEBSource => 'isCEB' in s && s.isCEB) as CEBSource)?.category;
-
+const CEBBadge: React.FC<CEBBadgeProps> = ({ category }) => {
   // Format category name for display
-  const getCategoryDisplay = (cat?: string): string => {
-    if (!cat) return 'CEB';
-    
+  const getCategoryDisplay = (cat: string): string => {
     switch (cat) {
       case 'trusts_estates':
         return 'Trusts & Estates';
@@ -80,7 +65,7 @@ export const CEBBadge: React.FC<CEBBadgeProps> = ({ sources, category }) => {
         color: '#78350f', // Very dark amber
         boxShadow: 'inset 0 1px 2px rgba(0, 0, 0, 0.1)',
       }}>
-        {getCategoryDisplay(cebCategory)}
+        {getCategoryDisplay(category)}
       </span>
       
       {/* Info icon with tooltip */}
@@ -97,30 +82,4 @@ export const CEBBadge: React.FC<CEBBadgeProps> = ({ sources, category }) => {
   );
 };
 
-/**
- * INTEGRATION INSTRUCTIONS FOR Message.tsx:
- * 
- * 1. Import the CEBBadge component:
- *    import { CEBBadge } from './CEBBadge';
- * 
- * 2. Import CEBSource type:
- *    import type { CEBSource } from '../types';
- * 
- * 3. Add the badge before the existing source badges in the Message component:
- * 
- *    {message.role === MessageRole.BOT && (
- *      <>
- *        <CEBBadge sources={message.sources} category={message.cebCategory} />
- *        
- *        {/* Existing badges below... *\/}
- *        {hasCourtListenerSources && (
- *          <div style={{...}}>
- *            ...
- *          </div>
- *        )}
- *      </>
- *    )}
- * 
- * That's it! The badge will automatically show for CEB-based responses.
- */
-
+export default CEBBadge;
