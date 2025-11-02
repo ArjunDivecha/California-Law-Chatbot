@@ -1,10 +1,11 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { ChatMessage, MessageRole } from '../types';
+import { ChatMessage, MessageRole, SourceMode } from '../types';
 import { ChatService } from '../gemini/chatService';
 
 export const useChat = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [sourceMode, setSourceMode] = useState<SourceMode>('hybrid'); // Default to hybrid mode
   
   const chatServiceRef = useRef<ChatService | null>(null);
   const courtListenerApiKeyRef = useRef<string | null>(null);
@@ -92,8 +93,8 @@ export const useChat = () => {
         text: msg.text
       }));
       
-      // Pass conversation history and abort signal to ChatService
-      const botResponseData = await chatServiceRef.current.sendMessage(text, conversationHistory, abortController.signal);
+      // Pass conversation history, source mode, and abort signal to ChatService
+      const botResponseData = await chatServiceRef.current.sendMessage(text, conversationHistory, sourceMode, abortController.signal);
       
       // Check if request was cancelled
       if (abortController.signal.aborted) {
@@ -132,7 +133,13 @@ export const useChat = () => {
         abortControllerRef.current = null;
       }
     }
-  }, []);
+  }, [messages, sourceMode]); // Add sourceMode to dependencies
 
-  return { messages, sendMessage, isLoading };
+  return { 
+    messages, 
+    sendMessage, 
+    isLoading,
+    sourceMode,
+    setSourceMode
+  };
 };

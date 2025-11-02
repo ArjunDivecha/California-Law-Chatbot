@@ -12,6 +12,7 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.68.0",
     "@google/genai": "^1.27.0",
+    "@upstash/vector": "^1.1.5",
     "dotenv": "^17.2.3",
     "lucide-react": "^0.548.0",
     "openai": "^6.7.0",

@@ -4,9 +4,10 @@ import { useChat } from './hooks/useChat';
 import ChatWindow from './components/ChatWindow';
 import ChatInput from './components/ChatInput';
 import ErrorBoundary from './components/ErrorBoundary';
+import { SourceModeSelector } from './components/SourceModeSelector';
 
 const App: React.FC = () => {
-  const { messages, sendMessage, isLoading } = useChat();
+  const { messages, sendMessage, isLoading, sourceMode, setSourceMode } = useChat();
   const [showConfidentialityWarning, setShowConfidentialityWarning] = useState(true);
   const [showAIDisclosure, setShowAIDisclosure] = useState(false);
   const [isClient, setIsClient] = useState(false);
@@ -58,6 +59,10 @@ const App: React.FC = () => {
                 ⚠️ AI legal information, not legal advice. Verify sources; consult a licensed attorney for advice.
               </p>
             </div>
+          </div>
+          {/* Source Mode Selector */}
+          <div className="w-[85%] mx-auto mt-3">
+            <SourceModeSelector mode={sourceMode} onModeChange={setSourceMode} />
           </div>
         </header>
         <main className="flex-1 overflow-hidden">
@@ -201,6 +206,10 @@ const App: React.FC = () => {
               ⚠️ AI legal information, not legal advice. Verify sources; consult a licensed attorney for advice.
             </p>
           </div>
+        </div>
+        {/* Source Mode Selector */}
+        <div className="w-[85%] mx-auto mt-3">
+          <SourceModeSelector mode={sourceMode} onModeChange={setSourceMode} />
         </div>
       </header>
 

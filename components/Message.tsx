@@ -2,7 +2,8 @@ import React from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { MessageRole } from '../types';
-import type { ChatMessage, Source } from '../types';
+import type { ChatMessage, Source, CEBSource } from '../types';
+import CEBBadge from './CEBBadge';
 
 interface MessageProps {
   message: ChatMessage;
@@ -228,6 +229,51 @@ const Message: React.FC<MessageProps> = ({ message }) => {
   // Conditionally render source list only if there are no inline citations
   const showSourceList = message.sources && message.sources.length > 0 && !message.text.match(/\[\d+\]/);
 
+  // Check if this is a CEB-based response
+  const isCEBBased = message.isCEBBased || (message.sources && message.sources.some(s => 'isCEB' in s && s.isCEB));
+  const cebCategory = message.cebCategory || (message.sources && message.sources.find(s => 'isCEB' in s && s.isCEB) as CEBSource)?.category;
+  
+  // Get source mode
+  const sourceMode = message.sourceMode || 'hybrid';
+  
+  // Get mode badge
+  const getModeBadge = () => {
+    switch (sourceMode) {
+      case 'ceb-only':
+        return (
+          <div className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3 h-3 mr-1">
+              <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/>
+            </svg>
+            CEB Only
+          </div>
+        );
+      case 'ai-only':
+        return (
+          <div className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3 h-3 mr-1">
+              <rect width="18" height="18" x="3" y="3" rx="2"/>
+              <path d="M9 9h.01"/>
+              <path d="M15 9h.01"/>
+              <path d="M9 15c.5.5 1.5 1 3 1s2.5-.5 3-1"/>
+            </svg>
+            AI Only
+          </div>
+        );
+      case 'hybrid':
+        return (
+          <div className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3 h-3 mr-1">
+              <path d="M12 2v20M2 12h20"/>
+            </svg>
+            Hybrid Mode
+          </div>
+        );
+      default:
+        return null;
+    }
+  };
+
   return (
   <div className="flex justify-start">
       <div className="flex items-start space-x-4 w-full max-w-[90%]">
@@ -235,6 +281,13 @@ const Message: React.FC<MessageProps> = ({ message }) => {
           <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6 text-gray-600"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg>
         </div>
         <div className="bg-white rounded-lg rounded-bl-none p-5 border border-gray-200 shadow-md w-full" style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}>
+        {/* Mode Badge */}
+        <div className="mb-3 flex items-center gap-2 flex-wrap">
+          {getModeBadge()}
+          {isCEBBased && cebCategory && <CEBBadge category={cebCategory} />}
+        </div>
+        
+        {/* CourtListener Badge */}
         {usedCourtListener && (
         <div className="mb-3 flex items-center">
         <div className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
@@ -243,7 +296,9 @@ const Message: React.FC<MessageProps> = ({ message }) => {
         </div>
         </div>
         )}
-        {getVerificationBadge() && (
+        
+        {/* Verification Badge */}
+        {getVerificationBadge() && verificationStatus !== 'not_needed' && (
           <div className="mb-3 flex items-center">
             {getVerificationBadge()}
           </div>

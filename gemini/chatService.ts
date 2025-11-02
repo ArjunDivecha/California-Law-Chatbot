@@ -1,5 +1,5 @@
 
-import type { Source, Claim, VerificationReport, VerificationStatus } from '../types';
+import type { Source, Claim, VerificationReport, VerificationStatus, SourceMode, CEBSource } from '../types';
 import { fetchWithRetry } from '../utils/fetchWithRetry';
 import { VerifierService } from '../services/verifierService';
 import { GuardrailsService } from '../services/guardrailsService';
@@ -12,6 +12,9 @@ export interface BotResponse {
     verificationStatus?: VerificationStatus;
     verificationReport?: VerificationReport;
     claims?: Claim[];
+    isCEBBased?: boolean;
+    cebCategory?: string;
+    sourceMode?: SourceMode;
 }
 
 export class ChatService {
@@ -215,16 +218,42 @@ Remember: You're trained on California law AND you have access to real-time sear
         }
     }
 
-    async sendMessage(message: string, conversationHistory?: Array<{role: string, text: string}>, signal?: AbortSignal): Promise<BotResponse> {
+    async sendMessage(message: string, conversationHistory?: Array<{role: string, text: string}>, sourceMode: SourceMode = 'hybrid', signal?: AbortSignal): Promise<BotResponse> {
         // Check for cancellation at the start
         if (signal?.aborted) {
             throw new Error('Request cancelled');
         }
+        
+        // Handle simple greetings
         if (message.trim().toLowerCase() === 'hello' || message.trim().toLowerCase() === 'hi') {
             return {
                 text: "Hello! I am the California Law Chatbot. How can I help you with your legal research today?",
-                sources: []
+                sources: [],
+                sourceMode
             };
+        }
+
+        // Route based on source mode
+        console.log(`🔀 Routing to ${sourceMode} mode`);
+        switch (sourceMode) {
+            case 'ceb-only':
+                return await this.processCEBOnly(message, conversationHistory, signal);
+            case 'ai-only':
+                return await this.processAIOnly(message, conversationHistory, signal);
+            case 'hybrid':
+            default:
+                return await this.processHybrid(message, conversationHistory, signal);
+        }
+    }
+
+    /**
+     * AI Only Mode - Uses existing external APIs (CourtListener, OpenStates, LegiScan)
+     * This is the original sendMessage logic
+     */
+    private async processAIOnly(message: string, conversationHistory?: Array<{role: string, text: string}>, signal?: AbortSignal): Promise<BotResponse> {
+        // Check for cancellation
+        if (signal?.aborted) {
+            throw new Error('Request cancelled');
         }
 
         // Smart CourtListener detection - only search when query is about case law
@@ -1157,7 +1186,8 @@ Key California legal sources to reference:
                 sources: uniqueSources,
                 verificationStatus,
                 verificationReport,
-                claims
+                claims,
+                sourceMode: 'ai-only'
             };
 
         } catch (error: any) {
@@ -1165,12 +1195,320 @@ Key California legal sources to reference:
             if (signal?.aborted || error.message === 'Request cancelled') {
                 throw new Error('Request cancelled');
             }
-            console.error('❌ Chat error:', error);
+            console.error('❌ processAIOnly error:', error);
             console.error('Error details:', error.message, error.stack);
             return {
                 text: "I'm having trouble connecting right now. Please try again.",
-                sources: []
+                sources: [],
+                sourceMode: 'ai-only'
             };
+        }
+    }
+
+    /**
+     * CEB Only Mode - Uses only CEB practice guides (no verification needed)
+     */
+    private async processCEBOnly(message: string, conversationHistory?: Array<{role: string, text: string}>, signal?: AbortSignal): Promise<BotResponse> {
+        console.log('📚 CEB Only Mode - Querying authoritative practice guides...');
+        
+        try {
+            // Check for cancellation
+            if (signal?.aborted) {
+                throw new Error('Request cancelled');
+            }
+
+            // Detect category from message
+            const category = this.detectCEBCategory(message);
+            console.log(`📂 Detected category: ${category}`);
+
+            // Query CEB vector database
+            const cebResponse = await fetchWithRetry(
+                '/api/ceb-search',
+                {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        query: message,
+                        topK: 5,
+                        category
+                    }),
+                    signal
+                },
+                3,
+                1000
+            );
+
+            if (!cebResponse.ok) {
+                throw new Error(`CEB search failed: ${cebResponse.statusText}`);
+            }
+
+            const cebData = await cebResponse.json();
+            const cebSources: CEBSource[] = cebData.sources || [];
+
+            console.log(`✅ Found ${cebSources.length} CEB sources`);
+
+            // Check if we have high-confidence results
+            const highConfidenceSources = cebSources.filter(s => s.confidence >= 0.7);
+
+            if (highConfidenceSources.length === 0) {
+                return {
+                    text: "I couldn't find relevant information in the CEB practice guides for this query. Please try rephrasing your question or switch to Hybrid mode for broader sources.",
+                    sources: [],
+                    sourceMode: 'ceb-only',
+                    verificationStatus: 'not_needed'
+                };
+            }
+
+            // Build context from CEB sources
+            const cebContext = highConfidenceSources
+                .map((source, idx) => `[${idx + 1}] ${source.title}\n${source.text}\n(${source.cebCitation})`)
+                .join('\n\n');
+
+            // Generate response using CEB context
+            const prompt = `You are a California legal research assistant. Answer the following question using ONLY the authoritative CEB (Continuing Education of the Bar) practice guide excerpts provided below.
+
+Question: ${message}
+
+CEB Practice Guide Excerpts:
+${cebContext}
+
+Instructions:
+1. Base your answer EXCLUSIVELY on the CEB excerpts provided
+2. Cite specific sources using [1], [2], etc. format
+3. Include relevant CEB citations (e.g., "Cal. Prac. Guide: Family Law § 3:45")
+4. If the excerpts don't fully answer the question, acknowledge the limitation
+5. Be precise and authoritative - these are official practice guides
+6. Do NOT add information from your general knowledge
+
+Answer:`;
+
+            const response = await this.sendToGemini(prompt, conversationHistory, signal);
+
+            // Assign IDs to sources for citation mapping
+            const sourcesWithIds = highConfidenceSources.map((source, index) => ({
+                ...source,
+                id: String(index + 1)
+            }));
+
+            return {
+                text: response.text,
+                sources: sourcesWithIds,
+                isCEBBased: true,
+                cebCategory: category,
+                sourceMode: 'ceb-only',
+                verificationStatus: 'not_needed' // CEB sources don't need verification
+            };
+
+        } catch (error: any) {
+            if (signal?.aborted || error.message === 'Request cancelled') {
+                throw error;
+            }
+            console.error('Error in processCEBOnly:', error);
+            return {
+                text: "I'm having trouble accessing the CEB practice guides right now. Please try again or switch to a different mode.",
+                sources: [],
+                sourceMode: 'ceb-only'
+            };
+        }
+    }
+
+    /**
+     * Hybrid Mode - Combines CEB with external APIs (CourtListener, OpenStates, LegiScan)
+     * CEB sources are prioritized and don't require verification
+     */
+    private async processHybrid(message: string, conversationHistory?: Array<{role: string, text: string}>, signal?: AbortSignal): Promise<BotResponse> {
+        console.log('🔄 Hybrid Mode - Combining CEB + AI sources...');
+        
+        try {
+            // Check for cancellation
+            if (signal?.aborted) {
+                throw new Error('Request cancelled');
+            }
+
+            // Detect category from message
+            const category = this.detectCEBCategory(message);
+            console.log(`📂 Detected category: ${category}`);
+
+            // Parallelize CEB search and AI sources
+            console.log('🔎 Starting parallel searches (CEB + AI)...');
+            const [cebResult, aiResult] = await Promise.all([
+                // CEB search
+                fetchWithRetry(
+                    '/api/ceb-search',
+                    {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            query: message,
+                            topK: 3, // Fewer CEB sources in hybrid mode
+                            category
+                        }),
+                        signal
+                    },
+                    3,
+                    1000
+                ).then(async (r) => {
+                    if (!r.ok) throw new Error('CEB search failed');
+                    const data = await r.json();
+                    return { sources: data.sources || [] };
+                }).catch(err => {
+                    if (signal?.aborted || err.message === 'Request cancelled') throw err;
+                    console.error('❌ CEB search failed:', err);
+                    return { sources: [] };
+                }),
+                
+                // AI sources (reuse existing logic)
+                this.processAIOnly(message, conversationHistory, signal).catch(err => {
+                    if (signal?.aborted || err.message === 'Request cancelled') throw err;
+                    console.error('❌ AI search failed:', err);
+                    return { text: '', sources: [] };
+                })
+            ]);
+
+            const cebSources: CEBSource[] = cebResult.sources;
+            const aiSources: Source[] = aiResult.sources || [];
+
+            console.log(`✅ Found ${cebSources.length} CEB sources + ${aiSources.length} AI sources`);
+
+            // Filter high-confidence CEB sources
+            const highConfidenceCEB = cebSources.filter(s => s.confidence >= 0.7);
+
+            // Combine sources (CEB first)
+            const allSources: (CEBSource | Source)[] = [
+                ...highConfidenceCEB,
+                ...aiSources
+            ];
+
+            // Assign IDs to all sources
+            const sourcesWithIds = allSources.map((source, index) => ({
+                ...source,
+                id: String(index + 1)
+            }));
+
+            // Build context from both CEB and AI sources
+            let context = '';
+            
+            if (highConfidenceCEB.length > 0) {
+                context += 'AUTHORITATIVE CEB PRACTICE GUIDES (Primary Source - No Verification Needed):\n';
+                context += highConfidenceCEB
+                    .map((source, idx) => `[${idx + 1}] ${source.title}\n${source.text}\n(${source.cebCitation})`)
+                    .join('\n\n');
+                context += '\n\n';
+            }
+
+            if (aiSources.length > 0) {
+                context += 'SUPPLEMENTARY SOURCES (Case Law, Legislation):\n';
+                context += aiSources
+                    .map((source, idx) => {
+                        const sourceIdx = highConfidenceCEB.length + idx + 1;
+                        return `[${sourceIdx}] ${source.title}\n${source.excerpt || ''}`;
+                    })
+                    .join('\n\n');
+            }
+
+            // Generate response with hybrid context
+            const prompt = `You are a California legal research assistant. Answer the following question using the sources provided below.
+
+Question: ${message}
+
+${context}
+
+Instructions:
+1. PRIORITIZE CEB practice guide excerpts - they are authoritative and don't need verification
+2. Use supplementary sources (case law, legislation) to provide additional context
+3. Cite all sources using [1], [2], etc. format
+4. For CEB sources, include the CEB citation (e.g., "Cal. Prac. Guide: Family Law § 3:45")
+5. Be comprehensive but accurate - acknowledge if sources don't fully answer the question
+6. Clearly distinguish between CEB guidance (authoritative) and case law/legislation (supplementary)
+
+Answer:`;
+
+            const response = await this.sendToGemini(prompt, conversationHistory, signal);
+
+            // Determine if verification is needed
+            // CEB-based answers don't need verification, but AI sources do
+            const needsVerification = aiSources.length > 0 && highConfidenceCEB.length === 0;
+            const isCEBBased = highConfidenceCEB.length > 0;
+
+            let verificationStatus: VerificationStatus = 'not_needed';
+            let verificationReport: VerificationReport | undefined;
+            let finalAnswer = response.text;
+
+            // Only verify if we're relying primarily on AI sources
+            if (needsVerification && aiSources.length > 0) {
+                const claims = VerifierService.extractClaimsFromAnswer(response.text, sourcesWithIds);
+                const isHighRisk = ConfidenceGatingService.isHighRiskCategory(message, sourcesWithIds);
+                const shouldVerify = VerifierService.shouldVerify(message, isHighRisk);
+
+                if (shouldVerify && claims.length > 0) {
+                    try {
+                        const verifierOutput = await this.verifier.verifyClaims(response.text, claims, sourcesWithIds, signal);
+                        verificationStatus = verifierOutput.status;
+                        verificationReport = verifierOutput.verificationReport;
+                        finalAnswer = verifierOutput.verifiedAnswer;
+                    } catch (error: any) {
+                        if (signal?.aborted || error.message === 'Request cancelled') throw error;
+                        console.error('Verification failed:', error);
+                    }
+                }
+            }
+
+            return {
+                text: finalAnswer,
+                sources: sourcesWithIds,
+                isCEBBased,
+                cebCategory: isCEBBased ? category : undefined,
+                sourceMode: 'hybrid',
+                verificationStatus,
+                verificationReport
+            };
+
+        } catch (error: any) {
+            if (signal?.aborted || error.message === 'Request cancelled') {
+                throw error;
+            }
+            console.error('Error in processHybrid:', error);
+            return {
+                text: "I'm having trouble processing your request. Please try again.",
+                sources: [],
+                sourceMode: 'hybrid'
+            };
+        }
+    }
+
+    /**
+     * Detect CEB category from message content
+     */
+    private detectCEBCategory(message: string): 'trusts_estates' | 'family_law' | 'business_litigation' {
+        const lowerMessage = message.toLowerCase();
+        
+        // Family law keywords
+        const familyKeywords = ['divorce', 'custody', 'child support', 'spousal support', 'alimony', 
+                               'marriage', 'family law', 'visitation', 'paternity', 'adoption',
+                               'domestic violence', 'restraining order', 'family code'];
+        
+        // Business litigation keywords
+        const businessKeywords = ['contract', 'breach', 'business', 'litigation', 'commercial',
+                                 'corporate', 'partnership', 'llc', 'shareholder', 'fraud',
+                                 'negligence', 'tort', 'damages', 'civil procedure'];
+        
+        // Trusts & estates keywords
+        const trustsKeywords = ['trust', 'estate', 'will', 'probate', 'inheritance', 'beneficiary',
+                               'executor', 'administrator', 'conservatorship', 'guardianship',
+                               'power of attorney', 'advance directive', 'probate code'];
+        
+        // Count matches for each category
+        const familyScore = familyKeywords.filter(kw => lowerMessage.includes(kw)).length;
+        const businessScore = businessKeywords.filter(kw => lowerMessage.includes(kw)).length;
+        const trustsScore = trustsKeywords.filter(kw => lowerMessage.includes(kw)).length;
+        
+        // Return category with highest score (default to trusts_estates)
+        if (familyScore > businessScore && familyScore > trustsScore) {
+            return 'family_law';
+        } else if (businessScore > trustsScore) {
+            return 'business_litigation';
+        } else {
+            return 'trusts_estates'; // Default
         }
     }
 
