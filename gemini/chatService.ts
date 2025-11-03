@@ -345,20 +345,23 @@ Remember: You're trained on California law AND you have access to real-time sear
 
                     enhancedMessage += `
 
-I have retrieved the following case information from CourtListener database. Please analyze these cases comprehensively:
+I have retrieved the following case information from CourtListener database:
 
 ${apiResult.content}
 
-INSTRUCTIONS:
-1. For each case, identify the legal issues, parties involved, and jurisdiction
-2. Analyze the significance and precedential value based on available metadata
-3. If opinion text is available, summarize key holdings and reasoning
-4. If only metadata is available, provide context using your legal knowledge
-5. Compare cases where relevant and identify trends or patterns
-6. Note any limitations in the analysis due to missing full text
-7. Include specific citations like "Case Name (Year)" for each case mentioned
+CRITICAL INSTRUCTIONS - YOU MUST FOLLOW THESE:
+1. Write a COMPLETE, COHERENT ANSWER in proper paragraphs - DO NOT just list snippets or case metadata
+2. SYNTHESIZE case information into a unified, professional legal analysis
+3. For each relevant case, identify the legal issues, parties, and holdings
+4. Analyze the significance and precedential value of the cases
+5. Use clear topic sentences and logical organization
+6. Cite cases using proper legal citation format: "Case Name, Citation (Year)"
+7. Compare cases where relevant and identify trends or patterns
+8. Be thorough but readable - write for a 10th grade reading level
+9. DO NOT output raw JSON, snippets, or unformatted data - write a professional legal analysis
+10. Your answer should read like a legal memorandum, not a list of case summaries
 
-Provide a thorough legal analysis citing specific case details and explaining their relevance to the query.`;
+Provide a thorough legal analysis explaining how these cases relate to the query.`;
 
                     // Check for cancellation before Claude call
                     if (signal?.aborted) {
@@ -532,7 +535,14 @@ REQUIRED ACTIONS:
 
             enhancedMessage += `
 
-Please provide comprehensive, accurate information. For any legal claims, statutes, case law, or California legislation mentioned, include specific citations and references. Format citations as [Source Name](URL) or reference official legal sources.
+CRITICAL INSTRUCTIONS - YOU MUST FOLLOW THESE:
+1. Write a COMPLETE, COHERENT ANSWER in proper paragraphs - DO NOT just list snippets or raw source text
+2. SYNTHESIZE information from multiple sources (legislation, case law, web search) into a unified, professional legal explanation
+3. Use clear topic sentences and logical organization
+4. Cite sources throughout your answer with specific references
+5. Be thorough but readable - write for a 10th grade reading level
+6. DO NOT output raw JSON, snippets, URLs, or unformatted data - write a professional legal analysis
+7. Your answer should read like a legal memorandum, not a list of search results
 
 Key California legal sources to reference:
 - California Family Code: https://leginfo.legislature.ca.gov/faces/codes_displayText.xhtml?lawCode=FAM
@@ -540,7 +550,7 @@ Key California legal sources to reference:
 - California Probate Code: https://leginfo.legislature.ca.gov/faces/codes_displayText.xhtml?lawCode=PROB
 - California Courts: https://courts.ca.gov/
 - Official court opinions and case law through CourtListener
-- Current California bills (AB/SB/etc.) with status and summaries drawn from the provided legislative research`;
+- Current California bills (AB/SB/etc.) with status and summaries`;
 
             const response = await this.sendToGemini(enhancedMessage, conversationHistory, signal);
             
@@ -1265,20 +1275,26 @@ Key California legal sources to reference:
                 .join('\n\n');
 
             // Generate response using CEB context
-            const prompt = `You are a California legal research assistant. Answer the following question using ONLY the authoritative CEB (Continuing Education of the Bar) practice guide excerpts provided below.
+            const prompt = `You are a California legal research assistant. Write a comprehensive, well-organized answer to the following question using ONLY the authoritative CEB (Continuing Education of the Bar) practice guide excerpts provided below.
 
 Question: ${message}
 
 CEB Practice Guide Excerpts:
 ${cebContext}
 
-Instructions:
-1. Base your answer EXCLUSIVELY on the CEB excerpts provided
-2. Cite specific sources using [1], [2], etc. format
-3. Include relevant CEB citations (e.g., "Cal. Prac. Guide: Family Law § 3:45")
-4. If the excerpts don't fully answer the question, acknowledge the limitation
-5. Be precise and authoritative - these are official practice guides
-6. Do NOT add information from your general knowledge
+CRITICAL INSTRUCTIONS - YOU MUST FOLLOW THESE:
+1. Write a COMPLETE, COHERENT ANSWER in proper paragraphs - DO NOT just list snippets or raw text
+2. SYNTHESIZE information from the CEB excerpts into a unified, professional legal explanation
+3. Base your answer EXCLUSIVELY on the CEB excerpts provided - do not add outside information
+4. Cite sources using [1], [2], etc. format throughout your answer
+5. Include relevant CEB citations (e.g., "Cal. Prac. Guide: Family Law § 3:45")
+6. Use clear topic sentences and logical organization
+7. If the excerpts don't fully answer the question, acknowledge this limitation clearly
+8. Be thorough but readable - write for a 10th grade reading level
+9. DO NOT output raw JSON, snippets, or unformatted data - write a professional legal analysis
+10. Your answer should be authoritative and precise - these are official practice guides
+
+Your answer should read like a legal memorandum based on authoritative sources, not a list of search results.
 
 Answer:`;
 
@@ -1407,19 +1423,25 @@ Answer:`;
             }
 
             // Generate response with hybrid context
-            const prompt = `You are a California legal research assistant. Answer the following question using the sources provided below.
+            const prompt = `You are a California legal research assistant. Write a comprehensive, well-organized answer to the following question by synthesizing information from the authoritative sources provided below.
 
 Question: ${message}
 
 ${context}
 
-Instructions:
-1. PRIORITIZE CEB practice guide excerpts - they are authoritative and don't need verification
-2. Use supplementary sources (case law, legislation) to provide additional context
-3. Cite all sources using [1], [2], etc. format
-4. For CEB sources, include the CEB citation (e.g., "Cal. Prac. Guide: Family Law § 3:45")
-5. Be comprehensive but accurate - acknowledge if sources don't fully answer the question
-6. Clearly distinguish between CEB guidance (authoritative) and case law/legislation (supplementary)
+CRITICAL INSTRUCTIONS - YOU MUST FOLLOW THESE:
+1. Write a COMPLETE, COHERENT ANSWER in proper paragraphs - DO NOT just list snippets or raw source text
+2. SYNTHESIZE information from multiple sources into a unified, professional legal explanation
+3. START with the most important information from CEB practice guides (these are authoritative)
+4. INTEGRATE case law and legislation to support and expand on CEB guidance
+5. Cite sources using [1], [2], etc. format throughout your answer
+6. For CEB sources, include the CEB citation (e.g., "Cal. Prac. Guide: Family Law § 3:45")
+7. Use clear topic sentences and logical organization
+8. If sources conflict, explain the different approaches
+9. Be thorough but readable - write for a 10th grade reading level
+10. DO NOT output raw JSON, snippets, or unformatted data - write a professional legal analysis
+
+Your answer should read like a legal memorandum, not a list of search results.
 
 Answer:`;
 
