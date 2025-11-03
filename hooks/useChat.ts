@@ -87,53 +87,109 @@ export const useChat = () => {
     setMessages(prevMessages => [...prevMessages, userMessage]);
     setIsLoading(true);
 
+    // Create a temporary bot message for streaming
+    const botMessageId = `bot-${Date.now()}`;
+    const initialBotMessage: ChatMessage = {
+      id: botMessageId,
+      role: MessageRole.BOT,
+      text: '',
+      sources: [],
+      sourceMode,
+    };
+
+    // Add initial empty bot message
+    setMessages(prevMessages => [...prevMessages, initialBotMessage]);
+
     try {
       // Build conversation history from messages (exclude the current user message just added)
       const conversationHistory = messages.map(msg => ({
         role: msg.role === MessageRole.USER ? 'user' : 'assistant',
         text: msg.text
       }));
-      
-      // Pass conversation history, source mode, and abort signal to ChatService
-      const botResponseData = await chatServiceRef.current.sendMessage(text, conversationHistory, sourceMode, abortController.signal);
-      
+
+      // Create streaming callbacks
+      const streamCallbacks = {
+        onToken: (token: string) => {
+          // Update the bot message with new token
+          setMessages(prevMessages =>
+            prevMessages.map(msg =>
+              msg.id === botMessageId
+                ? { ...msg, text: msg.text + token }
+                : msg
+            )
+          );
+        },
+        onComplete: (fullText: string) => {
+          console.log('✅ Streaming completed');
+        },
+        onMetadata: (metadata: any) => {
+          console.log('📊 Received metadata:', metadata);
+        },
+        onError: (error: Error) => {
+          console.error('❌ Streaming error:', error);
+        }
+      };
+
+      // Pass conversation history, source mode, abort signal, and stream callbacks to ChatService
+      const botResponseData = await chatServiceRef.current.sendMessage(
+        text,
+        conversationHistory,
+        sourceMode,
+        abortController.signal,
+        streamCallbacks
+      );
+
       // Check if request was cancelled
       if (abortController.signal.aborted) {
         console.log('✅ Request was cancelled, ignoring response');
+        // Remove the temporary message
+        setMessages(prevMessages => prevMessages.filter(msg => msg.id !== botMessageId));
         return;
       }
-      
-      const botMessage: ChatMessage = {
-        id: `bot-${Date.now()}`,
-        role: MessageRole.BOT,
-        text: botResponseData.text,
-        sources: botResponseData.sources,
-        verificationStatus: botResponseData.verificationStatus,
-        verificationReport: botResponseData.verificationReport,
-        claims: botResponseData.claims,
-        sourceMode: botResponseData.sourceMode,
-        isCEBBased: botResponseData.isCEBBased,
-        cebCategory: botResponseData.cebCategory,
-      };
-      setMessages(prevMessages => [...prevMessages, botMessage]);
+
+      // Update the bot message with final data (sources, verification status, etc.)
+      setMessages(prevMessages =>
+        prevMessages.map(msg =>
+          msg.id === botMessageId
+            ? {
+                ...msg,
+                text: botResponseData.text,
+                sources: botResponseData.sources,
+                verificationStatus: botResponseData.verificationStatus,
+                verificationReport: botResponseData.verificationReport,
+                claims: botResponseData.claims,
+                sourceMode: botResponseData.sourceMode,
+                isCEBBased: botResponseData.isCEBBased,
+                cebCategory: botResponseData.cebCategory,
+              }
+            : msg
+        )
+      );
     } catch (error: any) {
       // Don't show error for cancelled requests
       if (abortController.signal.aborted || error.message === 'Request cancelled') {
         console.log('✅ Request was cancelled');
+        // Remove the temporary message
+        setMessages(prevMessages => prevMessages.filter(msg => msg.id !== botMessageId));
         return;
       }
 
       console.error('Failed to get bot response:', error);
-      const errorMessage: ChatMessage = {
-        id: `error-${Date.now()}`,
-        role: MessageRole.BOT,
-        text: "I'm sorry, but I'm having trouble connecting to my knowledge base right now. Please try again in a moment.",
-      };
-      setMessages(prevMessages => [...prevMessages, errorMessage]);
+      // Update the bot message with error text
+      setMessages(prevMessages =>
+        prevMessages.map(msg =>
+          msg.id === botMessageId
+            ? {
+                ...msg,
+                text: "I'm sorry, but I'm having trouble connecting to my knowledge base right now. Please try again in a moment.",
+              }
+            : msg
+        )
+      );
     } finally {
       // Only clear loading if this request wasn't cancelled
       if (!abortController.signal.aborted) {
-      setIsLoading(false);
+        setIsLoading(false);
         abortControllerRef.current = null;
       }
     }
