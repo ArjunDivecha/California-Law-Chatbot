@@ -4,13 +4,13 @@ A sophisticated AI-powered legal research assistant specializing in California l
 
 ## 🎯 Overview
 
-This chatbot combines Google's Gemini 2.5 Flash-Lite (generator) with Anthropic's Claude Haiku 4.5 (verifier) and direct access to official California legal sources to provide accurate, well-researched answers to legal questions. It automatically detects case law queries and searches CourtListener's database of millions of court opinions, while providing verified citations to official legal codes and statutes.
+This chatbot combines Google's Gemini 2.5 Pro (generator) with Anthropic's Claude Sonnet 4.5 (verifier) and direct access to official California legal sources to provide accurate, well-researched answers to legal questions. It automatically detects case law queries and searches CourtListener's database of millions of court opinions, while providing verified citations to official legal codes and statutes.
 
 ## ✨ Key Features
 
 ### 🤖 AI-Powered Legal Analysis
-- **Generator**: Google Gemini 2.5 Flash-Lite for fast legal research and answer generation (8.8s avg response time)
-- **Verifier**: Anthropic Claude Haiku 4.5 for claim verification and fact-checking (13.3s avg response time)
+- **Generator**: Google Gemini 2.5 Pro for comprehensive legal research and answer generation
+- **Verifier**: Anthropic Claude Sonnet 4.5 for claim verification and fact-checking
 - Two-pass verification system for accuracy
 - Contextual understanding of California law
 - Comprehensive explanations with proper citations
@@ -95,8 +95,8 @@ Supports citations for:
 
 - **Frontend**: React 19, TypeScript, Vite
 - **AI Engine**: 
-  - **Generator**: Google Gemini 2.5 Flash (fastest model)
-  - **Verifier**: Anthropic Claude Haiku 4.5 (fast verification)
+  - **Generator**: Google Gemini 2.5 Pro (advanced reasoning with Google Search grounding)
+  - **Verifier**: Anthropic Claude Sonnet 4.5 (comprehensive claim verification)
   - **Embeddings**: OpenAI `text-embedding-3-small` (for CEB RAG)
 - **Vector Database**: Upstash Vector (for CEB document search)
 - **Styling**: Tailwind CSS (via inline styles)
@@ -110,8 +110,8 @@ Supports citations for:
 
 - Node.js 18+
 - npm or yarn
-- Google Gemini API key (for Gemini 2.5 Flash-Lite generator)
-- Anthropic API key (for Claude Haiku 4.5 verifier)
+- Google Gemini API key (for Gemini 2.5 Pro generator)
+- Anthropic API key (for Claude Sonnet 4.5 verifier)
 - CourtListener API key (optional, enhances functionality)
 
 ### Installation
@@ -136,10 +136,10 @@ Supports citations for:
 
    Edit `.env` and add your API keys:
    ```env
-   # Required: Google Gemini API key (for Gemini 2.5 Flash generator)
+   # Required: Google Gemini API key (for Gemini 2.5 Pro generator)
    GEMINI_API_KEY=your_gemini_api_key_here
    
-   # Required: Anthropic API key (for Claude Haiku 4.5 verifier)
+   # Required: Anthropic API key (for Claude Sonnet 4.5 verifier)
    ANTHROPIC_API_KEY=your_anthropic_api_key_here
 
    # Required: OpenAI API key (for embedding generation for CEB RAG)
@@ -174,13 +174,13 @@ Supports citations for:
 1. Visit [Google AI Studio](https://aistudio.google.com/)
 2. Create a new API key
 3. Add it to your `.env` file as `GEMINI_API_KEY`
-4. Used by Gemini 2.5 Flash for generating legal research answers
+4. Used by Gemini 2.5 Pro for generating legal research answers with Google Search grounding
 
 #### Anthropic API (Required - Verifier)
 1. Visit [Anthropic Console](https://console.anthropic.com/)
 2. Create a new API key
 3. Add it to your `.env` file as `ANTHROPIC_API_KEY`
-4. Used by Claude Haiku 4.5 for verifying claims against sources
+4. Used by Claude Sonnet 4.5 for verifying claims against sources
 
 #### OpenAI API (Required - CEB RAG)
 1. Visit [OpenAI Platform](https://platform.openai.com/api-keys)
