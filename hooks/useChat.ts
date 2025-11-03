@@ -110,6 +110,7 @@ export const useChat = () => {
       // Create streaming callbacks
       const streamCallbacks = {
         onToken: (token: string) => {
+          console.log('📝 Received token:', token.substring(0, 50) + (token.length > 50 ? '...' : ''));
           // Update the bot message with new token
           setMessages(prevMessages =>
             prevMessages.map(msg =>
@@ -120,7 +121,7 @@ export const useChat = () => {
           );
         },
         onComplete: (fullText: string) => {
-          console.log('✅ Streaming completed');
+          console.log('✅ Streaming completed. Total length:', fullText.length);
         },
         onMetadata: (metadata: any) => {
           console.log('📊 Received metadata:', metadata);
@@ -148,12 +149,13 @@ export const useChat = () => {
       }
 
       // Update the bot message with final data (sources, verification status, etc.)
+      // Keep the streamed text if it exists, otherwise use botResponseData.text
       setMessages(prevMessages =>
         prevMessages.map(msg =>
           msg.id === botMessageId
             ? {
                 ...msg,
-                text: botResponseData.text,
+                text: msg.text || botResponseData.text, // Preserve streamed text
                 sources: botResponseData.sources,
                 verificationStatus: botResponseData.verificationStatus,
                 verificationReport: botResponseData.verificationReport,
