@@ -233,17 +233,106 @@ Remember: You're trained on California law AND you have access to real-time sear
             };
         }
 
-        // Route based on source mode
+        // Expand vague follow-up questions with conversation context
+        // E.g., "What about 460?" after "What is Penal Code 459?" → "What is Penal Code 460?"
+        const expandedMessage = this.expandQueryWithContext(message, conversationHistory);
+        if (expandedMessage !== message) {
+            console.log(`🔄 Expanded query: "${message}" → "${expandedMessage}"`);
+        }
+
+        // Route based on source mode (use expanded message for searches)
         console.log(`🔀 Routing to ${sourceMode} mode`);
         switch (sourceMode) {
             case 'ceb-only':
-                return await this.processCEBOnly(message, conversationHistory, signal);
+                return await this.processCEBOnly(expandedMessage, conversationHistory, signal);
             case 'ai-only':
-                return await this.processAIOnly(message, conversationHistory, signal);
+                return await this.processAIOnly(expandedMessage, conversationHistory, signal);
             case 'hybrid':
             default:
-                return await this.processHybrid(message, conversationHistory, signal);
+                return await this.processHybrid(expandedMessage, conversationHistory, signal);
         }
+    }
+
+    /**
+     * Expand vague follow-up questions with conversation context
+     * Handles patterns like:
+     * - "What about 460?" after "What is Penal Code 459?" → "What is Penal Code 460?"
+     * - "Does it apply to houses?" after burglary question → "Regarding burglary, does it apply to houses?"
+     */
+    private expandQueryWithContext(message: string, conversationHistory?: Array<{role: string, text: string}>): string {
+        if (!conversationHistory || conversationHistory.length === 0) {
+            return message;
+        }
+
+        const lowerMessage = message.toLowerCase().trim();
+        
+        // Check for vague follow-up patterns
+        const isVagueFollowUp = 
+            /^what about|^how about|^and\s+\d+|^\d+\s*\?|^does it|^is it|^can it|^what if/i.test(message) ||
+            (message.length < 30 && /\?$/.test(message));
+
+        if (!isVagueFollowUp) {
+            return message;
+        }
+
+        // Get recent conversation for context (last 2 exchanges)
+        const recentMessages = conversationHistory.slice(-4);
+        let lastUserQuery = '';
+        
+        for (let i = recentMessages.length - 1; i >= 0; i--) {
+            if (recentMessages[i].role === 'user') {
+                lastUserQuery = recentMessages[i].text;
+                break;
+            }
+        }
+
+        if (!lastUserQuery) {
+            return message;
+        }
+
+        // Pattern 1: Handle "What about X?" where X is a code section number
+        const codeSectionPattern = /(Penal Code|Civil Code|Family Code|Business & Professions Code|Vehicle Code|Code of Civil Procedure|Evidence Code|Health & Safety Code|Labor Code|Government Code|Probate Code)\s*(?:section|§)?\s*(\d+(?:\.\d+)?)/i;
+        const codeMatch = lastUserQuery.match(codeSectionPattern);
+        
+        if (codeMatch) {
+            const codeType = codeMatch[1];
+            const sectionPattern = /\b(\d+(?:\.\d+)?)\b/;
+            const newSectionMatch = message.match(sectionPattern);
+            
+            if (newSectionMatch) {
+                return `What is ${codeType} section ${newSectionMatch[1]}?`;
+            }
+        }
+
+        // Pattern 2: Handle "Does it/Is it/Can it..." questions
+        if (/^does it|^is it|^can it|^will it|^would it/i.test(message)) {
+            // Extract main subject/topic from last query
+            const topicPatterns = [
+                /(?:what is|explain|define|about)\s+([^?]+?)(?:\?|$)/i,
+                /(?:regarding|concerning)\s+([^?]+?)(?:\?|$)/i,
+                /(?:code section|statute|law)\s+(\d+[^?]*?)(?:\?|$)/i
+            ];
+            
+            for (const pattern of topicPatterns) {
+                const match = lastUserQuery.match(pattern);
+                if (match) {
+                    const topic = match[1].trim();
+                    return `Regarding ${topic}, ${message}`;
+                }
+            }
+        }
+
+        // Pattern 3: Handle "What if..." or "How about..." scenario questions  
+        if (/^what if|^how about|^suppose/i.test(message)) {
+            const topicMatch = lastUserQuery.match(/(?:about|regarding|concerning|define|explain)\s+([^?]+)/i);
+            if (topicMatch) {
+                const topic = topicMatch[1].trim();
+                return `${message} (in the context of ${topic})`;
+            }
+        }
+
+        // If we can't expand it meaningfully, return original
+        return message;
     }
 
     /**
