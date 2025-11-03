@@ -110,6 +110,9 @@ export const useChat = () => {
         verificationStatus: botResponseData.verificationStatus,
         verificationReport: botResponseData.verificationReport,
         claims: botResponseData.claims,
+        sourceMode: botResponseData.sourceMode,
+        isCEBBased: botResponseData.isCEBBased,
+        cebCategory: botResponseData.cebCategory,
       };
       setMessages(prevMessages => [...prevMessages, botMessage]);
     } catch (error: any) {
