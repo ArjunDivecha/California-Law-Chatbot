@@ -1,0 +1,18 @@
+# CEB PDF Processing Requirements
+# Install with: pip install -r requirements.txt
+
+# PDF Processing
+PyMuPDF>=1.23.0  # Fast PDF text extraction
+
+# Data Processing
+pandas>=2.0.0
+openpyxl>=3.1.0  # For Excel output
+
+# AI/Embeddings
+openai>=1.0.0
+
+# Utilities
+python-dotenv>=1.0.0  # Environment variables
+tqdm>=4.66.0  # Progress bars
+requests>=2.31.0  # HTTP requests for Upstash API
+

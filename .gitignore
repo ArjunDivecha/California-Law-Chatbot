@@ -27,3 +27,12 @@ dist-ssr
 *.sw?
 .vercel
 .env*.local
+
+# CEB Processed Data (large files, not tracked)
+data/
+scripts/data/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
