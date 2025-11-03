@@ -16,6 +16,18 @@ This chatbot combines Google's Gemini 2.5 Flash-Lite (generator) with Anthropic'
 - Comprehensive explanations with proper citations
 - Intelligent query analysis and response generation
 
+### 📚 CEB (Continuing Education of the Bar) Integration
+- **✅ Fully Implemented**: Authoritative CEB practice guides integrated as primary RAG source
+- **5 Legal Verticals**: Trusts & Estates (40,263 chunks), Family Law (7,511 chunks), Business Litigation (13,711 chunks), Business Entities (10,766 chunks), Business Transactions (7,517 chunks)
+- **Total Coverage**: 77,406 vector embeddings from 2,554 PDF documents
+- **3 Source Modes**:
+  - **📚 CEB Only**: Authoritative CEB practice guides only (fastest, no verification needed)
+  - **🔄 Hybrid**: CEB + case law + legislation (recommended, most comprehensive)
+  - **🤖 AI Only**: Case law, legislation, and web search (no CEB)
+- **Vector Database**: Upstash Vector for fast semantic search
+- **Smart Category Detection**: Automatically routes queries to relevant CEB verticals
+- **CEB Verified Badge**: Responses from CEB sources display authoritative badge (no verification needed)
+
 ### 🏛️ CourtListener Integration
 - **✅ Fully Implemented**: Real-time case law searches from CourtListener database
 - Automatic detection of case law queries (keywords like "v.", "case", "court", "opinion")
@@ -83,10 +95,13 @@ Supports citations for:
 
 - **Frontend**: React 19, TypeScript, Vite
 - **AI Engine**: 
-  - **Generator**: Google Gemini 2.5 Flash-Lite (fastest model, 8.8s avg)
-  - **Verifier**: Anthropic Claude Haiku 4.5 (fast verification, 13.3s avg)
+  - **Generator**: Google Gemini 2.5 Flash (fastest model)
+  - **Verifier**: Anthropic Claude Haiku 4.5 (fast verification)
+  - **Embeddings**: OpenAI `text-embedding-3-small` (for CEB RAG)
+- **Vector Database**: Upstash Vector (for CEB document search)
 - **Styling**: Tailwind CSS (via inline styles)
 - **APIs**: CourtListener API v4, LegiScan API, OpenStates API
+- **Data Processing**: Python scripts for PDF processing and embedding generation
 - **Deployment**: Vercel-ready configuration
 
 ## 🚀 Quick Start
@@ -121,11 +136,18 @@ Supports citations for:
 
    Edit `.env` and add your API keys:
    ```env
-   # Required: Anthropic API key (for Claude Sonnet 4.5 generator)
-   ANTHROPIC_API_KEY=your_anthropic_api_key_here
-   
-   # Required: Google Gemini API key (for Gemini 2.5 Pro verifier)
+   # Required: Google Gemini API key (for Gemini 2.5 Flash generator)
    GEMINI_API_KEY=your_gemini_api_key_here
+   
+   # Required: Anthropic API key (for Claude Haiku 4.5 verifier)
+   ANTHROPIC_API_KEY=your_anthropic_api_key_here
+
+   # Required: OpenAI API key (for embedding generation for CEB RAG)
+   OPENAI_API_KEY=your_openai_api_key_here
+
+   # Required: Upstash Vector credentials (for CEB vector database)
+   UPSTASH_VECTOR_REST_URL=https://your-index.upstash.io
+   UPSTASH_VECTOR_REST_TOKEN=your_upstash_token_here
 
    # Optional: CourtListener API key for enhanced case law searches
    COURTLISTENER_API_KEY=your_courtlistener_api_key_here
@@ -148,17 +170,34 @@ Supports citations for:
 
 ### Required API Keys
 
-#### Anthropic API (Required - Generator)
-1. Visit [Anthropic Console](https://console.anthropic.com/)
-2. Create a new API key
-3. Add it to your `.env` file as `ANTHROPIC_API_KEY`
-4. Used by Claude Sonnet 4.5 for generating legal research answers
-
-#### Google Gemini API (Required - Verifier)
+#### Google Gemini API (Required - Generator)
 1. Visit [Google AI Studio](https://aistudio.google.com/)
 2. Create a new API key
 3. Add it to your `.env` file as `GEMINI_API_KEY`
-4. Used by Gemini 2.5 Pro for verifying claims against sources
+4. Used by Gemini 2.5 Flash for generating legal research answers
+
+#### Anthropic API (Required - Verifier)
+1. Visit [Anthropic Console](https://console.anthropic.com/)
+2. Create a new API key
+3. Add it to your `.env` file as `ANTHROPIC_API_KEY`
+4. Used by Claude Haiku 4.5 for verifying claims against sources
+
+#### OpenAI API (Required - CEB RAG)
+1. Visit [OpenAI Platform](https://platform.openai.com/api-keys)
+2. Create a new API key
+3. Add it to your `.env` file as `OPENAI_API_KEY`
+4. Used for generating embeddings for CEB document search (`text-embedding-3-small` model)
+
+#### Upstash Vector (Required - CEB Database)
+1. Visit [Upstash Console](https://console.upstash.com/)
+2. Create a new Vector database
+3. Set dimension to **1536** (for `text-embedding-3-small`)
+4. Set metric to **cosine**
+5. Copy the REST URL and token
+6. Add to your `.env` file:
+   - `UPSTASH_VECTOR_REST_URL`: Your vector database URL
+   - `UPSTASH_VECTOR_REST_TOKEN`: Your vector database token
+7. Used to store and search 77,406 CEB document embeddings
 
 #### OpenStates API (Optional)
 1. Visit [OpenStates API](https://openstates.org/api/)
@@ -180,24 +219,44 @@ The chatbot infrastructure supports these APIs, but integration is incomplete:
 
 ## 💡 Usage
 
+### Source Mode Selection
+
+Before asking questions, select your preferred source mode using the mode selector in the header:
+
+- **📚 CEB Only**: Fastest mode, uses only authoritative CEB practice guides (no verification needed)
+  - Best for: Trusts & Estates, Family Law, Business Litigation, Business Entities, Business Transactions questions
+  - Responses marked with "CEB VERIFIED" badge
+  
+- **🔄 Hybrid** (Recommended): Combines CEB practice guides with case law and legislation
+  - Best for: Comprehensive legal research combining authoritative guides with current case law
+  - Responses include both CEB sources and external legal sources
+  
+- **🤖 AI Only**: Uses case law, legislation, and web search only (no CEB)
+  - Best for: General legal research or when CEB coverage is insufficient
+  - Standard verification applies
+
 ### Basic Interaction
 
-1. **Ask legal questions** in natural language:
+1. **Select your source mode** using the mode selector buttons
+
+2. **Ask legal questions** in natural language:
+   - "How do I establish a revocable living trust in California?" (CEB Only recommended)
    - "What are the penalties for burglary in California?"
    - "How does California define domestic violence?"
    - "What is Penal Code section 459?"
 
-2. **Case law queries** are automatically detected:
+3. **Case law queries** are automatically detected (in Hybrid or AI Only modes):
    - "What was the ruling in People v. Anderson?"
    - "Search for cases about Miranda rights in California"
 
-3. **View responses** with automatic citations and source links
+4. **View responses** with automatic citations and source links
 
 ### Response Types
 
+- **CEB VERIFIED** (🟡 Amber badge with 📚 icon): Authoritative CEB practice guide source (no verification needed)
 - **CourtListener Enhanced** (🔵 Blue badge): Real case law data retrieved
 - **Legal Sources Included** (🟢 Green badge): Official California legal sources
-- **General AI Response** (No badge): Based on AI training data
+- **Mode Badge**: Shows which mode was used (CEB Only, AI Only, or Hybrid Mode)
 
 ### Verification Features
 
@@ -213,20 +272,33 @@ The chatbot infrastructure supports these APIs, but integration is incomplete:
 ```
 california-law-chatbot/
 ├── api/                    # API integration modules
+│   ├── ceb-search.ts            # ✅ CEB vector search endpoint
 │   ├── courtlistener-search.ts  # ✅ Complete CourtListener handler
+│   ├── gemini-chat.ts           # ✅ Gemini chat API
+│   ├── claude-chat.ts            # ✅ Claude verifier API
 │   ├── legiscan-search.ts       # ✅ LegiScan API handler (ready)
-│   └── openstates-search.ts     # ✅ OpenStates API handler (ready)
+│   └── openstates-search.ts      # ✅ OpenStates API handler (ready)
 ├── components/             # React components
 │   ├── ChatInput.tsx
 │   ├── ChatWindow.tsx
-│   └── Message.tsx
+│   ├── Message.tsx
+│   ├── SourceModeSelector.tsx   # ✅ Source mode selector (CEB/AI/Hybrid)
+│   └── CEBBadge.tsx             # ✅ CEB verified badge component
 ├── gemini/                # AI service layer
-│   └── chatService.ts     # ⚠️ Missing fetchLegislationData method
+│   └── chatService.ts     # ✅ Complete with CEB integration
 ├── hooks/                 # React hooks
-│   └── useChat.ts
+│   └── useChat.ts         # ✅ Includes source mode management
 ├── services/              # Service layer
-│   └── geminiService.ts   # Empty file
-├── types.ts               # TypeScript type definitions
+│   ├── verifierService.ts # ✅ Verification engine
+│   └── confidenceGating.ts
+├── scripts/               # Data processing scripts
+│   ├── process_ceb_pdfs.py      # ✅ PDF text extraction & chunking
+│   ├── generate_embeddings.py   # ✅ OpenAI embedding generation
+│   ├── upload_to_upstash.py     # ✅ Vector database upload
+│   └── requirements.txt         # Python dependencies
+├── data/                  # Processed CEB data
+│   └── ceb_processed/     # Per-vertical processed chunks & embeddings
+├── types.ts               # TypeScript type definitions (includes CEB types)
 ├── App.tsx               # Main application component
 ├── index.tsx             # Application entry point
 └── package.json          # Dependencies and scripts
@@ -235,6 +307,12 @@ california-law-chatbot/
 ### Implementation Status
 
 #### ✅ Fully Implemented
+- **CEB RAG System**: Complete integration with 77,406 document embeddings across 5 verticals
+  - PDF processing pipeline (extract, chunk, embed, upload)
+  - Upstash Vector database integration
+  - Semantic search with category detection
+  - Three source modes (CEB Only, AI Only, Hybrid)
+  - Frontend mode selector and badges
 - CourtListener API v4 integration
 - React frontend with chat interface
 - Response verification engine
@@ -262,6 +340,53 @@ npm run preview      # Preview production build
 # Testing
 npm run test         # Run test suite (if configured)
 ```
+
+### CEB Document Processing Pipeline
+
+To add new CEB documents to the RAG system, follow these steps:
+
+1. **Install Python dependencies**:
+   ```bash
+   cd scripts
+   pip install -r requirements.txt
+   ```
+
+2. **Process PDFs** (extract text and create chunks):
+   ```bash
+   python3 process_ceb_pdfs.py \
+     --category <category> \
+     --input-dir "/path/to/ceb_pdfs" \
+     --chunk-size 1000
+   ```
+   
+   Categories: `trusts_estates`, `family_law`, `business_litigation`, `business_entities`, `business_transactions`
+   
+   Output: `data/ceb_processed/<category>/chunks.jsonl`
+
+3. **Generate embeddings** (create vector representations):
+   ```bash
+   python3 generate_embeddings.py \
+     --category <category> \
+     --input-file data/ceb_processed/<category>/chunks.jsonl
+   ```
+   
+   Output: `data/ceb_processed/<category>/embeddings.jsonl`
+   
+   **Cost**: ~$0.0001 per 1K tokens (approximately $0.01-0.20 per 1,000 chunks)
+
+4. **Upload to Upstash Vector**:
+   ```bash
+   python3 upload_to_upstash.py \
+     --category <category> \
+     --input-file data/ceb_processed/<category>/embeddings.jsonl
+   ```
+   
+   Requires `.env` file with:
+   - `UPSTASH_VECTOR_REST_URL`
+   - `UPSTASH_VECTOR_REST_TOKEN`
+   - `OPENAI_API_KEY`
+
+**Current Status**: 77,406 vectors across 5 categories are already processed and uploaded.
 
 ### Completing Legislative Integration
 
@@ -342,11 +467,16 @@ The system automatically parses AI responses for legal citations and creates dir
 ### Vercel (Recommended)
 
 1. **Connect repository** to Vercel
-2. **Set environment variables** in Vercel dashboard:
-   - `ANTHROPIC_API_KEY`: Your Anthropic API key (for Claude Sonnet 4.5 generator)
-   - `GEMINI_API_KEY`: Your Google Gemini API key (for Gemini 2.5 Pro verifier)
+2. **Set environment variables** in Vercel dashboard (all three environments: Production, Preview, Development):
+   - `GEMINI_API_KEY`: Your Google Gemini API key (for generator)
+   - `ANTHROPIC_API_KEY`: Your Anthropic API key (for verifier)
+   - `OPENAI_API_KEY`: Your OpenAI API key (for CEB embeddings)
+   - `UPSTASH_VECTOR_REST_URL`: Your Upstash Vector REST URL
+   - `UPSTASH_VECTOR_REST_TOKEN`: Your Upstash Vector REST token
    - `COURTLISTENER_API_KEY`: Your CourtListener API key (optional)
 3. **Deploy automatically** on git push
+
+**Important**: After adding environment variables, you must redeploy for changes to take effect.
 
 ### Manual Deployment
 
@@ -510,4 +640,4 @@ For technical issues or feature requests:
 
 ---
 
-**Last Updated**: October 27, 2025 (Updated to reflect OpenStates/LegiScan integration status)
+**Last Updated**: November 2, 2025 (Updated to reflect CEB RAG integration with 77,406 document embeddings across 5 legal verticals)
