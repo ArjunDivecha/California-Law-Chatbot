@@ -17,6 +17,13 @@ export interface BotResponse {
     sourceMode?: SourceMode;
 }
 
+export interface StreamCallbacks {
+    onToken?: (token: string) => void;
+    onComplete?: (fullText: string) => void;
+    onMetadata?: (metadata: any) => void;
+    onError?: (error: Error) => void;
+}
+
 export class ChatService {
     private verifier: VerifierService;
     private courtListenerApiKey: string | null;
@@ -71,8 +78,15 @@ export class ChatService {
 
     /**
      * Send message to Gemini 2.5 Flash (Generator) via server-side API
+     * Supports both streaming and non-streaming modes
      */
-    private async sendToGemini(message: string, conversationHistory?: Array<{role: string, text: string}>, signal?: AbortSignal): Promise<{ text: string; hasGrounding?: boolean; groundingMetadata?: any }> {
+    private async sendToGemini(
+        message: string,
+        conversationHistory?: Array<{role: string, text: string}>,
+        signal?: AbortSignal,
+        streamCallbacks?: StreamCallbacks,
+        enableStreaming: boolean = false
+    ): Promise<{ text: string; hasGrounding?: boolean; groundingMetadata?: any }> {
         if (signal?.aborted) {
             throw new Error('Request cancelled');
         }
@@ -175,6 +189,93 @@ DO NOT say things like:
 Remember: You're trained on California law AND you have access to real-time search. Use Google Search grounding for recent bills and current legislation. When actual bill text is provided, prioritize it over your training data. Format your responses clearly with proper spacing between sections for better readability.`;
 
         try {
+            // Streaming mode
+            if (enableStreaming && streamCallbacks) {
+                console.log('📡 Using streaming mode...');
+
+                const response = await fetch('/api/gemini-generate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        message,
+                        systemPrompt,
+                        conversationHistory: conversationHistory || [],
+                        stream: true, // Enable streaming
+                    }),
+                    signal,
+                });
+
+                if (!response.ok) {
+                    throw new Error(`API error: ${response.status}`);
+                }
+
+                if (!response.body) {
+                    throw new Error('Response body is null');
+                }
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let fullText = '';
+                let metadata: any = null;
+
+                try {
+                    while (true) {
+                        const { done, value } = await reader.read();
+
+                        if (done) break;
+                        if (signal?.aborted) {
+                            reader.cancel();
+                            throw new Error('Request cancelled');
+                        }
+
+                        const chunk = decoder.decode(value, { stream: true });
+                        const lines = chunk.split('\n');
+
+                        for (const line of lines) {
+                            if (line.startsWith('data: ')) {
+                                const data = line.slice(6);
+
+                                if (data === '[DONE]') {
+                                    continue;
+                                }
+
+                                try {
+                                    const parsed = JSON.parse(data);
+
+                                    if (parsed.type === 'content' && parsed.text) {
+                                        fullText += parsed.text;
+                                        streamCallbacks.onToken?.(parsed.text);
+                                    } else if (parsed.type === 'metadata') {
+                                        metadata = parsed;
+                                        streamCallbacks.onMetadata?.(parsed);
+                                    } else if (parsed.type === 'error') {
+                                        throw new Error(parsed.error);
+                                    }
+                                } catch (parseError) {
+                                    // Skip malformed JSON
+                                    console.warn('Failed to parse SSE data:', data);
+                                }
+                            }
+                        }
+                    }
+
+                    streamCallbacks.onComplete?.(fullText);
+
+                    return {
+                        text: fullText,
+                        hasGrounding: metadata?.hasGrounding,
+                        groundingMetadata: metadata?.groundingMetadata
+                    };
+
+                } catch (streamError: any) {
+                    streamCallbacks.onError?.(streamError);
+                    throw streamError;
+                }
+            }
+
+            // Non-streaming mode (original behavior)
             const response = await fetchWithRetry(
                 '/api/gemini-generate',
                 {
@@ -186,6 +287,7 @@ Remember: You're trained on California law AND you have access to real-time sear
                         message,
                         systemPrompt,
                         conversationHistory: conversationHistory || [],
+                        stream: false,
                     }),
                     signal, // Pass AbortSignal for cancellation
                 },
@@ -205,8 +307,8 @@ Remember: You're trained on California law AND you have access to real-time sear
             }
 
             const data = await response.json();
-            return { 
-                text: data.text || '', 
+            return {
+                text: data.text || '',
                 hasGrounding: data.hasGrounding,
                 groundingMetadata: data.groundingMetadata
             };
@@ -218,16 +320,30 @@ Remember: You're trained on California law AND you have access to real-time sear
         }
     }
 
-    async sendMessage(message: string, conversationHistory?: Array<{role: string, text: string}>, sourceMode: SourceMode = 'hybrid', signal?: AbortSignal): Promise<BotResponse> {
+    async sendMessage(
+        message: string,
+        conversationHistory?: Array<{role: string, text: string}>,
+        sourceMode: SourceMode = 'hybrid',
+        signal?: AbortSignal,
+        streamCallbacks?: StreamCallbacks
+    ): Promise<BotResponse> {
         // Check for cancellation at the start
         if (signal?.aborted) {
             throw new Error('Request cancelled');
         }
-        
+
         // Handle simple greetings
         if (message.trim().toLowerCase() === 'hello' || message.trim().toLowerCase() === 'hi') {
+            const greeting = "Hello! I am the California Law Chatbot. How can I help you with your legal research today?";
+
+            // If streaming, send greeting as stream
+            if (streamCallbacks) {
+                streamCallbacks.onToken?.(greeting);
+                streamCallbacks.onComplete?.(greeting);
+            }
+
             return {
-                text: "Hello! I am the California Law Chatbot. How can I help you with your legal research today?",
+                text: greeting,
                 sources: [],
                 sourceMode
             };
@@ -244,12 +360,12 @@ Remember: You're trained on California law AND you have access to real-time sear
         console.log(`🔀 Routing to ${sourceMode} mode`);
         switch (sourceMode) {
             case 'ceb-only':
-                return await this.processCEBOnly(expandedMessage, conversationHistory, signal);
+                return await this.processCEBOnly(expandedMessage, conversationHistory, signal, streamCallbacks);
             case 'ai-only':
-                return await this.processAIOnly(expandedMessage, conversationHistory, signal);
+                return await this.processAIOnly(expandedMessage, conversationHistory, signal, streamCallbacks);
             case 'hybrid':
             default:
-                return await this.processHybrid(expandedMessage, conversationHistory, signal);
+                return await this.processHybrid(expandedMessage, conversationHistory, signal, streamCallbacks);
         }
     }
 
@@ -339,7 +455,12 @@ Remember: You're trained on California law AND you have access to real-time sear
      * AI Only Mode - Uses existing external APIs (CourtListener, OpenStates, LegiScan)
      * This is the original sendMessage logic
      */
-    private async processAIOnly(message: string, conversationHistory?: Array<{role: string, text: string}>, signal?: AbortSignal): Promise<BotResponse> {
+    private async processAIOnly(
+        message: string,
+        conversationHistory?: Array<{role: string, text: string}>,
+        signal?: AbortSignal,
+        streamCallbacks?: StreamCallbacks
+    ): Promise<BotResponse> {
         // Check for cancellation
         if (signal?.aborted) {
             throw new Error('Request cancelled');
@@ -458,7 +579,15 @@ Provide a thorough legal analysis explaining how these cases relate to the query
                     }
 
                     console.log('🤖 Sending enhanced message to Gemini 2.5 Flash-Lite...');
-                    const response = await this.sendToGemini(enhancedMessage, conversationHistory, signal);
+                    // AI Only mode: Stream first, verify after
+                    const enableStreaming = !!streamCallbacks;
+                    const response = await this.sendToGemini(
+                        enhancedMessage,
+                        conversationHistory,
+                        signal,
+                        streamCallbacks,
+                        enableStreaming
+                    );
                     
                     // Check if request was cancelled during AI response
                     if (signal?.aborted) {
@@ -641,13 +770,21 @@ Key California legal sources to reference:
 - Official court opinions and case law through CourtListener
 - Current California bills (AB/SB/etc.) with status and summaries`;
 
-            const response = await this.sendToGemini(enhancedMessage, conversationHistory, signal);
-            
+            // AI Only mode: Stream first, verify after
+            const enableStreaming = !!streamCallbacks;
+            const response = await this.sendToGemini(
+                enhancedMessage,
+                conversationHistory,
+                signal,
+                streamCallbacks,
+                enableStreaming
+            );
+
             // Check if request was cancelled during AI response
             if (signal?.aborted) {
                 throw new Error('Request cancelled');
             }
-            
+
             console.log('✅ Gemini response received');
 
             // Check for cancellation after Claude call
@@ -1307,7 +1444,12 @@ Key California legal sources to reference:
     /**
      * CEB Only Mode - Uses only CEB practice guides (no verification needed)
      */
-    private async processCEBOnly(message: string, conversationHistory?: Array<{role: string, text: string}>, signal?: AbortSignal): Promise<BotResponse> {
+    private async processCEBOnly(
+        message: string,
+        conversationHistory?: Array<{role: string, text: string}>,
+        signal?: AbortSignal,
+        streamCallbacks?: StreamCallbacks
+    ): Promise<BotResponse> {
         console.log('📚 CEB Only Mode - Querying authoritative practice guides...');
         
         try {
@@ -1387,7 +1529,15 @@ Your answer should read like a legal memorandum based on authoritative sources, 
 
 Answer:`;
 
-            const response = await this.sendToGemini(prompt, conversationHistory, signal);
+            // CEB Only mode: Stream directly (no verification needed)
+            const enableStreaming = !!streamCallbacks;
+            const response = await this.sendToGemini(
+                prompt,
+                conversationHistory,
+                signal,
+                streamCallbacks,
+                enableStreaming
+            );
 
             // Assign IDs to sources for citation mapping
             const sourcesWithIds = highConfidenceSources.map((source, index) => ({
@@ -1421,7 +1571,12 @@ Answer:`;
      * Hybrid Mode - Combines CEB with external APIs (CourtListener, OpenStates, LegiScan)
      * CEB sources are prioritized and don't require verification
      */
-    private async processHybrid(message: string, conversationHistory?: Array<{role: string, text: string}>, signal?: AbortSignal): Promise<BotResponse> {
+    private async processHybrid(
+        message: string,
+        conversationHistory?: Array<{role: string, text: string}>,
+        signal?: AbortSignal,
+        streamCallbacks?: StreamCallbacks
+    ): Promise<BotResponse> {
         console.log('🔄 Hybrid Mode - Combining CEB + AI sources...');
         
         try {
@@ -1534,7 +1689,15 @@ Your answer should read like a legal memorandum, not a list of search results.
 
 Answer:`;
 
-            const response = await this.sendToGemini(prompt, conversationHistory, signal);
+            // Hybrid mode: Stream first, verify AI sources after (CEB sources skip verification)
+            const enableStreaming = !!streamCallbacks;
+            const response = await this.sendToGemini(
+                prompt,
+                conversationHistory,
+                signal,
+                streamCallbacks,
+                enableStreaming
+            );
 
             // Determine if verification is needed
             // CEB-based answers don't need verification, but AI sources do

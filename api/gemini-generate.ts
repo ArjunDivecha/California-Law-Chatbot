@@ -17,7 +17,7 @@ export default async function handler(req: any, res: any) {
       return;
     }
 
-    const { message, systemPrompt, conversationHistory } = req.body;
+    const { message, systemPrompt, conversationHistory, stream = false } = req.body;
     
     if (!message || typeof message !== 'string' || !message.trim()) {
       res.status(400).json({ error: 'Missing or invalid message parameter' });
@@ -62,10 +62,8 @@ export default async function handler(req: any, res: any) {
 
     console.log(`Calling Gemini API with model: gemini-2.5-pro (${contents.length} messages in context)`);
     console.log('🔍 Enabling Google Search grounding for real-time California law updates...');
-    
-    // Enable Google Search grounding - EXACT SYNTAX from user's working example
-    // The model will automatically search the web and return grounding metadata
-    const response = await ai.models.generateContent({
+
+    const config = {
       model: 'gemini-2.5-pro',
       contents: contents,
       config: {
@@ -81,7 +79,74 @@ export default async function handler(req: any, res: any) {
           text: systemPrompt
         }]
       } : undefined
-    });
+    };
+
+    // Handle streaming mode
+    if (stream) {
+      console.log('📡 Using streaming mode for real-time response...');
+
+      // Set headers for streaming
+      res.setHeader('Content-Type', 'text/event-stream');
+      res.setHeader('Cache-Control', 'no-cache');
+      res.setHeader('Connection', 'keep-alive');
+
+      try {
+        const streamResponse = await ai.models.generateContentStream(config);
+
+        let fullText = '';
+        let groundingMetadata: any = null;
+
+        // Stream each chunk to the client
+        for await (const chunk of streamResponse.stream) {
+          const chunkText = chunk.text || '';
+          fullText += chunkText;
+
+          // Send chunk as SSE (Server-Sent Event)
+          if (chunkText) {
+            res.write(`data: ${JSON.stringify({ type: 'content', text: chunkText })}\n\n`);
+          }
+
+          // Capture grounding metadata if present
+          if (chunk.candidates?.[0]?.groundingMetadata) {
+            groundingMetadata = chunk.candidates[0].groundingMetadata;
+          }
+        }
+
+        // Log grounding metadata
+        if (groundingMetadata) {
+          const webSearchQueries = groundingMetadata.webSearchQueries || [];
+          const groundingChunks = groundingMetadata.groundingChunks || [];
+          console.log(`✅ Google Search grounding was used!`);
+          console.log(`   - Search queries: ${webSearchQueries.join(', ')}`);
+          console.log(`   - ${groundingChunks.length} source URLs found`);
+        }
+
+        // Send metadata at the end
+        res.write(`data: ${JSON.stringify({
+          type: 'metadata',
+          groundingMetadata,
+          hasGrounding: !!groundingMetadata
+        })}\n\n`);
+
+        res.write('data: [DONE]\n\n');
+        res.end();
+
+        console.log('✅ Streaming completed successfully');
+
+      } catch (streamError: any) {
+        console.error('Streaming error:', streamError);
+        res.write(`data: ${JSON.stringify({
+          type: 'error',
+          error: streamError.message || 'Streaming failed'
+        })}\n\n`);
+        res.end();
+      }
+
+      return; // Exit after streaming
+    }
+
+    // Non-streaming mode (original behavior)
+    const response = await ai.models.generateContent(config);
 
     const text = response.text;
 
@@ -91,14 +156,14 @@ export default async function handler(req: any, res: any) {
     const candidate = response.candidates?.[0];
     const groundingMetadata = candidate?.groundingMetadata;
     const hasGroundingData = !!groundingMetadata;
-    
+
     if (hasGroundingData) {
       const webSearchQueries = groundingMetadata.webSearchQueries || [];
       const groundingChunks = groundingMetadata.groundingChunks || [];
       console.log(`✅ Google Search grounding was used!`);
       console.log(`   - Search queries: ${webSearchQueries.join(', ')}`);
       console.log(`   - ${groundingChunks.length} source URLs found`);
-      
+
       // Log the source URLs
       groundingChunks.forEach((chunk: any, idx: number) => {
         const uri = chunk?.web?.uri;
