@@ -281,11 +281,13 @@ const Message: React.FC<MessageProps> = ({ message }) => {
           <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6 text-gray-600"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg>
         </div>
         <div className="bg-white rounded-lg rounded-bl-none p-5 border border-gray-200 shadow-md w-full" style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}>
-        {/* Mode Badge */}
-        <div className="mb-3 flex items-center gap-2 flex-wrap">
-          {getModeBadge()}
-          {isCEBBased && cebCategory && <CEBBadge category={cebCategory} />}
-        </div>
+        {/* Mode Badge - Don't show for initial welcome message */}
+        {message.id !== 'initial-bot-message' && (
+          <div className="mb-3 flex items-center gap-2 flex-wrap">
+            {getModeBadge()}
+            {isCEBBased && cebCategory && <CEBBadge category={cebCategory} />}
+          </div>
+        )}
         
         {/* CourtListener Badge */}
         {usedCourtListener && (
