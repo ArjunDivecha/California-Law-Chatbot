@@ -40,6 +40,7 @@ export const useChat = () => {
           id: 'initial-bot-message',
           role: MessageRole.BOT,
           text: initialText,
+          sourceMode: 'hybrid', // Set initial sourceMode
         },
       ]);
     } catch (error) {
