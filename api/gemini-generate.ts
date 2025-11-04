@@ -97,7 +97,8 @@ export default async function handler(req: any, res: any) {
         let groundingMetadata: any = null;
 
         // Stream each chunk to the client
-        for await (const chunk of streamResponse.stream) {
+        // streamResponse is the async iterable directly, not an object with .stream property
+        for await (const chunk of streamResponse) {
           const chunkText = chunk.text || '';
           fullText += chunkText;
 
