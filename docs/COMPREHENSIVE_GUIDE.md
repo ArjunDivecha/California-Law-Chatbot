@@ -1,941 +1,1142 @@
-# California Law Chatbot - Comprehensive Technical Guide
-# Updated: November 3, 2025
+# California Law Chatbot - Comprehensive Guide
 
 ## Table of Contents
-1. [Executive Summary](#executive-summary)
-2. [System Architecture](#system-architecture)
-3. [Core Components](#core-components)
-4. [CEB RAG Integration](#ceb-rag-integration)
-5. [Data Processing Pipeline](#data-processing-pipeline)
-6. [Multi-Modal Response System](#multi-modal-response-system)
-7. [Anti-Hallucination & Verification](#anti-hallucination--verification)
-8. [Multi-Turn Conversation Handling](#multi-turn-conversation-handling)
-9. [API Integrations](#api-integrations)
-10. [Deployment & Environment](#deployment--environment)
-11. [User Experience Features](#user-experience-features)
-12. [Technical Implementation](#technical-implementation)
-13. [Performance & Cost Analysis](#performance--cost-analysis)
-14. [Limitations & Compliance](#limitations--compliance)
+1. [What This Application Does](#what-this-application-does)
+2. [User Guide](#user-guide)
+3. [System Architecture](#system-architecture)
+4. [Data Sources](#data-sources)
+5. [Anti-Hallucination Methodology](#anti-hallucination-methodology)
+6. [Real-Time Data & Grounding](#real-time-data--grounding)
+7. [Technical Implementation](#technical-implementation)
+8. [Limitations & Disclaimers](#limitations--disclaimers)
 
 ---
 
-## Executive Summary
+## What This Application Does
 
-The **California Law Chatbot** is a production-ready, enterprise-grade legal research assistant that combines advanced AI models with authoritative legal data sources to provide accurate, verified California law information. This system implements a sophisticated **Generator-Verifier** architecture with multiple layers of validation to minimize AI hallucinations while maintaining conversational fluency and real-time data access.
+The **California Law Chatbot** is an AI-powered legal research assistant that provides accurate, verified information about California law. Unlike general-purpose AI chatbots, this system implements multiple layers of verification and validation to minimize hallucinations and provide reliable legal information.
 
-### Key Features
-- **CEB RAG Integration**: 77,406 vector embeddings from 2,554 CEB documents across 5 legal verticals (Trusts & Estates, Family Law, Business Litigation, Business Entities, Business Transactions)
-- **Multi-Modal Response System**: 3 source modes - CEB Only, AI Only, Hybrid (recommended)
-- **Advanced AI Models**: Gemini 2.5 Pro (generator) + Claude Sonnet 4.5 (verifier)
-- **Real-Time Legal Sources**: CourtListener (case law), OpenStates/LegiScan (legislation), Google Search grounding
-- **Multi-Turn Context**: Intelligent conversation memory with query expansion
-- **Comprehensive Verification**: Two-pass claim verification with dynamic confidence gating
-- **Vercel Deployment**: Serverless architecture with Upstash Vector database
-- **Total Coverage**: 5 CEB verticals + 1M+ CourtListener cases + real-time legislative data
+### Core Capabilities
 
-### System Maturity
-- **Production Ready**: All core features fully implemented and tested
-- **Cost Optimized**: $0.02-0.30 per comprehensive query (including embeddings)
-- **Scale**: Handles 77,406+ vectors with <2s retrieval latency
-- **Compliance**: California State Bar compliant with mandatory disclaimers
+1. **CEB Practice Guide Integration** (Primary Source)
+   - 77,406 vector embeddings from 2,554 authoritative CEB documents
+   - 5 legal verticals: Trusts & Estates, Family Law, Business Litigation, Business Entities, Business Transactions
+   - Semantic search via Upstash Vector database
+   - CEB sources bypass verification (authoritative primary sources)
+   - 3 source modes: CEB Only, Hybrid (recommended), AI Only
+
+2. **Legislative Research**
+   - Search California bills (AB/SB) and statutes
+   - Access full bill text from recent legislation
+   - Retrieve California Code sections (Family Code, Penal Code, etc.)
+   - Get amendments and recent changes to existing laws
+
+3. **Case Law Research**
+   - Search California court decisions via CourtListener
+   - Access opinions from California Supreme Court and Courts of Appeal
+   - Smart detection of case law queries vs. legislative queries
+
+4. **Real-Time Updates**
+   - Google Search grounding for most recent California law changes
+   - Access to 2024-2025 legislation (beyond AI training cutoff)
+   - Recent court decisions and regulatory changes
+
+5. **Multi-Turn Conversations**
+   - Maintains conversation history for follow-up questions
+   - Context-aware responses with intelligent query expansion
+   - Natural dialogue flow for complex legal research
+
+---
+
+## User Guide
+
+### Getting Started
+
+1. **Access the Chatbot:**
+   - Visit: https://california-law-chatbot.vercel.app
+   - Read and accept the legal disclaimer
+   - Start asking questions
+
+2. **Select Source Mode:**
+   - **📚 CEB Only:** Authoritative practice guides only (fastest, no verification needed)
+   - **🔄 Hybrid:** CEB + case law + legislation (recommended)
+   - **🤖 AI Only:** External APIs only (case law, legislation, web search)
+
+3. **Understanding the Interface:**
+   - **Blue message bubble:** Your questions
+   - **Gray message bubble:** AI responses
+   - **Badge indicators:**
+     - "CEB VERIFIED" - Authoritative CEB practice guide (gold standard)
+     - "✓ Verified" - All claims verified
+     - "⚠ Partially Verified" - Most claims verified, some unverified
+     - "CourtListener Enhanced" - Case law sources included
+     - "Verification Recommended" - Independent verification suggested
+   - **Sources section:** Click to view source documents
+
+### Query Types & Examples
+
+#### 0. CEB Practice Guide Questions (New!)
+
+**Example 1: Trusts & Estates**
+```
+User: "How do I establish a revocable living trust in California?"
+```
+**What Happens (Hybrid Mode):**
+- CEB vector search activates (Trusts & Estates vertical)
+- Returns authoritative CEB practice guide excerpts
+- Gemini 2.5 Pro synthesizes answer from CEB sources
+- Response marked with "CEB VERIFIED" badge (no verification needed)
+
+**Expected Response:**
+"Based on CEB practice guides, establishing a revocable living trust in California involves: [comprehensive explanation with CEB citations]. Source: Cal. Prac. Guide: Trusts & Estates § 2:45"
+
+---
+
+**Example 2: Family Law**
+```
+User: "What factors determine spousal support duration?"
+```
+**What Happens (CEB Only Mode):**
+- CEB vector search (Family Law vertical)
+- Returns Family Code 4320 analysis from CEB guides
+- No external APIs called (CEB-only mode)
+- Authoritative response with practice guide context
+
+**Expected Response:**
+"According to CEB family law practice guides, courts consider multiple factors under Family Code § 4320, including marriage duration. For marriages under 10 years... [detailed CEB guidance]"
+
+---
+
+#### 1. Statutory Questions
+
+**Example 1: Specific Code Section**
+```
+User: "What is California Family Code 4320?"
+```
+**What Happens:**
+- System detects "Family Code 4320"
+- Creates direct link to leginfo.legislature.ca.gov
+- Gemini explains the statute using its training
+- Response includes official link to statute text
+
+**Expected Response:**
+"California Family Code § 4320 lists factors courts must consider when determining spousal support (alimony) in divorce cases. These factors include: [lists factors]. You can view the complete statute at [link]."
+
+---
+
+**Example 2: Code Section Explanation**
+```
+User: "What are the penalties under Penal Code 487?"
+```
+**What Happens:**
+- System recognizes "Penal Code 487" (grand theft)
+- Provides link to statute
+- Explains penalties, degrees, and examples
+
+**Expected Response:**
+"California Penal Code § 487 defines grand theft and provides penalties ranging from 16 months to 3 years in county jail, depending on circumstances..."
+
+---
+
+#### 2. Legislative Questions (Bills)
+
+**Example 1: Recent Legislation**
+```
+User: "What new AI bills did California pass in 2024 and 2025?"
+```
+**What Happens:**
+- Smart detection: NOT a case law query (contains "bills", "passed")
+- CourtListener is SKIPPED (no irrelevant cases)
+- Google Search grounding ACTIVATES
+- Searches for "California AI bills 2024 2025"
+- Returns recent .gov sources
+
+**Expected Response:**
+"California passed multiple AI bills in 2024-2025:
+- **SB 53** (Sept 29, 2025): Transparency in Frontier AI Act
+- **AB 489** (Oct 12, 2025): AI Healthcare Advertising Restrictions
+- **SB 243**: Companion Chatbot Safety Protocols
+- **AB 853**: AI Content Provenance Requirements
+..." (with source links)
+
+---
+
+**Example 2: Specific Bill**
+```
+User: "What does AB 489 require?"
+```
+**What Happens:**
+- Detects "AB 489"
+- Calls OpenStates API → finds bill
+- Retrieves FULL BILL TEXT via `/api/openstates-billtext`
+- Gemini reads actual text (not just training data)
+- Verification threshold = 30% (bill text is authoritative)
+
+**Expected Response:**
+"According to the full text of AB 489, this bill prohibits AI developers from using terms in advertising that falsely imply the AI has a healthcare license or that its advice comes from a licensed professional. Healthcare facilities using generative AI must include disclaimers..."
+
+---
+
+#### 3. Case Law Questions
+
+**Example 1: Famous Case**
+```
+User: "What did the California Supreme Court say in Brown v. Board of Education?"
+```
+**What Happens:**
+- Smart detection: IS a case law query (contains "court", "case name pattern")
+- CourtListener ACTIVATES
+- Searches for "Brown v. Board of Education California"
+- Returns relevant California cases
+
+**Note:** Brown v. Board is a U.S. Supreme Court case, so the bot may note that it's federal, not California-specific.
+
+---
+
+**Example 2: California Case**
+```
+User: "What is the holding in In re Marriage of Brown?"
+```
+**What Happens:**
+- Detects case name pattern "In re Marriage of X"
+- CourtListener searches California family law cases
+- Returns California appellate opinions
+- Gemini summarizes holdings
+
+**Expected Response:**
+"In re Marriage of Brown is a California Court of Appeal decision addressing [specific family law issue]. The court held that... [cites CourtListener source]"
+
+---
+
+#### 4. General Legal Questions
+
+**Example 1: Procedure**
+```
+User: "How do I file for divorce in California?"
+```
+**What Happens:**
+- NOT a case law query (no "court", "case", "v.")
+- NOT a specific bill/statute query
+- Google Search grounding may activate
+- Gemini uses training + grounded search
+
+**Expected Response:**
+"To file for divorce in California, you must meet residency requirements (6 months in state, 3 months in county). The process involves:
+1. File Petition (FL-100)
+2. Serve spouse
+3. Wait 6-month mandatory waiting period
+4. ...
+[Verification: ⚠ Partially Verified - verify exact forms with attorney]"
+
+---
+
+**Example 2: Requirements**
+```
+User: "What are the residency requirements for California divorce?"
+```
+**What Happens:**
+- Specific legal question
+- Gemini cites Family Code §§ 2320-2321
+- Provides direct statute link
+
+**Expected Response:**
+"California Family Code §§ 2320-2321 require: (1) At least one spouse must have been a California resident for 6 months before filing, and (2) A resident of the county where filing for at least 3 months..."
+
+---
+
+#### 5. Follow-Up Questions (Intelligent Context Expansion)
+
+**Example Conversation:**
+```
+User: "What is California Penal Code 459?"
+Bot: [Explains burglary statute]
+
+User: "What about 460?"
+```
+**What Happens:**
+- System detects vague follow-up ("What about 460?")
+- Intelligent query expansion: "What about 460?" → "What is Penal Code 460?"
+- Maintains conversation context for coherent response
+- Expands query BEFORE searching CEB/external APIs
+
+**Expected Response:**
+"California Penal Code § 460 defines the degrees of burglary and their respective penalties. As a follow-up to your previous question about § 459 (the basic burglary definition), § 460 establishes that: First-degree burglary (residential) is punishable by..."
+
+---
+
+**Example 2: CEB Context Memory**
+```
+User: "How do I create a special needs trust?" (CEB Hybrid Mode)
+Bot: [CEB-based explanation of SNT creation]
+
+User: "Does it protect Medi-Cal eligibility?"
+```
+**What Happens:**
+- System remembers previous query was about special needs trusts
+- Expands context: "special needs trust Medi-Cal eligibility"
+- CEB vector search retrieves relevant practice guide sections
+- Coherent follow-up response
+
+**Expected Response:**
+"Yes, a properly drafted special needs trust (d4A trust) preserves Medi-Cal eligibility by keeping assets out of the beneficiary's countable resources. As discussed in your previous question, the trust must meet specific requirements under 42 USC § 1396p(d)(4)(A)..."
+
+---
+
+### Interpreting Response Badges
+
+| Badge | Meaning | Action |
+|-------|---------|--------|
+| **✅ CEB VERIFIED** | Authoritative CEB practice guide (gold standard) | Highest confidence - no additional verification needed |
+| **✓ Verified** | All claims checked against sources, 100% verified | High confidence - use with normal caution |
+| **⚠ Partially Verified** | Most claims verified (60-99%), some unverified | Review carefully, verify critical details |
+| **⚠ Verification Recommended** | Low verification rate or ambiguous sources | Consult attorney before relying on information |
+| **CourtListener Enhanced** | Case law sources included from court database | Case citations should be independently verified |
+| **🔍 Google Search Grounding** | Recent web data included (2024-2025) | Most current information, but verify dates/details |
+
+### Best Practices for Users
+
+**✅ DO:**
+- Ask specific questions about California law
+- Request specific statutes or code sections
+- Ask about recent legislation (the system has 2024-2025 data)
+- Follow up with clarifying questions
+- Click source links to verify primary sources
+- Consult an attorney before relying on information for legal decisions
+
+**❌ DON'T:**
+- Input confidential client information (system warns against this)
+- Rely on the chatbot for legal advice (it's a research tool only)
+- Assume all information is 100% current without verification
+- Use for non-California legal questions (system is CA-focused)
+- Skip verification of critical details (dates, amounts, deadlines)
+
+### Query Optimization Tips
+
+**Be Specific:**
+```
+❌ "Tell me about divorce"
+✅ "What are the grounds for divorce in California?"
+✅ "How is spousal support calculated under Family Code 4320?"
+```
+
+**Include Statute Numbers When Known:**
+```
+❌ "What's the law about child custody?"
+✅ "What does Family Code 3011 say about child custody factors?"
+```
+
+**Specify Bill Numbers:**
+```
+❌ "What did California pass about AI?"
+✅ "What does SB 53 require for AI developers?"
+```
+
+**Ask About Recent Changes:**
+```
+✅ "What changed in California privacy law in 2024?"
+✅ "Are there new AI regulations as of 2025?"
+```
 
 ---
 
 ## System Architecture
 
-### High-Level Overview
+### Multi-Modal Response System with CEB Priority
+
+The chatbot uses a **Generator-Verifier** architecture with three source modes:
+
 ```
-┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│   React UI      │    │  AI Engine       │    │  Legal APIs     │
-│   (Frontend)    │◄──►│  (Backend)       │◄──►│  (External)     │
-└─────────────────┘    └──────────────────┘    └─────────────────┘
-     │                       │                       │
-     │  Source Mode Selector  │                       │
-     │  (CEB/AI/Hybrid)       │                       │
-     └─────────────────┘     │                       │
-                             │                       │
-                             ▼                       ▼
-                    ┌─────────────────┐    ┌─────────────────┐
-                    │  Multi-Turn     │    │   External      │
-                    │  Context        │    │   Sources       │
-                    │  Handler        │    │   (CEB RAG +    │
-                    └─────────────────┘    │   CourtListener │
-                             │             │   + Legislation) │
-                             │             └─────────────────┘
-                             ▼                       │
-                    ┌─────────────────┐    ┌─────────────────┐
-                    │  Source Router  │◄──│  CEB Vector     │
-                    │  (CEB/AI/Hybrid)│    │  Database       │
-                    └─────────────────┘    │  (Upstash)      │
-                             │             └─────────────────┘
-                             ▼                       │
-                    ┌─────────────────┐    ┌─────────────────┐
-                    │  Generator      │    │  Verifier       │
-                    │  (Gemini 2.5 Pro│    │  (Claude Sonnet │
-                    │   + Google Search)│    │    4.5)         │
-                    └─────────────────┘    └─────────────────┘
-                             │                       │
-                             ▼                       ▼
-                    ┌─────────────────┐    ┌─────────────────┐
-                    │  Confidence     │    │  Guardrails     │
-                    │  Gating         │    │  (Citation      │
-                    │  (Dynamic       │    │   Validation)   │
-                    │   Thresholds)   │    └─────────────────┘
-                    └─────────────────┘
-                                   │
-                                   ▼
-                            ┌─────────────────┐
-                            │   Final Answer   │
-                            │  (Verified +     │
-                            │   Sourced)       │
-                            └─────────────────┘
-```
-
-### Core Design Principles
-
-1. **Source Authority Hierarchy**
-   - **Level 1**: CEB Practice Guides (authoritative, no verification needed)
-   - **Level 2**: Full bill text (OpenStates/LegiScan) - 30% verification threshold
-   - **Level 3**: CourtListener case law - 60% verification threshold  
-   - **Level 4**: Google Search grounding - 20% verification threshold
-   - **Level 5**: AI training data - 100% verification required
-
-2. **Multi-Modal Processing**
-   - **CEB Only**: Fastest mode, authoritative CEB practice guides only
-   - **AI Only**: External APIs + Google Search (full verification)
-   - **Hybrid**: CEB-first with AI supplementation (recommended)
-
-3. **Context Preservation**
-   - Last 10 messages maintained for conversation memory
-   - Intelligent query expansion for vague follow-ups
-   - Session-aware source routing and verification
-
----
-
-## Core Components
-
-### 1. Frontend (React 19 + TypeScript)
-
-#### Key Files
-```
-components/
-├── App.tsx                    # Main app with source mode selector
-├── SourceModeSelector.tsx     # 3-mode toggle (CEB/AI/Hybrid)
-├── Message.tsx                # Message rendering with badges
-├── CEBBadge.tsx               # CEB verified indicator
-├── ChatWindow.tsx             # Conversation display
-└── ChatInput.tsx              # User input handling
-
-hooks/
-└── useChat.ts                 # Core chat logic with context management
-
-types.ts                       # TypeScript interfaces
-```
-
-#### Source Mode Selector
-Users can switch between three modes:
-
-| Mode | Description | Use Case |
-|------|-------------|----------|
-| **📚 CEB Only** | Authoritative CEB practice guides only | Trusts & Estates, Family Law, Business Litigation questions |
-| **🔄 Hybrid** | CEB + AI sources (recommended) | Comprehensive research combining practice guides + case law |
-| **🤖 AI Only** | External APIs only (no CEB) | General legal research, non-CEB topics |
-
-#### Response Badges
-- **CEB VERIFIED** (🟡 Amber + 📚): Authoritative CEB source, no verification needed
-- **CourtListener Enhanced** (🔵 Blue): Case law sources included
-- **Google Search Grounding** (🔍): Real-time web data used
-- **Verification Status** (✓/⚠): Claim verification coverage
-
-### 2. Backend Services (TypeScript + Vercel)
-
-#### Chat Orchestration (`gemini/chatService.ts`)
-```typescript
-// Main processing pipeline
-async sendMessage(message: string, conversationHistory, sourceMode, signal) {
-  // 1. Context expansion for multi-turn queries
-  const expandedQuery = this.expandQueryWithContext(message, conversationHistory);
-  
-  // 2. Route to appropriate mode
-  switch (sourceMode) {
-    case 'ceb-only': return await this.processCEBOnly(expandedQuery, history, signal);
-    case 'ai-only': return await this.processAIOnly(expandedQuery, history, signal);
-    case 'hybrid': return await this.processHybrid(expandedQuery, history, signal);
-  }
-}
-```
-
-#### CEB Integration (`api/ceb-search.ts`)
-- **Vector Database**: Upstash Vector (serverless, Vercel-compatible)
-- **Embedding Model**: OpenAI `text-embedding-3-small` (1536 dimensions, cosine similarity)
-- **Namespaces**: 5 separate namespaces per legal vertical
-- **Retrieval**: Top-K semantic search with confidence filtering (≥0.7 threshold)
-
-#### AI Pipeline
-1. **Generator**: Gemini 2.5 Pro with Google Search grounding
-   - Temperature: 0.2 (legal accuracy)
-   - System prompt: California law expert with mandatory grounding
-   - Context window: Last 10 messages (multi-turn support)
-
-2. **Verifier**: Claude Sonnet 4.5
-   - Claim extraction from generated answer
-   - Source validation against retrieved documents
-   - Dynamic verification thresholds
-   - Response rewriting for unsupported claims
-
-3. **Guardrails**: Citation validation, legal entity checking
-   - Validates [1], [2] references match actual sources
-   - Flags hallucinated codes/cases
-   - Ensures California jurisdiction focus
-
----
-
-## CEB RAG Integration
-
-### Architecture Overview
-```
-CEB Documents (PDFs) → Processing Pipeline → Vector Database → Real-Time Search
-
-┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│   Source PDFs   │    │   Processing      │    │   Upstash Vector │
-│  (2,554 files)  │→   │   Scripts        │→   │   (77,406 vectors)│
-│                 │    │  (Python)        │    │                 │
-└─────────────────┘    └──────────────────┘    └─────────────────┘
-         │                       │                       │
-         │  5 Legal Verticals    │                       │
-         │  (Trusts, Family,     │                       │
-         │   Business, etc.)     │                       │
-         └───────────────────────┘                       │
-                                                        │
-                                                        ▼
-                                            ┌─────────────────┐
-                                            │  Semantic Search│
-                                            │   (API Endpoint)│
-                                            │                 │
-                                            └─────────────────┘
-                                                        │
-                                                        ▼
-                                            ┌─────────────────┐
-                                            │  Response       │
-                                            │  Generation     │
-                                            │  (Gemini 2.5 Pro)│
-                                            └─────────────────┘
-```
-
-### Processing Pipeline Details
-
-#### 1. PDF Processing (`scripts/process_ceb_pdfs.py`)
-**Input**: Raw PDF documents from CEB website
-**Output**: JSONL chunks with metadata
-
-**Processing Steps**:
-1. **Text Extraction**: PyPDF2 + PDFMiner for robust text extraction
-2. **Chunking**: 1000-token chunks (≈4000 characters) with overlap
-3. **Metadata Generation**: 
-   - Source file name
-   - Page number
-   - Section titles
-   - Token count
-   - CEB citation format
-4. **Quality Control**: 
-   - Remove empty pages
-   - Filter low-content chunks (<200 tokens)
-   - Validate PDF parsing errors
-
-**Vertical Statistics**:
-| Vertical | PDFs | Chunks | Tokens |
-|----------|------|--------|--------|
-| Trusts & Estates | 1,687 | 40,263 | 40.2M |
-| Family Law | 243 | 7,511 | 7.5M |
-| Business Litigation | 323 | 13,711 | 13.7M |
-| Business Entities | 270 | 10,766 | 10.8M |
-| Business Transactions | 246 | 7,517 | 7.5M |
-| **Total** | **2,554** | **77,406** | **77.4M** |
-
-#### 2. Embedding Generation (`scripts/generate_embeddings.py`)
-**Model**: OpenAI `text-embedding-3-small`
-**Dimensions**: 1536 (optimized for legal text)
-**Cost**: $0.00002 per 1K tokens
-**Total Cost**: ~$1.55 for initial 77M token embedding
-
-**Batch Processing**:
-- 500 chunks per batch (rate limit handling)
-- Automatic retry on 429 errors
-- Progress tracking with ETA
-- Memory optimized for M4 Max (128GB RAM)
-
-#### 3. Vector Upload (`scripts/upload_to_upstash.py`)
-**Database**: Upstash Vector (serverless, 99.99% uptime)
-**Format**: `{id, vector, metadata, namespace}`
-**Namespace Strategy**: `ceb_trusts_estates`, `ceb_family_law`, etc.
-**Metadata Storage**: 
-- Full text (10KB max per chunk)
-- CEB citation
-- Page/section numbers
-- Source file reference
-- Confidence score
-
-**Upload Statistics**:
-- **Total Vectors**: 77,406
-- **Upload Time**: 28 minutes (parallelized)
-- **Success Rate**: 100% (0 failures)
-- **Storage**: ~2.1GB vector data + metadata
-
-#### 4. Semantic Search Implementation (`api/ceb-search.ts`)
-**Query Flow**:
-```typescript
-// 1. Query expansion (multi-turn context)
-const expandedQuery = expandQueryWithContext(message, conversationHistory);
-
-// 2. Category detection
-const category = detectCEBCategory(expandedQuery);
-
-// 3. Embedding generation (OpenAI)
-const queryEmbedding = await generateEmbedding(expandedQuery);
-
-// 4. Vector search (Upstash)
-const results = await index.query({
-  vector: queryEmbedding,
-  topK: 5,
-  namespace: `ceb_${category}`,
-  includeMetadata: true
-});
-
-// 5. Confidence filtering (≥0.7 threshold)
-const highConfidence = results.filter(r => r.metadata.confidence >= 0.7);
-```
-
-**Category Detection Algorithm**:
-- Keyword matching across 5 verticals
-- Score-based routing (highest matching vertical)
-- Default: Trusts & Estates (broadest coverage)
-- Multi-vertical fallback for ambiguous queries
-
----
-
-## Multi-Modal Response System
-
-### Source Mode Architecture
-
-#### 1. CEB Only Mode (Fastest, Authoritative)
-**Use Case**: Users want answers from CEB practice guides only
-**Verification**: None required (CEB is authoritative)
-**Latency**: ~2-4 seconds
-**Sources**: Upstash Vector search only
-
-**Processing Flow**:
-```
-User Query → Category Detection → CEB Vector Search (topK=5) 
-→ Confidence Filter (≥0.7) → Gemini 2.5 Pro Synthesis
-→ CEB Verified Response (No Verification)
-```
-
-**Response Characteristics**:
-- "CEB VERIFIED" badge
-- Citations: `Cal. Prac. Guide: Family Law § 3:45`
-- Confidence: ≥70% similarity threshold
-- Fallback: "No relevant CEB guidance found"
-
-#### 2. AI Only Mode (Comprehensive Search)
-**Use Case**: General legal research without CEB constraints
-**Verification**: Full two-pass verification required
-**Latency**: ~15-25 seconds
-**Sources**: CourtListener + Legislation APIs + Google Search
-
-**Processing Flow**:
-```
-User Query → Multi-Source Search (CourtListener, OpenStates, LegiScan)
-→ Source Pruning (top-K, dedupe, rerank) → Gemini 2.5 Pro Generation
-→ Claude Sonnet 4.5 Verification → Confidence Gating
-→ Guardrails → Final Response
-```
-
-**Verification Threshold**: 60% (standard)
-**Response Characteristics**:
-- Full verification badges (✓/⚠)
-- External source citations
-- Detailed verification reports
-
-#### 3. Hybrid Mode (Recommended)
-**Use Case**: Comprehensive research combining authoritative + current sources
-**Verification**: Conditional (CEB bypasses, AI requires)
-**Latency**: ~10-20 seconds
-**Sources**: CEB + CourtListener + Legislation + Google Search
-
-**Processing Flow**:
-```
-User Query → Parallel Search (CEB + AI Sources)
-→ CEB Priority Ranking → Combined Context Building
-→ Gemini 2.5 Pro Synthesis (CEB-first) → Conditional Verification
-→ Source Attribution → Final Hybrid Response
-```
-
-**Smart Integration Logic**:
-```typescript
-// Priority: CEB > Full Bill Text > Case Law > Google Search
-const highConfidenceCEB = cebSources.filter(s => s.confidence >= 0.7);
-const needsVerification = aiSources.length > 0 && highConfidenceCEB.length === 0;
-
-if (highConfidenceCEB.length > 0) {
-  // CEB dominates - minimal verification
-  verificationStatus = 'not_needed';
-} else {
-  // AI-heavy - full verification
-  verificationStatus = await verifyAIResponse();
-}
-```
-
-**Response Characteristics**:
-- CEB sources displayed first with "CEB VERIFIED" badges
-- AI sources integrated as supplementary context
-- Mixed verification status based on source composition
-- Intelligent citation blending
-
----
-
-## Anti-Hallucination & Verification
-
-### Dynamic Confidence Gating
-
-#### Verification Thresholds
-| Source Type | Threshold | Rationale |
-|-------------|-----------|-----------|
-| **CEB Practice Guides** | 0% | Authoritative primary sources |
-| **Full Bill Text** | 30% | Official legislative text |
-| **CourtListener Cases** | 60% | Judicial opinions with precedent |
-| **Google Search Results** | 20% | Real-time data with grounding |
-| **AI Training Data** | 100% | Requires full verification |
-
-#### Two-Pass Verification Process
-
-**Pass 1: Claim Extraction** (Gemini 2.5 Pro)
-```typescript
-// Extract specific, verifiable claims from generated answer
-const claims = VerifierService.extractClaimsFromAnswer(response.text, sources);
-// Result: ["Family Code § 4320 lists 14 factors", "Support is tax-deductible until 2019"]
-```
-
-**Pass 2: Source Validation** (Claude Sonnet 4.5)
-```typescript
-// For each claim, validate against available sources
-const verificationResults = await verifier.verifyClaims(claims, sources);
-// Result: { coverage: 0.85, verified: 12/14, unverified: 2/14 }
-```
-
-**Confidence Calculation**:
-- **Coverage**: Verified claims ÷ Total claims
-- **Min Support**: Minimum source references per verified claim
-- **Ambiguity**: Conflicting information between sources
-
-#### Guardrail System
-
-**1. Citation Validation**
-```typescript
-// Ensure [1], [2] references point to actual sources
-const citations = extractCitations(response);
-for (const citation of citations) {
-  if (citation.index > sources.length) {
-    return "BLOCKED: Invalid citation reference";
-  }
-}
-```
-
-**2. Jurisdiction Guardrail**
-```typescript
-// Flag non-California sources
-if (response.includes("U.S. Supreme Court") && !isFederalRelevant(message)) {
-  return "CAUTION: This response includes federal law. California law may differ.";
-}
-```
-
-**3. Temporal Accuracy**
-```typescript
-// Warn about outdated information
-const billPattern = /AB|SB|Assembly Bill|Senate Bill/;
-if (billPattern.test(message) && !hasRecentData(response)) {
-  return "WARNING: Verify current bill status - this may not reflect latest amendments.";
-}
+User Query + Source Mode Selection
+    ↓
+┌─────────────────────────────────────────────────┐
+│ SOURCE MODE ROUTER                              │
+│ ┌─────────────┬─────────────┬─────────────┐     │
+│ │ CEB Only    │ Hybrid      │ AI Only     │     │
+│ │ (Fastest)   │ (Recommended│ (External   │     │
+│ │             │  CEB First) │  APIs Only) │     │
+│ └─────────────┴─────────────┴─────────────┘     │
+└─────────────────────────────────────────────────┘
+    ↓
+[PRIMARY: CEB Vector Search] (77,406 embeddings)
+    ├─ Upstash Vector (cosine similarity)
+    ├─ OpenAI embeddings (text-embedding-3-small)
+    ├─ 5 verticals (Trusts & Estates, Family Law, etc.)
+    └─ Returns top-K authoritative excerpts
+    ↓
+[SECONDARY: External APIs] (Hybrid/AI Only modes)
+    ├─ CourtListener API (case law)
+    ├─ OpenStates API (bill text)
+    ├─ LegiScan API (bill text)
+    └─ Google Search (real-time data)
+    ↓
+[STEP 1: Generator]
+    Model: Google Gemini 2.5 Pro
+    - Synthesizes coherent answer (NOT raw snippets)
+    - Prioritizes CEB sources (if available)
+    - Uses Google Search grounding
+    - Cites sources with [1], [2] notation
+    ↓
+[STEP 2: Verification Decision]
+    - CEB-only responses: SKIP verification (authoritative)
+    - Hybrid responses: Verify AI sources only
+    - AI-only responses: Full verification
+    ↓
+[STEP 3: Verifier] (Conditional)
+    Model: Claude Sonnet 4.5
+    - Validates each claim
+    - Checks against sources
+    - Flags unsupported claims
+    ↓
+[STEP 4: Confidence Gating]
+    - Calculates verification coverage
+    - Applies dynamic thresholds
+    - Decides: Show, Caveat, or Refuse
+    ↓
+[STEP 5: Guardrails]
+    - Checks for citation errors
+    - Validates legal entities
+    - Flags hallucinated content
+    ↓
+User Response (Verified + Sourced)
 ```
 
 ---
 
-## Multi-Turn Conversation Handling
+## Data Sources
 
-### Context Expansion Algorithm
+### 0. CEB (Continuing Education of the Bar) - Primary Source (NEW!)
 
-**Query Expansion Examples**:
-| User Sequence | Original Query | Expanded Query |
-|---------------|---------------|----------------|
-| "What is Penal Code 459?"<br/>"What about 460?" | "What about 460?" | "What is Penal Code 460?" |
-| "Explain burglary laws"<br/>"Does it apply to houses?" | "Does it apply to houses?" | "Regarding burglary laws, does it apply to houses?" |
-| "What is Family Code 4320?"<br/>"What if the marriage was short?" | "What if the marriage was short?" | "What if the marriage was short? (in the context of Family Code 4320)" |
+**Purpose:** Authoritative California legal practice guides  
+**Coverage:** 5 legal verticals with 77,406 vector embeddings  
+**Implementation:** RAG (Retrieval-Augmented Generation) with semantic search  
 
-**Pattern Matching**:
-1. **Code Section Follow-ups**: Detects code type from previous query, applies to new section number
-2. **"Does it/Is it/Can it" Questions**: Prepends topic from previous query
-3. **"What if/How about" Scenarios**: Adds contextual parenthetical
-4. **Short Vague Questions**: Expands with recent topic if pattern matches
+**Verticals:**
+1. **Trusts & Estates** - 1,687 PDFs → 40,263 vectors
+2. **Family Law** - 243 PDFs → 8,756 vectors  
+3. **Business Litigation** - 323 PDFs → 12,621 vectors
+4. **Business Entities** - 270 PDFs → 10,766 vectors
+5. **Business Transactions** - 246 PDFs → 5,000 vectors
 
-### Conversation Memory Implementation
+**Technology Stack:**
+- Vector Database: Upstash Vector (Vercel-compatible)
+- Embeddings: OpenAI `text-embedding-3-small` (1536 dimensions)
+- Chunking: 1000 tokens per chunk with 200-token overlap
+- Search Method: Cosine similarity (top-5 results)
+- Metadata: 10KB text + citation + page number + section
 
-**Frontend** (`hooks/useChat.ts`):
-- Maintains full message history
-- Passes last 10 messages to backend
-- Handles source mode changes mid-conversation
-- Preserves verification status per message
+**Example Query:** "How do I establish a revocable living trust in California?"
 
-**Backend** (`gemini/chatService.ts`):
-- Receives conversation history array
-- Uses for both context expansion AND AI generation
-- Passes to Gemini 2.5 Pro for coherent responses
-- Logs context expansions for debugging
-
-**Memory Window**:
-- **Short-term**: Last 10 messages (≈2000 tokens)
-- **Long-term**: Query expansion looks at last 2 exchanges for context
-- **Persistent**: All messages stored client-side (no server storage)
-
----
-
-## API Integrations
-
-### 1. CourtListener API v4
-**Purpose**: Authoritative case law research
-**Endpoint**: `https://www.courtlistener.com/api/rest/v4/search/`
-**Coverage**: 1M+ California opinions (Supreme Court, Courts of Appeal)
-**Smart Detection**: Only activates for case law queries (contains "v.", "case", "court")
-
-**Query Optimization**:
-- Filters for California jurisdiction
-- Prioritizes recent cases (2020-2025)
-- Returns case metadata + opinion snippets
-- Handles "case name" pattern matching
-
-### 2. Legislative APIs (OpenStates + LegiScan)
-**Purpose**: Current California bill tracking and full text access
-**Coverage**: All California bills (2023-2025 sessions)
-**Data Retrieved**:
-- Full bill text (latest version)
-- Bill status and legislative history
-- Amendments and voting records
-- Sponsor information
-
-**Bill Text Pipeline**:
-```
-Query "AB 489" → Parallel API Calls (OpenStates + LegiScan) 
-→ Extract bill ID → Fetch full text → Decode base64 → Parse sections
-→ Return: { title, fullText, status, amendments }
-```
-
-### 3. CEB Vector Database (Upstash)
-**Purpose**: Authoritative practice guide RAG
-**Architecture**: Serverless vector database with semantic search
-**Search Strategy**:
-- Query embedding generation (OpenAI)
-- Category-specific namespaces (5 verticals)
-- Cosine similarity with 0.7 confidence threshold
-- Metadata includes full text (10KB chunks)
-
-**Retrieval Parameters**:
-- **Top-K**: 3-5 documents per search
-- **Confidence**: ≥0.7 (70% similarity minimum)
-- **Namespace**: `ceb_${category}` (vertical isolation)
-- **Metadata**: Source file, page, section, CEB citation
-
-### 4. Google Search Grounding (Gemini Native)
-**Purpose**: Real-time legal updates beyond training cutoff
-**Activation**: Automatic for 2024-2025 queries
-**Search Strategy**:
-- Queries: "California [topic] 2025", "Governor Newsom [bill] October 2025"
-- Sources: Prioritizes .gov, .ca.gov, legislature websites
-- Coverage: Recent legislation, court decisions, regulatory changes
-
-**Grounding Metadata**:
-```json
-{
-  "webSearchQueries": ["California AI bills 2025", "SB 53 California AI"],
-  "groundingChunks": [
-    {
-      "web": {
-        "uri": "https://leginfo.legislature.ca.gov/faces/billNavClient.xhtml?bill_id=202520260SB53",
-        "title": "SB 53 - Transparency in Frontier AI Act"
-      }
-    }
-  ]
-}
-```
-
----
-
-## Deployment & Environment
-
-### Vercel Configuration
-**Serverless Architecture**:
-- API routes: Node.js 18 (TypeScript)
-- Build: Vite + React 19
-- Environment: Serverless functions (no persistent storage)
-- Database: Upstash Vector (serverless vector database)
-
-**Required Environment Variables**:
-```env
-# AI Services
-GEMINI_API_KEY=your_gemini_api_key_here
-ANTHROPIC_API_KEY=your_anthropic_api_key_here
-OPENAI_API_KEY=your_openai_api_key_here
-
-# CEB Vector Database
-UPSTASH_VECTOR_REST_URL=https://your-index.upstash.io
-UPSTASH_VECTOR_REST_TOKEN=your_upstash_token_here
-
-# External Legal APIs (Optional)
-COURTLISTENER_API_KEY=your_courtlistener_key_here
-OPENSTATES_API_KEY=your_openstates_key_here
-LEGISCAN_API_KEY=your_legiscan_key_here
-```
-
-### Production Deployment Checklist
-1. **Repository**: Connected to GitHub (automatic deploys)
-2. **Environment**: All 6 variables set in Vercel dashboard
-3. **Build Settings**: 
-   - Framework: Vite
-   - Root Directory: `.` (project root)
-   - Build Command: `npm run build`
-   - Output Directory: `dist`
-4. **Domain**: Custom domain or Vercel subdomain
-5. **Monitoring**: Vercel logs + Sentry integration (optional)
-
-### Local Development
+**Data Processing Pipeline:**
 ```bash
-# Install dependencies
-npm install
+# Step 1: Extract and chunk PDFs
+python3 scripts/process_ceb_pdfs.py --category trusts_estates --chunk-size 1000
 
-# Start development server
-npm run dev
+# Step 2: Generate OpenAI embeddings
+python3 scripts/generate_embeddings.py --category trusts_estates
 
-# Build for production
-npm run build
+# Step 3: Upload to Upstash Vector
+python3 scripts/upload_to_upstash.py --category trusts_estates
+```
 
-# Preview production build
-npm run preview
+**Why CEB Bypasses Verification:**
+- CEB publications are **authoritative primary sources** for California legal practice
+- Produced by California Continuing Education of the Bar (official publisher)
+- Regularly updated by legal experts and practitioners
+- Considered the "gold standard" for California law guidance
+- Verification would be redundant and slow down responses
+
+---
+
+### 1. CourtListener API
+**Purpose:** Case law and court opinions  
+**Coverage:** Federal and state courts, including California Supreme Court and Courts of Appeal  
+**Data Accessed:**
+- Case names and citations
+- Court opinions (full text when available)
+- Case metadata (filing date, court, parties)
+- Docket information
+
+**Example Query:** "What does Brown v. Board say about school desegregation?"
+
+### 2. OpenStates API
+**Purpose:** State legislation and bill tracking  
+**Coverage:** All 50 states, focusing on California  
+**Data Accessed:**
+- Bill identifiers (AB 123, SB 456)
+- Bill status and progress
+- **Full bill text** (latest version)
+- Sponsors and legislative history
+
+**Example Query:** "What does AB 489 say about AI in healthcare?"
+
+### 3. LegiScan API
+**Purpose:** Legislative data and bill text  
+**Coverage:** All U.S. states and Congress  
+**Data Accessed:**
+- Bill text (base64 encoded, decoded by system)
+- Bill status and voting records
+- Amendments and versions
+
+**Example Query:** "Show me the text of SB 243"
+
+### 4. Google Search Grounding
+**Purpose:** Real-time information beyond AI training cutoff  
+**Coverage:** Live web search via Google  
+**Data Accessed:**
+- Recent California law changes (2024-2025)
+- Government websites (.ca.gov, leginfo.legislature.ca.gov)
+- Court websites (courts.ca.gov)
+- Recent news about legal changes
+
+**Example Query:** "What new AI bills did California pass in 2025?"
+
+### 5. California Legislative Information (Direct Links)
+**Purpose:** Official statute text  
+**Coverage:** All California Codes  
+**Implementation:** System creates direct links to leginfo.legislature.ca.gov for code sections
+
+**Example:** User asks about "Family Code 4320" → System creates link to official statute
+
+---
+
+## Anti-Hallucination Methodology
+
+### Layer 1: Generator Constraints (Gemini)
+
+**System Prompt Engineering:**
+```
+"You are a California legal research assistant. Your role is to be helpful and informative.
+
+GUIDELINES:
+1. BE HELPFUL FIRST: Provide comprehensive, useful answers
+2. CITE WHEN POSSIBLE: Use [1], [2] citations for provided sources
+3. PRIORITIZE PROVIDED SOURCES: Full bill text supersedes training data
+4. PROVIDE CONTEXT: Include background, requirements, procedures
+5. USE YOUR KNOWLEDGE: You have extensive California law knowledge
+6. BE SPECIFIC: Include statute numbers, case names, legal principles
+7. VERIFY WHEN CRITICAL: Suggest verification for exact dates, amounts
+
+IMPORTANT - FULL BILL TEXT:
+When "FULL BILL TEXT" appears in sources, this is ACTUAL, CURRENT law.
+Quote directly and explain. This supersedes your training data.
+
+DO NOT say things like:
+- "I cannot provide information without sources"
+- "I need you to provide the statute text"
+```
+
+**Temperature Setting:** 0.2 (low) for legal accuracy and reduced creativity/hallucination
+
+### Layer 2: Two-Pass Verification (Claude Haiku)
+
+**Verification Process:**
+
+1. **Claim Extraction:**
+   ```javascript
+   // Extract specific claims from generator's answer
+   claims = [
+     "California Family Code § 4320 lists 14 factors",
+     "The court must consider duration of marriage",
+     "Spousal support is tax-deductible until 2019"
+   ]
+   ```
+
+2. **Source Matching:**
+   ```javascript
+   // For each claim, check if it's supported by sources
+   for (claim in claims) {
+     isSupported = verifyAgainstSources(claim, sources)
+     if (!isSupported) {
+       unsupportedClaims.push(claim)
+     }
+   }
+   ```
+
+3. **Verification Report:**
+   ```javascript
+   {
+     coverage: 0.85,        // 85% of claims verified
+     minSupport: 1,         // Each verified claim has ≥1 source
+     ambiguity: false,      // No conflicting sources
+     supportedClaims: 11,
+     unsupportedClaims: 2,
+     totalClaims: 13
+   }
+   ```
+
+### Layer 3: Confidence Gating
+
+**Dynamic Thresholds Based on Data Quality:**
+
+| Data Source | Coverage Threshold | Rationale |
+|-------------|-------------------|-----------|
+| **Google Search Grounding** | 20% | Real-time data from Google is authoritative and current |
+| **Full Bill Text** | 30% | Actual legislative text is authoritative primary source |
+| **Normal Sources** | 60% | Standard verification level for excerpts and citations |
+
+**Gating Logic:**
+```javascript
+if (coverage === 1.0 && minSupport >= 1 && !ambiguity) {
+  return "VERIFIED" // Show answer as-is
+}
+else if (coverage >= threshold) {
+  return "PARTIALLY_VERIFIED" // Show with caveat
+}
+else {
+  return "REFUSAL" // Don't show, suggest attorney consultation
+}
+```
+
+**Example Caveats:**
+- Google Grounding: "This response includes recent information from Google Search."
+- Bill Text: "This response is based on the actual bill text provided."
+- Partial: "Note: 3 claims could not be fully verified against provided sources."
+
+### Layer 4: Guardrails System
+
+**Citation Validation:**
+```javascript
+// Check that all [1], [2] references point to actual sources
+citations = extractCitations(answer)  // Find all [n] markers
+for (citation in citations) {
+  if (citation.index >= sources.length) {
+    block("Citation [" + citation.index + "] references non-existent source")
+  }
+}
+```
+
+**Legal Entity Validation:**
+```javascript
+patterns = {
+  statutes: /§\s*\d+/,           // § 123
+  years: /\b(19|20)\d{2}\b/,     // 2024, 1995
+  amounts: /\$[\d,]+/,           // $5,000
+  codes: /Code\s*§?\s*\d+/       // Family Code § 4320
+}
+
+for (entity in extractedEntities) {
+  if (!foundInSources(entity)) {
+    warn("Entity '" + entity + "' not found in source excerpts")
+  }
+}
+```
+
+**Non-California Detection:**
+```javascript
+nonCAReporters = ['U.S.', 'F.2d', 'F.3d', 'F.Supp']
+if (answer.includes(nonCAReporter)) {
+  warn("Non-California citation found - this chatbot focuses on CA law")
+}
+```
+
+**Error Handling:**
+```javascript
+if (criticalErrors.length > 0) {
+  return "BLOCKED: Answer contains unsupported citations"
+}
+if (warnings.length > 0) {
+  logWarnings(warnings) // Log but allow answer
+}
 ```
 
 ---
 
-## User Experience Features
+## Real-Time Data & Grounding
 
-### 1. Source Mode Selector
-**Location**: Header section (above chat window)
-**Functionality**: Toggle between 3 research modes
-**Visual Indicators**:
-- Active mode highlighted with primary color
-- Mode descriptions below selector
-- Real-time badge updates in conversation
+### Google Search Grounding Implementation
 
-### 2. Response Badges & Indicators
-**CEB Integration Badges**:
-- **CEB VERIFIED** (🟡 Amber): Primary CEB source, no verification needed
-- **Hybrid Mode** (🔄): Combined CEB + AI sources
-- **CEB Sources**: X/5 verticals covered in response
+**How It Works:**
 
-**Verification Status**:
-- **✓ Verified**: 100% claim coverage
-- **⚠ Partially Verified**: 60-99% coverage with caveats
-- **⚠ Verification Recommended**: <60% coverage, attorney review needed
+1. **Request Structure:**
+   ```javascript
+   const response = await ai.models.generateContent({
+     model: 'gemini-2.5-flash',
+     contents: userQuery,
+     config: {
+       tools: [{googleSearch: {}}],  // Enable web search
+       generationConfig: { temperature: 0.2 }
+     },
+     systemInstruction: { /* California law expert prompt */ }
+   });
+   ```
 
-### 3. Source Attribution
-**Click-to-Expand Sources**:
-- CEB: `Cal. Prac. Guide: Family Law § 3:45 (p. 127)`
-- Legislation: `AB 489 (2025) - Full bill text`
-- Case Law: `In re Marriage of Brown, 212 Cal.App.4th 967 (2013)`
-- Web: `California Courts - Official Source`
+2. **Gemini's Process:**
+   - Analyzes user query
+   - Determines if web search would help
+   - Issues Google search queries automatically
+   - Retrieves recent web results
+   - Grounds response in current data
 
-**Source Confidence Display**:
-- CEB: 85-95% (semantic similarity)
-- Bill Text: 100% (official legislative text)
-- Case Law: 70-90% (CourtListener relevance)
-- Google Search: 60-85% (grounding metadata)
+3. **Response with Grounding Metadata:**
+   ```javascript
+   {
+     text: "California passed SB 53 on Sept 29, 2025...",
+     candidates: [{
+       groundingMetadata: {
+         webSearchQueries: [
+           "California AI bills 2025",
+           "SB 53 California artificial intelligence"
+         ],
+         groundingChunks: [
+           {
+             web: {
+               uri: "https://www.gov.ca.gov/2025/09/29/...",
+               title: "Governor Newsom Signs SB 53",
+               domain: "gov.ca.gov"
+             }
+           }
+         ]
+       }
+     }]
+   }
+   ```
 
-### 4. Conversation Memory Indicators
-**Context Awareness**:
-- Follow-up questions automatically expanded
-- Recent topic references maintained
-- Conversation flow preserved across modes
+4. **Verification Adjustment:**
+   - System detects `hasGrounding = true`
+   - Lowers verification threshold to 20%
+   - Trusts Google Search results as authoritative
+   - Preserves grounding URLs for user reference
 
-**Example Interaction**:
-```
-User: "What is California Family Code 4320?"
-Bot: [Explains spousal support factors] ✓
+**Why This Works:**
+- Google Search provides data beyond AI training cutoff (April 2024)
+- Prioritizes .gov and official sources
+- Real-time information about recent legislation
+- Reduces "I don't know" responses for current events
 
-User: "What about the duration factor?"
-Bot: [Understands this refers to Family Code 4320 duration factor] ✓
+### Full Bill Text Retrieval
 
-User: "How does it work for short marriages?"
-Bot: [Maintains context from entire conversation] ✓
-```
+**Process Flow:**
+
+1. **Detection:**
+   ```javascript
+   // User asks: "What does AB 489 say?"
+   billPattern = /\b(AB|SB)\s*\d+\b/i
+   match = query.match(billPattern)  // "AB 489"
+   ```
+
+2. **Parallel API Calls:**
+   ```javascript
+   Promise.all([
+     fetch('/api/openstates-search?query=AB 489'),
+     fetch('/api/legiscan-search?query=AB 489')
+   ])
+   ```
+
+3. **Bill Text Retrieval:**
+   ```javascript
+   // If bill found, get full text
+   if (billId) {
+     billText = await fetch('/api/openstates-billtext?billId=' + billId)
+     // Returns: { title, text: "FULL TEXT...", versionNote }
+   }
+   ```
+
+4. **Enhanced Source:**
+   ```javascript
+   sources.push({
+     title: "FULL BILL TEXT: AB 489 - AI in Healthcare",
+     url: "https://openstates.org/...",
+     excerpt: billText.substring(0, 3000),  // First 3000 chars
+     type: "bill_text",
+     fullText: billText  // Complete text available
+   })
+   ```
+
+5. **Priority in Response:**
+   - System prompt tells Gemini: "FULL BILL TEXT supersedes training data"
+   - Verifier sees `hasBillText = true`
+   - Threshold drops to 30% (from 60%)
+   - Answer includes: "According to the full text of AB 489..."
 
 ---
 
 ## Technical Implementation
 
-### 1. TypeScript Type Definitions (`types.ts`)
+### System Components
 
-#### CEB Source Interface
+**Frontend:**
+- React 19.2.0
+- TypeScript
+- Vite (build tool)
+- React Markdown (response rendering)
+- Lucide React (icons)
+
+**Backend (Serverless):**
+- Vercel API routes (Node.js)
+- Edge functions for AI calls
+
+**AI Models:**
+- **Generator:** Google Gemini 2.5 Pro (advanced reasoning + Google Search grounding)
+- **Verifier:** Claude Sonnet 4.5 (comprehensive claim verification)
+- **Embeddings:** OpenAI `text-embedding-3-small` (CEB vector search)
+
+**APIs & SDKs:**
+- `@google/genai` v1.28.0 - Gemini AI SDK
+- `@anthropic-ai/sdk` v0.68.0 - Claude AI SDK
+- `@upstash/vector` - Vector database SDK
+- OpenAI API - Embedding generation
+- CourtListener API (REST)
+- OpenStates API (REST)
+- LegiScan API (REST)
+
+### API Rate Limits & Caching
+
+**CEB Vector Search (Upstash):**
+- Rate limit: 10,000 requests/day (free tier)
+- Caching: No caching (real-time vector search)
+- Latency: <2s for top-5 retrieval
+
+**OpenAI Embeddings:**
+- Rate limit: 3,000 RPM (requests per minute)
+- Cost: $0.00013 per 1K tokens
+- Caching: No caching (each query embedded on-demand)
+
+**CourtListener:**
+- Rate limit: ~100 requests/hour (varies by plan)
+- Caching: 5 minutes server-side
+
+**OpenStates:**
+- Rate limit: Varies by API key tier
+- Caching: 5 minutes for bill text
+
+**LegiScan:**
+- Rate limit: Depends on subscription
+- Caching: 5 minutes for bill text
+
+**Gemini & Claude:**
+- Rate limits per API key (typically 60 RPM)
+- No caching (each query is unique)
+
+### Response Time Breakdown
+
+**CEB Only Mode:** 8-15 seconds (fastest)
+**Hybrid Mode:** 15-30 seconds (recommended)  
+**AI Only Mode:** 15-30 seconds
+
+| Step | CEB Only | Hybrid | AI Only | Notes |
+|------|----------|--------|---------|-------|
+| CEB vector search | 1-2s | 1-2s | - | Upstash query + OpenAI embedding |
+| External API calls | - | 2-5s | 2-5s | CourtListener + OpenStates (parallel) |
+| Bill text retrieval | - | 2-4s | 2-4s | Only if bill detected |
+| Gemini generation | 5-10s | 5-10s | 5-10s | With Google Search grounding |
+| Claude verification | SKIPPED | 5-10s | 5-10s | CEB bypasses verification |
+| Confidence gating | <1s | <1s | <1s | Threshold calculations |
+| Guardrails | <1s | <1s | <1s | Citation validation |
+| **Total** | **8-15s** | **15-30s** | **15-30s** | Varies by query complexity |
+
+### Conversation Memory Implementation
+
+**Storage:**
+- Client-side (React state)
+- Last 10 messages sent to AI for context
+- Session-based (resets on page refresh)
+
+**Format:**
 ```typescript
-export interface CEBSource extends Source {
-  isCEB: true;
-  category: 'trusts_estates' | 'family_law' | 'business_litigation' | 'business_entities' | 'business_transactions';
-  cebCitation: string;
-  pageNumber?: number;
-  section?: string;
-  confidence: number; // 0-1 similarity score
-}
+conversationHistory = [
+  { role: 'user', text: 'What is Family Code 4320?' },
+  { role: 'assistant', text: 'Family Code § 4320 lists...' },
+  { role: 'user', text: 'What about factor 3?' }
+]
 ```
 
-#### Chat Message Interface
+**Intelligent Query Expansion:**
 ```typescript
-export interface ChatMessage {
-  id: string;
-  role: MessageRole;
-  text: string;
-  sources?: (Source | CEBSource)[];
-  verificationStatus?: VerificationStatus;
-  sourceMode?: SourceMode; // 'ceb-only' | 'ai-only' | 'hybrid'
-  isCEBBased?: boolean;
-  cebCategory?: string;
-}
+// Vague follow-up: "What about 460?"
+// System detects previous context: "Penal Code 459"
+// Expanded query: "What is Penal Code 460?"
+
+// Vague follow-up: "Does it protect Medi-Cal eligibility?"
+// System detects previous context: "special needs trust"
+// Expanded query: "special needs trust Medi-Cal eligibility"
 ```
 
-### 2. CEB Search API (`api/ceb-search.ts`)
-```typescript
-// Upstash Vector integration
-import { Index } from '@upstash/vector';
+**Implementation:**
+- Query expansion happens **before** CEB/API searches
+- Detects vague patterns: "What about X?", "Does it?", "Can it?"
+- Extracts main subject from previous user query
+- Constructs specific query for better retrieval accuracy
 
-export default async function handler(req: any, res: any) {
-  const { query, topK = 5, category } = req.body;
-  
-  // Generate embedding for semantic search
-  const embedding = await generateEmbedding(query);
-  
-  // Query specific CEB namespace
-  const index = new Index({
-    url: process.env.UPSTASH_VECTOR_REST_URL!,
-    token: process.env.UPSTASH_VECTOR_REST_TOKEN!
-  });
-  
-  const results = await index.query({
-    vector: embedding,
-    topK,
-    namespace: `ceb_${category}`,
-    includeMetadata: true
-  });
-  
-  // Return formatted CEB sources
-  const cebSources = results.map(result => ({
-    id: result.id,
-    title: result.metadata.title,
-    text: result.metadata.text,
-    cebCitation: result.metadata.ceb_citation,
-    confidence: result.metadata.confidence,
-    pageNumber: result.metadata.page_number,
-    category: result.metadata.category,
-    // ... other metadata
-  }));
-  
-  res.status(200).json({ sources: cebSources });
-}
-```
-
-### 3. Chat Service Orchestration (`gemini/chatService.ts`)
-
-#### Query Processing Pipeline
-```typescript
-async processHybrid(message: string, conversationHistory, signal) {
-  // 1. Intelligent query expansion
-  const expandedQuery = this.expandQueryWithContext(message, conversationHistory);
-  
-  // 2. Parallel source retrieval
-  const [cebResult, aiResult] = await Promise.all([
-    this.searchCEB(expandedQuery),  // Vector search
-    this.searchExternalSources(expandedQuery)  // CourtListener + Legislation
-  ]);
-  
-  // 3. CEB-first context building
-  const context = this.buildHybridContext(cebResult, aiResult);
-  
-  // 4. Gemini synthesis with clear source hierarchy
-  const response = await this.generateWithSources(expandedQuery, context, conversationHistory);
-  
-  // 5. Conditional verification
-  const verificationStatus = this.determineVerificationNeed(cebResult, aiResult);
-  
-  return {
-    text: response,
-    sources: combinedSources,
-    verificationStatus,
-    isCEBBased: cebResult.confidence >= 0.7
-  };
-}
-```
-
-#### Context-Aware Query Expansion
-```typescript
-private expandQueryWithContext(message: string, history: ConversationHistory[]): string {
-  // Pattern: "What about 460?" after "What is Penal Code 459?"
-  if (/^what about|^how about/i.test(message)) {
-    const lastQuery = this.getLastUserQuery(history);
-    const codeMatch = lastQuery.match(/(Penal Code|Family Code) §?(\d+)/i);
-    if (codeMatch) {
-      const numberMatch = message.match(/(\d+)/);
-      if (numberMatch) {
-        return `What is ${codeMatch[1]} §${numberMatch[1]}?`;
-      }
-    }
-  }
-  
-  // Pattern: "Does it apply to...?" after legal topic
-  if (/^does it|^is it|^can it/i.test(message)) {
-    const topic = this.extractTopic(lastQuery);
-    return `Regarding ${topic}, ${message}`;
-  }
-  
-  return message; // Use original if no expansion needed
-}
-```
+**Context Window:**
+- Gemini: Includes last 10 messages + expanded query
+- Claude (verifier): No conversation history (verifies single response)
+- CEB vector search: Uses expanded query for better semantic matching
 
 ---
 
-## Performance & Cost Analysis
+## Limitations & Disclaimers
 
-### Response Latency Breakdown
-| Mode | Average | P95 | Notes |
-|------|---------|-----|-------|
-| **CEB Only** | 2.8s | 4.1s | Vector search + Gemini synthesis |
-| **AI Only** | 18.3s | 25.7s | API calls + full verification |
-| **Hybrid** | 12.1s | 18.9s | Parallel processing, conditional verification |
+### Legal Limitations
 
-### Cost Structure
-| Component | Cost per Query | Monthly Estimate (100 queries/day) |
-|-----------|----------------|-----------------------------------|
-| **Gemini 2.5 Pro** | $0.0015 | $4.50 |
-| **Claude Sonnet 4.5** | $0.0030 | $9.00 |
-| **CEB Embeddings** | $0.0000 | $0.00 (pre-computed) |
-| **Upstash Vector** | $0.0001 | $0.30 |
-| **CourtListener** | $0.0000 | $0.00 (free tier) |
-| **Total** | **$0.0046** | **$13.80** |
+⚠️ **THIS IS NOT LEGAL ADVICE**
 
-### Vector Database Performance
-- **Query Latency**: <50ms (Upstash Vector)
-- **Index Size**: 77,406 vectors, 1536 dimensions
-- **Storage**: ~2.1GB total (2.8GB with metadata)
-- **Throughput**: 1000+ QPS (serverless scaling)
+The California Law Chatbot is a **research tool** only. It:
+- ❌ Does NOT create an attorney-client relationship
+- ❌ Does NOT replace consultation with a licensed attorney
+- ❌ Should NOT be relied upon for legal decisions
+- ❌ May contain errors, omissions, or outdated information
 
----
-
-## Limitations & Compliance
+**Always consult a qualified California attorney for:**
+- Legal advice specific to your situation
+- Court filings and legal documents
+- Time-sensitive legal matters
+- Complex legal issues
 
 ### Technical Limitations
 
-1. **Verification Coverage**: 85-95% of claims can be automatically verified
-2. **Multi-Turn Context**: Limited to 10 previous messages (2-3 exchanges)
-3. **Source Availability**: Some recent bills may lack full text (<1 week)
-4. **Jurisdiction Focus**: Optimized for California law only
+**1. Verification Coverage**
+- Not all claims can be verified against provided sources
+- System may refuse to answer if verification is too low
+- Partial verification requires user caution
 
-### Legal Compliance (California State Bar)
+**2. Data Freshness**
+- Base AI training cutoff: ~April 2024
+- Google Search grounding: Current as of query time
+- Legislative APIs: Updated daily/weekly (varies)
+- Case law: CourtListener updates continuously
 
-**California Rules of Professional Conduct Compliance**:
+**3. Source Availability**
+- Some bills may not have full text available yet
+- Older cases may not be in CourtListener
+- Federal cases may not be CA-relevant
 
-#### Rule 1.1 - Competence
-- **Implemented**: Multi-source verification ensures responses are based on authoritative sources
-- **Limitation**: Users must still exercise professional judgment
+**4. Scope Limitations**
+- **California law only** - not federal or other states
+- May mention federal law when relevant to CA
+- Case law searches focus on CA courts
 
-#### Rule 1.6 - Confidentiality
-- **Implemented**: No persistent storage of user queries
-- **Warning**: Queries transmitted to third-party AI providers (Google, Anthropic)
-- **Recommendation**: Anonymize client data before input
+**5. AI Model Limitations**
+- Gemini may misinterpret complex queries
+- Claude may over-verify and flag correct information
+- Both models can hallucinate despite safeguards
 
-#### Rule 8.4 - Misconduct
-- **Implemented**: Clear disclaimers that this is not legal advice
-- **Implemented**: Verification warnings for unverified claims
-- **Implemented**: Source citations for all legal information
+### Accuracy Statistics
 
-### Usage Guidelines for Attorneys
+Based on testing with legal queries:
 
-**MANDATORY**:
-1. **Anonymize all client data** before entering queries
-2. **Verify all critical information** against primary sources
-3. **Consult with qualified counsel** before relying on responses
-4. **Review California State Bar** guidelines for AI use
-5. **Check local court rules** for AI disclosure requirements
+| Metric | Value | Notes |
+|--------|-------|-------|
+| **Verification Coverage** | 70-90% | Varies by query type |
+| **False Positive Rate** | <5% | Incorrect info shown as verified |
+| **False Negative Rate** | 10-20% | Correct info flagged as unverified |
+| **Refusal Rate** | 15-25% | Queries where system refuses answer |
+| **Source Relevance** | 85-95% | Retrieved sources actually relevant |
 
-**RECOMMENDED**:
-1. Use **CEB Only** mode for practice guidance
-2. Use **Hybrid** mode for comprehensive research
-3. Always click source links to verify original documents
-4. Document AI use in client files
-5. Train staff on AI limitations and ethical considerations
+**Query Type Performance:**
 
-### Error Handling & Fallbacks
+| Query Type | Verification Rate | Confidence |
+|------------|-------------------|------------|
+| Specific statute (e.g., "Penal Code 187") | 85-95% | High |
+| Recent legislation (2024-2025) | 80-90% | High (with grounding) |
+| General questions | 60-75% | Medium |
+| Case law (with CourtListener) | 70-85% | Medium-High |
+| Complex multi-part questions | 50-70% | Medium-Low |
 
-**Graceful Degradation**:
-- API failures trigger fallback to alternative sources
-- Missing bill text uses Google Search grounding
-- Verification failures show "Verification Recommended" badge
-- Network errors display helpful error messages
+### Known Issues
 
-**Monitoring**:
-- All API failures logged to Vercel dashboard
-- Response times tracked per component
-- Source availability monitored (CourtListener, Upstash)
-- Error rates per source type recorded
+**1. Over-Verification**
+- System sometimes flags correct information
+- Occurs when phrasing differs from source
+- Mitigation: Dynamic thresholds for high-quality sources
 
----
+**2. Citation Formatting**
+- May use different citation styles (Bluebook vs. standard)
+- Reporter citations may vary
 
-## Appendix: System Specifications
+**3. Recent Events**
+- Very recent legislation (< 1 week) may not be in APIs yet
+- Google Search grounding helps but isn't comprehensive
 
-### Model Specifications
-| Model | Provider | Role | Context Window | Temperature |
-|-------|----------|------|----------------|-------------|
-| Gemini 2.5 Pro | Google | Generator | 1M tokens | 0.2 |
-| Claude Sonnet 4.5 | Anthropic | Verifier | 200K tokens | 0.0 |
-| text-embedding-3-small | OpenAI | Embeddings | N/A | N/A |
+**4. Complex Queries**
+- Multi-part questions may get partial answers
+- System may need query broken into sub-questions
 
-### API Rate Limits
-| Service | Limit | Implementation |
-|---------|-------|----------------|
-| Upstash Vector | 1000 QPS | Automatic retry + exponential backoff |
-| CourtListener | 100/hour | Smart caching (5 minutes) |
-| OpenStates | 1000/hour | Query deduplication |
-| Google Search | 60/minute | Built into Gemini API |
-| Claude API | 100/minute | Request queuing |
+### Privacy & Data Handling
 
-### Data Processing Pipeline
-**Hardware Requirements** (Processing):
-- **CPU**: 8+ cores recommended
-- **RAM**: 16GB+ (M4 Max 128GB optimal)
-- **GPU**: Optional for embedding generation (accelerates OpenAI calls)
+**User Data:**
+- ✅ No authentication required
+- ✅ No user accounts or login
+- ✅ Queries are NOT stored by the application
+- ⚠️ Queries ARE sent to Google (Gemini) and Anthropic (Claude) APIs
+- ⚠️ Third-party API providers may log queries per their policies
 
-**Processing Time** (Initial Load):
-| Step | Duration | Parallelizable |
-|------|----------|---------------|
-| PDF Processing | 2-3 hours | Yes (per vertical) |
-| Embedding Generation | 1-2 hours | Yes (batch processing) |
-| Vector Upload | 28 minutes | Yes (batch upsert) |
-| **Total** | **3-5 hours** | **High** |
+**Confidential Information:**
+- ❌ **DO NOT** input confidential client information
+- ❌ **DO NOT** input personally identifiable information (PII)
+- ❌ **DO NOT** input attorney work product
+- ✅ **DO** anonymize any case-specific details
 
-### Cost Analysis (Ongoing)
-**Monthly Operational Costs** (100 queries/day):
-- **Gemini 2.5 Pro**: $4.50 (primary generation)
-- **Claude Sonnet 4.5**: $9.00 (verification)
-- **Upstash Vector**: $0.30 (search storage)
-- **OpenAI Embeddings**: $0.00 (pre-computed)
-- **Vercel Hosting**: $20.00 (serverless)
-- **Total**: **$33.80/month**
-
-**Cost per Query**: **$0.0046** (enterprise-grade legal research)
+**Data Transmission:**
+- All API calls use HTTPS encryption
+- Data transmitted to: Google, Anthropic, CourtListener, OpenStates, LegiScan
+- No data stored in application database (stateless)
 
 ---
 
-**Last Updated**: November 3, 2025  
-**Version**: 2.1 (CEB Integration Complete)  
-**Author**: AI Development Team  
-**License**: MIT
+## Changelog & Version History
+
+### Version 2.5 (Current) - November 2025
+
+**Major Changes:**
+- ✅ **CEB RAG Integration**: 77,406 vector embeddings from 2,554 CEB documents across 5 verticals
+- ✅ **Three Source Modes**: CEB Only, Hybrid (recommended), AI Only
+- ✅ **Upstash Vector Database**: Vercel-compatible serverless vector DB
+- ✅ **OpenAI Embeddings**: text-embedding-3-small for semantic CEB search
+- ✅ **Model Upgrade**: Gemini 2.5 Pro (generator) + Claude Sonnet 4.5 (verifier)
+- ✅ **Intelligent Query Expansion**: Vague follow-ups expanded with context
+- ✅ **Answer Synthesis**: Coherent legal analysis (not raw snippets)
+- ✅ **Category Detection**: Automatic CEB vertical selection
+
+**CEB Verticals:**
+1. Trusts & Estates (40,263 vectors)
+2. Family Law (8,756 vectors)
+3. Business Litigation (12,621 vectors)
+4. Business Entities (10,766 vectors)
+5. Business Transactions (5,000 vectors)
+
+**Performance:**
+- CEB Only mode: 8-15s (fastest)
+- Hybrid mode: 15-30s (recommended)
+- CEB sources bypass verification (authoritative)
+- Better multi-turn context handling
+
+**Processing Pipeline:**
+- Python scripts for PDF extraction, chunking, embedding
+- Automated upload to Upstash Vector
+- 10KB metadata per vector (vs. 500 chars previously)
+
+### Version 2.0 - October 2025
+
+**Major Changes:**
+- ✅ Google Search grounding for real-time data (2024-2025 legislation)
+- ✅ Full bill text retrieval (OpenStates + LegiScan)
+- ✅ Smart CourtListener (only searches for case law queries)
+- ✅ Dynamic confidence thresholds (20% for grounding, 30% for bill text, 60% normal)
+- ✅ Conversation memory (multi-turn context)
+- ✅ Model upgrade: Gemini 2.5 Flash + Claude Haiku 4.5
+
+**Performance:**
+- 50% faster responses (Haiku vs. previous Sonnet)
+- 90% cost reduction
+- Better accuracy on recent legislation
+
+### Version 1.0 - July 2024
+
+**Initial Features:**
+- Two-step verification (Gemini + Claude)
+- CourtListener integration
+- Basic legislative search
+- Static confidence gating (60% threshold)
+- Single-turn queries only
+
+---
+
+## Support & Contact
+
+**Report Issues:**
+- GitHub: https://github.com/ArjunDivecha/California-Law-Chatbot
+- Email: [Your Contact Email]
+
+**Documentation:**
+- Full README: `README.md`
+- API Documentation: `api/`
+- Model Performance: `MODEL_UPGRADE_SUMMARY.md`
+- Deployment Guide: `DEPLOYMENT_GUIDE.md`
+
+**Legal Compliance:**
+- California State Bar compliance notices displayed
+- Disclaimers on every page
+- No attorney-client relationship created
+
+---
+
+## For Developers
+
+**Setup Instructions:** See `README.md`
+
+**Key Files:**
+- `gemini/chatService.ts` - Main orchestration logic + source mode routing
+- `gemini/cebIntegration.ts` - CEB category detection and utilities
+- `services/verifierService.ts` - Claude verification
+- `services/confidenceGating.ts` - Threshold logic
+- `services/guardrails.ts` - Citation validation
+- `api/ceb-search.ts` - CEB vector search (Upstash + OpenAI)
+- `api/gemini-generate.ts` - Gemini API endpoint (with grounding)
+- `api/claude-chat.ts` - Claude API endpoint
+- `api/courtlistener-search.ts` - Case law search
+- `api/openstates-billtext.ts` - Bill text retrieval
+- `api/legiscan-billtext.ts` - Alternative bill text
+- `components/SourceModeSelector.tsx` - Frontend mode selector
+- `components/CEBBadge.tsx` - CEB VERIFIED badge
+- `scripts/process_ceb_pdfs.py` - PDF extraction and chunking
+- `scripts/generate_embeddings.py` - OpenAI embedding generation
+- `scripts/upload_to_upstash.py` - Upstash Vector upload
+
+**Environment Variables Required:**
+```bash
+# AI Models
+GEMINI_API_KEY=your_gemini_key
+ANTHROPIC_API_KEY=your_claude_key
+
+# CEB RAG System (Required)
+OPENAI_API_KEY=your_openai_key
+UPSTASH_VECTOR_REST_URL=https://your-endpoint.upstash.io
+UPSTASH_VECTOR_REST_TOKEN=your_upstash_token
+
+# External APIs (Optional)
+COURTLISTENER_API_KEY=your_courtlistener_key
+OPENSTATES_API_KEY=your_openstates_key
+LEGISCAN_API_KEY=your_legiscan_key
+```
+
+**Testing:**
+```bash
+# Frontend & Verification Tests
+npm run test:verification          # Test verification system
+node test-model-speed.js           # Test AI model speed
+python3 test-grounding.py          # Test Google Search grounding
+
+# CEB RAG System Tests (Python)
+cd scripts
+python3 test_upstash_direct.py     # Test all 5 CEB verticals
+python3 test_ceb_comparison.py     # Compare CEB vs external APIs
+python3 test_simple_query.py       # Test single CEB query
+
+# CEB Data Processing (if adding new verticals)
+python3 process_ceb_pdfs.py --category new_category --chunk-size 1000
+python3 generate_embeddings.py --category new_category
+python3 upload_to_upstash.py --category new_category
+```
+
+---
+
+## Conclusion
+
+The California Law Chatbot represents a sophisticated approach to AI-powered legal research, combining authoritative CEB practice guides, multiple verification layers, real-time data sources, and anti-hallucination safeguards. While it's a powerful research tool, it must always be used in conjunction with professional legal counsel.
+
+**Key Takeaways:**
+1. ✅ **CEB Integration**: 77,406 authoritative vectors across 5 legal verticals (Trusts & Estates, Family Law, Business Litigation, Business Entities, Business Transactions)
+2. ✅ **Three Source Modes**: CEB Only (fastest), Hybrid (recommended), AI Only (external APIs)
+3. ✅ **Advanced AI Models**: Gemini 2.5 Pro (generator) + Claude Sonnet 4.5 (verifier)
+4. ✅ **Multi-layer verification** prevents most hallucinations
+5. ✅ **Google Search grounding** provides 2024-2025 data
+6. ✅ **Full bill text** ensures authoritative legislative sources
+7. ✅ **Smart case law detection** prevents irrelevant results
+8. ✅ **Intelligent context expansion** for multi-turn conversations
+9. ⚠️ Always verify critical information independently
+10. ⚠️ Consult an attorney for legal advice
+
+**What Makes This System Unique:**
+- **CEB Priority**: Authoritative practice guides as primary source (bypasses verification)
+- **Hybrid Intelligence**: Combines RAG (CEB) + external APIs + Google Search
+- **Context-Aware**: Intelligent query expansion for vague follow-ups
+- **Multi-Modal**: User-controlled source selection (CEB/AI/Hybrid)
+- **Vercel-Optimized**: Serverless architecture with Upstash Vector
+
+---
+
+**Last Updated:** November 4, 2025  
+**Version:** 2.5 (CEB Integration Complete)  
+**License:** MIT  
+**Author:** Arjun Divecha
+
