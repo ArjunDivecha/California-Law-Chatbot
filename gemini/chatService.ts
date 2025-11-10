@@ -374,7 +374,7 @@ Remember: You're trained on California law AND you have access to real-time sear
             console.log(`📅 Date filter: ${dateRange.after || 'any'} to ${dateRange.before || 'any'}`);
         }
         
-        const [legislationData, caseLawData] = await Promise.all([
+        const [legislationData, caseLawData, scholarData] = await Promise.all([
             this.fetchLegislationData(message, signal).catch(err => {
                 if (signal?.aborted || err.message === 'Request cancelled') {
                     throw err;
@@ -393,9 +393,20 @@ Remember: You're trained on California law AND you have access to real-time sear
                     return { content: '', sources: [] };
                   })
                 : Promise.resolve({ content: '', sources: [] })
+            ,
+            // Google Scholar - only in exhaustive mode
+            isExhaustive
+                ? this.searchGoogleScholar(message, signal, { limit: 20 }).catch(err => {
+                    if (signal?.aborted || err.message === 'Request cancelled') {
+                        throw err;
+                    }
+                    console.error('❌ Google Scholar search failed:', err);
+                    return { content: '', sources: [] };
+                  })
+                : Promise.resolve({ content: '', sources: [] }),
         ]);
         
-        console.log(`✅ Search results: ${legislationData.sources.length} legislation sources, ${caseLawData.sources.length} case law sources`);
+        console.log(`✅ Search results: ${legislationData.sources.length} legislation sources, ${caseLawData.sources.length} case law, ${scholarData.sources.length} scholar`);
 
         // Check if request was cancelled during parallel searches
         if (signal?.aborted) {
@@ -410,6 +421,9 @@ Remember: You're trained on California law AND you have access to real-time sear
             finalSources.push(...caseLawData.sources);
         }
 
+        if (scholarData.sources.length > 0) {
+            finalSources.push(...scholarData.sources);
+        }
         // Apply retrieval pruning (top-k, dedupe, rerank) - SKIP if exhaustive mode
         const prunedSources = isExhaustive 
             ? finalSources  // Keep all sources in exhaustive mode
