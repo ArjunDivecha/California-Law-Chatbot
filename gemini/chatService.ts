@@ -383,10 +383,9 @@ Remember: You're trained on California law AND you have access to real-time sear
                 return { context: '', sources: [] };
             }),
             enableCourtListener 
-                ? this.searchCourtListenerAPI(message, signal, {
-                    limit: isExhaustive ? 50 : 3,
-                    ...dateRange
-                  }).catch(err => {
+                ? (isExhaustive 
+                    ? this.searchCourtListenerExhaustive(message, signal, { limit: 50, ...dateRange }) 
+                    : this.searchCourtListenerAPI(message, signal, { limit: 3, ...dateRange })).catch(err => {
                     if (signal?.aborted || err.message === 'Request cancelled') {
                         throw err; // Re-throw cancellation errors
                     }
@@ -2099,6 +2098,86 @@ Answer:`;
         }
         
         return {};
+    }
+
+    /**
+     * Generate query variations for exhaustive search
+     */
+    private generateQueryVariations(query: string): string[] {
+        const lowerQuery = query.toLowerCase();
+        const variations: string[] = [query];
+        
+        if (lowerQuery.includes('trust modification') || lowerQuery.includes('trust amendment')) {
+            variations.push('trust modification', 'trust amendment', 'revocable trust modification',
+                'trust settlor amendment', 'Probate Code 15402', 'Probate Code 15401',
+                'amending trust instrument', 'modifying revocable trust');
+        }
+        if (lowerQuery.includes('prenup') || lowerQuery.includes('premarital')) {
+            variations.push('prenuptial agreement', 'premarital agreement',
+                'Family Code 1615', 'Family Code 1610', 'antenuptial agreement');
+        }
+        if (lowerQuery.includes('child custody') || lowerQuery.includes('custody')) {
+            variations.push('child custody', 'custody modification',
+                'Family Code 3020', 'Family Code 3080', 'best interest of child', 'parenting time');
+        }
+        
+        return [...new Set(variations.filter(v => v.trim().length > 0))];
+    }
+
+    /**
+     * Search CourtListener with multiple query variations (exhaustive mode)
+     */
+    private async searchCourtListenerExhaustive(
+        query: string,
+        signal?: AbortSignal,
+        options?: { limit?: number; after?: string; before?: string }
+    ): Promise<{ content: string; sources: Source[] }> {
+        const variations = this.generateQueryVariations(query);
+        
+        console.log(`🔍 Exhaustive: Running ${variations.length} query variations in parallel...`);
+        variations.forEach((v, i) => console.log(`   ${i + 1}. "${v}"`));
+        
+        const limitPerQuery = Math.max(10, Math.floor((options?.limit || 50) / variations.length));
+        
+        const searchPromises = variations.map(async (varQuery, index) => {
+            try {
+                if (signal?.aborted) return { content: '', sources: [] };
+                const result = await this.searchCourtListenerAPI(varQuery, signal, {
+                    limit: limitPerQuery,
+                    after: options?.after,
+                    before: options?.before
+                });
+                console.log(`   ✅ Query ${index + 1} returned ${result.sources.length} cases`);
+                return result;
+            } catch (error: any) {
+                if (signal?.aborted || error.message === 'Request cancelled') throw error;
+                console.error(`   ❌ Query ${index + 1} failed:`, error);
+                return { content: '', sources: [] };
+            }
+        });
+        
+        const results = await Promise.all(searchPromises);
+        if (signal?.aborted) throw new Error('Request cancelled');
+        
+        const allSources: Source[] = [];
+        const seenUrls = new Set<string>();
+        
+        for (const result of results) {
+            for (const source of result.sources) {
+                if (!seenUrls.has(source.url)) {
+                    seenUrls.add(source.url);
+                    allSources.push(source);
+                }
+            }
+        }
+        
+        console.log(`✅ Exhaustive: Found ${allSources.length} unique cases across ${variations.length} queries`);
+        
+        const content = allSources.map((source, i) => 
+            `Result ${i + 1}:\nCase Name: ${source.title || 'Untitled'}\nURL: ${source.url || ''}\nExcerpt: ${source.excerpt || ''}`
+        ).join('\n\n');
+        
+        return { content, sources: allSources };
     }
 
     private async searchCourtListenerAPI(
