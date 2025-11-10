@@ -2121,7 +2121,12 @@ Answer:`;
                 'Family Code 3020', 'Family Code 3080', 'best interest of child', 'parenting time');
         }
         
-        return [...new Set(variations.filter(v => v.trim().length > 0))];
+        // Remove duplicates (avoiding Set spread for TS compatibility)
+        const filtered = variations.filter(v => v.trim().length > 0);
+        const uniqueSet = new Set(filtered);
+        const uniqueArray: string[] = [];
+        uniqueSet.forEach(v => uniqueArray.push(v));
+        return uniqueArray;
     }
 
     /**
