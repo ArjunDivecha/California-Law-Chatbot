@@ -393,17 +393,6 @@ Remember: You're trained on California law AND you have access to real-time sear
                     return { content: '', sources: [] };
                   })
                 : Promise.resolve({ content: '', sources: [] })
-            ,
-            // Google Scholar - only in exhaustive mode
-            isExhaustive
-                ? this.searchGoogleScholar(message, signal, { limit: 20 }).catch(err => {
-                    if (signal?.aborted || err.message === 'Request cancelled') {
-                        throw err;
-                    }
-                    console.error('❌ Google Scholar search failed:', err);
-                    return { content: '', sources: [] };
-                  })
-                : Promise.resolve({ content: '', sources: [] }),
         ]);
         
         console.log(`✅ Search results: ${legislationData.sources.length} legislation sources, ${caseLawData.sources.length} case law, ${scholarData.sources.length} scholar`);
@@ -421,9 +410,6 @@ Remember: You're trained on California law AND you have access to real-time sear
             finalSources.push(...caseLawData.sources);
         }
 
-        if (scholarData.sources.length > 0) {
-            finalSources.push(...scholarData.sources);
-        }
         // Apply retrieval pruning (top-k, dedupe, rerank) - SKIP if exhaustive mode
         const prunedSources = isExhaustive 
             ? finalSources  // Keep all sources in exhaustive mode
@@ -2149,7 +2135,7 @@ Answer:`;
     private async searchCourtListenerExhaustive(
         query: string,
         signal?: AbortSignal,
-        options?: { limit?: number; after?: string; before?: string; californiaOnly?: boolean }
+        options?: { limit?: number; after?: string; before?: string }
     ): Promise<{ content: string; sources: Source[] }> {
         const variations = this.generateQueryVariations(query);
         
@@ -2205,17 +2191,11 @@ Answer:`;
     private async searchGoogleScholar(
         query: string,
         signal?: AbortSignal,
-        options?: { limit?: number; californiaOnly?: boolean }
+        options?: { limit?: number }
     ): Promise<{ content: string; sources: Source[] }> {
         try {
-            // Add "California" to query if California-specific filtering is enabled
-            const enhancedQuery = options?.californiaOnly && !query.toLowerCase().includes('california') 
-                ? `${query} California` 
-                : query;
-            
             const params = new URLSearchParams({
-                q: enhancedQuery,
-                californiaOnly: options?.californiaOnly ? 'true' : 'false',
+                q: query,
                 limit: (options?.limit || 20).toString()
             });
             

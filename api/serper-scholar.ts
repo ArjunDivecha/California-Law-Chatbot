@@ -23,6 +23,7 @@ export default async function handler(req: any, res: any) {
 
     const q = (req.query?.q || '').toString().trim();
     const limit = Math.min(parseInt(req.query?.limit as string) || 10, 20);
+    const californiaOnly = (req.query?.californiaOnly || '').toString().toLowerCase() === 'true';
 
     if (!q) {
       res.status(400).json({ error: 'Missing q parameter' });
@@ -35,7 +36,7 @@ export default async function handler(req: any, res: any) {
       return;
     }
 
-    console.log(`🎓 Google Scholar: "${q.substring(0, 50)}...", limit=${limit}`);
+    console.log(`🎓 Google Scholar: "${q.substring(0, 50)}...", limit=${limit}, californiaOnly=${californiaOnly}`);
 
     const response = await fetch('https://google.serper.dev/scholar', {
       method: 'POST',
@@ -73,6 +74,15 @@ export default async function handler(req: any, res: any) {
       if (link.includes('casetext.com')) score += 20;
       if (snippet.includes('court held') || snippet.includes('court found')) score += 10;
       if (snippet.includes('plaintiff') || snippet.includes('defendant')) score += 10;
+      
+      
+      // BOOST: California-specific indicators (when californiaOnly filter is active)
+      if (californiaOnly) {
+        if (title.includes('california') || snippet.includes('california')) score += 15;
+        if (link.includes('courts.ca.gov')) score += 20;
+        if (title.match(/cal\.?(\s|\d)/i) || snippet.match(/cal\.?(\s|\d)/i)) score += 10;
+        if (title.includes('cal. app.') || snippet.includes('cal. app.')) score += 15;
+      }
       
       // PENALIZE: Scholarship indicators
       if (link.includes('heinonline.org')) score -= 10;

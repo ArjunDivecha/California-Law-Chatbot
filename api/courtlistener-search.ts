@@ -16,6 +16,7 @@ export default async function handler(req: any, res: any) {
     const after = (req.query?.after || '').toString().trim(); // Date filter: after (YYYY-MM-DD)
     const before = (req.query?.before || '').toString().trim(); // Date filter: before (YYYY-MM-DD)
     const page = parseInt(req.query?.page as string) || 1;    // Pagination support
+    const californiaOnly = (req.query?.californiaOnly || '').toString().toLowerCase() === 'true';
     
     // Cap limit at 50 for performance
     const cappedLimit = Math.min(Math.max(1, limit), 50);
@@ -27,7 +28,7 @@ export default async function handler(req: any, res: any) {
     }
 
     // Build endpoint with date filters and pagination
-    let endpoint = `https://www.courtlistener.com/api/rest/v4/search/?q=${encodeURIComponent(q)}&type=o&order_by=dateFiled%20desc&stat_Precedential=on`;
+    let endpoint = `https://www.courtlistener.com/api/rest/v4/search/?q=${encodeURIComponent(q)}&type=o&order_by=dateFiled%20desc&stat_Precedential=on${californiaOnly ? "&court=ca" : ""}`;
     
     if (after) {
       endpoint += `&filed_after=${after}`;
@@ -39,7 +40,7 @@ export default async function handler(req: any, res: any) {
       endpoint += `&page=${page}`;
     }
 
-    console.log(`🔍 CourtListener search: q="${q.substring(0, 50)}...", limit=${cappedLimit}, after=${after || 'none'}, before=${before || 'none'}, page=${page}`);
+    console.log(`🔍 CourtListener search: q="${q.substring(0, 50)}...", limit=${cappedLimit}, after=${after || 'none'}, before=${before || 'none'}, page=${page}, californiaOnly=${californiaOnly}`);
 
     const clRes = await fetch(endpoint, {
       headers: {
