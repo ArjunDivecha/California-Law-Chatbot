@@ -17,13 +17,6 @@ export interface BotResponse {
     sourceMode?: SourceMode;
 }
 
-export interface StreamCallbacks {
-    onToken?: (token: string) => void;
-    onComplete?: (fullText: string) => void;
-    onMetadata?: (metadata: any) => void;
-    onError?: (error: Error) => void;
-}
-
 export class ChatService {
     private verifier: VerifierService;
     private courtListenerApiKey: string | null;
@@ -78,15 +71,8 @@ export class ChatService {
 
     /**
      * Send message to Gemini 2.5 Flash (Generator) via server-side API
-     * Supports both streaming and non-streaming modes
      */
-    private async sendToGemini(
-        message: string,
-        conversationHistory?: Array<{role: string, text: string}>,
-        signal?: AbortSignal,
-        streamCallbacks?: StreamCallbacks,
-        enableStreaming: boolean = false
-    ): Promise<{ text: string; hasGrounding?: boolean; groundingMetadata?: any }> {
+    private async sendToGemini(message: string, conversationHistory?: Array<{role: string, text: string}>, signal?: AbortSignal): Promise<{ text: string; hasGrounding?: boolean; groundingMetadata?: any }> {
         if (signal?.aborted) {
             throw new Error('Request cancelled');
         }
@@ -189,93 +175,6 @@ DO NOT say things like:
 Remember: You're trained on California law AND you have access to real-time search. Use Google Search grounding for recent bills and current legislation. When actual bill text is provided, prioritize it over your training data. Format your responses clearly with proper spacing between sections for better readability.`;
 
         try {
-            // Streaming mode
-            if (enableStreaming && streamCallbacks) {
-                console.log('📡 Using streaming mode...');
-
-                const response = await fetch('/api/gemini-generate', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        message,
-                        systemPrompt,
-                        conversationHistory: conversationHistory || [],
-                        stream: true, // Enable streaming
-                    }),
-                    signal,
-                });
-
-                if (!response.ok) {
-                    throw new Error(`API error: ${response.status}`);
-                }
-
-                if (!response.body) {
-                    throw new Error('Response body is null');
-                }
-
-                const reader = response.body.getReader();
-                const decoder = new TextDecoder();
-                let fullText = '';
-                let metadata: any = null;
-
-                try {
-                    while (true) {
-                        const { done, value } = await reader.read();
-
-                        if (done) break;
-                        if (signal?.aborted) {
-                            reader.cancel();
-                            throw new Error('Request cancelled');
-                        }
-
-                        const chunk = decoder.decode(value, { stream: true });
-                        const lines = chunk.split('\n');
-
-                        for (const line of lines) {
-                            if (line.startsWith('data: ')) {
-                                const data = line.slice(6);
-
-                                if (data === '[DONE]') {
-                                    continue;
-                                }
-
-                                try {
-                                    const parsed = JSON.parse(data);
-
-                                    if (parsed.type === 'content' && parsed.text) {
-                                        fullText += parsed.text;
-                                        streamCallbacks.onToken?.(parsed.text);
-                                    } else if (parsed.type === 'metadata') {
-                                        metadata = parsed;
-                                        streamCallbacks.onMetadata?.(parsed);
-                                    } else if (parsed.type === 'error') {
-                                        throw new Error(parsed.error);
-                                    }
-                                } catch (parseError) {
-                                    // Skip malformed JSON
-                                    console.warn('Failed to parse SSE data:', data);
-                                }
-                            }
-                        }
-                    }
-
-                    streamCallbacks.onComplete?.(fullText);
-
-                    return {
-                        text: fullText,
-                        hasGrounding: metadata?.hasGrounding,
-                        groundingMetadata: metadata?.groundingMetadata
-                    };
-
-                } catch (streamError: any) {
-                    streamCallbacks.onError?.(streamError);
-                    throw streamError;
-                }
-            }
-
-            // Non-streaming mode (original behavior)
             const response = await fetchWithRetry(
                 '/api/gemini-generate',
                 {
@@ -287,7 +186,6 @@ Remember: You're trained on California law AND you have access to real-time sear
                         message,
                         systemPrompt,
                         conversationHistory: conversationHistory || [],
-                        stream: false,
                     }),
                     signal, // Pass AbortSignal for cancellation
                 },
@@ -307,8 +205,8 @@ Remember: You're trained on California law AND you have access to real-time sear
             }
 
             const data = await response.json();
-            return {
-                text: data.text || '',
+            return { 
+                text: data.text || '', 
                 hasGrounding: data.hasGrounding,
                 groundingMetadata: data.groundingMetadata
             };
@@ -320,30 +218,16 @@ Remember: You're trained on California law AND you have access to real-time sear
         }
     }
 
-    async sendMessage(
-        message: string,
-        conversationHistory?: Array<{role: string, text: string}>,
-        sourceMode: SourceMode = 'hybrid',
-        signal?: AbortSignal,
-        streamCallbacks?: StreamCallbacks
-    ): Promise<BotResponse> {
+    async sendMessage(message: string, conversationHistory?: Array<{role: string, text: string}>, sourceMode: SourceMode = 'hybrid', signal?: AbortSignal): Promise<BotResponse> {
         // Check for cancellation at the start
         if (signal?.aborted) {
             throw new Error('Request cancelled');
         }
-
+        
         // Handle simple greetings
         if (message.trim().toLowerCase() === 'hello' || message.trim().toLowerCase() === 'hi') {
-            const greeting = "Hello! I am the California Law Chatbot. How can I help you with your legal research today?";
-
-            // If streaming, send greeting as stream
-            if (streamCallbacks) {
-                streamCallbacks.onToken?.(greeting);
-                streamCallbacks.onComplete?.(greeting);
-            }
-
             return {
-                text: greeting,
+                text: "Hello! I am the California Law Chatbot. How can I help you with your legal research today?",
                 sources: [],
                 sourceMode
             };
@@ -360,12 +244,12 @@ Remember: You're trained on California law AND you have access to real-time sear
         console.log(`🔀 Routing to ${sourceMode} mode`);
         switch (sourceMode) {
             case 'ceb-only':
-                return await this.processCEBOnly(expandedMessage, conversationHistory, signal, streamCallbacks);
+                return await this.processCEBOnly(expandedMessage, conversationHistory, signal);
             case 'ai-only':
-                return await this.processAIOnly(expandedMessage, conversationHistory, signal, streamCallbacks);
+                return await this.processAIOnly(expandedMessage, conversationHistory, signal);
             case 'hybrid':
             default:
-                return await this.processHybrid(expandedMessage, conversationHistory, signal, streamCallbacks);
+                return await this.processHybrid(expandedMessage, conversationHistory, signal);
         }
     }
 
@@ -455,12 +339,7 @@ Remember: You're trained on California law AND you have access to real-time sear
      * AI Only Mode - Uses existing external APIs (CourtListener, OpenStates, LegiScan)
      * This is the original sendMessage logic
      */
-    private async processAIOnly(
-        message: string,
-        conversationHistory?: Array<{role: string, text: string}>,
-        signal?: AbortSignal,
-        streamCallbacks?: StreamCallbacks
-    ): Promise<BotResponse> {
+    private async processAIOnly(message: string, conversationHistory?: Array<{role: string, text: string}>, signal?: AbortSignal): Promise<BotResponse> {
         // Check for cancellation
         if (signal?.aborted) {
             throw new Error('Request cancelled');
@@ -479,10 +358,21 @@ Remember: You're trained on California law AND you have access to real-time sear
 
         let finalSources: Source[] = [];
 
+        // Detect exhaustive mode and date range
+        const isExhaustive = this.detectExhaustiveRequest(message);
+        const dateRange = this.extractDateRange(message);
+        
         // Parallelize legislation search and case law search
         console.log('🔎 Starting parallel searches...');
         console.log('  - Legislation search: ENABLED');
         console.log(`  - CourtListener search: ${enableCourtListener ? 'ENABLED (case law query detected)' : isCaseLawQuery ? 'DISABLED (no API key)' : 'SKIPPED (not a case law query)'}`);
+        
+        if (isExhaustive) {
+            console.log('🔍 EXHAUSTIVE MODE DETECTED - will retrieve up to 50 results');
+        }
+        if (dateRange.after || dateRange.before) {
+            console.log(`📅 Date filter: ${dateRange.after || 'any'} to ${dateRange.before || 'any'}`);
+        }
         
         const [legislationData, caseLawData] = await Promise.all([
             this.fetchLegislationData(message, signal).catch(err => {
@@ -493,7 +383,10 @@ Remember: You're trained on California law AND you have access to real-time sear
                 return { context: '', sources: [] };
             }),
             enableCourtListener 
-                ? this.searchCourtListenerAPI(message, signal).catch(err => {
+                ? this.searchCourtListenerAPI(message, signal, {
+                    limit: isExhaustive ? 50 : 3,
+                    ...dateRange
+                  }).catch(err => {
                     if (signal?.aborted || err.message === 'Request cancelled') {
                         throw err; // Re-throw cancellation errors
                     }
@@ -518,9 +411,16 @@ Remember: You're trained on California law AND you have access to real-time sear
             finalSources.push(...caseLawData.sources);
         }
 
-        // Apply retrieval pruning (top-k, dedupe, rerank)
-        const prunedSources = RetrievalPruner.pruneSources(finalSources, message, 3);
-        console.log(`📊 Pruned ${finalSources.length} sources to ${prunedSources.length} top sources`);
+        // Apply retrieval pruning (top-k, dedupe, rerank) - SKIP if exhaustive mode
+        const prunedSources = isExhaustive 
+            ? finalSources  // Keep all sources in exhaustive mode
+            : RetrievalPruner.pruneSources(finalSources, message, 3);
+        
+        if (isExhaustive) {
+            console.log(`📊 Exhaustive mode: Keeping all ${finalSources.length} sources (pruning disabled)`);
+        } else {
+            console.log(`📊 Pruned ${finalSources.length} sources to ${prunedSources.length} top sources`);
+        }
         
         // Assign IDs to sources for citation mapping
         const sourcesWithIds: Source[] = prunedSources.map((source, index) => ({
@@ -559,6 +459,26 @@ I have retrieved the following case information from CourtListener database:
 
 ${apiResult.content}
 
+${isExhaustive ? `
+🚨 EXHAUSTIVE MODE: The user requested ALL cases. You MUST:
+1. LIST EVERY SINGLE CASE provided above - do NOT filter or omit any cases
+2. Format as a comprehensive numbered list with proper structure:
+   
+   [NUMBER]. Case Name, Citation (Date Filed)
+   Court: [Court name]
+   Key Holdings: [1-2 sentence summary of the case's holdings and relevance]
+   Significance: [1 sentence on why this case matters for the query]
+   
+3. After listing ALL cases, provide a brief synthesis (2-3 paragraphs) identifying:
+   - Key legal principles across all cases
+   - Trends or evolution in the law
+   - The most authoritative/recent precedents
+4. Do NOT synthesize first and omit cases - LIST ALL FIRST, then synthesize
+5. If a case seems tangential, still include it with a note like "Tangentially related:"
+6. Count and verify: If you received N cases, you MUST list all N cases
+
+The user explicitly wants a comprehensive list of ALL cases, not a curated selection.
+` : `
 CRITICAL INSTRUCTIONS - YOU MUST FOLLOW THESE:
 1. Write a COMPLETE, COHERENT ANSWER in proper paragraphs - DO NOT just list snippets or case metadata
 2. SYNTHESIZE case information into a unified, professional legal analysis
@@ -571,7 +491,8 @@ CRITICAL INSTRUCTIONS - YOU MUST FOLLOW THESE:
 9. DO NOT output raw JSON, snippets, or unformatted data - write a professional legal analysis
 10. Your answer should read like a legal memorandum, not a list of case summaries
 
-Provide a thorough legal analysis explaining how these cases relate to the query.`;
+Provide a thorough legal analysis explaining how these cases relate to the query.
+`}`;
 
                     // Check for cancellation before Claude call
                     if (signal?.aborted) {
@@ -579,15 +500,7 @@ Provide a thorough legal analysis explaining how these cases relate to the query
                     }
 
                     console.log('🤖 Sending enhanced message to Gemini 2.5 Flash-Lite...');
-                    // AI Only mode: Stream first, verify after
-                    const enableStreaming = !!streamCallbacks;
-                    const response = await this.sendToGemini(
-                        enhancedMessage,
-                        conversationHistory,
-                        signal,
-                        streamCallbacks,
-                        enableStreaming
-                    );
+                    const response = await this.sendToGemini(enhancedMessage, conversationHistory, signal);
                     
                     // Check if request was cancelled during AI response
                     if (signal?.aborted) {
@@ -770,21 +683,13 @@ Key California legal sources to reference:
 - Official court opinions and case law through CourtListener
 - Current California bills (AB/SB/etc.) with status and summaries`;
 
-            // AI Only mode: Stream first, verify after
-            const enableStreaming = !!streamCallbacks;
-            const response = await this.sendToGemini(
-                enhancedMessage,
-                conversationHistory,
-                signal,
-                streamCallbacks,
-                enableStreaming
-            );
-
+            const response = await this.sendToGemini(enhancedMessage, conversationHistory, signal);
+            
             // Check if request was cancelled during AI response
             if (signal?.aborted) {
                 throw new Error('Request cancelled');
             }
-
+            
             console.log('✅ Gemini response received');
 
             // Check for cancellation after Claude call
@@ -1444,12 +1349,7 @@ Key California legal sources to reference:
     /**
      * CEB Only Mode - Uses only CEB practice guides (no verification needed)
      */
-    private async processCEBOnly(
-        message: string,
-        conversationHistory?: Array<{role: string, text: string}>,
-        signal?: AbortSignal,
-        streamCallbacks?: StreamCallbacks
-    ): Promise<BotResponse> {
+    private async processCEBOnly(message: string, conversationHistory?: Array<{role: string, text: string}>, signal?: AbortSignal): Promise<BotResponse> {
         console.log('📚 CEB Only Mode - Querying authoritative practice guides...');
         
         try {
@@ -1529,15 +1429,7 @@ Your answer should read like a legal memorandum based on authoritative sources, 
 
 Answer:`;
 
-            // CEB Only mode: Stream directly (no verification needed)
-            const enableStreaming = !!streamCallbacks;
-            const response = await this.sendToGemini(
-                prompt,
-                conversationHistory,
-                signal,
-                streamCallbacks,
-                enableStreaming
-            );
+            const response = await this.sendToGemini(prompt, conversationHistory, signal);
 
             // Assign IDs to sources for citation mapping
             const sourcesWithIds = highConfidenceSources.map((source, index) => ({
@@ -1571,12 +1463,7 @@ Answer:`;
      * Hybrid Mode - Combines CEB with external APIs (CourtListener, OpenStates, LegiScan)
      * CEB sources are prioritized and don't require verification
      */
-    private async processHybrid(
-        message: string,
-        conversationHistory?: Array<{role: string, text: string}>,
-        signal?: AbortSignal,
-        streamCallbacks?: StreamCallbacks
-    ): Promise<BotResponse> {
+    private async processHybrid(message: string, conversationHistory?: Array<{role: string, text: string}>, signal?: AbortSignal): Promise<BotResponse> {
         console.log('🔄 Hybrid Mode - Combining CEB + AI sources...');
         
         try {
@@ -1689,15 +1576,7 @@ Your answer should read like a legal memorandum, not a list of search results.
 
 Answer:`;
 
-            // Hybrid mode: Stream first, verify AI sources after (CEB sources skip verification)
-            const enableStreaming = !!streamCallbacks;
-            const response = await this.sendToGemini(
-                prompt,
-                conversationHistory,
-                signal,
-                streamCallbacks,
-                enableStreaming
-            );
+            const response = await this.sendToGemini(prompt, conversationHistory, signal);
 
             // Determine if verification is needed
             // CEB-based answers don't need verification, but AI sources do
@@ -2172,10 +2051,82 @@ Answer:`;
         return matchingWords.length / claimWords.length > 0.6;
     }
 
-    private async searchCourtListenerAPI(query: string, signal?: AbortSignal): Promise<{ content: string; sources: Source[] }> {
+    /**
+     * Detect if user wants exhaustive search (all cases, comprehensive list, etc.)
+     */
+    private detectExhaustiveRequest(message: string): boolean {
+        const exhaustiveKeywords = [
+            'all cases',
+            'every case',
+            'exhaustive',
+            'comprehensive list',
+            'cite all',
+            'list all',
+            'complete list',
+            'any and all',
+            'full list'
+        ];
+        const lowerMessage = message.toLowerCase();
+        return exhaustiveKeywords.some(keyword => lowerMessage.includes(keyword));
+    }
+
+    /**
+     * Extract year/date range from user query (e.g., "in 2024", "from 2024")
+     */
+    private extractDateRange(message: string): { after?: string; before?: string } {
+        const lowerMessage = message.toLowerCase();
+        
+        // Match "in YYYY" or "from YYYY" or "YYYY cases"
+        const yearMatch = lowerMessage.match(/(?:in|from|during|for)\s+(\d{4})|(\d{4})\s+cases/);
+        if (yearMatch) {
+            const year = yearMatch[1] || yearMatch[2];
+            return {
+                after: `${year}-01-01`,
+                before: `${year}-12-31`
+            };
+        }
+        
+        // Match "since YYYY" or "after YYYY"
+        const afterMatch = lowerMessage.match(/(?:since|after)\s+(\d{4})/);
+        if (afterMatch) {
+            return { after: `${afterMatch[1]}-01-01` };
+        }
+        
+        // Match "before YYYY" or "until YYYY"
+        const beforeMatch = lowerMessage.match(/(?:before|until)\s+(\d{4})/);
+        if (beforeMatch) {
+            return { before: `${beforeMatch[1]}-12-31` };
+        }
+        
+        return {};
+    }
+
+    private async searchCourtListenerAPI(
+        query: string, 
+        signal?: AbortSignal,
+        options?: { limit?: number; after?: string; before?: string; page?: number }
+    ): Promise<{ content: string; sources: Source[] }> {
         try {
+            // Build query parameters
+            const params = new URLSearchParams({
+                q: query
+            });
+            
+            if (options?.limit) {
+                params.append('limit', options.limit.toString());
+            }
+            if (options?.after) {
+                params.append('after', options.after);
+            }
+            if (options?.before) {
+                params.append('before', options.before);
+            }
+            if (options?.page) {
+                params.append('page', options.page.toString());
+            }
+            
             const r = await fetchWithRetry(
-                `/api/courtlistener-search?q=${encodeURIComponent(query)}`,
+                `/api/courtlistener-search?${params.toString()}`,
                 { signal },
                 3, // maxRetries: 3 for CourtListener
                 1000 // baseDelay: 1s

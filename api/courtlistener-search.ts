@@ -11,13 +11,36 @@ export default async function handler(req: any, res: any) {
       return;
     }
 
+    // Parse new parameters for exhaustive search
+    const limit = parseInt(req.query?.limit as string) || 3;  // Default 3, max 50
+    const after = (req.query?.after || '').toString().trim(); // Date filter: after (YYYY-MM-DD)
+    const before = (req.query?.before || '').toString().trim(); // Date filter: before (YYYY-MM-DD)
+    const page = parseInt(req.query?.page as string) || 1;    // Pagination support
+    
+    // Cap limit at 50 for performance
+    const cappedLimit = Math.min(Math.max(1, limit), 50);
+
     const apiKey = process.env.COURTLISTENER_API_KEY;
     if (!apiKey) {
       res.status(500).json({ error: 'Server is missing COURTLISTENER_API_KEY' });
       return;
     }
 
-    const endpoint = `https://www.courtlistener.com/api/rest/v4/search/?q=${encodeURIComponent(q)}&type=o&order_by=score%20desc&stat_Precedential=on`;
+    // Build endpoint with date filters and pagination
+    let endpoint = `https://www.courtlistener.com/api/rest/v4/search/?q=${encodeURIComponent(q)}&type=o&order_by=dateFiled%20desc&stat_Precedential=on`;
+    
+    if (after) {
+      endpoint += `&filed_after=${after}`;
+    }
+    if (before) {
+      endpoint += `&filed_before=${before}`;
+    }
+    if (page > 1) {
+      endpoint += `&page=${page}`;
+    }
+
+    console.log(`🔍 CourtListener search: q="${q.substring(0, 50)}...", limit=${cappedLimit}, after=${after || 'none'}, before=${before || 'none'}, page=${page}`);
+
     const clRes = await fetch(endpoint, {
       headers: {
         Authorization: `Token ${apiKey}`,
@@ -33,7 +56,7 @@ export default async function handler(req: any, res: any) {
 
     const data = await clRes.json();
     const results = Array.isArray(data.results) ? data.results : [];
-    const topResults = results.slice(0, 3);
+    const topResults = results.slice(0, cappedLimit);
 
     const content = topResults
       .map((r: any, i: number) => `Result ${i + 1}:\nCase Name: ${r.caseName}\nCitation: ${r.citation}\nDate Filed: ${r.dateFiled}\nSnippet: ${r.snippet}`)
