@@ -2180,6 +2180,38 @@ Answer:`;
         return { content, sources: allSources };
     }
 
+    /**
+     * Search Google Scholar for case law
+     */
+    private async searchGoogleScholar(
+        query: string,
+        signal?: AbortSignal,
+        options?: { limit?: number }
+    ): Promise<{ content: string; sources: Source[] }> {
+        try {
+            const params = new URLSearchParams({
+                q: query,
+                limit: (options?.limit || 20).toString()
+            });
+            
+            const r = await fetchWithRetry(
+                `/api/serper-scholar?${params.toString()}`,
+                { signal },
+                2,
+                1000
+            );
+            
+            const data = await r.json();
+            return { content: data.content || '', sources: data.sources || [] };
+        } catch (error: any) {
+            if (error.message === 'Request cancelled') {
+                throw error;
+            }
+            console.error('Failed to call Google Scholar:', error);
+            return { content: '', sources: [] };
+        }
+    }
+
     private async searchCourtListenerAPI(
         query: string, 
         signal?: AbortSignal,
