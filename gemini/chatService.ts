@@ -70,7 +70,8 @@ export class ChatService {
     }
 
     /**
-     * Send message to Gemini 2.5 Flash (Generator) via server-side API
+     * Send message to Gemini 3 Pro Preview (Generator) via server-side API
+     * Falls back to Gemini 2.5 Pro automatically if capacity issues occur
      */
     private async sendToGemini(message: string, conversationHistory?: Array<{role: string, text: string}>, signal?: AbortSignal): Promise<{ text: string; hasGrounding?: boolean; groundingMetadata?: any }> {
         if (signal?.aborted) {
@@ -512,7 +513,7 @@ Provide a thorough legal analysis explaining how these cases relate to the query
                         throw new Error('Request cancelled');
                     }
 
-                    console.log('🤖 Sending enhanced message to Gemini 2.5 Flash-Lite...');
+                    console.log('🤖 Sending enhanced message to Gemini 3 Pro (with fallback to 2.5 Pro)...');
                     const response = await this.sendToGemini(enhancedMessage, conversationHistory, signal);
                     
                     // Check if request was cancelled during AI response
@@ -637,7 +638,7 @@ Provide a thorough legal analysis explaining how these cases relate to the query
                 throw new Error('Request cancelled');
             }
 
-            console.log('💬 Sending regular chat message to Gemini 2.5 Pro...');
+            console.log('💬 Sending regular chat message to Gemini 3 Pro (with fallback to 2.5 Pro)...');
 
             // Enhance the prompt to request citations for legal information
             let enhancedMessage = `${message}`;

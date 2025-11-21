@@ -1,5 +1,19 @@
 import { GoogleGenAI } from '@google/genai';
 
+/**
+ * Gemini Model Configuration
+ * 
+ * PRIMARY_MODEL: Gemini 3 Pro Preview - Latest model with advanced capabilities
+ * FALLBACK_MODEL: Gemini 2.5 Pro - Reliable fallback for capacity issues
+ * 
+ * The system automatically falls back to Gemini 2.5 Pro if:
+ * - Capacity errors (429, 503, quota exceeded)
+ * - Model not found (404)
+ * - Temporary server errors (500, 502)
+ */
+const PRIMARY_MODEL = 'gemini-3-pro-preview';
+const FALLBACK_MODEL = 'gemini-2.5-pro';
+
 export default async function handler(req: any, res: any) {
   // Enable CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -41,7 +55,6 @@ export default async function handler(req: any, res: any) {
     const contents: any[] = [];
     
     // Add conversation history (last 10 messages for context)
-    // Note: systemPrompt goes in config.systemInstruction, not in contents
     if (conversationHistory && Array.isArray(conversationHistory)) {
       const recentHistory = conversationHistory.slice(-10);
       for (const msg of recentHistory) {
@@ -60,11 +73,8 @@ export default async function handler(req: any, res: any) {
       parts: [{ text: message.trim() }]
     });
 
-    console.log(`Calling Gemini API with model: gemini-2.5-pro (${contents.length} messages in context)`);
-    console.log('🔍 Enabling Google Search grounding for real-time California law updates...');
-
-    const config = {
-      model: 'gemini-2.5-pro',
+    const createConfig = (model: string) => ({
+      model: model,
       contents: contents,
       config: {
         tools: [{googleSearch: {}}],
@@ -79,41 +89,115 @@ export default async function handler(req: any, res: any) {
           text: systemPrompt
         }]
       } : undefined
+    });
+
+    const executeRequest = async (model: string) => {
+      console.log(`Calling Gemini API with model: ${model} (${contents.length} messages in context)`);
+      const config = createConfig(model);
+      
+      if (stream) {
+        console.log('📡 Using streaming mode for real-time response...');
+        
+        // If we're retrying, we need to be careful about headers, but usually headers are already set
+        // We assume the retry happens BEFORE any partial response is sent in the stream
+        // However, in a stream, we can't easily "retry" if we already sent 200 OK headers and started writing.
+        // BUT, here we catch the error BEFORE starting to write (hopefully).
+        // Wait, we need to set headers only once.
+        
+        return await ai.models.generateContentStream(config);
+      } else {
+        return await ai.models.generateContent(config);
+      }
     };
 
-    // Handle streaming mode
+    // Handling headers for streaming is tricky with retry logic if we fail mid-stream.
+    // But usually connection errors happen at start.
     if (stream) {
-      console.log('📡 Using streaming mode for real-time response...');
-
-      // Set headers for streaming
       res.setHeader('Content-Type', 'text/event-stream');
       res.setHeader('Cache-Control', 'no-cache');
       res.setHeader('Connection', 'keep-alive');
+    }
 
+    let usedModel = PRIMARY_MODEL;
+    let response;
+
+    try {
+      response = await executeRequest(PRIMARY_MODEL);
+    } catch (error: any) {
+      console.warn(`⚠️  Failed with ${PRIMARY_MODEL}:`, error.message);
+      
+      // Check if we should fallback
+      const errorMessage = String(error.message || error || '').toLowerCase();
+      const errorStatus = error.status || error.code || error.statusCode;
+      
+      // Check for capacity-related errors
+      const isCapacityError = 
+        errorStatus === 429 || 
+        errorStatus === 503 || 
+        errorMessage.includes('429') || 
+        errorMessage.includes('503') || 
+        errorMessage.includes('overloaded') || 
+        errorMessage.includes('capacity') ||
+        errorMessage.includes('quota') ||
+        errorMessage.includes('rate limit') ||
+        errorMessage.includes('too many requests') ||
+        errorMessage.includes('service unavailable');
+      
+      // Check for model not found errors
+      const isModelError = 
+        errorStatus === 404 || 
+        errorMessage.includes('404') || 
+        errorMessage.includes('not found') ||
+        errorMessage.includes('invalid model') ||
+        errorMessage.includes('model does not exist');
+      
+      // Check for temporary server errors that might indicate capacity issues
+      const isTemporaryError = 
+        errorStatus === 500 || 
+        errorStatus === 502 ||
+        errorMessage.includes('500') ||
+        errorMessage.includes('502') ||
+        errorMessage.includes('internal server error') ||
+        errorMessage.includes('bad gateway');
+      
+      if (isCapacityError || isModelError || isTemporaryError) {
+        console.log(`🔄 Falling back to ${FALLBACK_MODEL} due to ${isCapacityError ? 'capacity' : isModelError ? 'model' : 'temporary'} error...`);
+        try {
+          usedModel = FALLBACK_MODEL;
+          response = await executeRequest(FALLBACK_MODEL);
+          console.log(`✅ Success with fallback model ${FALLBACK_MODEL}`);
+        } catch (fallbackError: any) {
+          console.error(`❌ Fallback model also failed:`, fallbackError.message);
+          throw error; // Throw original error, not fallback error
+        }
+      } else {
+        // Don't fallback on auth errors, invalid requests, etc.
+        throw error;
+      }
+    }
+
+    if (stream) {
       try {
-        const streamResponse = await ai.models.generateContentStream(config);
-
+        // streamResponse is the async iterable
+        const streamResponse = response; 
+        
         let fullText = '';
         let groundingMetadata: any = null;
 
         // Stream each chunk to the client
-        // streamResponse is the async iterable directly, not an object with .stream property
         for await (const chunk of streamResponse) {
           const chunkText = chunk.text || '';
           fullText += chunkText;
 
-          // Send chunk as SSE (Server-Sent Event)
           if (chunkText) {
             res.write(`data: ${JSON.stringify({ type: 'content', text: chunkText })}\n\n`);
           }
 
-          // Capture grounding metadata if present
           if (chunk.candidates?.[0]?.groundingMetadata) {
             groundingMetadata = chunk.candidates[0].groundingMetadata;
           }
         }
 
-        // Log grounding metadata
         if (groundingMetadata) {
           const webSearchQueries = groundingMetadata.webSearchQueries || [];
           const groundingChunks = groundingMetadata.groundingChunks || [];
@@ -122,38 +206,31 @@ export default async function handler(req: any, res: any) {
           console.log(`   - ${groundingChunks.length} source URLs found`);
         }
 
-        // Send metadata at the end
         res.write(`data: ${JSON.stringify({
           type: 'metadata',
           groundingMetadata,
-          hasGrounding: !!groundingMetadata
+          hasGrounding: !!groundingMetadata,
+          model: usedModel // Send used model info
         })}\n\n`);
 
         res.write('data: [DONE]\n\n');
         res.end();
-
         console.log('✅ Streaming completed successfully');
 
       } catch (streamError: any) {
         console.error('Streaming error:', streamError);
+        // If headers are already sent, we can only send data event
         res.write(`data: ${JSON.stringify({
           type: 'error',
           error: streamError.message || 'Streaming failed'
         })}\n\n`);
         res.end();
       }
-
-      return; // Exit after streaming
+      return;
     }
 
-    // Non-streaming mode (original behavior)
-    const response = await ai.models.generateContent(config);
-
+    // Non-streaming response handling
     const text = response.text;
-
-    console.log('Gemini generator API response received successfully');
-
-    // Extract grounding metadata from response.candidates[0].groundingMetadata
     const candidate = response.candidates?.[0];
     const groundingMetadata = candidate?.groundingMetadata;
     const hasGroundingData = !!groundingMetadata;
@@ -164,16 +241,10 @@ export default async function handler(req: any, res: any) {
       console.log(`✅ Google Search grounding was used!`);
       console.log(`   - Search queries: ${webSearchQueries.join(', ')}`);
       console.log(`   - ${groundingChunks.length} source URLs found`);
-
-      // Log the source URLs
       groundingChunks.forEach((chunk: any, idx: number) => {
         const uri = chunk?.web?.uri;
-        if (uri) {
-          console.log(`   - [${idx+1}] ${uri}`);
-        }
+        if (uri) console.log(`   - [${idx+1}] ${uri}`);
       });
-    } else {
-      console.log('ℹ️ No grounding metadata found - Google Search was not used for this query');
     }
 
     if (!text) {
@@ -187,21 +258,14 @@ export default async function handler(req: any, res: any) {
 
     res.status(200).json({
       text: text,
-      groundingMetadata: groundingMetadata, // Return grounding data to client
-      hasGrounding: hasGroundingData
+      groundingMetadata: groundingMetadata,
+      hasGrounding: hasGroundingData,
+      model: usedModel
     });
 
   } catch (err: any) {
     console.error('Gemini Generate API error:', err);
-    console.error('Error details:', {
-      message: err?.message,
-      stack: err?.stack,
-      name: err?.name,
-      status: err?.status,
-      code: err?.code
-    });
     
-    // Provide more detailed error information
     const errorMessage = err?.message || String(err);
     const isAuthError = errorMessage.includes('api_key') || errorMessage.includes('401') || errorMessage.includes('403');
     const isModelError = errorMessage.includes('model') || errorMessage.includes('404');
@@ -220,4 +284,3 @@ export default async function handler(req: any, res: any) {
     });
   }
 }
-
