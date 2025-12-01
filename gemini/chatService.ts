@@ -1555,7 +1555,7 @@ Answer:`;
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
                             query: message,
-                            topK: 3, // Fewer CEB sources in hybrid mode
+                            topK: 5, // Increased for more comprehensive legal context
                             category
                         }),
                         signal

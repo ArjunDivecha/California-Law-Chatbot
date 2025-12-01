@@ -18,7 +18,7 @@ export interface PrunedSource extends Source {
 }
 
 export class RetrievalPruner {
-  private static readonly MAX_SOURCES = 3; // Top-k limit
+  private static readonly MAX_SOURCES = 5; // Top-k limit (increased from 3 for more comprehensive legal context)
   private static readonly DEDUPE_THRESHOLD = 0.8; // Jaccard similarity threshold for deduplication
   
   /**
