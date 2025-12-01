@@ -32,6 +32,7 @@ export class ChatService {
 
     /**
      * Determine if a query is asking about case law (court decisions)
+     * Enhanced with California-specific citation patterns
      */
     private isCaseLawQuery(message: string): boolean {
         const lowerMessage = message.toLowerCase();
@@ -52,7 +53,10 @@ export class ChatService {
         const caseLawKeywords = [
             'case', 'court', 'ruling', 'decision', 'opinion', 'judgment', 
             'appeal', 'supreme court', 'appellate', 'v.', ' vs ', ' v ',
-            'precedent', 'holding', 'case law'
+            'precedent', 'holding', 'case law', 'court of appeal',
+            'trial court', 'ninth circuit', 'federal court', 'state court',
+            'plaintiff', 'defendant', 'petitioner', 'respondent',
+            'affirmed', 'reversed', 'remanded', 'overruled'
         ];
         
         for (const keyword of caseLawKeywords) {
@@ -61,9 +65,34 @@ export class ChatService {
             }
         }
         
-        // Check for case name patterns (e.g., "Smith v. Jones")
-        if (/\b\w+\s+v\.?\s+\w+\b/i.test(message)) {
+        // Check for case name patterns
+        // Pattern 1: Party v. Party (e.g., "Smith v. Jones", "People v. Superior Court")
+        if (/\b[A-Z][a-z]+\s+v\.?\s+[A-Z][a-z]+/i.test(message)) {
             return true;
+        }
+        
+        // Pattern 2: "Estate of X", "Matter of X", "Marriage of X", "In re X"
+        if (/\b(estate|matter|marriage|conservatorship|guardianship)\s+of\s+[A-Z][a-z]+/i.test(message)) {
+            return true;
+        }
+        if (/\bin\s+re\s+[A-Z][a-z]+/i.test(message)) {
+            return true;
+        }
+        
+        // Pattern 3: California reporter citations
+        // e.g., "87 Cal.App.4th 461", "9 Cal. 5th 903", "50 Cal.4th 100"
+        const caReporterPattern = /\d+\s+Cal\.?\s*(App\.?)?\s*(2d|3d|4th|5th)?\s*\d+/i;
+        if (caReporterPattern.test(message)) {
+            return true;
+        }
+        
+        // Pattern 4: Year in parentheses often indicates case citation
+        // e.g., "(2001)", "(2020)" following a case-like context
+        if (/[A-Z][a-z]+.*\(\d{4}\)/.test(message)) {
+            // Additional check: make sure it's not just a statute with a year
+            if (!/(code|statute|section|§)\s*.*\(\d{4}\)/i.test(message)) {
+                return true;
+            }
         }
         
         return false; // Default to false for ambiguous queries
@@ -1414,30 +1443,46 @@ Key California legal sources to reference:
                 };
             }
 
+            // Extract case citations from CEB sources and fetch their details
+            console.log('📜 Extracting case citations from CEB sources...');
+            const { caseSources, allCitations } = await this.extractAndFetchCasesFromCEB(highConfidenceSources, signal);
+            console.log(`✅ Extracted ${caseSources.length} case citations`);
+
             // Build context from CEB sources
             const cebContext = highConfidenceSources
-                .map((source, idx) => `[${idx + 1}] ${source.title}\n${source.text}\n(${source.cebCitation})`)
+                .map((source, idx) => `[${idx + 1}] ${source.title}\n${source.excerpt}\n(${source.cebCitation})`)
                 .join('\n\n');
 
-            // Generate response using CEB context
-            const prompt = `You are a California legal research assistant. Write a comprehensive, well-organized answer to the following question using ONLY the authoritative CEB (Continuing Education of the Bar) practice guide excerpts provided below.
+            // Build case context if we found cases
+            let caseContext = '';
+            if (caseSources.length > 0) {
+                caseContext = '\n\nRELEVANT CASE LAW (extracted from CEB citations):\n';
+                caseContext += caseSources
+                    .map((source, idx) => `[Case ${idx + 1}] ${source.title}\n${source.excerpt || ''}`)
+                    .join('\n\n');
+            }
+
+            // Generate response using CEB context + extracted cases
+            const prompt = `You are a California legal research assistant. Write a comprehensive, well-organized answer to the following question using the authoritative CEB (Continuing Education of the Bar) practice guide excerpts and the relevant case law provided below.
 
 Question: ${message}
 
 CEB Practice Guide Excerpts:
 ${cebContext}
+${caseContext}
 
 CRITICAL INSTRUCTIONS - YOU MUST FOLLOW THESE:
 1. Write a COMPLETE, COHERENT ANSWER in proper paragraphs - DO NOT just list snippets or raw text
 2. SYNTHESIZE information from the CEB excerpts into a unified, professional legal explanation
-3. Base your answer EXCLUSIVELY on the CEB excerpts provided - do not add outside information
-4. Cite sources using [1], [2], etc. format throughout your answer
-5. Include relevant CEB citations (e.g., "Cal. Prac. Guide: Family Law § 3:45")
-6. Use clear topic sentences and logical organization
-7. If the excerpts don't fully answer the question, acknowledge this limitation clearly
-8. Be thorough but readable - write for a 10th grade reading level
-9. DO NOT output raw JSON, snippets, or unformatted data - write a professional legal analysis
-10. Your answer should be authoritative and precise - these are official practice guides
+3. Base your answer PRIMARILY on the CEB excerpts provided
+4. CITE CASE LAW: When the CEB text references a case, include the full case citation (e.g., "Estate of Bibb (2001) 87 Cal.App.4th 461")
+5. Cite CEB sources using [1], [2], etc. format throughout your answer
+6. Include relevant CEB citations (e.g., "Cal. Prac. Guide: Family Law § 3:45")
+7. Use clear topic sentences and logical organization
+8. If the excerpts don't fully answer the question, acknowledge this limitation clearly
+9. Be thorough but readable - write for a 10th grade reading level
+10. DO NOT output raw JSON, snippets, or unformatted data - write a professional legal analysis
+11. When citing cases, use proper legal citation format with the case name in italics conceptually
 
 Your answer should read like a legal memorandum based on authoritative sources, not a list of search results.
 
@@ -1445,15 +1490,24 @@ Answer:`;
 
             const response = await this.sendToGemini(prompt, conversationHistory, signal);
 
-            // Assign IDs to sources for citation mapping
-            const sourcesWithIds = highConfidenceSources.map((source, index) => ({
+            // Assign IDs to CEB sources for citation mapping
+            const cebSourcesWithIds = highConfidenceSources.map((source, index) => ({
                 ...source,
                 id: String(index + 1)
             }));
 
+            // Assign IDs to case sources (continuing from CEB sources)
+            const caseSourcesWithIds = caseSources.map((source, index) => ({
+                ...source,
+                id: `case-${index + 1}`
+            }));
+
+            // Combine all sources (CEB first, then cases)
+            const allSources = [...cebSourcesWithIds, ...caseSourcesWithIds];
+
             return {
                 text: response.text,
-                sources: sourcesWithIds,
+                sources: allSources,
                 isCEBBased: true,
                 cebCategory: category,
                 sourceMode: 'ceb-only',
@@ -1534,10 +1588,24 @@ Answer:`;
             // Filter high-confidence CEB sources
             const highConfidenceCEB = cebSources.filter(s => s.confidence >= 0.7);
 
-            // Combine sources (CEB first)
+            // Extract case citations from CEB sources and fetch their details
+            let extractedCaseSources: Source[] = [];
+            if (highConfidenceCEB.length > 0) {
+                console.log('📜 Extracting case citations from CEB sources (Hybrid mode)...');
+                const { caseSources } = await this.extractAndFetchCasesFromCEB(highConfidenceCEB, signal);
+                extractedCaseSources = caseSources;
+                console.log(`✅ Extracted ${extractedCaseSources.length} case citations from CEB`);
+            }
+
+            // Combine sources (CEB first, then extracted cases, then AI sources)
+            // Deduplicate: remove AI sources that match extracted cases
+            const extractedCaseNames = new Set(extractedCaseSources.map(s => s.title.toLowerCase()));
+            const dedupedAiSources = aiSources.filter(s => !extractedCaseNames.has(s.title.toLowerCase()));
+
             const allSources: (CEBSource | Source)[] = [
                 ...highConfidenceCEB,
-                ...aiSources
+                ...extractedCaseSources,
+                ...dedupedAiSources
             ];
 
             // Assign IDs to all sources
@@ -1546,23 +1614,38 @@ Answer:`;
                 id: String(index + 1)
             }));
 
-            // Build context from both CEB and AI sources
+            // Build context from CEB, extracted cases, and AI sources
             let context = '';
+            let sourceIndex = 1;
             
             if (highConfidenceCEB.length > 0) {
                 context += 'AUTHORITATIVE CEB PRACTICE GUIDES (Primary Source - No Verification Needed):\n';
                 context += highConfidenceCEB
-                    .map((source, idx) => `[${idx + 1}] ${source.title}\n${source.text}\n(${source.cebCitation})`)
+                    .map((source) => {
+                        const idx = sourceIndex++;
+                        return `[${idx}] ${source.title}\n${source.excerpt}\n(${source.cebCitation})`;
+                    })
                     .join('\n\n');
                 context += '\n\n';
             }
 
-            if (aiSources.length > 0) {
-                context += 'SUPPLEMENTARY SOURCES (Case Law, Legislation):\n';
-                context += aiSources
-                    .map((source, idx) => {
-                        const sourceIdx = highConfidenceCEB.length + idx + 1;
-                        return `[${sourceIdx}] ${source.title}\n${source.excerpt || ''}`;
+            if (extractedCaseSources.length > 0) {
+                context += 'CASE LAW (Extracted from CEB Citations):\n';
+                context += extractedCaseSources
+                    .map((source) => {
+                        const idx = sourceIndex++;
+                        return `[${idx}] ${source.title}\n${source.excerpt || ''}`;
+                    })
+                    .join('\n\n');
+                context += '\n\n';
+            }
+
+            if (dedupedAiSources.length > 0) {
+                context += 'SUPPLEMENTARY SOURCES (Additional Case Law, Legislation):\n';
+                context += dedupedAiSources
+                    .map((source) => {
+                        const idx = sourceIndex++;
+                        return `[${idx}] ${source.title}\n${source.excerpt || ''}`;
                     })
                     .join('\n\n');
             }
@@ -1578,13 +1661,14 @@ CRITICAL INSTRUCTIONS - YOU MUST FOLLOW THESE:
 1. Write a COMPLETE, COHERENT ANSWER in proper paragraphs - DO NOT just list snippets or raw source text
 2. SYNTHESIZE information from multiple sources into a unified, professional legal explanation
 3. START with the most important information from CEB practice guides (these are authoritative)
-4. INTEGRATE case law and legislation to support and expand on CEB guidance
-5. Cite sources using [1], [2], etc. format throughout your answer
-6. For CEB sources, include the CEB citation (e.g., "Cal. Prac. Guide: Family Law § 3:45")
-7. Use clear topic sentences and logical organization
-8. If sources conflict, explain the different approaches
-9. Be thorough but readable - write for a 10th grade reading level
-10. DO NOT output raw JSON, snippets, or unformatted data - write a professional legal analysis
+4. CITE CASE LAW with full citations (e.g., "Estate of Bibb (2001) 87 Cal.App.4th 461")
+5. INTEGRATE case law and legislation to support and expand on CEB guidance
+6. Cite sources using [1], [2], etc. format throughout your answer
+7. For CEB sources, include the CEB citation (e.g., "Cal. Prac. Guide: Family Law § 3:45")
+8. Use clear topic sentences and logical organization
+9. If sources conflict, explain the different approaches
+10. Be thorough but readable - write for a 10th grade reading level
+11. DO NOT output raw JSON, snippets, or unformatted data - write a professional legal analysis
 
 Your answer should read like a legal memorandum, not a list of search results.
 
@@ -2278,5 +2362,253 @@ Answer:`;
             console.error('Failed to call CourtListener proxy:', error);
             return { content: 'There was an error connecting to the CourtListener proxy.', sources: [] };
         }
+    }
+
+    // ============================================================================
+    // CASE CITATION EXTRACTION FROM CEB TEXT
+    // ============================================================================
+
+    /**
+     * Interface for extracted case citations
+     */
+    private extractedCaseCache: Map<string, Source> = new Map();
+
+    /**
+     * Extract California case citations from text
+     * Handles patterns like:
+     *   - Estate of Bibb 87 Cal.App.4th 461, 469 (2001)
+     *   - In re Brace, 9 Cal. 5th 903 (2020)
+     *   - People v. Smith (2019) 35 Cal.App.5th 123
+     *   - Smith v. Jones, 50 Cal.4th 100 (2010)
+     *   - Marriage of Valli (2014) 58 Cal.4th 1396
+     */
+    private extractCaseCitations(text: string): Array<{
+        fullCitation: string;
+        caseName: string;
+        volume: string;
+        reporter: string;
+        page: string;
+        year?: string;
+        pinCite?: string;
+    }> {
+        const citations: Array<{
+            fullCitation: string;
+            caseName: string;
+            volume: string;
+            reporter: string;
+            page: string;
+            year?: string;
+            pinCite?: string;
+        }> = [];
+
+        // California reporter patterns (ordered by specificity)
+        const reporterPatterns = [
+            'Cal\\.\\s*App\\.\\s*5th',
+            'Cal\\.\\s*App\\.\\s*4th',
+            'Cal\\.\\s*App\\.\\s*3d',
+            'Cal\\.\\s*App\\.\\s*2d',
+            'Cal\\.\\s*App\\.',
+            'Cal\\.\\s*5th',
+            'Cal\\.\\s*4th',
+            'Cal\\.\\s*3d',
+            'Cal\\.\\s*2d',
+            'Cal\\.',
+            'Cal\\.\\s*Rptr\\.\\s*3d',
+            'Cal\\.\\s*Rptr\\.\\s*2d',
+            'Cal\\.\\s*Rptr\\.'
+        ];
+
+        // Build comprehensive regex for California citations
+        // Pattern 1: Case Name + Volume + Reporter + Page (Year)
+        // Example: Estate of Bibb 87 Cal.App.4th 461 (2001)
+        const pattern1 = new RegExp(
+            `([A-Z][\\w\\s]+?(?:v\\.?|vs\\.?)\\s+[A-Z][\\w\\s]+?|` +  // Party v. Party
+            `(?:Estate|Matter|Marriage|Conservatorship|Guardianship)\\s+of\\s+[A-Z][\\w]+|` +  // Estate of X
+            `In\\s+re\\s+[A-Z][\\w\\s]+?)` +  // In re X
+            `[,\\s]+` +
+            `(\\d+)\\s+` +  // Volume
+            `(${reporterPatterns.join('|')})\\s+` +  // Reporter
+            `(\\d+)` +  // Page
+            `(?:[,\\s]+(\\d+))?` +  // Optional pin cite
+            `(?:\\s*\\((\\d{4})\\))?`,  // Optional year
+            'gi'
+        );
+
+        // Pattern 2: Case Name (Year) Volume Reporter Page
+        // Example: People v. Smith (2019) 35 Cal.App.5th 123
+        const pattern2 = new RegExp(
+            `([A-Z][\\w\\s]+?(?:v\\.?|vs\\.?)\\s+[A-Z][\\w\\s]+?|` +
+            `(?:Estate|Matter|Marriage|Conservatorship|Guardianship)\\s+of\\s+[A-Z][\\w]+|` +
+            `In\\s+re\\s+[A-Z][\\w\\s]+?)` +
+            `\\s*\\((\\d{4})\\)\\s*` +  // Year in parens
+            `(\\d+)\\s+` +  // Volume
+            `(${reporterPatterns.join('|')})\\s+` +  // Reporter
+            `(\\d+)` +  // Page
+            `(?:[,\\s]+(\\d+))?`,  // Optional pin cite
+            'gi'
+        );
+
+        // Track seen citations to avoid duplicates
+        const seenCitations = new Set<string>();
+
+        // Extract using pattern 1
+        let match;
+        while ((match = pattern1.exec(text)) !== null) {
+            const [fullMatch, caseName, volume, reporter, page, pinCite, year] = match;
+            const normalizedCitation = `${volume} ${reporter.replace(/\s+/g, '')} ${page}`;
+            
+            if (!seenCitations.has(normalizedCitation)) {
+                seenCitations.add(normalizedCitation);
+                citations.push({
+                    fullCitation: fullMatch.trim(),
+                    caseName: caseName.trim().replace(/[,\s]+$/, ''),
+                    volume,
+                    reporter: reporter.replace(/\s+/g, ' ').trim(),
+                    page,
+                    year,
+                    pinCite
+                });
+            }
+        }
+
+        // Extract using pattern 2
+        while ((match = pattern2.exec(text)) !== null) {
+            const [fullMatch, caseName, year, volume, reporter, page, pinCite] = match;
+            const normalizedCitation = `${volume} ${reporter.replace(/\s+/g, '')} ${page}`;
+            
+            if (!seenCitations.has(normalizedCitation)) {
+                seenCitations.add(normalizedCitation);
+                citations.push({
+                    fullCitation: fullMatch.trim(),
+                    caseName: caseName.trim().replace(/[,\s]+$/, ''),
+                    volume,
+                    reporter: reporter.replace(/\s+/g, ' ').trim(),
+                    page,
+                    year,
+                    pinCite
+                });
+            }
+        }
+
+        console.log(`📜 Extracted ${citations.length} case citations from text`);
+        return citations;
+    }
+
+    /**
+     * Fetch case information from CourtListener for extracted citations
+     * Returns enriched Source objects with case details
+     */
+    private async fetchCaseInfoForCitations(
+        citations: Array<{
+            fullCitation: string;
+            caseName: string;
+            volume: string;
+            reporter: string;
+            page: string;
+            year?: string;
+        }>,
+        signal?: AbortSignal
+    ): Promise<Source[]> {
+        if (citations.length === 0) return [];
+
+        console.log(`🔍 Fetching case info for ${citations.length} citations from CourtListener...`);
+
+        const caseSourcePromises = citations.map(async (citation) => {
+            // Check cache first
+            const cacheKey = `${citation.volume}-${citation.reporter}-${citation.page}`;
+            if (this.extractedCaseCache.has(cacheKey)) {
+                console.log(`  ✓ Cache hit: ${citation.caseName}`);
+                return this.extractedCaseCache.get(cacheKey)!;
+            }
+
+            try {
+                // Build search query for CourtListener
+                // Try case name first, fall back to citation
+                const searchQuery = `${citation.caseName} ${citation.volume} ${citation.reporter} ${citation.page}`;
+                
+                const result = await this.searchCourtListenerAPI(searchQuery, signal, { limit: 1 });
+                
+                if (result.sources.length > 0) {
+                    const source: Source = {
+                        ...result.sources[0],
+                        title: `${citation.caseName} (${citation.year || 'Cal.'})`,
+                        excerpt: `${citation.fullCitation} - ${result.content.substring(0, 300)}...`
+                    };
+                    
+                    // Cache the result
+                    this.extractedCaseCache.set(cacheKey, source);
+                    console.log(`  ✓ Found: ${citation.caseName}`);
+                    return source;
+                } else {
+                    // Create a source with CourtListener search link even if not found directly
+                    const searchUrl = `https://www.courtlistener.com/?q=${encodeURIComponent(citation.caseName)}&type=o&order_by=score%20desc&stat_Precedential=on`;
+                    const source: Source = {
+                        title: `${citation.caseName} (${citation.year || 'Cal.'})`,
+                        url: searchUrl,
+                        excerpt: `${citation.fullCitation} - Click to search on CourtListener`
+                    };
+                    
+                    this.extractedCaseCache.set(cacheKey, source);
+                    console.log(`  ⚠ Not found directly, created search link: ${citation.caseName}`);
+                    return source;
+                }
+            } catch (error: any) {
+                if (signal?.aborted || error.message === 'Request cancelled') {
+                    throw error;
+                }
+                console.error(`  ✗ Error fetching ${citation.caseName}:`, error.message);
+                
+                // Return a basic source with search link on error
+                const searchUrl = `https://www.courtlistener.com/?q=${encodeURIComponent(citation.caseName)}&type=o&order_by=score%20desc&stat_Precedential=on`;
+                return {
+                    title: `${citation.caseName} (${citation.year || 'Cal.'})`,
+                    url: searchUrl,
+                    excerpt: citation.fullCitation
+                };
+            }
+        });
+
+        // Execute in parallel with a concurrency limit to avoid overwhelming the API
+        const results: Source[] = [];
+        const batchSize = 3; // Process 3 at a time
+        
+        for (let i = 0; i < caseSourcePromises.length; i += batchSize) {
+            const batch = caseSourcePromises.slice(i, i + batchSize);
+            const batchResults = await Promise.all(batch);
+            results.push(...batchResults);
+        }
+
+        console.log(`✅ Fetched info for ${results.length} cases`);
+        return results;
+    }
+
+    /**
+     * Extract case citations from CEB sources and fetch their details
+     * Returns combined array of CEB sources + extracted case sources
+     */
+    private async extractAndFetchCasesFromCEB(
+        cebSources: CEBSource[],
+        signal?: AbortSignal
+    ): Promise<{ caseSources: Source[]; allCitations: string[] }> {
+        // Combine all CEB excerpts to extract citations
+        const allText = cebSources.map(s => s.excerpt || '').join('\n\n');
+        
+        // Extract citations
+        const citations = this.extractCaseCitations(allText);
+        
+        if (citations.length === 0) {
+            return { caseSources: [], allCitations: [] };
+        }
+
+        console.log(`📚 Found ${citations.length} case citations in CEB sources:`);
+        citations.forEach(c => console.log(`   - ${c.caseName} (${c.year || 'n/d'})`));
+
+        // Fetch case info from CourtListener
+        const caseSources = await this.fetchCaseInfoForCitations(citations, signal);
+        
+        // Return citation strings for highlighting
+        const allCitations = citations.map(c => c.fullCitation);
+
+        return { caseSources, allCitations };
     }
 }
