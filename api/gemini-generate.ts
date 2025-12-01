@@ -91,23 +91,28 @@ export default async function handler(req: any, res: any) {
       } : undefined
     });
 
-    const executeRequest = async (model: string) => {
+    const executeRequest = async (model: string, timeoutMs: number = 30000) => {
       console.log(`Calling Gemini API with model: ${model} (${contents.length} messages in context)`);
       const config = createConfig(model);
       
-      if (stream) {
-        console.log('📡 Using streaming mode for real-time response...');
-        
-        // If we're retrying, we need to be careful about headers, but usually headers are already set
-        // We assume the retry happens BEFORE any partial response is sent in the stream
-        // However, in a stream, we can't easily "retry" if we already sent 200 OK headers and started writing.
-        // BUT, here we catch the error BEFORE starting to write (hopefully).
-        // Wait, we need to set headers only once.
-        
-        return await ai.models.generateContentStream(config);
-      } else {
-        return await ai.models.generateContent(config);
-      }
+      // Wrap API call with timeout to fail fast
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => {
+          reject(new Error(`Request timeout after ${timeoutMs}ms`));
+        }, timeoutMs);
+      });
+      
+      const apiCall = async () => {
+        if (stream) {
+          console.log('📡 Using streaming mode for real-time response...');
+          return await ai.models.generateContentStream(config);
+        } else {
+          return await ai.models.generateContent(config);
+        }
+      };
+      
+      // Race between API call and timeout
+      return Promise.race([apiCall(), timeoutPromise]) as Promise<any>;
     };
 
     // Handling headers for streaming is tricky with retry logic if we fail mid-stream.
@@ -122,7 +127,8 @@ export default async function handler(req: any, res: any) {
     let response;
 
     try {
-      response = await executeRequest(PRIMARY_MODEL);
+      // Use shorter timeout for primary model (15 seconds) to fail fast
+      response = await executeRequest(PRIMARY_MODEL, 15000);
     } catch (error: any) {
       console.warn(`⚠️  Failed with ${PRIMARY_MODEL}:`, error.message);
       
@@ -160,11 +166,13 @@ export default async function handler(req: any, res: any) {
         errorMessage.includes('internal server error') ||
         errorMessage.includes('bad gateway');
       
-      if (isCapacityError || isModelError || isTemporaryError) {
-        console.log(`🔄 Falling back to ${FALLBACK_MODEL} due to ${isCapacityError ? 'capacity' : isModelError ? 'model' : 'temporary'} error...`);
+      if (isCapacityError || isModelError || isTemporaryError || errorMessage.includes('timeout')) {
+        const errorType = errorMessage.includes('timeout') ? 'timeout' : isCapacityError ? 'capacity' : isModelError ? 'model' : 'temporary';
+        console.log(`🔄 Falling back to ${FALLBACK_MODEL} due to ${errorType} error...`);
         try {
           usedModel = FALLBACK_MODEL;
-          response = await executeRequest(FALLBACK_MODEL);
+          // Use longer timeout for fallback (30 seconds) since it's more reliable
+          response = await executeRequest(FALLBACK_MODEL, 30000);
           console.log(`✅ Success with fallback model ${FALLBACK_MODEL}`);
         } catch (fallbackError: any) {
           console.error(`❌ Fallback model also failed:`, fallbackError.message);

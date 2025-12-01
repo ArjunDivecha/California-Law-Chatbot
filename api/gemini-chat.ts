@@ -37,25 +37,38 @@ export default async function handler(req: any, res: any) {
     // Initialize Gemini AI (server-side only - API key never exposed to client)
     const ai = new GoogleGenAI({ apiKey });
 
-    const generateWithModel = async (modelName: string) => {
+    const generateWithModel = async (modelName: string, timeoutMs: number = 30000) => {
       console.log(`🤖 Initializing chat with model: ${modelName}`);
-      const chat = ai.chats.create({
-        model: modelName,
-        config: {
-          systemInstruction: systemPrompt || "You are an expert legal research assistant specializing in California law.",
-        }
+      
+      // Wrap API call with timeout to fail fast
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => {
+          reject(new Error(`Request timeout after ${timeoutMs}ms`));
+        }, timeoutMs);
       });
       
-      console.log(`📤 Sending message to ${modelName}...`);
-      return await chat.sendMessage({ message: message.trim() });
+      const apiCall = async () => {
+        const chat = ai.chats.create({
+          model: modelName,
+          config: {
+            systemInstruction: systemPrompt || "You are an expert legal research assistant specializing in California law.",
+          }
+        });
+        
+        console.log(`📤 Sending message to ${modelName}...`);
+        return await chat.sendMessage({ message: message.trim() });
+      };
+      
+      // Race between API call and timeout
+      return Promise.race([apiCall(), timeoutPromise]) as Promise<any>;
     };
 
     let response;
     let usedModel = PRIMARY_MODEL;
 
     try {
-      // Try primary model
-      response = await generateWithModel(PRIMARY_MODEL);
+      // Try primary model with shorter timeout (15 seconds) to fail fast
+      response = await generateWithModel(PRIMARY_MODEL, 15000);
       console.log(`✅ Success with ${PRIMARY_MODEL}`);
     } catch (error: any) {
       console.warn(`⚠️  Failed with ${PRIMARY_MODEL}:`, error.message);
@@ -95,11 +108,13 @@ export default async function handler(req: any, res: any) {
         errorMessage.includes('internal server error') ||
         errorMessage.includes('bad gateway');
       
-      if (isCapacityError || isModelError || isTemporaryError) {
-        console.log(`🔄 Falling back to ${FALLBACK_MODEL} due to ${isCapacityError ? 'capacity' : isModelError ? 'model' : 'temporary'} error...`);
+      if (isCapacityError || isModelError || isTemporaryError || errorMessage.includes('timeout')) {
+        const errorType = errorMessage.includes('timeout') ? 'timeout' : isCapacityError ? 'capacity' : isModelError ? 'model' : 'temporary';
+        console.log(`🔄 Falling back to ${FALLBACK_MODEL} due to ${errorType} error...`);
         try {
           usedModel = FALLBACK_MODEL;
-          response = await generateWithModel(FALLBACK_MODEL);
+          // Use longer timeout for fallback (30 seconds) since it's more reliable
+          response = await generateWithModel(FALLBACK_MODEL, 30000);
           console.log(`✅ Success with fallback model ${FALLBACK_MODEL}`);
         } catch (fallbackError: any) {
           console.error(`❌ Fallback model also failed:`, fallbackError.message);
