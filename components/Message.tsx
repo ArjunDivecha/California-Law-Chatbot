@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { MessageRole } from '../types';
@@ -8,6 +8,28 @@ import CEBBadge from './CEBBadge';
 interface MessageProps {
   message: ChatMessage;
 }
+
+// Copy and Print button icons
+const CopyIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/>
+    <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
+  </svg>
+);
+
+const CheckIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="20 6 9 17 4 12"/>
+  </svg>
+);
+
+const PrintIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="6 9 6 2 18 2 18 9"/>
+    <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+    <rect width="12" height="8" x="6" y="14"/>
+  </svg>
+);
 
 const renderMessageContent = (text: string, sources?: Source[]) => {
   const serifFont = { fontFamily: 'Georgia, "Times New Roman", serif' };
@@ -163,6 +185,146 @@ const renderMessageContent = (text: string, sources?: Source[]) => {
 
 const Message: React.FC<MessageProps> = ({ message }) => {
   const isUser = message.role === MessageRole.USER;
+  const [copied, setCopied] = useState(false);
+  const messageRef = useRef<HTMLDivElement>(null);
+
+  // Copy message text to clipboard
+  const handleCopy = async () => {
+    try {
+      // Get plain text version (strip markdown for cleaner copy)
+      const plainText = message.text
+        .replace(/\*\*(.*?)\*\*/g, '$1') // Bold
+        .replace(/\*(.*?)\*/g, '$1') // Italic
+        .replace(/#{1,6}\s/g, '') // Headers
+        .replace(/\[(\d+)\]/g, '[$1]'); // Keep citations
+      
+      await navigator.clipboard.writeText(plainText);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
+  };
+
+  // Print message
+  const handlePrint = () => {
+    const printContent = messageRef.current;
+    if (!printContent) return;
+
+    // Create a new window for printing
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      alert('Please allow popups to print');
+      return;
+    }
+
+    // Get sources for the footer
+    const sourcesHtml = message.sources && message.sources.length > 0
+      ? `<div class="sources">
+          <h3>Sources</h3>
+          <ol>
+            ${message.sources.map((s, i) => `<li><strong>${s.title}</strong><br/><a href="${s.url}">${s.url}</a></li>`).join('')}
+          </ol>
+        </div>`
+      : '';
+
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>California Law Chatbot - Response</title>
+        <style>
+          body {
+            font-family: Georgia, "Times New Roman", serif;
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 20px;
+            line-height: 1.7;
+            color: #333;
+          }
+          h1, h2, h3, h4 {
+            font-family: Georgia, "Times New Roman", serif;
+            margin-top: 1.5em;
+            margin-bottom: 0.5em;
+          }
+          h1 { font-size: 1.8em; border-bottom: 2px solid #333; padding-bottom: 10px; }
+          h2 { font-size: 1.4em; }
+          h3 { font-size: 1.2em; }
+          p { margin-bottom: 1em; }
+          ul, ol { margin: 1em 0; padding-left: 2em; }
+          li { margin-bottom: 0.5em; }
+          .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #ccc;
+          }
+          .header h1 { border: none; margin-bottom: 5px; }
+          .header .date { color: #666; font-size: 0.9em; }
+          .sources {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #ccc;
+          }
+          .sources h3 { margin-top: 0; }
+          .sources ol { font-size: 0.9em; }
+          .sources a { color: #0066cc; }
+          .badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.8em;
+            margin-right: 8px;
+            margin-bottom: 15px;
+          }
+          .badge-ceb { background: #fef3c7; color: #92400e; }
+          .badge-verified { background: #d1fae5; color: #065f46; }
+          .footer {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #ccc;
+            font-size: 0.8em;
+            color: #666;
+            text-align: center;
+          }
+          @media print {
+            body { margin: 0; padding: 20px; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>California Law Chatbot</h1>
+          <div class="date">Generated: ${new Date().toLocaleDateString('en-US', { 
+            weekday: 'long', 
+            year: 'numeric', 
+            month: 'long', 
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+          })}</div>
+        </div>
+        ${message.isCEBBased ? '<span class="badge badge-ceb">CEB Verified</span>' : ''}
+        ${message.verificationStatus === 'verified' ? '<span class="badge badge-verified">Verified</span>' : ''}
+        <div class="content">
+          ${printContent.innerHTML}
+        </div>
+        ${sourcesHtml}
+        <div class="footer">
+          <p>This document was generated by California Law Chatbot. Please verify all legal information with a qualified attorney.</p>
+        </div>
+      </body>
+      </html>
+    `);
+
+    printWindow.document.close();
+    printWindow.focus();
+    
+    // Wait for content to load then print
+    setTimeout(() => {
+      printWindow.print();
+    }, 250);
+  };
 
   if (isUser) {
     return (
@@ -280,10 +442,30 @@ const Message: React.FC<MessageProps> = ({ message }) => {
         <div className="flex-shrink-0 w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
           <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6 text-gray-600"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg>
         </div>
-        <div className="bg-white rounded-lg rounded-bl-none p-5 border border-gray-200 shadow-md w-full" style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}>
+        <div className="bg-white rounded-lg rounded-bl-none p-5 border border-gray-200 shadow-md w-full relative" style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}>
+        {/* Action Buttons - Copy and Print */}
+        {message.id !== 'initial-bot-message' && (
+          <div className="absolute top-3 right-3 flex items-center gap-1">
+            <button
+              onClick={handleCopy}
+              className="p-2 rounded-md hover:bg-gray-100 transition-colors text-gray-500 hover:text-gray-700"
+              title={copied ? 'Copied!' : 'Copy to clipboard'}
+            >
+              {copied ? <CheckIcon /> : <CopyIcon />}
+            </button>
+            <button
+              onClick={handlePrint}
+              className="p-2 rounded-md hover:bg-gray-100 transition-colors text-gray-500 hover:text-gray-700"
+              title="Print response"
+            >
+              <PrintIcon />
+            </button>
+          </div>
+        )}
+        
         {/* Mode Badge - Don't show for initial welcome message */}
         {message.id !== 'initial-bot-message' && (
-          <div className="mb-3 flex items-center gap-2 flex-wrap">
+          <div className="mb-3 flex items-center gap-2 flex-wrap pr-20">
             {getModeBadge()}
             {isCEBBased && cebCategory && <CEBBadge category={cebCategory} />}
           </div>
@@ -321,7 +503,9 @@ const Message: React.FC<MessageProps> = ({ message }) => {
               </div>
             </div>
           )}
-          {renderMessageContent(message.text, message.sources)}
+          <div ref={messageRef}>
+            {renderMessageContent(message.text, message.sources)}
+          </div>
           {showSourceList && (
             <div className="mt-4 pt-4 border-t border-gray-200">
               <h4 className="text-sm font-semibold text-gray-900 mb-2 flex items-center">
