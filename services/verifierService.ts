@@ -32,43 +32,59 @@ export class VerifierService {
   
   constructor() {
     // API keys are now handled server-side via API endpoints
-    this.systemPrompt = `You are a legal verification assistant. Your job is to verify claims made in legal answers against provided source documents.
+    // IMPROVED PROMPT v2.0 - Better claim extraction and verification
+    this.systemPrompt = `You are a legal verification assistant specializing in California law. Your job is to verify claims made in legal answers against provided source documents.
 
-CRITICAL RULES:
-1. For each claim, find 1-2 verbatim quotes from the cited sources that support it
-2. Mark claims as "supported" only if you find exact quotes or very close paraphrases
-3. If a claim lacks supporting evidence, mark it as "unsupported"
-4. If overall support is thin (< 60% of claims), return a refusal
-5. If some claims are unsupported, produce a VERIFIED_REWRITE using only supported claims
-6. Maintain proper citations [id] in rewritten answers
-7. Be strict: when in doubt, mark as unsupported
+CLAIM IDENTIFICATION:
+- A "claim" is any factual assertion, legal rule, statutory requirement, case holding, or procedural statement
+- Extract claims even if they don't have explicit citations - they still need verification
+- Pay special attention to: dates, deadlines, numerical thresholds, procedural requirements, legal standards
 
-Output format (JSON):
+VERIFICATION RULES:
+1. For each claim, search ALL provided sources for supporting evidence
+2. Mark as "supported" if you find:
+   - Direct quotes that state the same thing
+   - Paraphrases that convey the same legal meaning
+   - Multiple sources that corroborate the claim
+3. Mark as "unsupported" if:
+   - No source mentions this information
+   - Sources contradict the claim
+   - The claim goes beyond what sources actually say
+4. Mark "ambiguity": true if sources conflict with each other
+
+COVERAGE CALCULATION:
+- coverage = supported_claims.length / (supported_claims.length + unsupported_claims.length)
+- Be thorough: extract ALL verifiable claims, not just obvious ones
+
+REWRITING RULES:
+- If coverage < 0.7, status = "refusal" (don't provide answer)
+- If 0.7 <= coverage < 1.0, rewrite to remove unsupported claims
+- If coverage = 1.0, use original answer
+- NEVER add information not in the original answer
+- Preserve all citation markers [id] in rewritten text
+
+Output format (JSON only, no markdown):
 {
   "verification_report": {
-    "supported_claims": [{"text": "...", "cites": ["id1"], "kind": "statute"}],
-    "unsupported_claims": [{"text": "...", "cites": ["id1"], "kind": "case"}],
-    "verified_quotes": [
-      {
-        "claim": "claim text",
-        "quotes": ["exact quote 1", "exact quote 2"],
-        "sourceId": "id1"
-      }
-    ],
-    "coverage": 0.85,
+    "supported_claims": [{"text": "...", "cites": ["id1"], "kind": "statute|case|fact"}],
+    "unsupported_claims": [{"text": "...", "cites": ["id1"], "kind": "statute|case|fact"}],
+    "verified_quotes": [{"claim": "...", "quotes": ["exact quote"], "sourceId": "id1"}],
+    "coverage": 0.0-1.0,
     "min_support": 1,
     "ambiguity": false
   },
-  "verified_answer": "rewritten answer using only supported claims, or original if all supported",
+  "verified_answer": "rewritten answer OR original if fully verified",
   "status": "verified" | "partially_verified" | "refusal"
 }`;
   }
   
   /**
    * Extract claims from generator output using structured parsing
+   * IMPROVED v2.0: Better claim detection including uncited claims
    */
   static extractClaimsFromAnswer(answerText: string, sources: Source[]): Claim[] {
     const claims: Claim[] = [];
+    const seenClaims = new Set<string>(); // Avoid duplicates
     
     // Try to parse JSON claims if present
     const jsonMatch = answerText.match(/CLAIMS_JSON:\s*(\[[\s\S]*?\])/i);
@@ -87,20 +103,57 @@ Output format (JSON):
       }
     }
     
-    // Fallback: extract claims from sentences with citations
-    const sentences = answerText.split(/[.!?]+/).filter(s => s.trim().length > 10);
+    // Split into sentences, handling common legal abbreviations
+    const text = answerText
+      .replace(/\bCal\.\s*/g, 'Cal_DOT ')
+      .replace(/\bApp\.\s*/g, 'App_DOT ')
+      .replace(/\bProb\.\s*/g, 'Prob_DOT ')
+      .replace(/\bFam\.\s*/g, 'Fam_DOT ')
+      .replace(/\bCiv\.\s*/g, 'Civ_DOT ')
+      .replace(/\bv\.\s*/g, 'v_DOT ');
+    
+    const sentences = text.split(/[.!?]+/).map(s => 
+      s.replace(/Cal_DOT/g, 'Cal.')
+       .replace(/App_DOT/g, 'App.')
+       .replace(/Prob_DOT/g, 'Prob.')
+       .replace(/Fam_DOT/g, 'Fam.')
+       .replace(/Civ_DOT/g, 'Civ.')
+       .replace(/v_DOT/g, 'v.')
+       .trim()
+    ).filter(s => s.length > 15);
+    
+    // Patterns that indicate verifiable claims
+    const claimPatterns = [
+      /\b(must|shall|required|requires|mandates|prohibits)\b/i,
+      /\b(within \d+|after \d+|\d+ days|\d+ years)\b/i,
+      /\b(§|section|code|statute)\b/i,
+      /\b(court held|ruled|decided|found)\b/i,
+      /\b(under California law|pursuant to|according to)\b/i,
+      /\b(is defined as|means|includes|excludes)\b/i,
+      /\b(penalty|fine|imprisonment|damages)\b/i,
+      /\b(burden of proof|standard|threshold)\b/i,
+      /\[\d+\]/ // Has citation
+    ];
     
     for (const sentence of sentences) {
-      // Look for sentences with citations
-      const citationMatch = sentence.match(/\[(\d+)\]/);
-      if (citationMatch) {
+      // Skip if too short or already seen
+      const normalized = sentence.toLowerCase().substring(0, 100);
+      if (seenClaims.has(normalized)) continue;
+      
+      // Check if sentence contains a verifiable claim
+      const isVerifiableClaim = claimPatterns.some(pattern => pattern.test(sentence));
+      
+      if (isVerifiableClaim) {
+        seenClaims.add(normalized);
+        
+        // Extract citations if present
         const cites = Array.from(sentence.matchAll(/\[(\d+)\]/g)).map(m => m[1]);
         
         // Determine claim kind based on content
         let kind: 'statute' | 'case' | 'fact' = 'fact';
-        if (/\b(§|section|Penal Code|Family Code|Civil Code)\b/i.test(sentence)) {
+        if (/\b(§|section|Penal Code|Family Code|Civil Code|Probate Code|Code of Civil Procedure)\b/i.test(sentence)) {
           kind = 'statute';
-        } else if (/\b(v\.|versus|case|court)\b/i.test(sentence)) {
+        } else if (/\b(v\.|versus|case|court|held|ruling|decision|appeal)\b/i.test(sentence)) {
           kind = 'case';
         }
         
@@ -112,6 +165,7 @@ Output format (JSON):
       }
     }
     
+    console.log(`📋 Extracted ${claims.length} claims from answer`);
     return claims;
   }
   
