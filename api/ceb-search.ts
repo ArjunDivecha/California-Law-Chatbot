@@ -253,46 +253,25 @@ export default async function handler(req: any, res: any) {
  * Uses Jaccard similarity on text tokens to detect near-duplicates
  */
 function deduplicateResults(results: any[], topK: number): any[] {
-  const SIMILARITY_THRESHOLD = 0.7; // 70% similarity = duplicate
+  // Use simple hash-based deduplication on first 500 chars of text
+  const seen = new Set<string>();
   const deduplicated: any[] = [];
-  
-  console.log(`🔍 Deduplicating ${results.length} results...`);
   
   for (const result of results) {
     if (deduplicated.length >= topK) break;
     
-    const resultText = (result.metadata?.text || '').toLowerCase();
-    console.log(`  Checking result: "${result.metadata?.title?.substring(0, 30)}..." text length: ${resultText.length}`);
+    const text = (result.metadata?.text || '').substring(0, 500).toLowerCase().trim();
     
-    if (!resultText) {
-      console.log(`  ⚠️ No text found in metadata, adding anyway`);
-      deduplicated.push(result);
+    // Create a simple hash key from the text
+    const hashKey = text.replace(/\s+/g, ' ');
+    
+    if (seen.has(hashKey)) {
+      console.log(`🔄 Skipping duplicate: "${result.metadata?.title?.substring(0, 40)}..."`);
       continue;
     }
     
-    const resultTokens = new Set(resultText.split(/\s+/).filter((t: string) => t.length > 3));
-    
-    // Check if this result is too similar to any already selected
-    let isDuplicate = false;
-    for (const existing of deduplicated) {
-      const existingText = (existing.metadata?.text || '').toLowerCase();
-      const existingTokens = new Set(existingText.split(/\s+/).filter((t: string) => t.length > 3));
-      
-      // Calculate Jaccard similarity
-      const intersection = new Set([...resultTokens].filter(x => existingTokens.has(x)));
-      const union = new Set([...resultTokens, ...existingTokens]);
-      const similarity = union.size > 0 ? intersection.size / union.size : 0;
-      
-      if (similarity > SIMILARITY_THRESHOLD) {
-        isDuplicate = true;
-        console.log(`🔄 Deduped: "${result.metadata?.title?.substring(0, 40)}..." (${(similarity * 100).toFixed(0)}% similar)`);
-        break;
-      }
-    }
-    
-    if (!isDuplicate) {
-      deduplicated.push(result);
-    }
+    seen.add(hashKey);
+    deduplicated.push(result);
   }
   
   console.log(`📊 Deduplication: ${results.length} → ${deduplicated.length} unique results`);
