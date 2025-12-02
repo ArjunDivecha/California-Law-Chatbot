@@ -256,10 +256,20 @@ function deduplicateResults(results: any[], topK: number): any[] {
   const SIMILARITY_THRESHOLD = 0.7; // 70% similarity = duplicate
   const deduplicated: any[] = [];
   
+  console.log(`🔍 Deduplicating ${results.length} results...`);
+  
   for (const result of results) {
     if (deduplicated.length >= topK) break;
     
     const resultText = (result.metadata?.text || '').toLowerCase();
+    console.log(`  Checking result: "${result.metadata?.title?.substring(0, 30)}..." text length: ${resultText.length}`);
+    
+    if (!resultText) {
+      console.log(`  ⚠️ No text found in metadata, adding anyway`);
+      deduplicated.push(result);
+      continue;
+    }
+    
     const resultTokens = new Set(resultText.split(/\s+/).filter((t: string) => t.length > 3));
     
     // Check if this result is too similar to any already selected
