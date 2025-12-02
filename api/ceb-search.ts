@@ -75,6 +75,68 @@ function normalizeQuery(query: string): string {
   return query.toLowerCase().trim().replace(/\s+/g, ' ');
 }
 
+// ============================================================================
+// QUERY EXPANSION - Add synonyms and related terms for better semantic matching
+// ============================================================================
+const LEGAL_SYNONYMS: Record<string, string[]> = {
+  // Trust terms
+  'trust': ['trust instrument', 'trust agreement', 'declaration of trust'],
+  'revocable trust': ['living trust', 'inter vivos trust', 'revocable living trust'],
+  'irrevocable trust': ['irrevocable living trust', 'permanent trust'],
+  'trustee': ['successor trustee', 'co-trustee', 'trust administrator'],
+  'beneficiary': ['trust beneficiary', 'remainder beneficiary', 'income beneficiary'],
+  'settlor': ['trustor', 'grantor', 'trust creator'],
+  
+  // Estate terms
+  'will': ['last will', 'testament', 'last will and testament'],
+  'probate': ['probate administration', 'probate proceeding', 'estate administration'],
+  'executor': ['personal representative', 'estate administrator'],
+  'heir': ['beneficiary', 'devisee', 'legatee'],
+  'intestate': ['without a will', 'intestacy'],
+  
+  // Family law terms
+  'divorce': ['dissolution', 'dissolution of marriage', 'marital dissolution'],
+  'custody': ['child custody', 'legal custody', 'physical custody'],
+  'support': ['spousal support', 'child support', 'alimony', 'maintenance'],
+  'property division': ['community property', 'marital property', 'asset division'],
+  
+  // Common legal terms
+  'amendment': ['modification', 'change', 'alteration'],
+  'revocation': ['revoke', 'cancel', 'terminate'],
+  'requirements': ['requirements', 'elements', 'prerequisites', 'conditions'],
+  'valid': ['validity', 'enforceable', 'legally valid'],
+  'capacity': ['mental capacity', 'legal capacity', 'competency'],
+};
+
+/**
+ * Expand query with legal synonyms for better semantic matching
+ */
+function expandQuery(query: string): string {
+  let expandedQuery = query;
+  const lowerQuery = query.toLowerCase();
+  
+  // Find matching terms and add synonyms
+  const addedTerms: string[] = [];
+  
+  for (const [term, synonyms] of Object.entries(LEGAL_SYNONYMS)) {
+    if (lowerQuery.includes(term.toLowerCase())) {
+      // Add first 2 synonyms that aren't already in the query
+      for (const synonym of synonyms.slice(0, 2)) {
+        if (!lowerQuery.includes(synonym.toLowerCase()) && !addedTerms.includes(synonym)) {
+          addedTerms.push(synonym);
+        }
+      }
+    }
+  }
+  
+  if (addedTerms.length > 0) {
+    expandedQuery = `${query} (related: ${addedTerms.join(', ')})`;
+    console.log(`🔍 Query expanded: "${query}" → "${expandedQuery}"`);
+  }
+  
+  return expandedQuery;
+}
+
 /**
  * Get embedding from cache or generate new one
  * Checks: 1) In-memory LRU cache, 2) Redis cache, 3) Generate new
@@ -199,9 +261,12 @@ export default async function handler(req: any, res: any) {
       token: upstashToken,
     });
 
+    // Expand query with legal synonyms for better semantic matching
+    const expandedQuery = expandQuery(query);
+    
     // Generate query embedding using OpenAI (with caching)
     const startTime = Date.now();
-    const { embedding, cached } = await getCachedEmbedding(query);
+    const { embedding, cached } = await getCachedEmbedding(expandedQuery);
     const embeddingTime = Date.now() - startTime;
     console.log(`⏱️ Embedding ${cached ? 'retrieved from cache' : 'generated'} in ${embeddingTime}ms`);
 
