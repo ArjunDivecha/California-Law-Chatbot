@@ -8,11 +8,69 @@
  * INPUT: User query, optional category filter, optional topK
  * OUTPUT: Relevant CEB sources with excerpts, formatted context, confidence scores
  * 
- * Version: 1.0
- * Last Updated: November 1, 2025
+ * PERFORMANCE OPTIMIZATION: LRU cache for query embeddings to reduce OpenAI API calls
+ * 
+ * Version: 1.1
+ * Last Updated: December 2, 2025
  */
 
 import { Index } from '@upstash/vector';
+
+// ============================================================================
+// EMBEDDING CACHE - LRU Cache for query embeddings
+// Reduces OpenAI API calls for repeated/similar queries
+// ============================================================================
+const EMBEDDING_CACHE_SIZE = 100; // Max cached embeddings
+const embeddingCache = new Map<string, { embedding: number[]; timestamp: number }>();
+
+/**
+ * Normalize query for cache key (lowercase, trim, collapse whitespace)
+ */
+function normalizeQuery(query: string): string {
+  return query.toLowerCase().trim().replace(/\s+/g, ' ');
+}
+
+/**
+ * Get embedding from cache or generate new one
+ * Implements LRU eviction when cache is full
+ */
+async function getCachedEmbedding(query: string): Promise<{ embedding: number[]; cached: boolean }> {
+  const cacheKey = normalizeQuery(query);
+  
+  // Check cache
+  const cached = embeddingCache.get(cacheKey);
+  if (cached) {
+    // Update timestamp for LRU
+    cached.timestamp = Date.now();
+    console.log(`📦 Embedding cache HIT for: "${query.substring(0, 50)}..."`);
+    return { embedding: cached.embedding, cached: true };
+  }
+  
+  // Generate new embedding
+  console.log(`🔄 Embedding cache MISS - generating for: "${query.substring(0, 50)}..."`);
+  const embedding = await generateEmbedding(query);
+  
+  // Evict oldest if cache is full (LRU)
+  if (embeddingCache.size >= EMBEDDING_CACHE_SIZE) {
+    let oldestKey = '';
+    let oldestTime = Infinity;
+    for (const [key, value] of embeddingCache) {
+      if (value.timestamp < oldestTime) {
+        oldestTime = value.timestamp;
+        oldestKey = key;
+      }
+    }
+    if (oldestKey) {
+      embeddingCache.delete(oldestKey);
+      console.log(`🗑️ Evicted oldest cache entry`);
+    }
+  }
+  
+  // Store in cache
+  embeddingCache.set(cacheKey, { embedding, timestamp: Date.now() });
+  
+  return { embedding, cached: false };
+}
 
 interface CEBSearchRequest {
   query: string;
@@ -89,8 +147,11 @@ export default async function handler(req: any, res: any) {
       token: upstashToken,
     });
 
-    // Generate query embedding using OpenAI
-    const embedding = await generateEmbedding(query);
+    // Generate query embedding using OpenAI (with caching)
+    const startTime = Date.now();
+    const { embedding, cached } = await getCachedEmbedding(query);
+    const embeddingTime = Date.now() - startTime;
+    console.log(`⏱️ Embedding ${cached ? 'retrieved from cache' : 'generated'} in ${embeddingTime}ms`);
 
     // Determine namespace(s) to search
     const namespaces = category
