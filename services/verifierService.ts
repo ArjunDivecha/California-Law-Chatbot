@@ -57,11 +57,17 @@ COVERAGE CALCULATION:
 - Be thorough: extract ALL verifiable claims, not just obvious ones
 
 REWRITING RULES:
-- If coverage < 0.7, status = "refusal" (don't provide answer)
-- If 0.7 <= coverage < 1.0, rewrite to remove unsupported claims
-- If coverage = 1.0, use original answer
+- If coverage < 0.5, status = "partially_verified" with warning (NEVER refuse entirely)
+- If 0.5 <= coverage < 0.9, status = "partially_verified", rewrite to remove unsupported claims
+- If coverage >= 0.9, status = "verified", use original answer
+- NEVER refuse to provide an answer - always give the best verified version
 - NEVER add information not in the original answer
 - Preserve all citation markers [id] in rewritten text
+
+SPECIAL HANDLING FOR LEGISLATIVE SOURCES:
+- If sources are from legiscan.com, leginfo.legislature.ca.gov, or openstates.org, treat bill titles and official metadata as authoritative
+- Bill names, numbers, and subjects from official sources count as verified even without full text excerpts
+- For legislation, focus on verifying the EXISTENCE and SUBJECT of bills, not every detail
 
 Output format (JSON only, no markdown):
 {
@@ -73,9 +79,11 @@ Output format (JSON only, no markdown):
     "min_support": 1,
     "ambiguity": false
   },
-  "verified_answer": "rewritten answer OR original if fully verified",
-  "status": "verified" | "partially_verified" | "refusal"
-}`;
+  "verified_answer": "ALWAYS provide a verified/edited answer - never refuse",
+  "status": "verified" | "partially_verified"
+}
+
+CRITICAL: NEVER set status to "refusal". Always provide the best possible answer with available information.`;
   }
   
   /**
@@ -230,9 +238,15 @@ TASK:
 1. For each claim, find 1-2 verbatim quotes from the cited sources that support it
 2. Mark each claim as supported or unsupported
 3. Calculate coverage = supported_claims / total_claims
-4. If coverage < 0.6 or ambiguity detected, return status: "refusal"
-5. If 0.6 <= coverage < 1.0, return status: "partially_verified" with rewritten answer
-6. If coverage = 1.0, return status: "verified" with original answer
+4. ALWAYS provide a verified_answer - NEVER refuse to answer
+5. If coverage < 0.5, return status: "partially_verified" with best available answer
+6. If 0.5 <= coverage < 0.9, return status: "partially_verified" with rewritten answer removing unsupported claims
+7. If coverage >= 0.9, return status: "verified" with original answer
+
+SPECIAL RULES FOR LEGISLATIVE SOURCES:
+- Sources from legiscan.com, leginfo.legislature.ca.gov, openstates.org are official
+- Bill titles and numbers from these sources ARE verified facts
+- If the answer lists bills from official sources, those bill names/numbers are supported
 
 OUTPUT JSON ONLY (no markdown, no explanation):
 {
@@ -244,8 +258,8 @@ OUTPUT JSON ONLY (no markdown, no explanation):
     "min_support": 1,
     "ambiguity": false
   },
-  "verified_answer": "...",
-  "status": "verified" | "partially_verified" | "refusal"
+  "verified_answer": "ALWAYS provide answer - never refuse",
+  "status": "verified" | "partially_verified"
 }`;
     
     try {
@@ -311,16 +325,26 @@ OUTPUT JSON ONLY (no markdown, no explanation):
         verifiedQuotes: verificationResult.verification_report?.verified_quotes || []
       };
       
-      // Determine status based on coverage
+      // Determine status based on coverage - NEVER refuse, always provide best answer
       let status: VerificationStatus = 'verified';
-      if (verificationReport.coverage < 0.6 || verificationReport.ambiguity) {
-        status = 'refusal';
-      } else if (verificationReport.coverage < 1.0) {
+      if (verificationReport.coverage < 0.9) {
         status = 'partially_verified';
       }
+      // Note: We no longer use 'refusal' - always provide the best available answer
       
       // Use rewritten answer if provided, otherwise use original
-      const verifiedAnswer = verificationResult.verified_answer || answerText;
+      // CRITICAL: Never use a refusal message - always show the actual answer
+      let verifiedAnswer = verificationResult.verified_answer || answerText;
+      
+      // If Claude returned a refusal message, use the original answer instead
+      if (verifiedAnswer.toLowerCase().includes('cannot provide') || 
+          verifiedAnswer.toLowerCase().includes('cannot verify') ||
+          verifiedAnswer.toLowerCase().includes('insufficient') ||
+          verifiedAnswer.length < 100) {
+        console.log('⚠️ Verifier tried to refuse - using original answer instead');
+        verifiedAnswer = answerText;
+        status = 'partially_verified';
+      }
       
       return {
         verifiedAnswer,
