@@ -135,6 +135,8 @@ export const useChat = () => {
       const progressCallback = {
         onInitialResponse: (response: any) => {
           console.log('🚀 Initial response received, verification starting...');
+          // IMMEDIATELY hide loading indicator when we have content
+          setIsLoading(false);
           // Update message with initial response and "verifying" status
           setMessages(prevMessages =>
             prevMessages.map(msg =>
@@ -143,7 +145,7 @@ export const useChat = () => {
                     ...msg,
                     text: response.text,
                     sources: response.sources,
-                    verificationStatus: 'verifying' as VerificationStatus,
+                    verificationStatus: response.verificationStatus as VerificationStatus,
                     claims: response.claims,
                     sourceMode: response.sourceMode,
                     isCEBBased: response.isCEBBased,

@@ -1689,10 +1689,24 @@ Answer:`;
             const needsVerification = aiSources.length > 0 && highConfidenceCEB.length === 0;
             const isCEBBased = highConfidenceCEB.length > 0;
 
-            let verificationStatus: VerificationStatus = 'not_needed';
+            let verificationStatus: VerificationStatus = isCEBBased ? 'not_needed' : 'verifying';
             let verificationReport: VerificationReport | undefined;
             let finalAnswer = response.text;
             let claims: Claim[] = [];
+
+            // OPTIMISTIC UI: Always send initial response immediately
+            if (progressCallback?.onInitialResponse) {
+                console.log('📤 Sending initial response immediately...');
+                progressCallback.onInitialResponse({
+                    text: response.text,
+                    sources: sourcesWithIds,
+                    isCEBBased,
+                    cebCategory: isCEBBased ? category : undefined,
+                    sourceMode: 'hybrid',
+                    verificationStatus: needsVerification ? 'verifying' : 'not_needed',
+                    claims: []
+                });
+            }
 
             // Only verify if we're relying primarily on AI sources
             if (needsVerification && aiSources.length > 0) {
@@ -1701,20 +1715,6 @@ Answer:`;
                 const shouldVerify = VerifierService.shouldVerify(message, isHighRisk);
 
                 if (shouldVerify && claims.length > 0) {
-                    // OPTIMISTIC UI: Send initial response with "verifying" status
-                    if (progressCallback?.onInitialResponse) {
-                        console.log('📤 Sending initial response (verification pending)...');
-                        progressCallback.onInitialResponse({
-                            text: response.text,
-                            sources: sourcesWithIds,
-                            isCEBBased,
-                            cebCategory: isCEBBased ? category : undefined,
-                            sourceMode: 'hybrid',
-                            verificationStatus: 'verifying',
-                            claims
-                        });
-                    }
-
                     try {
                         const verifierOutput = await this.verifier.verifyClaims(response.text, claims, sourcesWithIds, signal);
                         verificationStatus = verifierOutput.status;
@@ -1740,6 +1740,9 @@ Answer:`;
                         console.error('Verification failed:', error);
                         verificationStatus = 'unverified';
                     }
+                } else {
+                    // No verification needed/possible - update status
+                    verificationStatus = 'not_needed';
                 }
             }
 
