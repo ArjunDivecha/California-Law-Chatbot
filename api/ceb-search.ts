@@ -180,10 +180,11 @@ export default async function handler(req: any, res: any) {
 
     const allResults = (await Promise.all(searchPromises)).flat();
 
-    // Sort by score (descending) and take top K
-    const topResults = allResults
-      .sort((a: any, b: any) => b.score - a.score)
-      .slice(0, topK);
+    // Sort by score (descending)
+    const sortedResults = allResults.sort((a: any, b: any) => b.score - a.score);
+    
+    // Deduplicate results based on content similarity
+    const topResults = deduplicateResults(sortedResults, topK);
 
     console.log(`✅ Found ${topResults.length} results (avg confidence: ${
       topResults.length > 0
@@ -245,6 +246,47 @@ export default async function handler(req: any, res: any) {
       details: process.env.NODE_ENV === 'development' ? err?.stack : undefined
     });
   }
+}
+
+/**
+ * Deduplicate results based on content similarity
+ * Uses Jaccard similarity on text tokens to detect near-duplicates
+ */
+function deduplicateResults(results: any[], topK: number): any[] {
+  const SIMILARITY_THRESHOLD = 0.7; // 70% similarity = duplicate
+  const deduplicated: any[] = [];
+  
+  for (const result of results) {
+    if (deduplicated.length >= topK) break;
+    
+    const resultText = (result.metadata?.text || '').toLowerCase();
+    const resultTokens = new Set(resultText.split(/\s+/).filter((t: string) => t.length > 3));
+    
+    // Check if this result is too similar to any already selected
+    let isDuplicate = false;
+    for (const existing of deduplicated) {
+      const existingText = (existing.metadata?.text || '').toLowerCase();
+      const existingTokens = new Set(existingText.split(/\s+/).filter((t: string) => t.length > 3));
+      
+      // Calculate Jaccard similarity
+      const intersection = new Set([...resultTokens].filter(x => existingTokens.has(x)));
+      const union = new Set([...resultTokens, ...existingTokens]);
+      const similarity = union.size > 0 ? intersection.size / union.size : 0;
+      
+      if (similarity > SIMILARITY_THRESHOLD) {
+        isDuplicate = true;
+        console.log(`🔄 Deduped: "${result.metadata?.title?.substring(0, 40)}..." (${(similarity * 100).toFixed(0)}% similar)`);
+        break;
+      }
+    }
+    
+    if (!isDuplicate) {
+      deduplicated.push(result);
+    }
+  }
+  
+  console.log(`📊 Deduplication: ${results.length} → ${deduplicated.length} unique results`);
+  return deduplicated;
 }
 
 /**
