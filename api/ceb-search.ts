@@ -8,13 +8,58 @@
  * INPUT: User query, optional category filter, optional topK
  * OUTPUT: Relevant CEB sources with excerpts, formatted context, confidence scores
  * 
- * PERFORMANCE OPTIMIZATION: LRU cache for query embeddings to reduce OpenAI API calls
+ * PERFORMANCE OPTIMIZATIONS:
+ * - LRU cache for query embeddings (within-request)
+ * - Upstash Redis cache for embeddings (cross-request, if configured)
  * 
- * Version: 1.1
+ * Version: 1.3
  * Last Updated: December 2, 2025
  */
 
 import { Index } from '@upstash/vector';
+
+// ============================================================================
+// REDIS CACHE - Cross-request embedding cache (optional)
+// Set UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN to enable
+// ============================================================================
+const REDIS_CACHE_TTL = 86400; // 24 hours
+
+async function getRedisCache(key: string): Promise<number[] | null> {
+  const redisUrl = process.env.UPSTASH_REDIS_REST_URL;
+  const redisToken = process.env.UPSTASH_REDIS_REST_TOKEN;
+  
+  if (!redisUrl || !redisToken) return null;
+  
+  try {
+    const response = await fetch(`${redisUrl}/get/${encodeURIComponent(key)}`, {
+      headers: { Authorization: `Bearer ${redisToken}` }
+    });
+    const data = await response.json();
+    if (data.result) {
+      console.log(`🔴 Redis cache HIT for embedding`);
+      return JSON.parse(data.result);
+    }
+  } catch (e) {
+    console.log(`⚠️ Redis cache error: ${e}`);
+  }
+  return null;
+}
+
+async function setRedisCache(key: string, value: number[]): Promise<void> {
+  const redisUrl = process.env.UPSTASH_REDIS_REST_URL;
+  const redisToken = process.env.UPSTASH_REDIS_REST_TOKEN;
+  
+  if (!redisUrl || !redisToken) return;
+  
+  try {
+    await fetch(`${redisUrl}/set/${encodeURIComponent(key)}/${encodeURIComponent(JSON.stringify(value))}/ex/${REDIS_CACHE_TTL}`, {
+      headers: { Authorization: `Bearer ${redisToken}` }
+    });
+    console.log(`🔴 Redis cache SET for embedding`);
+  } catch (e) {
+    console.log(`⚠️ Redis cache set error: ${e}`);
+  }
+}
 
 // ============================================================================
 // EMBEDDING CACHE - LRU Cache for query embeddings
@@ -32,25 +77,34 @@ function normalizeQuery(query: string): string {
 
 /**
  * Get embedding from cache or generate new one
- * Implements LRU eviction when cache is full
+ * Checks: 1) In-memory LRU cache, 2) Redis cache, 3) Generate new
  */
-async function getCachedEmbedding(query: string): Promise<{ embedding: number[]; cached: boolean }> {
+async function getCachedEmbedding(query: string): Promise<{ embedding: number[]; cached: boolean; cacheType?: string }> {
   const cacheKey = normalizeQuery(query);
+  const redisCacheKey = `emb:${cacheKey.substring(0, 100)}`; // Limit key length
   
-  // Check cache
-  const cached = embeddingCache.get(cacheKey);
-  if (cached) {
-    // Update timestamp for LRU
-    cached.timestamp = Date.now();
-    console.log(`📦 Embedding cache HIT for: "${query.substring(0, 50)}..."`);
-    return { embedding: cached.embedding, cached: true };
+  // Check in-memory cache first (fastest)
+  const memCached = embeddingCache.get(cacheKey);
+  if (memCached) {
+    memCached.timestamp = Date.now();
+    console.log(`📦 Memory cache HIT`);
+    return { embedding: memCached.embedding, cached: true, cacheType: 'memory' };
+  }
+  
+  // Check Redis cache (cross-request persistence)
+  const redisCached = await getRedisCache(redisCacheKey);
+  if (redisCached) {
+    // Also store in memory for faster subsequent access
+    embeddingCache.set(cacheKey, { embedding: redisCached, timestamp: Date.now() });
+    return { embedding: redisCached, cached: true, cacheType: 'redis' };
   }
   
   // Generate new embedding
-  console.log(`🔄 Embedding cache MISS - generating for: "${query.substring(0, 50)}..."`);
+  console.log(`🔄 Cache MISS - generating embedding`);
   const embedding = await generateEmbedding(query);
   
-  // Evict oldest if cache is full (LRU)
+  // Store in both caches
+  // Memory cache with LRU eviction
   if (embeddingCache.size >= EMBEDDING_CACHE_SIZE) {
     let oldestKey = '';
     let oldestTime = Infinity;
@@ -60,14 +114,12 @@ async function getCachedEmbedding(query: string): Promise<{ embedding: number[];
         oldestKey = key;
       }
     }
-    if (oldestKey) {
-      embeddingCache.delete(oldestKey);
-      console.log(`🗑️ Evicted oldest cache entry`);
-    }
+    if (oldestKey) embeddingCache.delete(oldestKey);
   }
-  
-  // Store in cache
   embeddingCache.set(cacheKey, { embedding, timestamp: Date.now() });
+  
+  // Redis cache (async, don't await)
+  setRedisCache(redisCacheKey, embedding).catch(() => {});
   
   return { embedding, cached: false };
 }
