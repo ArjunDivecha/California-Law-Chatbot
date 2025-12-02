@@ -31,8 +31,26 @@ const PrintIcon = () => (
   </svg>
 );
 
-const renderMessageContent = (text: string, sources?: Source[]) => {
+// Helper to apply strikethrough to unsupported claims
+const applyStrikethrough = (text: string, unsupportedClaims: string[]): string => {
+  if (!unsupportedClaims || unsupportedClaims.length === 0) return text;
+  
+  let result = text;
+  for (const claim of unsupportedClaims) {
+    // Escape special regex characters in the claim
+    const escapedClaim = claim.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    // Try to find and wrap the claim in strikethrough
+    const regex = new RegExp(`(${escapedClaim})`, 'gi');
+    result = result.replace(regex, '~~$1~~');
+  }
+  return result;
+};
+
+const renderMessageContent = (text: string, sources?: Source[], unsupportedClaims?: string[]) => {
   const serifFont = { fontFamily: 'Georgia, "Times New Roman", serif' };
+  
+  // Apply strikethrough to unsupported claims if any
+  const processedText = applyStrikethrough(text, unsupportedClaims || []);
   
   if (!sources || sources.length === 0) {
     return (
@@ -87,17 +105,24 @@ const renderMessageContent = (text: string, sources?: Source[]) => {
             font-weight: 600;
             color: #1a1a1a;
           }
+          .prose-content del {
+            color: #dc2626;
+            text-decoration: line-through;
+            background-color: #fee2e2;
+            padding: 0 2px;
+            border-radius: 2px;
+          }
         `}</style>
         <div className="prose prose-sm max-w-none prose-content"
           style={serifFont}>
-          <ReactMarkdown remarkPlugins={[remarkGfm]}>{text}</ReactMarkdown>
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>{processedText}</ReactMarkdown>
         </div>
       </>
     );
   }
 
   // Regex to find and capture citation numbers like [1], [2], etc.
-  const parts = text.split(/(\[\d+\])/g);
+  const parts = processedText.split(/(\[\d+\])/g);
 
   return (
     <>
@@ -150,6 +175,13 @@ const renderMessageContent = (text: string, sources?: Source[]) => {
         .prose-content strong {
           font-weight: 600;
           color: #1a1a1a;
+        }
+        .prose-content del {
+          color: #dc2626;
+          text-decoration: line-through;
+          background-color: #fee2e2;
+          padding: 0 2px;
+          border-radius: 2px;
         }
       `}</style>
       <div className="prose prose-sm max-w-none prose-content"
@@ -362,6 +394,15 @@ const Message: React.FC<MessageProps> = ({ message }) => {
   // Determine verification badge
   const getVerificationBadge = () => {
     switch (verificationStatus) {
+      case 'verifying':
+        return (
+          <div className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 animate-pulse">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3 h-3 mr-1 animate-spin">
+              <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+            </svg>
+            Verifying...
+          </div>
+        );
       case 'verified':
         return (
           <div className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
@@ -504,7 +545,12 @@ const Message: React.FC<MessageProps> = ({ message }) => {
             </div>
           )}
           <div ref={messageRef}>
-            {renderMessageContent(message.text, message.sources)}
+            {renderMessageContent(
+              message.text, 
+              message.sources,
+              // Pass unsupported claim texts for strikethrough
+              message.verificationReport?.unsupportedClaims?.map(c => c.text)
+            )}
           </div>
           {showSourceList && (
             <div className="mt-4 pt-4 border-t border-gray-200">

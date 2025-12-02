@@ -36,7 +36,7 @@ export interface VerificationReport {
   verifiedQuotes: Array<{ claim: string; quotes: string[]; sourceId: string }>;
 }
 
-export type VerificationStatus = 'verified' | 'partially_verified' | 'refusal' | 'unverified' | 'not_needed';
+export type VerificationStatus = 'verified' | 'partially_verified' | 'refusal' | 'unverified' | 'not_needed' | 'verifying';
 
 export interface ChatMessage {
   id: string;

@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { ChatMessage, MessageRole, SourceMode } from '../types';
+import { ChatMessage, MessageRole, SourceMode, VerificationStatus } from '../types';
 import { ChatService } from '../gemini/chatService';
 
 export const useChat = () => {
@@ -131,13 +131,53 @@ export const useChat = () => {
         }
       };
 
-      // Pass conversation history, source mode, abort signal, and stream callbacks to ChatService
+      // Progress callbacks for optimistic UI updates
+      const progressCallback = {
+        onInitialResponse: (response: any) => {
+          console.log('🚀 Initial response received, verification starting...');
+          // Update message with initial response and "verifying" status
+          setMessages(prevMessages =>
+            prevMessages.map(msg =>
+              msg.id === botMessageId
+                ? {
+                    ...msg,
+                    text: response.text,
+                    sources: response.sources,
+                    verificationStatus: 'verifying' as VerificationStatus,
+                    claims: response.claims,
+                    sourceMode: response.sourceMode,
+                    isCEBBased: response.isCEBBased,
+                    cebCategory: response.cebCategory,
+                  }
+                : msg
+            )
+          );
+        },
+        onVerificationComplete: (response: any) => {
+          console.log('✅ Verification complete:', response.verificationStatus);
+          // Update message with final verification results
+          setMessages(prevMessages =>
+            prevMessages.map(msg =>
+              msg.id === botMessageId
+                ? {
+                    ...msg,
+                    text: response.text,
+                    verificationStatus: response.verificationStatus,
+                    verificationReport: response.verificationReport,
+                  }
+                : msg
+            )
+          );
+        }
+      };
+
+      // Pass conversation history, source mode, abort signal, and progress callbacks to ChatService
       const botResponseData = await chatServiceRef.current.sendMessage(
         text,
         conversationHistory,
         sourceMode,
         abortController.signal,
-        streamCallbacks
+        progressCallback
       );
 
       // Check if request was cancelled

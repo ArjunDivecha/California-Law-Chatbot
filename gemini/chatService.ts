@@ -17,6 +17,14 @@ export interface BotResponse {
     sourceMode?: SourceMode;
 }
 
+// Callback for optimistic UI updates during verification
+export interface ProgressCallback {
+    // Called when initial response is ready (before verification)
+    onInitialResponse?: (response: BotResponse) => void;
+    // Called when verification completes
+    onVerificationComplete?: (response: BotResponse) => void;
+}
+
 export class ChatService {
     private verifier: VerifierService;
     private courtListenerApiKey: string | null;
@@ -248,7 +256,7 @@ Remember: You're trained on California law AND you have access to real-time sear
         }
     }
 
-    async sendMessage(message: string, conversationHistory?: Array<{role: string, text: string}>, sourceMode: SourceMode = 'hybrid', signal?: AbortSignal): Promise<BotResponse> {
+    async sendMessage(message: string, conversationHistory?: Array<{role: string, text: string}>, sourceMode: SourceMode = 'hybrid', signal?: AbortSignal, progressCallback?: ProgressCallback): Promise<BotResponse> {
         // Check for cancellation at the start
         if (signal?.aborted) {
             throw new Error('Request cancelled');
@@ -276,10 +284,10 @@ Remember: You're trained on California law AND you have access to real-time sear
             case 'ceb-only':
                 return await this.processCEBOnly(expandedMessage, conversationHistory, signal);
             case 'ai-only':
-                return await this.processAIOnly(expandedMessage, conversationHistory, signal);
+                return await this.processAIOnly(expandedMessage, conversationHistory, signal, progressCallback);
             case 'hybrid':
             default:
-                return await this.processHybrid(expandedMessage, conversationHistory, signal);
+                return await this.processHybrid(expandedMessage, conversationHistory, signal, progressCallback);
         }
     }
 
@@ -369,7 +377,7 @@ Remember: You're trained on California law AND you have access to real-time sear
      * AI Only Mode - Uses existing external APIs (CourtListener, OpenStates, LegiScan)
      * This is the original sendMessage logic
      */
-    private async processAIOnly(message: string, conversationHistory?: Array<{role: string, text: string}>, signal?: AbortSignal): Promise<BotResponse> {
+    private async processAIOnly(message: string, conversationHistory?: Array<{role: string, text: string}>, signal?: AbortSignal, progressCallback?: ProgressCallback): Promise<BotResponse> {
         // Check for cancellation
         if (signal?.aborted) {
             throw new Error('Request cancelled');
@@ -1531,7 +1539,7 @@ Answer:`;
      * Hybrid Mode - Combines CEB with external APIs (CourtListener, OpenStates, LegiScan)
      * CEB sources are prioritized and don't require verification
      */
-    private async processHybrid(message: string, conversationHistory?: Array<{role: string, text: string}>, signal?: AbortSignal): Promise<BotResponse> {
+    private async processHybrid(message: string, conversationHistory?: Array<{role: string, text: string}>, signal?: AbortSignal, progressCallback?: ProgressCallback): Promise<BotResponse> {
         console.log('🔄 Hybrid Mode - Combining CEB + AI sources...');
         
         try {
@@ -1684,22 +1692,53 @@ Answer:`;
             let verificationStatus: VerificationStatus = 'not_needed';
             let verificationReport: VerificationReport | undefined;
             let finalAnswer = response.text;
+            let claims: Claim[] = [];
 
             // Only verify if we're relying primarily on AI sources
             if (needsVerification && aiSources.length > 0) {
-                const claims = VerifierService.extractClaimsFromAnswer(response.text, sourcesWithIds);
+                claims = VerifierService.extractClaimsFromAnswer(response.text, sourcesWithIds);
                 const isHighRisk = ConfidenceGatingService.isHighRiskCategory(message, sourcesWithIds);
                 const shouldVerify = VerifierService.shouldVerify(message, isHighRisk);
 
                 if (shouldVerify && claims.length > 0) {
+                    // OPTIMISTIC UI: Send initial response with "verifying" status
+                    if (progressCallback?.onInitialResponse) {
+                        console.log('📤 Sending initial response (verification pending)...');
+                        progressCallback.onInitialResponse({
+                            text: response.text,
+                            sources: sourcesWithIds,
+                            isCEBBased,
+                            cebCategory: isCEBBased ? category : undefined,
+                            sourceMode: 'hybrid',
+                            verificationStatus: 'verifying',
+                            claims
+                        });
+                    }
+
                     try {
                         const verifierOutput = await this.verifier.verifyClaims(response.text, claims, sourcesWithIds, signal);
                         verificationStatus = verifierOutput.status;
                         verificationReport = verifierOutput.verificationReport;
                         finalAnswer = verifierOutput.verifiedAnswer;
+
+                        // OPTIMISTIC UI: Send verification complete callback
+                        if (progressCallback?.onVerificationComplete) {
+                            console.log('📤 Sending verification complete...');
+                            progressCallback.onVerificationComplete({
+                                text: finalAnswer,
+                                sources: sourcesWithIds,
+                                isCEBBased,
+                                cebCategory: isCEBBased ? category : undefined,
+                                sourceMode: 'hybrid',
+                                verificationStatus,
+                                verificationReport,
+                                claims
+                            });
+                        }
                     } catch (error: any) {
                         if (signal?.aborted || error.message === 'Request cancelled') throw error;
                         console.error('Verification failed:', error);
+                        verificationStatus = 'unverified';
                     }
                 }
             }
@@ -1711,7 +1750,8 @@ Answer:`;
                 cebCategory: isCEBBased ? category : undefined,
                 sourceMode: 'hybrid',
                 verificationStatus,
-                verificationReport
+                verificationReport,
+                claims
             };
 
         } catch (error: any) {

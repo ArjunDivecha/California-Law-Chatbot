@@ -407,6 +407,7 @@ async function generateEmbedding(text: string): Promise<number[]> {
   }
 
   try {
+    // Use text-embedding-3-small with reduced dimensions for faster processing
     const response = await fetch('https://api.openai.com/v1/embeddings', {
       method: 'POST',
       headers: {
@@ -416,6 +417,7 @@ async function generateEmbedding(text: string): Promise<number[]> {
       body: JSON.stringify({
         model: 'text-embedding-3-small',
         input: text,
+        dimensions: 512, // Reduced from 1536 for ~3x faster search (still good quality)
       }),
     });
 
