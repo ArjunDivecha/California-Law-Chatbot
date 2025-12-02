@@ -31,17 +31,18 @@ export class ConfidenceGatingService {
     const { coverage, minSupport, ambiguity } = report;
     
     // Determine appropriate threshold based on data sources
-    // Priority: Google Search grounding (20%) > Bill text (30%) > Normal (60%)
+    // Priority: Google Search grounding (30%) > Bill text (40%) > Normal (70%)
     // When Google Search grounding is used, information is real-time from Google
     // When we have actual bill text, we can be more permissive since it's authoritative
-    let coverageThreshold = 0.6; // Default
+    // UPDATED: Increased thresholds for higher accuracy (Dec 2025)
+    let coverageThreshold = 0.7; // Default - increased from 0.6 for better accuracy
     let dataSource = 'normal';
     
     if (hasGrounding) {
-      coverageThreshold = 0.2; // Most permissive - Google Search is current and authoritative
+      coverageThreshold = 0.3; // Permissive - Google Search is current and authoritative (was 0.2)
       dataSource = 'Google Search grounding';
     } else if (hasBillText) {
-      coverageThreshold = 0.3; // Permissive - bill text is authoritative
+      coverageThreshold = 0.4; // Permissive - bill text is authoritative (was 0.3)
       dataSource = 'bill text';
     }
     
