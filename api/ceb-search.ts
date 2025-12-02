@@ -134,7 +134,7 @@ export default async function handler(req: any, res: any) {
       return;
     }
 
-    console.log('🔍 CEB Search:', {
+    console.log('🔍 CEB Search v1.2 (with dedup):', {
       query: query.substring(0, 100),
       category: category || 'all',
       topK,
@@ -222,12 +222,13 @@ export default async function handler(req: any, res: any) {
       (a, b) => categoryCount[b] - categoryCount[a]
     )[0];
 
-    const response: CEBSearchResponse = {
+    const response: CEBSearchResponse & { _version?: string } = {
       sources,
       context,
       isCEB: true,
       category: primaryCategory,
       confidence: avgConfidence,
+      _version: '1.2-dedup', // Version marker for debugging
     };
 
     res.status(200).json(response);
