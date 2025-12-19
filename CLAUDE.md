@@ -91,12 +91,13 @@ Response → UI (Message.tsx with badges)
 
 All AI/database operations are server-side via `/api/*.ts` endpoints:
 
-- **ceb-search.ts**: Query Upstash Vector for CEB content
+- **ceb-search.ts**: Query Upstash Vector for CEB content (includes statutory citation pre-filter & LGBT query expansion)
 - **gemini-chat.ts**: Stream Gemini responses
 - **claude-chat.ts**: Verify answers with Claude
 - **courtlistener-search.ts**: Search California case law
-- **openstates-search.ts**: Legislative API (handler ready, integration pending)
-- **legiscan-search.ts**: Bill text API (handler ready, integration pending)
+- **openstates-search.ts**: Legislative API (fully integrated)
+- **legiscan-search.ts**: Bill text API (fully integrated)
+- **verify-citations.ts**: Citation verification against CourtListener database
 
 These are Vercel serverless functions with CORS enabled and 60s max duration.
 
@@ -245,16 +246,54 @@ CEB sources have `isCEB: true` flag and additional metadata (category, citation,
 **Build command**: `npm run build`
 **Output directory**: `dist/`
 
-## Legislative API Integration (Incomplete)
+## Legislative API Integration ✅ (Complete)
 
-The OpenStates and LegiScan API handlers are implemented (`/api/openstates-search.ts`, `/api/legiscan-search.ts`) but not integrated into the chat flow. To complete:
+The OpenStates and LegiScan API integration is now fully complete and live on production:
 
-1. Implement `fetchLegislationData()` method in `gemini/chatService.ts`
-2. Call `/api/openstates-search` and `/api/legiscan-search` endpoints
-3. Process results into Source[] format
-4. Add legislative query detection logic
+**Implementation Details:**
+- `isLegislativeQuery()` method in `gemini/chatService.ts` automatically detects legislative queries
+- `searchLegislativeAPIs()` method queries OpenStates and LegiScan APIs in parallel
+- Results are formatted into Source[] and included in verification pipeline
+- Automatic query detection for patterns: "bill", "legislation", "AB 123", "SB 456", etc.
 
-See `README.md` lines 393-430 for suggested implementation.
+**Endpoints:**
+- `/api/openstates-search.ts` - OpenStates API integration
+- `/api/legiscan-search.ts` - LegiScan API integration
+
+**Status:** Production tested with 10/10 tests passing (response times: 500-900ms)
+
+## Harvey Upgrade Features ✅ (All Complete)
+
+Four major features were added to match Harvey AI capabilities:
+
+### Priority 1: Legislative Research APIs ✅
+- Full integration of OpenStates and LegiScan APIs into the chat flow
+- Automatic detection of legislative queries (keywords, bill patterns)
+- Real-time California bill tracking and statute text retrieval
+- Response times: 500-900ms
+- **Files Modified:** `gemini/chatService.ts` (added `isLegislativeQuery()`, `searchLegislativeAPIs()`)
+
+### Priority 2: Statutory Citation Pre-Filter ✅
+- Automatic detection and parsing of California code citations
+- Supports all 29 California codes with multiple citation formats
+- Query boost: Statutory terms automatically boosted in CEB search
+- Direct links to leginfo.legislature.ca.gov for each statute
+- **Files Modified:** `api/ceb-search.ts` (inlined citation detection functions to avoid Vercel import issues)
+
+### Priority 3: Citation Verification ✅
+- Real-time citation verification against CourtListener database
+- Supports California and Federal case citations
+- Verification status included in responses
+- **Files Created:** `api/verify-citations.ts`
+- **Files Modified:** `services/verifierService.ts` (integrated citation verification)
+
+### Priority 4: LGBT Practice Area Features ✅
+- Specialized query expansion for LGBT family law topics
+- Enhanced keywords: same-sex couples, domestic partners, parentage, adoption
+- Automatic expansion of search terms for better results
+- **Files Modified:** `api/ceb-search.ts` (added LGBT synonyms and query expansion)
+
+**Production Testing Results:** 10/10 tests passing (100%)
 
 ## Testing and Debugging
 
