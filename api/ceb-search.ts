@@ -17,6 +17,7 @@
  */
 
 import { Index } from '@upstash/vector';
+import { containsCodeCitation, parseCodeCitation, citationToSearchTerms } from '../utils/californiaCodeLookup';
 
 // ============================================================================
 // REDIS CACHE - Cross-request embedding cache (optional)
@@ -99,7 +100,14 @@ const LEGAL_SYNONYMS: Record<string, string[]> = {
   'custody': ['child custody', 'legal custody', 'physical custody'],
   'support': ['spousal support', 'child support', 'alimony', 'maintenance'],
   'property division': ['community property', 'marital property', 'asset division'],
-  
+
+  // LGBT family law terms
+  'same-sex': ['same sex couple', 'registered domestic partner', 'domestic partnership'],
+  'lgbtq': ['lgbt', 'same-sex', 'domestic partner', 'marriage equality'],
+  'domestic partner': ['registered domestic partner', 'domestic partnership', 'Cal. Fam. Code 297'],
+  'parentage': ['de facto parent', 'intended parent', 'presumed parent'],
+  'adoption': ['second parent adoption', 'stepparent adoption'],
+
   // Common legal terms
   'amendment': ['modification', 'change', 'alteration'],
   'revocation': ['revoke', 'cancel', 'terminate'],
@@ -261,8 +269,29 @@ export default async function handler(req: any, res: any) {
       token: upstashToken,
     });
 
+    // Statutory pre-filter: Boost query with exact statutory terms
+    let queryBoost = '';
+    try {
+      if (containsCodeCitation(query)) {
+        const citations = parseCodeCitation(query);
+        if (citations.length > 0) {
+          console.log(`📜 Statutory pre-filter: Found ${citations.length} citation(s)`);
+          const searchTerms = citationToSearchTerms(citations);
+          queryBoost = searchTerms.join('; ');
+          console.log(`📜 Query boost terms: "${queryBoost}"`);
+        }
+      }
+    } catch (err) {
+      console.log(`⚠️ Pre-filter error (non-blocking): ${err}`);
+      // Continue without pre-filter if error occurs
+    }
+
     // Expand query with legal synonyms for better semantic matching
-    const expandedQuery = expandQuery(query);
+    let expandedQuery = expandQuery(query);
+    if (queryBoost) {
+      expandedQuery = `${queryBoost} - ${expandedQuery}`;
+      console.log(`📜 Query expanded with statutory boost`);
+    }
     
     // Generate query embedding using OpenAI (with caching)
     const startTime = Date.now();
