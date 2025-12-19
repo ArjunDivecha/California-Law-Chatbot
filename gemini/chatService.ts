@@ -107,6 +107,204 @@ export class ChatService {
     }
 
     /**
+     * Determine if a query is asking about legislation/bills (not just specific bill numbers)
+     * This detects general legislative questions like "what AI bills passed in 2024?"
+     */
+    private isLegislativeQuery(message: string): boolean {
+        const lowerMessage = message.toLowerCase();
+
+        // Strong legislative indicators - general questions about bills/laws
+        const legislativeKeywords = [
+            'bill', 'bills', 'legislation', 'law passed', 'laws passed',
+            'enacted', 'governor signed', 'legislative session',
+            'assembly', 'senate', 'new law', 'new laws', 'recent law',
+            'recent laws', 'what laws', 'pending legislation', 'proposed law',
+            'amendment', 'effective date', 'chaptered', 'vetoed',
+            'legislature', 'lawmakers', 'signed into law'
+        ];
+
+        // Bill number patterns (AB, SB, etc.)
+        const billPattern = /\b(AB|SB|AJR|SJR|ACR|SCR)\s*-?\s*\d+/i;
+
+        // Check for explicit bill numbers first
+        if (billPattern.test(message)) {
+            return true;
+        }
+
+        // Check for legislative topic keywords
+        for (const keyword of legislativeKeywords) {
+            if (lowerMessage.includes(keyword)) {
+                return true;
+            }
+        }
+
+        // Check for year-based legislative queries (e.g., "2024 California laws")
+        if (/\b(20\d{2})\s+(california\s+)?(law|legislation|bill)/i.test(message)) {
+            return true;
+        }
+
+        // Check for topic + bill patterns (e.g., "AI bills", "housing bills")
+        if (/\b(ai|housing|education|health|crime|tax|employment|privacy|immigration)\s+bills?\b/i.test(message)) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Search legislative APIs (OpenStates and LegiScan) for general topic queries
+     * This is used when isLegislativeQuery() returns true but there's no explicit bill number
+     */
+    private async searchLegislativeAPIs(
+        message: string,
+        signal?: AbortSignal
+    ): Promise<{ context: string; sources: Source[] }> {
+        console.log('🏛️ searchLegislativeAPIs: Starting general legislative search');
+
+        // Extract search terms - remove common words, keep substantive terms
+        const searchTerms = this.extractLegislativeSearchTerms(message);
+        console.log('🏛️ Extracted search terms:', searchTerms);
+
+        if (!searchTerms) {
+            console.log('⚠️ No meaningful search terms extracted');
+            return { context: '', sources: [] };
+        }
+
+        const collectedSources: Source[] = [];
+        const summaryChunks: string[] = [];
+
+        try {
+            // Run OpenStates and LegiScan searches in parallel
+            const [openStatesResult, legiScanResult] = await Promise.all([
+                fetchWithRetry(
+                    `/api/openstates-search?q=${encodeURIComponent(searchTerms)}`,
+                    { signal },
+                    2,
+                    500
+                )
+                    .then(r => r.json())
+                    .catch(err => {
+                        if (err.message === 'Request cancelled') throw err;
+                        console.error('OpenStates search failed:', err);
+                        return { items: [] };
+                    }),
+                fetchWithRetry(
+                    `/api/legiscan-search?q=${encodeURIComponent(searchTerms)}`,
+                    { signal },
+                    2,
+                    500
+                )
+                    .then(r => r.json())
+                    .catch(err => {
+                        if (err.message === 'Request cancelled') throw err;
+                        console.error('LegiScan search failed:', err);
+                        return { searchresult: {} };
+                    })
+            ]);
+
+            // Process OpenStates results
+            const openStatesItems = Array.isArray(openStatesResult?.items) ? openStatesResult.items : [];
+            console.log(`🏛️ OpenStates returned ${openStatesItems.length} results`);
+
+            for (const item of openStatesItems.slice(0, 10)) { // Limit to top 10
+                const identifier = item.identifier || 'Unknown Bill';
+                const title = item.title || 'Title unavailable';
+                const session = typeof item.session === 'string'
+                    ? item.session
+                    : (item.session?.name || item.session?.identifier || '');
+                const url = item.url || '';
+
+                summaryChunks.push(`**${identifier}**: ${title}${session ? ` (Session: ${session})` : ''}`);
+
+                if (url) {
+                    collectedSources.push({
+                        title: `${identifier} – ${title.substring(0, 50)}${title.length > 50 ? '...' : ''}`,
+                        url: url,
+                        excerpt: title
+                    });
+                }
+            }
+
+            // Process LegiScan results
+            const legiScanResults = legiScanResult?.searchresult || {};
+            const legiScanEntries = Object.values(legiScanResults)
+                .filter((entry: any) => entry && typeof entry === 'object' && entry.bill_number);
+            console.log(`🏛️ LegiScan returned ${legiScanEntries.length} results`);
+
+            for (const entry of (legiScanEntries as any[]).slice(0, 10)) { // Limit to top 10
+                const billNumber = entry.bill_number || 'Unknown';
+                const title = entry.title || 'Title unavailable';
+                const lastAction = entry.last_action || '';
+                const url = entry.url || '';
+
+                // Avoid duplicates if already found in OpenStates
+                const isDuplicate = summaryChunks.some(s => s.includes(billNumber));
+                if (!isDuplicate) {
+                    summaryChunks.push(`**${billNumber}**: ${title}${lastAction ? ` [${lastAction}]` : ''}`);
+
+                    if (url) {
+                        collectedSources.push({
+                            title: `${billNumber} – ${title.substring(0, 50)}${title.length > 50 ? '...' : ''}`,
+                            url: url,
+                            excerpt: `${title}. ${lastAction}`
+                        });
+                    }
+                }
+            }
+
+            const context = summaryChunks.length > 0
+                ? `Found ${summaryChunks.length} relevant California bills:\n\n${summaryChunks.join('\n\n')}`
+                : '';
+
+            console.log(`✅ Legislative search complete: ${collectedSources.length} sources, ${summaryChunks.length} summaries`);
+
+            return { context, sources: collectedSources };
+
+        } catch (error: any) {
+            if (error.message === 'Request cancelled') throw error;
+            console.error('❌ Legislative API search error:', error);
+            return { context: '', sources: [] };
+        }
+    }
+
+    /**
+     * Extract meaningful search terms from a legislative query
+     */
+    private extractLegislativeSearchTerms(message: string): string {
+        // Remove common question words and filler
+        const stopWords = [
+            'what', 'which', 'how', 'when', 'where', 'who', 'why',
+            'are', 'is', 'was', 'were', 'been', 'being',
+            'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for',
+            'of', 'with', 'by', 'from', 'as', 'into', 'through', 'during',
+            'california', 'ca', 'state',
+            'bill', 'bills', 'law', 'laws', 'legislation', 'legislative',
+            'passed', 'signed', 'enacted', 'governor', 'newsom',
+            'tell', 'me', 'about', 'can', 'you', 'please', 'list', 'all'
+        ];
+
+        // Extract words, filter stopwords, keep substantive terms
+        const words = message.toLowerCase()
+            .replace(/[^\w\s]/g, ' ')
+            .split(/\s+/)
+            .filter(word => word.length > 2 && !stopWords.includes(word));
+
+        // Look for year mentions (2023, 2024, 2025)
+        const yearMatch = message.match(/\b(202[3-5])\b/);
+        const year = yearMatch ? yearMatch[1] : '';
+
+        // Combine unique terms
+        const uniqueTerms = [...new Set(words)];
+
+        // If we have a year, prepend it
+        if (year && !uniqueTerms.includes(year)) {
+            uniqueTerms.unshift(year);
+        }
+
+        return uniqueTerms.slice(0, 5).join(' '); // Limit to 5 terms
+    }
+
+    /**
      * Send message to Gemini 3 Pro Preview (Generator) via server-side API
      * Falls back to Gemini 2.5 Pro automatically if capacity issues occur
      */
@@ -383,14 +581,18 @@ Remember: You're trained on California law AND you have access to real-time sear
             throw new Error('Request cancelled');
         }
 
-        // Smart CourtListener detection - only search when query is about case law
+        // Smart query type detection
         const isCaseLawQuery = this.isCaseLawQuery(message);
+        const isLegislativeQuery = this.isLegislativeQuery(message);
         const enableCourtListener = this.courtListenerApiKey === 'configured' && isCaseLawQuery;
+        const enableLegislativeSearch = isLegislativeQuery;
 
         console.log('🔍 Query analysis:', {
             message: message.substring(0, 50) + (message.length > 50 ? '...' : ''),
             isCaseLawQuery,
+            isLegislativeQuery,
             courtListenerEnabled: enableCourtListener,
+            legislativeSearchEnabled: enableLegislativeSearch,
             hasCourtListenerKey: !!this.courtListenerApiKey
         });
 
@@ -399,27 +601,39 @@ Remember: You're trained on California law AND you have access to real-time sear
         // Detect exhaustive mode and date range
         const isExhaustive = this.detectExhaustiveRequest(message);
         const dateRange = this.extractDateRange(message);
-        
+
         // Parallelize legislation search and case law search
         console.log('🔎 Starting parallel searches...');
-        console.log('  - Legislation search: ENABLED');
+        console.log(`  - Legislative API search: ${enableLegislativeSearch ? 'ENABLED (legislative query detected)' : 'SKIPPED (not a legislative query)'}`);
+        console.log('  - Legislation lookup: ENABLED');
         console.log(`  - CourtListener search: ${enableCourtListener ? 'ENABLED (case law query detected)' : isCaseLawQuery ? 'DISABLED (no API key)' : 'SKIPPED (not a case law query)'}`);
-        
+
         if (isExhaustive) {
             console.log('🔍 EXHAUSTIVE MODE DETECTED - will retrieve up to 50 results');
         }
         if (dateRange.after || dateRange.before) {
             console.log(`📅 Date filter: ${dateRange.after || 'any'} to ${dateRange.before || 'any'}`);
         }
-        
-        const [legislationData, caseLawData, scholarData] = await Promise.all([
+
+        const [legislationData, legislativeApiData, caseLawData, scholarData] = await Promise.all([
+            // Always run fetchLegislationData for explicit bill numbers and code sections
             this.fetchLegislationData(message, signal).catch(err => {
                 if (signal?.aborted || err.message === 'Request cancelled') {
                     throw err;
                 }
-                console.error('❌ Legislation search failed:', err);
+                console.error('❌ Legislation lookup failed:', err);
                 return { context: '', sources: [] };
             }),
+            // Run legislative API search for general legislative topic queries
+            enableLegislativeSearch
+                ? this.searchLegislativeAPIs(message, signal).catch(err => {
+                    if (signal?.aborted || err.message === 'Request cancelled') {
+                        throw err;
+                    }
+                    console.error('❌ Legislative API search failed:', err);
+                    return { context: '', sources: [] };
+                  })
+                : Promise.resolve({ context: '', sources: [] }),
             enableCourtListener 
                 ? (isExhaustive 
                     ? this.searchCourtListenerExhaustive(message, signal, { limit: 50, ...dateRange }) 
@@ -444,21 +658,23 @@ Remember: You're trained on California law AND you have access to real-time sear
                 : Promise.resolve({ content: '', sources: [] }),
         ]);
         
-        console.log(`✅ Search results: ${legislationData.sources.length} legislation sources, ${caseLawData.sources.length} case law, ${scholarData.sources.length} scholar`);
+        console.log(`✅ Search results: ${legislationData.sources.length} legislation lookup, ${legislativeApiData.sources.length} legislative API, ${caseLawData.sources.length} case law, ${scholarData.sources.length} scholar`);
 
         // Check if request was cancelled during parallel searches
         if (signal?.aborted) {
             throw new Error('Request cancelled');
         }
 
-        // Collect all sources
+        // Collect all sources (legislative API first for topic searches, then explicit lookups)
+        if (legislativeApiData.sources.length > 0) {
+            finalSources.push(...legislativeApiData.sources);
+        }
         if (legislationData.sources.length > 0) {
             finalSources.push(...legislationData.sources);
         }
         if (caseLawData.sources.length > 0) {
             finalSources.push(...caseLawData.sources);
         }
-
         if (scholarData.sources.length > 0) {
             finalSources.push(...scholarData.sources);
         }
@@ -484,8 +700,14 @@ Remember: You're trained on California law AND you have access to real-time sear
         const useQuotesOnly = ConfidenceGatingService.shouldUseQuotesOnly(message, sourcesWithIds);
 
         let legislationContextInstructions = '';
-        if (legislationData.context) {
-            legislationContextInstructions = `\n\nLegislative research results (validated from official sources):\n${legislationData.context}\n\nUse this verified bill information. Reference the specific bill identifiers, summarize their status accurately, and cite the provided sources using [id] format.`;
+        // Combine context from both legislative API search and direct lookups
+        const combinedLegislativeContext = [
+            legislativeApiData.context,
+            legislationData.context
+        ].filter(Boolean).join('\n\n');
+
+        if (combinedLegislativeContext) {
+            legislationContextInstructions = `\n\nLegislative research results (validated from official sources):\n${combinedLegislativeContext}\n\nUse this verified bill information. Reference the specific bill identifiers, summarize their status accurately, and cite the provided sources using [id] format.`;
         }
 
         if (enableCourtListener && caseLawData.sources.length > 0) {

@@ -1,11 +1,13 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { ChatMessage, MessageRole, SourceMode, VerificationStatus } from '../types';
 import { ChatService } from '../gemini/chatService';
+import { PracticeArea } from '../components/SourceModeSelector';
 
 export const useChat = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [sourceMode, setSourceMode] = useState<SourceMode>('hybrid'); // Default to hybrid mode
+  const [practiceArea, setPracticeArea] = useState<PracticeArea>(''); // Default to all practice areas
   
   const chatServiceRef = useRef<ChatService | null>(null);
   const courtListenerApiKeyRef = useRef<string | null>(null);
@@ -239,11 +241,13 @@ export const useChat = () => {
     }
   }, [messages, sourceMode]); // Add sourceMode to dependencies
 
-  return { 
-    messages, 
-    sendMessage, 
+  return {
+    messages,
+    sendMessage,
     isLoading,
     sourceMode,
-    setSourceMode
+    setSourceMode,
+    practiceArea,
+    setPracticeArea
   };
 };

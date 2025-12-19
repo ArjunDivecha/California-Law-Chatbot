@@ -10,6 +10,9 @@ export interface Source {
   url: string;
   id?: string; // For citation mapping [id]
   excerpt?: string; // Source excerpt for verification
+  // Citation verification (from /api/verify-citations)
+  citationVerified?: boolean; // true = verified against CourtListener, false = not found
+  citationVerificationSource?: string; // CourtListener URL if verified
 }
 
 export interface CEBSource extends Source {

@@ -17,6 +17,7 @@
  */
 
 import { Index } from '@upstash/vector';
+import { parseCodeCitation, citationToSearchTerms, containsCodeCitation } from '../utils/californiaCodeLookup';
 
 // ============================================================================
 // REDIS CACHE - Cross-request embedding cache (optional)
@@ -99,6 +100,19 @@ const LEGAL_SYNONYMS: Record<string, string[]> = {
   'custody': ['child custody', 'legal custody', 'physical custody'],
   'support': ['spousal support', 'child support', 'alimony', 'maintenance'],
   'property division': ['community property', 'marital property', 'asset division'],
+
+  // LGBT family law terms
+  'same-sex': ['same sex couple', 'registered domestic partner', 'domestic partnership'],
+  'same sex': ['same-sex couple', 'registered domestic partner', 'domestic partnership'],
+  'lgbtq': ['lgbt', 'same-sex', 'domestic partner', 'marriage equality'],
+  'lgbt': ['lgbtq', 'same-sex', 'domestic partner', 'marriage equality'],
+  'domestic partner': ['registered domestic partner', 'domestic partnership', 'Cal. Fam. Code 297'],
+  'parentage': ['de facto parent', 'intended parent', 'Cal. Fam. Code 7612', 'presumed parent'],
+  'two mothers': ['same-sex parents', 'de facto parent', 'second parent adoption'],
+  'two fathers': ['same-sex parents', 'de facto parent', 'second parent adoption'],
+  'adoption': ['second parent adoption', 'stepparent adoption', 'co-parent adoption'],
+  'surrogacy': ['gestational carrier', 'assisted reproduction', 'Cal. Fam. Code 7962'],
+  'sperm donor': ['assisted reproduction', 'Cal. Fam. Code 7613', 'donor agreement'],
   
   // Common legal terms
   'amendment': ['modification', 'change', 'alteration'],
@@ -248,7 +262,7 @@ export default async function handler(req: any, res: any) {
       return;
     }
 
-    console.log('🔍 CEB Search v1.2 (with dedup):', {
+    console.log('🔍 CEB Search v1.3 (with statutory pre-filter):', {
       query: query.substring(0, 100),
       category: category || 'all',
       topK,
@@ -261,8 +275,36 @@ export default async function handler(req: any, res: any) {
       token: upstashToken,
     });
 
+    // ========================================================================
+    // STATUTORY PRE-FILTER: Check for California code citations
+    // If found, boost the query with exact statutory terms for better matching
+    // ========================================================================
+    let preFilterTerms: string[] = [];
+    let parsedCitations: ReturnType<typeof parseCodeCitation> = [];
+
+    if (containsCodeCitation(query)) {
+      parsedCitations = parseCodeCitation(query);
+
+      if (parsedCitations.length > 0) {
+        console.log(`📜 Statutory pre-filter: Found ${parsedCitations.length} citation(s)`);
+        parsedCitations.forEach(cite => {
+          console.log(`   - ${cite.fullName} § ${cite.section}${cite.subsection ? `(${cite.subsection})` : ''}`);
+        });
+
+        // Generate search terms from citations (e.g., "Family Code section 1615")
+        preFilterTerms = citationToSearchTerms(parsedCitations);
+      }
+    }
+
     // Expand query with legal synonyms for better semantic matching
-    const expandedQuery = expandQuery(query);
+    let expandedQuery = expandQuery(query);
+
+    // If we found statutory citations, prepend the exact terms to boost relevance
+    if (preFilterTerms.length > 0) {
+      // Add citation terms to the query for better semantic matching
+      expandedQuery = `${preFilterTerms.join('; ')} - ${expandedQuery}`;
+      console.log(`📜 Query boosted with statutory terms: "${expandedQuery.substring(0, 150)}..."`);
+    }
     
     // Generate query embedding using OpenAI (with caching)
     const startTime = Date.now();
@@ -339,13 +381,24 @@ export default async function handler(req: any, res: any) {
       (a, b) => categoryCount[b] - categoryCount[a]
     )[0];
 
-    const response: CEBSearchResponse & { _version?: string } = {
+    const response: CEBSearchResponse & {
+      _version?: string;
+      statutoryCitations?: Array<{ code: string; section: string; url: string }>;
+    } = {
       sources,
       context,
       isCEB: true,
       category: primaryCategory,
       confidence: avgConfidence,
-      _version: '1.2-dedup', // Version marker for debugging
+      _version: '1.3-statutory-prefilter', // Version marker for debugging
+      // Include parsed statutory citations with direct leginfo URLs
+      ...(parsedCitations.length > 0 && {
+        statutoryCitations: parsedCitations.map(cite => ({
+          code: cite.fullName,
+          section: cite.section,
+          url: cite.url,
+        }))
+      })
     };
 
     res.status(200).json(response);

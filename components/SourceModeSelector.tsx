@@ -1,17 +1,30 @@
 import React from 'react';
 
 export type SourceMode = 'ceb-only' | 'ai-only' | 'hybrid';
+export type PracticeArea = '' | 'lgbt_family' | 'trusts_estates' | 'family_law' | 'business';
 
 interface SourceModeSelectorProps {
   mode: SourceMode;
   onModeChange: (mode: SourceMode) => void;
+  practiceArea?: PracticeArea;
+  onPracticeAreaChange?: (area: PracticeArea) => void;
   disabled?: boolean;
 }
 
-export const SourceModeSelector: React.FC<SourceModeSelectorProps> = ({ 
-  mode, 
+const PRACTICE_AREAS: Array<{ value: PracticeArea; label: string; description: string }> = [
+  { value: '', label: 'All Practice Areas', description: 'Search across all CEB verticals' },
+  { value: 'lgbt_family', label: 'LGBT Family Law', description: 'Same-sex couples, parentage, domestic partnerships' },
+  { value: 'family_law', label: 'Family Law', description: 'Divorce, custody, support, marital property' },
+  { value: 'trusts_estates', label: 'Trusts & Estates', description: 'Trusts, wills, probate, estate planning' },
+  { value: 'business', label: 'Business Law', description: 'Contracts, litigation, corporate matters' },
+];
+
+export const SourceModeSelector: React.FC<SourceModeSelectorProps> = ({
+  mode,
   onModeChange,
-  disabled = false 
+  practiceArea = '',
+  onPracticeAreaChange,
+  disabled = false
 }) => {
   const getModeDescription = (selectedMode: SourceMode): string => {
     switch (selectedMode) {
@@ -137,6 +150,61 @@ export const SourceModeSelector: React.FC<SourceModeSelectorProps> = ({
       }}>
         {getModeDescription(mode)}
       </div>
+
+      {/* Practice Area Filter - Optional */}
+      {onPracticeAreaChange && (
+        <div style={{ marginTop: '1rem', borderTop: '1px solid #dee2e6', paddingTop: '1rem' }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.75rem',
+            flexWrap: 'wrap'
+          }}>
+            <label style={{
+              fontWeight: 600,
+              fontSize: '0.9rem',
+              color: '#495057',
+              margin: 0,
+              whiteSpace: 'nowrap'
+            }}>
+              Practice Area:
+            </label>
+            <select
+              value={practiceArea}
+              onChange={(e) => onPracticeAreaChange(e.target.value as PracticeArea)}
+              disabled={disabled}
+              style={{
+                flex: 1,
+                minWidth: '200px',
+                padding: '0.5rem 0.75rem',
+                border: '1px solid #ced4da',
+                borderRadius: '6px',
+                backgroundColor: 'white',
+                color: '#495057',
+                fontSize: '0.9rem',
+                cursor: disabled ? 'not-allowed' : 'pointer',
+                opacity: disabled ? 0.6 : 1
+              }}
+            >
+              {PRACTICE_AREAS.map(area => (
+                <option key={area.value} value={area.value}>
+                  {area.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          {practiceArea && (
+            <div style={{
+              marginTop: '0.5rem',
+              fontSize: '0.8rem',
+              color: '#6c757d',
+              fontStyle: 'italic'
+            }}>
+              {PRACTICE_AREAS.find(a => a.value === practiceArea)?.description}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };

@@ -381,9 +381,67 @@ OUTPUT JSON ONLY (no markdown, no explanation):
   static shouldVerify(questionText: string, isHighRisk: boolean): boolean {
     // Always verify high-risk queries
     if (isHighRisk) return true;
-    
+
     // 50% sampling for low-risk (can be made configurable)
     // For now, verify all queries
     return true;
+  }
+
+  /**
+   * Verify case citations in an answer against CourtListener database
+   * Returns citation verification results
+   */
+  async verifyCaseCitations(
+    answerText: string,
+    signal?: AbortSignal
+  ): Promise<{
+    citations: Array<{
+      text: string;
+      status: 'verified' | 'unverified' | 'not_found';
+      courtListenerUrl?: string;
+      caseName?: string;
+    }>;
+    verified: number;
+    total: number;
+  }> {
+    if (signal?.aborted) {
+      throw new Error('Request cancelled');
+    }
+
+    try {
+      const response = await fetchWithRetry(
+        '/api/verify-citations',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: answerText }),
+          signal,
+        },
+        2,
+        500
+      );
+
+      if (!response.ok) {
+        console.error('Citation verification API error:', response.status);
+        return { citations: [], verified: 0, total: 0 };
+      }
+
+      const data = await response.json();
+
+      return {
+        citations: (data.citations || []).map((c: any) => ({
+          text: c.text,
+          status: c.status,
+          courtListenerUrl: c.courtListenerMatch?.url,
+          caseName: c.courtListenerMatch?.caseName,
+        })),
+        verified: data.verified || 0,
+        total: data.totalFound || 0,
+      };
+    } catch (error: any) {
+      if (error.message === 'Request cancelled') throw error;
+      console.error('Citation verification error:', error);
+      return { citations: [], verified: 0, total: 0 };
+    }
   }
 }
