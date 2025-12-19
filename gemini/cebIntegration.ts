@@ -41,20 +41,12 @@ private detectCEBCategory(message: string): 'trusts_estates' | 'family_law' | 'b
     'trustee', 'administration', 'decedent', 'inheritance', 'succession'
   ];
   
-  // Family Law keywords (including LGBT-specific terms)
+  // Family Law keywords
   const familyLawKeywords = [
-    // Traditional family law
     'divorce', 'custody', 'support', 'marriage', 'prenup', 'dvro',
     'dissolution', 'separation', 'alimony', 'visitation', 'paternity',
     'child support', 'spousal support', 'domestic violence', 'restraining order',
-    'marital property', 'community property', 'family court',
-    // LGBT-specific family law
-    'same-sex', 'same sex', 'lgbtq', 'lgbt', 'domestic partner', 'domestic partnership',
-    'registered domestic partner', 'parentage', 'de facto parent', 'second parent',
-    'second parent adoption', 'step-parent adoption', 'stepparent adoption',
-    'non-biological parent', 'two mothers', 'two fathers', 'two moms', 'two dads',
-    'marriage equality', 'assisted reproduction', 'surrogacy', 'sperm donor', 'egg donor',
-    'gestational carrier', 'intended parent', 'parentage determination'
+    'marital property', 'community property', 'family court'
   ];
   
   // Business Litigation keywords
