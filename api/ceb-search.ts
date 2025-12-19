@@ -17,7 +17,58 @@
  */
 
 import { Index } from '@upstash/vector';
-import { containsCodeCitation, parseCodeCitation, citationToSearchTerms } from '../utils/californiaCodeLookup';
+
+// ============================================================================
+// STATUTORY CITATION DETECTION (inline to avoid import issues in Vercel)
+// ============================================================================
+function containsCodeCitation(text: string): boolean {
+  const patterns = [
+    /(?:Cal\.?\s+)?(?:Fam(?:ily)?|Prob(?:ate)?|Civ(?:il)?|Pen(?:al)?|Gov)/i,
+    /\b(?:FAM|PROB|CIV|CCP|PEN|GOV)\s*(?:§|[Ss]ec)/i
+  ];
+  return patterns.some(p => p.test(text));
+}
+
+function parseCodeCitation(text: string): Array<{ fullName: string; section: string; url: string }> {
+  const results: Array<{ fullName: string; section: string; url: string }> = [];
+  const codes: Record<string, string> = {
+    'FAM': 'Family Code', 'PROB': 'Probate Code', 'CIV': 'Civil Code',
+    'CCP': 'Code of Civil Procedure', 'PEN': 'Penal Code'
+  };
+
+  // Match "Family Code section 1615" or "Cal. Fam. Code § 1615"
+  const pattern = /(?:Cal\.?\s+)?(?:(Fam(?:ily)?|Prob(?:ate)?|Civ(?:il)?|Pen(?:al)?|Gov(?:ernment)?)|([A-Z]+))\s*Code\s*(?:§|[Ss]ec(?:tion)?\.?)?\s*(\d+(?:\.\d+)?)/gi;
+
+  let match;
+  while ((match = pattern.exec(text)) !== null) {
+    const codeName = match[1] || match[2] || '';
+    const section = match[3];
+
+    let lawCode = '';
+    let fullName = '';
+
+    // Map to law code
+    if (codeName.toLowerCase().startsWith('fam')) { lawCode = 'FAM'; fullName = 'Family Code'; }
+    else if (codeName.toLowerCase().startsWith('prob')) { lawCode = 'PROB'; fullName = 'Probate Code'; }
+    else if (codeName.toLowerCase().startsWith('civ') && codeName.length < 10) { lawCode = 'CIV'; fullName = 'Civil Code'; }
+    else if (codeName.toLowerCase().startsWith('pen')) { lawCode = 'PEN'; fullName = 'Penal Code'; }
+    else if (codeName.toLowerCase().startsWith('gov')) { lawCode = 'GOV'; fullName = 'Government Code'; }
+
+    if (lawCode && section) {
+      results.push({
+        fullName,
+        section,
+        url: `https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=${lawCode}&sectionNum=${section}`
+      });
+    }
+  }
+
+  return results;
+}
+
+function citationToSearchTerms(citations: Array<{ fullName: string; section: string }>): string[] {
+  return citations.map(c => `${c.fullName} section ${c.section}`);
+}
 
 // ============================================================================
 // REDIS CACHE - Cross-request embedding cache (optional)
