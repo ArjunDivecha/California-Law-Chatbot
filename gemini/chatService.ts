@@ -33,7 +33,7 @@ export class ChatService {
         // API keys are now handled server-side via API endpoints
         // No need to check for them here
         this.courtListenerApiKey = courtListenerApiKey === 'configured' ? 'configured' : null;
-        
+
         // Initialize verifier service (will use API endpoint)
         this.verifier = new VerifierService();
     }
@@ -44,41 +44,41 @@ export class ChatService {
      */
     private isCaseLawQuery(message: string): boolean {
         const lowerMessage = message.toLowerCase();
-        
+
         // Exclude queries that are clearly about legislation/bills
         const legislationKeywords = [
             'bill', 'ab ', 'sb ', 'passed', 'legislation', 'statute', 'code section',
             'new law', 'law passed', 'what laws', 'recent laws'
         ];
-        
+
         for (const keyword of legislationKeywords) {
             if (lowerMessage.includes(keyword)) {
                 return false; // This is a legislative query, not case law
             }
         }
-        
+
         // Check for case law indicators
         const caseLawKeywords = [
-            'case', 'court', 'ruling', 'decision', 'opinion', 'judgment', 
+            'case', 'court', 'ruling', 'decision', 'opinion', 'judgment',
             'appeal', 'supreme court', 'appellate', 'v.', ' vs ', ' v ',
             'precedent', 'holding', 'case law', 'court of appeal',
             'trial court', 'ninth circuit', 'federal court', 'state court',
             'plaintiff', 'defendant', 'petitioner', 'respondent',
             'affirmed', 'reversed', 'remanded', 'overruled'
         ];
-        
+
         for (const keyword of caseLawKeywords) {
             if (lowerMessage.includes(keyword)) {
                 return true;
             }
         }
-        
+
         // Check for case name patterns
         // Pattern 1: Party v. Party (e.g., "Smith v. Jones", "People v. Superior Court")
         if (/\b[A-Z][a-z]+\s+v\.?\s+[A-Z][a-z]+/i.test(message)) {
             return true;
         }
-        
+
         // Pattern 2: "Estate of X", "Matter of X", "Marriage of X", "In re X"
         if (/\b(estate|matter|marriage|conservatorship|guardianship)\s+of\s+[A-Z][a-z]+/i.test(message)) {
             return true;
@@ -86,14 +86,14 @@ export class ChatService {
         if (/\bin\s+re\s+[A-Z][a-z]+/i.test(message)) {
             return true;
         }
-        
+
         // Pattern 3: California reporter citations
         // e.g., "87 Cal.App.4th 461", "9 Cal. 5th 903", "50 Cal.4th 100"
         const caReporterPattern = /\d+\s+Cal\.?\s*(App\.?)?\s*(2d|3d|4th|5th)?\s*\d+/i;
         if (caReporterPattern.test(message)) {
             return true;
         }
-        
+
         // Pattern 4: Year in parentheses often indicates case citation
         // e.g., "(2001)", "(2020)" following a case-like context
         if (/[A-Z][a-z]+.*\(\d{4}\)/.test(message)) {
@@ -102,7 +102,7 @@ export class ChatService {
                 return true;
             }
         }
-        
+
         return false; // Default to false for ambiguous queries
     }
 
@@ -308,7 +308,7 @@ export class ChatService {
      * Send message to Gemini 3 Pro Preview (Generator) via server-side API
      * Falls back to Gemini 2.5 Pro automatically if capacity issues occur
      */
-    private async sendToGemini(message: string, conversationHistory?: Array<{role: string, text: string}>, signal?: AbortSignal): Promise<{ text: string; hasGrounding?: boolean; groundingMetadata?: any }> {
+    private async sendToGemini(message: string, conversationHistory?: Array<{ role: string, text: string }>, signal?: AbortSignal): Promise<{ text: string; hasGrounding?: boolean; groundingMetadata?: any }> {
         if (signal?.aborted) {
             throw new Error('Request cancelled');
         }
@@ -441,8 +441,8 @@ Remember: You're trained on California law AND you have access to real-time sear
             }
 
             const data = await response.json();
-            return { 
-                text: data.text || '', 
+            return {
+                text: data.text || '',
                 hasGrounding: data.hasGrounding,
                 groundingMetadata: data.groundingMetadata
             };
@@ -454,12 +454,12 @@ Remember: You're trained on California law AND you have access to real-time sear
         }
     }
 
-    async sendMessage(message: string, conversationHistory?: Array<{role: string, text: string}>, sourceMode: SourceMode = 'hybrid', signal?: AbortSignal, progressCallback?: ProgressCallback): Promise<BotResponse> {
+    async sendMessage(message: string, conversationHistory?: Array<{ role: string, text: string }>, sourceMode: SourceMode = 'hybrid', signal?: AbortSignal, progressCallback?: ProgressCallback): Promise<BotResponse> {
         // Check for cancellation at the start
         if (signal?.aborted) {
             throw new Error('Request cancelled');
         }
-        
+
         // Handle simple greetings
         if (message.trim().toLowerCase() === 'hello' || message.trim().toLowerCase() === 'hi') {
             return {
@@ -495,15 +495,15 @@ Remember: You're trained on California law AND you have access to real-time sear
      * - "What about 460?" after "What is Penal Code 459?" → "What is Penal Code 460?"
      * - "Does it apply to houses?" after burglary question → "Regarding burglary, does it apply to houses?"
      */
-    private expandQueryWithContext(message: string, conversationHistory?: Array<{role: string, text: string}>): string {
+    private expandQueryWithContext(message: string, conversationHistory?: Array<{ role: string, text: string }>): string {
         if (!conversationHistory || conversationHistory.length === 0) {
             return message;
         }
 
         const lowerMessage = message.toLowerCase().trim();
-        
+
         // Check for vague follow-up patterns
-        const isVagueFollowUp = 
+        const isVagueFollowUp =
             /^what about|^how about|^and\s+\d+|^\d+\s*\?|^does it|^is it|^can it|^what if/i.test(message) ||
             (message.length < 30 && /\?$/.test(message));
 
@@ -514,7 +514,7 @@ Remember: You're trained on California law AND you have access to real-time sear
         // Get recent conversation for context (last 2 exchanges)
         const recentMessages = conversationHistory.slice(-4);
         let lastUserQuery = '';
-        
+
         for (let i = recentMessages.length - 1; i >= 0; i--) {
             if (recentMessages[i].role === 'user') {
                 lastUserQuery = recentMessages[i].text;
@@ -529,12 +529,12 @@ Remember: You're trained on California law AND you have access to real-time sear
         // Pattern 1: Handle "What about X?" where X is a code section number
         const codeSectionPattern = /(Penal Code|Civil Code|Family Code|Business & Professions Code|Vehicle Code|Code of Civil Procedure|Evidence Code|Health & Safety Code|Labor Code|Government Code|Probate Code)\s*(?:section|§)?\s*(\d+(?:\.\d+)?)/i;
         const codeMatch = lastUserQuery.match(codeSectionPattern);
-        
+
         if (codeMatch) {
             const codeType = codeMatch[1];
             const sectionPattern = /\b(\d+(?:\.\d+)?)\b/;
             const newSectionMatch = message.match(sectionPattern);
-            
+
             if (newSectionMatch) {
                 return `What is ${codeType} section ${newSectionMatch[1]}?`;
             }
@@ -548,7 +548,7 @@ Remember: You're trained on California law AND you have access to real-time sear
                 /(?:regarding|concerning)\s+([^?]+?)(?:\?|$)/i,
                 /(?:code section|statute|law)\s+(\d+[^?]*?)(?:\?|$)/i
             ];
-            
+
             for (const pattern of topicPatterns) {
                 const match = lastUserQuery.match(pattern);
                 if (match) {
@@ -575,7 +575,7 @@ Remember: You're trained on California law AND you have access to real-time sear
      * AI Only Mode - Uses existing external APIs (CourtListener, OpenStates, LegiScan)
      * This is the original sendMessage logic
      */
-    private async processAIOnly(message: string, conversationHistory?: Array<{role: string, text: string}>, signal?: AbortSignal, progressCallback?: ProgressCallback): Promise<BotResponse> {
+    private async processAIOnly(message: string, conversationHistory?: Array<{ role: string, text: string }>, signal?: AbortSignal, progressCallback?: ProgressCallback): Promise<BotResponse> {
         // Check for cancellation
         if (signal?.aborted) {
             throw new Error('Request cancelled');
@@ -632,18 +632,18 @@ Remember: You're trained on California law AND you have access to real-time sear
                     }
                     console.error('❌ Legislative API search failed:', err);
                     return { context: '', sources: [] };
-                  })
+                })
                 : Promise.resolve({ context: '', sources: [] }),
-            enableCourtListener 
-                ? (isExhaustive 
-                    ? this.searchCourtListenerExhaustive(message, signal, { limit: 50, ...dateRange }) 
+            enableCourtListener
+                ? (isExhaustive
+                    ? this.searchCourtListenerExhaustive(message, signal, { limit: 50, ...dateRange })
                     : this.searchCourtListenerAPI(message, signal, { limit: 3, ...dateRange })).catch(err => {
-                    if (signal?.aborted || err.message === 'Request cancelled') {
-                        throw err; // Re-throw cancellation errors
-                    }
-                    console.error('❌ CourtListener search failed:', err);
-                    return { content: '', sources: [] };
-                  })
+                        if (signal?.aborted || err.message === 'Request cancelled') {
+                            throw err; // Re-throw cancellation errors
+                        }
+                        console.error('❌ CourtListener search failed:', err);
+                        return { content: '', sources: [] };
+                    })
                 : Promise.resolve({ content: '', sources: [] })
             ,
             // Google Scholar - only in exhaustive mode
@@ -654,10 +654,10 @@ Remember: You're trained on California law AND you have access to real-time sear
                     }
                     console.error('❌ Google Scholar search failed:', err);
                     return { content: '', sources: [] };
-                  })
+                })
                 : Promise.resolve({ content: '', sources: [] }),
         ]);
-        
+
         console.log(`✅ Search results: ${legislationData.sources.length} legislation lookup, ${legislativeApiData.sources.length} legislative API, ${caseLawData.sources.length} case law, ${scholarData.sources.length} scholar`);
 
         // Check if request was cancelled during parallel searches
@@ -679,16 +679,16 @@ Remember: You're trained on California law AND you have access to real-time sear
             finalSources.push(...scholarData.sources);
         }
         // Apply retrieval pruning (top-k, dedupe, rerank) - SKIP if exhaustive mode
-        const prunedSources = isExhaustive 
+        const prunedSources = isExhaustive
             ? finalSources  // Keep all sources in exhaustive mode
             : RetrievalPruner.pruneSources(finalSources, message, 3);
-        
+
         if (isExhaustive) {
             console.log(`📊 Exhaustive mode: Keeping all ${finalSources.length} sources (pruning disabled)`);
         } else {
             console.log(`📊 Pruned ${finalSources.length} sources to ${prunedSources.length} top sources`);
         }
-        
+
         // Assign IDs to sources for citation mapping
         const sourcesWithIds: Source[] = prunedSources.map((source, index) => ({
             ...source,
@@ -774,21 +774,21 @@ Provide a thorough legal analysis explaining how these cases relate to the query
 
                     console.log('🤖 Sending enhanced message to Gemini 3 Pro (with fallback to 2.5 Pro)...');
                     const response = await this.sendToGemini(enhancedMessage, conversationHistory, signal);
-                    
+
                     // Check if request was cancelled during AI response
                     if (signal?.aborted) {
                         throw new Error('Request cancelled');
                     }
-                    
+
                     console.log('✅ Claude response received');
-                    
+
                     // Check if request was cancelled during AI response
                     if (signal?.aborted) {
                         throw new Error('Request cancelled');
                     }
-                    
+
                     console.log('✅ Claude response received');
-                    
+
                     // Check for cancellation after Claude call
                     if (signal?.aborted) {
                         throw new Error('Request cancelled');
@@ -813,27 +813,27 @@ Provide a thorough legal analysis explaining how these cases relate to the query
                     // Extract claims and run new verification system
                     const claims = VerifierService.extractClaimsFromAnswer(response.text, sourcesWithIds);
                     const shouldVerify = VerifierService.shouldVerify(message, isHighRisk);
-                    
+
                     let verificationStatus: VerificationStatus = 'unverified';
                     let verificationReport: VerificationReport | undefined;
                     let finalAnswer = verifiedText;
-                    
+
                     if (shouldVerify && claims.length > 0 && sourcesWithIds.length > 0) {
                         try {
                             const verifierOutput = await this.verifier.verifyClaims(response.text, claims, sourcesWithIds, signal);
                             verificationStatus = verifierOutput.status;
                             verificationReport = verifierOutput.verificationReport;
                             finalAnswer = verifierOutput.verifiedAnswer;
-                            
+
                             // Check if bill text is present in sources
-                            const hasBillText = sourcesWithIds.some(s => 
+                            const hasBillText = sourcesWithIds.some(s =>
                                 (s.excerpt && s.excerpt.includes('FULL BILL TEXT')) ||
                                 (s.title && (s.title.includes('OpenStates') || s.title.includes('LegiScan')))
                             );
-                            
+
                             // Check if Google Search grounding was used
                             const hasGrounding = response.hasGrounding || false;
-                            
+
                             // Apply confidence gating with bill text and grounding flags
                             const gateResult = ConfidenceGatingService.gateAnswer(verificationReport, hasBillText, hasGrounding);
                             if (!gateResult.shouldShow && gateResult.status === 'refusal') {
@@ -845,7 +845,7 @@ Provide a thorough legal analysis explaining how these cases relate to the query
                                     claims
                                 };
                             }
-                            
+
                             if (gateResult.caveat && gateResult.status === 'partially_verified') {
                                 finalAnswer += `\n\n⚠️ ${gateResult.caveat}`;
                             }
@@ -856,10 +856,10 @@ Provide a thorough legal analysis explaining how these cases relate to the query
                             console.error('Verification failed:', error);
                         }
                     }
-                    
+
                     // Apply guardrails
                     const guardrailResult = GuardrailsService.runAllChecks(finalAnswer, message, sourcesWithIds, claims);
-                    
+
                     if (guardrailResult.blocked) {
                         console.warn('🚫 Guardrails blocked answer:', guardrailResult.errors);
                         // For now, log but don't block - could be enhanced to trigger rewrite
@@ -867,13 +867,13 @@ Provide a thorough legal analysis explaining how these cases relate to the query
                             finalAnswer += `\n\n⚠️ Warning: Some citations or entities may not be fully verified.`;
                         }
                     }
-                    
+
                     if (guardrailResult.warnings.length > 0) {
                         console.warn('⚠️ Guardrails warnings:', guardrailResult.warnings);
                     }
 
-                    return { 
-                        text: finalAnswer, 
+                    return {
+                        text: finalAnswer,
                         sources: uniqueSources,
                         verificationStatus,
                         verificationReport,
@@ -901,11 +901,11 @@ Provide a thorough legal analysis explaining how these cases relate to the query
 
             // Enhance the prompt to request citations for legal information
             let enhancedMessage = `${message}`;
-            
+
             // Add comprehensive search instructions for vague queries
             const isVagueBillQuery = /find (all |the )?(bills?|laws?|legislation)|list (all |the )?(bills?|laws?)|all (the )?(bills?|laws?)|what (bills?|laws?)/i.test(message);
             const is2025Query = /2025|october|september|recent|new|signed|passed/i.test(message);
-            
+
             if (isVagueBillQuery || is2025Query) {
                 enhancedMessage = `🚨 MANDATORY GOOGLE SEARCH REQUIRED 🚨
 
@@ -932,7 +932,7 @@ REQUIRED ACTIONS:
 
 ` + enhancedMessage;
             }
-            
+
             if (legislationContextInstructions) {
                 enhancedMessage += legislationContextInstructions;
             }
@@ -957,12 +957,12 @@ Key California legal sources to reference:
 - Current California bills (AB/SB/etc.) with status and summaries`;
 
             const response = await this.sendToGemini(enhancedMessage, conversationHistory, signal);
-            
+
             // Check if request was cancelled during AI response
             if (signal?.aborted) {
                 throw new Error('Request cancelled');
             }
-            
+
             console.log('✅ Gemini response received');
 
             // Check for cancellation after Claude call
@@ -1020,9 +1020,9 @@ Key California legal sources to reference:
                 const billSourcePromises = Array.from(billMatches).map(async (billKey) => {
                     try {
                         // Check if this bill is already in finalSources or specificSources
-                        const alreadyExists = finalSources.some(s => 
+                        const alreadyExists = finalSources.some(s =>
                             s.title?.includes(billKey) || s.url?.includes(billKey.replace(' ', ''))
-                        ) || specificSources.some(s => 
+                        ) || specificSources.some(s =>
                             s.title?.includes(billKey) || s.url?.includes(billKey.replace(' ', ''))
                         );
                         if (alreadyExists) {
@@ -1040,7 +1040,7 @@ Key California legal sources to reference:
                                 if (signal?.aborted) return null;
                                 const data = await r.json();
                                 const items = Array.isArray(data?.items) ? data.items : [];
-                                const match = items.find((item: any) => 
+                                const match = items.find((item: any) =>
                                     (item?.identifier || '').toUpperCase().includes(billKey.toUpperCase())
                                 );
                                 return match ? { type: 'openstates', item: match } : null;
@@ -1054,10 +1054,10 @@ Key California legal sources to reference:
                                 if (signal?.aborted) return null;
                                 const data = await r.json();
                                 const resultsObj = data?.searchresult || {};
-                                const entries = Object.values(resultsObj).filter((entry: any) => 
+                                const entries = Object.values(resultsObj).filter((entry: any) =>
                                     entry && typeof entry === 'object' && entry.bill_number
                                 );
-                                const match = entries.find((entry: any) => 
+                                const match = entries.find((entry: any) =>
                                     (entry.bill_number || '').toUpperCase().includes(billKey.replace(' ', '')) ||
                                     (entry.title || '').toUpperCase().includes(billKey)
                                 );
@@ -1122,8 +1122,8 @@ Key California legal sources to reference:
                         const section = sectionMatch[1];
                         const subsection = sectionMatch[2] || '';
                         const url = subsection
-                          ? `https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=FAM&sectionNum=${section}.${subsection}`
-                          : `https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=FAM&sectionNum=${section}`;
+                            ? `https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=FAM&sectionNum=${section}.${subsection}`
+                            : `https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=FAM&sectionNum=${section}`;
                         specificSources.push({
                             title: `Family Code § ${section}${subsection ? `(${subsection})` : ''}`,
                             url: url
@@ -1141,8 +1141,8 @@ Key California legal sources to reference:
                         const section = m[1];
                         const subsection = m[2] || '';
                         const url = subsection
-                          ? `https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=BPC&sectionNum=${section}.${subsection}`
-                          : `https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=BPC&sectionNum=${section}`;
+                            ? `https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=BPC&sectionNum=${section}.${subsection}`
+                            : `https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=BPC&sectionNum=${section}`;
                         specificSources.push({ title: `Bus. & Prof. Code § ${section}${subsection ? `(${subsection})` : ''}`, url });
                     }
                 });
@@ -1157,8 +1157,8 @@ Key California legal sources to reference:
                         const section = m[1];
                         const subsection = m[2] || '';
                         const url = subsection
-                          ? `https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=VEH&sectionNum=${section}.${subsection}`
-                          : `https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=VEH&sectionNum=${section}`;
+                            ? `https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=VEH&sectionNum=${section}.${subsection}`
+                            : `https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=VEH&sectionNum=${section}`;
                         specificSources.push({ title: `Vehicle Code § ${section}${subsection ? `(${subsection})` : ''}`, url });
                     }
                 });
@@ -1173,8 +1173,8 @@ Key California legal sources to reference:
                         const section = m[1];
                         const subsection = m[2] || '';
                         const url = subsection
-                          ? `https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=GOV&sectionNum=${section}.${subsection}`
-                          : `https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=GOV&sectionNum=${section}`;
+                            ? `https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=GOV&sectionNum=${section}.${subsection}`
+                            : `https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=GOV&sectionNum=${section}`;
                         specificSources.push({ title: `Gov. Code § ${section}${subsection ? `(${subsection})` : ''}`, url });
                     }
                 });
@@ -1189,8 +1189,8 @@ Key California legal sources to reference:
                         const section = m[1];
                         const subsection = m[2] || '';
                         const url = subsection
-                          ? `https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=HSC&sectionNum=${section}.${subsection}`
-                          : `https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=HSC&sectionNum=${section}`;
+                            ? `https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=HSC&sectionNum=${section}.${subsection}`
+                            : `https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=HSC&sectionNum=${section}`;
                         specificSources.push({ title: `Health & Saf. Code § ${section}${subsection ? `(${subsection})` : ''}`, url });
                     }
                 });
@@ -1247,8 +1247,8 @@ Key California legal sources to reference:
                         const section = m[1];
                         const subsection = m[2] || '';
                         const url = subsection ?
-                          `https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CIV&sectionNum=${section}.${subsection}` :
-                          `https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CIV&sectionNum=${section}`;
+                            `https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CIV&sectionNum=${section}.${subsection}` :
+                            `https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CIV&sectionNum=${section}`;
                         specificSources.push({ title: `Civil Code § ${section}${subsection ? `(${subsection})` : ''}`, url });
                     }
                 });
@@ -1262,8 +1262,8 @@ Key California legal sources to reference:
                         const section = m[1];
                         const subsection = m[2] || '';
                         const url = subsection ?
-                          `https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=LAB&sectionNum=${section}.${subsection}` :
-                          `https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=LAB&sectionNum=${section}`;
+                            `https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=LAB&sectionNum=${section}.${subsection}` :
+                            `https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=LAB&sectionNum=${section}`;
                         specificSources.push({ title: `Labor Code § ${section}${subsection ? `(${subsection})` : ''}`, url });
                     }
                 });
@@ -1277,8 +1277,8 @@ Key California legal sources to reference:
                         const section = m[1];
                         const subsection = m[2] || '';
                         const url = subsection ?
-                          `https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CORP&sectionNum=${section}.${subsection}` :
-                          `https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CORP&sectionNum=${section}`;
+                            `https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CORP&sectionNum=${section}.${subsection}` :
+                            `https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CORP&sectionNum=${section}`;
                         specificSources.push({ title: `Corp. Code § ${section}${subsection ? `(${subsection})` : ''}`, url });
                     }
                 });
@@ -1292,8 +1292,8 @@ Key California legal sources to reference:
                         const section = m[1];
                         const subsection = m[2] || '';
                         const url = subsection ?
-                          `https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=WIC&sectionNum=${section}.${subsection}` :
-                          `https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=WIC&sectionNum=${section}`;
+                            `https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=WIC&sectionNum=${section}.${subsection}` :
+                            `https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=WIC&sectionNum=${section}`;
                         specificSources.push({ title: `W&I Code § ${section}${subsection ? `(${subsection})` : ''}`, url });
                     }
                 });
@@ -1343,7 +1343,7 @@ Key California legal sources to reference:
                     this.searchCourtListenerAPI(cite, signal)
                         .then(resolved => {
                             if (signal?.aborted) return null;
-                            return resolved.sources.length > 0 
+                            return resolved.sources.length > 0
                                 ? { title: cite, url: resolved.sources[0].url }
                                 : null;
                         })
@@ -1352,14 +1352,14 @@ Key California legal sources to reference:
                             return null;
                         })
                 );
-                
+
                 const citationResults = await Promise.all(citationPromises);
-                
+
                 // Check if cancelled during resolution
                 if (signal?.aborted) {
                     throw new Error('Request cancelled');
                 }
-                
+
                 citationResults.forEach(result => {
                     if (result) specificSources.push(result);
                 });
@@ -1374,8 +1374,8 @@ Key California legal sources to reference:
                         const section = sectionMatch[1];
                         const subsection = sectionMatch[2] || '';
                         const url = subsection
-                          ? `https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=PEN&sectionNum=${section}.${subsection}`
-                          : `https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=PEN&sectionNum=${section}`;
+                            ? `https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=PEN&sectionNum=${section}.${subsection}`
+                            : `https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=PEN&sectionNum=${section}`;
                         specificSources.push({
                             title: `Penal Code § ${section}${subsection ? `(${subsection})` : ''}`,
                             url: url
@@ -1395,11 +1395,11 @@ Key California legal sources to reference:
                 const casePromises = caseMatches.map(match => {
                     const caseMatch = match.match(/([A-Z][A-Za-z\s.&'-]+ v\. [A-Z][A-Za-z\s.&'-]+)(?:,\s*\d+\s+[A-Za-z.\d]+\s+\d+)?\s*(?:\((\d{4})\))?/);
                     if (!caseMatch) return Promise.resolve(null);
-                    
-                        const caseName = caseMatch[1].trim();
-                        const year = caseMatch[2] || '';
-                            const query = year ? `${caseName} ${year}` : caseName;
-                    
+
+                    const caseName = caseMatch[1].trim();
+                    const year = caseMatch[2] || '';
+                    const query = year ? `${caseName} ${year}` : caseName;
+
                     return this.searchCourtListenerAPI(query, signal)
                         .then(resolved => {
                             if (signal?.aborted) return null;
@@ -1425,16 +1425,16 @@ Key California legal sources to reference:
                                 title: year ? `${caseName} (${year})` : caseName,
                                 url: `https://www.courtlistener.com/?q=${searchQuery}&type=o&order_by=score%20desc&stat_Precedential=on`
                             };
-                            });
+                        });
                 });
-                
+
                 const caseResults = await Promise.all(casePromises);
-                
+
                 // Check if cancelled during resolution
                 if (signal?.aborted) {
                     throw new Error('Request cancelled');
                 }
-                
+
                 caseResults.forEach(result => {
                     if (result) specificSources.push(result);
                 });
@@ -1449,8 +1449,8 @@ Key California legal sources to reference:
                         const section = sectionMatch[1];
                         const subsection = sectionMatch[2] || '';
                         const url = subsection
-                          ? `https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=EVID&sectionNum=${section}.${subsection}`
-                          : `https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=EVID&sectionNum=${section}`;
+                            ? `https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=EVID&sectionNum=${section}.${subsection}`
+                            : `https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=EVID&sectionNum=${section}`;
                         specificSources.push({
                             title: `Evidence Code § ${section}${subsection ? `(${subsection})` : ''}`,
                             url: url
@@ -1468,8 +1468,8 @@ Key California legal sources to reference:
                         const section = sectionMatch[1];
                         const subsection = sectionMatch[2] || '';
                         const url = subsection
-                          ? `https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CCP&sectionNum=${section}.${subsection}`
-                          : `https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CCP&sectionNum=${section}`;
+                            ? `https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CCP&sectionNum=${section}.${subsection}`
+                            : `https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CCP&sectionNum=${section}`;
                         specificSources.push({
                             title: `Code Civ. Proc. § ${section}${subsection ? `(${subsection})` : ''}`,
                             url: url
@@ -1481,7 +1481,7 @@ Key California legal sources to reference:
             // Combine sources: specific citations and grounding sources only
             // Do NOT add generic fallbacks; show only actual used sources
             const allSources = [...specificSources, ...groundingSources, ...finalSources];
-            
+
             // Topic-based enrichment to ensure diverse, public sources when relevant keywords appear
             const lowered = response.text.toLowerCase();
             const enrich: Source[] = [];
@@ -1537,27 +1537,27 @@ Key California legal sources to reference:
             // Extract claims and run new verification system
             const claims = VerifierService.extractClaimsFromAnswer(response.text, sourcesWithIds);
             const shouldVerify = VerifierService.shouldVerify(message, isHighRisk);
-            
+
             let verificationStatus: VerificationStatus = 'unverified';
             let verificationReport: VerificationReport | undefined;
             let finalAnswer = verifiedText;
-            
+
             if (shouldVerify && claims.length > 0 && sourcesWithIds.length > 0) {
                 try {
                     const verifierOutput = await this.verifier.verifyClaims(response.text, claims, sourcesWithIds, signal);
                     verificationStatus = verifierOutput.status;
                     verificationReport = verifierOutput.verificationReport;
                     finalAnswer = verifierOutput.verifiedAnswer;
-                    
+
                     // Check if bill text is present in sources
-                    const hasBillText = sourcesWithIds.some(s => 
+                    const hasBillText = sourcesWithIds.some(s =>
                         (s.excerpt && s.excerpt.includes('FULL BILL TEXT')) ||
                         (s.title && (s.title.includes('OpenStates') || s.title.includes('LegiScan')))
                     );
-                    
+
                     // Check if Google Search grounding was used
                     const hasGrounding = response.hasGrounding || false;
-                    
+
                     // Apply confidence gating with bill text and grounding flags
                     const gateResult = ConfidenceGatingService.gateAnswer(verificationReport, hasBillText, hasGrounding);
                     if (!gateResult.shouldShow && gateResult.status === 'refusal') {
@@ -1569,7 +1569,7 @@ Key California legal sources to reference:
                             claims
                         };
                     }
-                    
+
                     if (gateResult.caveat && gateResult.status === 'partially_verified') {
                         finalAnswer += `\n\n⚠️ ${gateResult.caveat}`;
                     }
@@ -1580,23 +1580,23 @@ Key California legal sources to reference:
                     console.error('Verification failed:', error);
                 }
             }
-            
+
             // Apply guardrails
             const guardrailResult = GuardrailsService.runAllChecks(finalAnswer, message, sourcesWithIds, claims);
-            
+
             if (guardrailResult.blocked) {
                 console.warn('🚫 Guardrails blocked answer:', guardrailResult.errors);
                 if (guardrailResult.errors.length > 0) {
                     finalAnswer += `\n\n⚠️ Warning: Some citations or entities may not be fully verified.`;
                 }
             }
-            
+
             if (guardrailResult.warnings.length > 0) {
                 console.warn('⚠️ Guardrails warnings:', guardrailResult.warnings);
             }
 
-            return { 
-                text: finalAnswer, 
+            return {
+                text: finalAnswer,
                 sources: uniqueSources,
                 verificationStatus,
                 verificationReport,
@@ -1622,9 +1622,9 @@ Key California legal sources to reference:
     /**
      * CEB Only Mode - Uses only CEB practice guides (no verification needed)
      */
-    private async processCEBOnly(message: string, conversationHistory?: Array<{role: string, text: string}>, signal?: AbortSignal): Promise<BotResponse> {
+    private async processCEBOnly(message: string, conversationHistory?: Array<{ role: string, text: string }>, signal?: AbortSignal): Promise<BotResponse> {
         console.log('📚 CEB Only Mode - Querying authoritative practice guides...');
-        
+
         try {
             // Check for cancellation
             if (signal?.aborted) {
@@ -1761,9 +1761,9 @@ Answer:`;
      * Hybrid Mode - Combines CEB with external APIs (CourtListener, OpenStates, LegiScan)
      * CEB sources are prioritized and don't require verification
      */
-    private async processHybrid(message: string, conversationHistory?: Array<{role: string, text: string}>, signal?: AbortSignal, progressCallback?: ProgressCallback): Promise<BotResponse> {
+    private async processHybrid(message: string, conversationHistory?: Array<{ role: string, text: string }>, signal?: AbortSignal, progressCallback?: ProgressCallback): Promise<BotResponse> {
         console.log('🔄 Hybrid Mode - Combining CEB + AI sources...');
-        
+
         try {
             // Check for cancellation
             if (signal?.aborted) {
@@ -1801,7 +1801,7 @@ Answer:`;
                     console.error('❌ CEB search failed:', err);
                     return { sources: [] };
                 }),
-                
+
                 // AI sources (reuse existing logic)
                 this.processAIOnly(message, conversationHistory, signal).catch(err => {
                     if (signal?.aborted || err.message === 'Request cancelled') throw err;
@@ -1847,7 +1847,7 @@ Answer:`;
             // Build context from CEB, extracted cases, and AI sources
             let context = '';
             let sourceIndex = 1;
-            
+
             if (highConfidenceCEB.length > 0) {
                 context += 'AUTHORITATIVE CEB PRACTICE GUIDES (Primary Source - No Verification Needed):\n';
                 context += highConfidenceCEB
@@ -1997,27 +1997,27 @@ Answer:`;
      */
     private detectCEBCategory(message: string): 'trusts_estates' | 'family_law' | 'business_litigation' {
         const lowerMessage = message.toLowerCase();
-        
+
         // Family law keywords
-        const familyKeywords = ['divorce', 'custody', 'child support', 'spousal support', 'alimony', 
-                               'marriage', 'family law', 'visitation', 'paternity', 'adoption',
-                               'domestic violence', 'restraining order', 'family code'];
-        
+        const familyKeywords = ['divorce', 'custody', 'child support', 'spousal support', 'alimony',
+            'marriage', 'family law', 'visitation', 'paternity', 'adoption',
+            'domestic violence', 'restraining order', 'family code'];
+
         // Business litigation keywords
         const businessKeywords = ['contract', 'breach', 'business', 'litigation', 'commercial',
-                                 'corporate', 'partnership', 'llc', 'shareholder', 'fraud',
-                                 'negligence', 'tort', 'damages', 'civil procedure'];
-        
+            'corporate', 'partnership', 'llc', 'shareholder', 'fraud',
+            'negligence', 'tort', 'damages', 'civil procedure'];
+
         // Trusts & estates keywords
         const trustsKeywords = ['trust', 'estate', 'will', 'probate', 'inheritance', 'beneficiary',
-                               'executor', 'administrator', 'conservatorship', 'guardianship',
-                               'power of attorney', 'advance directive', 'probate code'];
-        
+            'executor', 'administrator', 'conservatorship', 'guardianship',
+            'power of attorney', 'advance directive', 'probate code'];
+
         // Count matches for each category
         const familyScore = familyKeywords.filter(kw => lowerMessage.includes(kw)).length;
         const businessScore = businessKeywords.filter(kw => lowerMessage.includes(kw)).length;
         const trustsScore = trustsKeywords.filter(kw => lowerMessage.includes(kw)).length;
-        
+
         // Return category with highest score (default to trusts_estates)
         if (familyScore > businessScore && familyScore > trustsScore) {
             return 'family_law';
@@ -2074,11 +2074,11 @@ Answer:`;
 
     private async fetchLegislationData(message: string, signal?: AbortSignal): Promise<{ context: string; sources: Source[] }> {
         console.log('📜 fetchLegislationData called for message:', message.substring(0, 100));
-        
+
         // Pattern for California code sections (e.g., "Family Code § 1615", "Penal Code 187", "Civil Code section 1942")
         // Note: Subsections are typically 1-2 digits (e.g., 12058.5), not years like 2024
         const codeSectionPattern = /(Family|Penal|Civil|Commercial|Corporations?|Business and Professions|Code of Civil Procedure|Evidence|Government|Health and Safety|Labor|Probate|Revenue and Taxation|Vehicle|Welfare and Institutions)\s+Code\s+(?:§|section|sec\.?|§§)?\s*(\d+(?:\.\d{1,2})?)(?!\d)/gi;
-        
+
         const billPattern = /(Assembly\s+Bill|Senate\s+Bill|Assembly\s+Joint\s+Resolution|Senate\s+Joint\s+Resolution|Assembly\s+Concurrent\s+Resolution|Senate\s+Concurrent\s+Resolution|Assembly\s+Resolution|Senate\s+Resolution|AB|SB|AJR|ACR|SCR|SJR|HR|SR)\s*-?\s*(\d+[A-Z]?)(?:\s*\((\d{4})\))?/gi;
         const typeMap: Record<string, string> = {
             'ASSEMBLY BILL': 'AB',
@@ -2100,13 +2100,13 @@ Answer:`;
         };
 
         const collectedSources: Source[] = [];
-        
+
         // First, check for code sections and create direct links
         let codeMatch;
         while ((codeMatch = codeSectionPattern.exec(message)) !== null) {
             const codeName = codeMatch[1] || '';
             const sectionNumber = codeMatch[2] || '';
-            
+
             if (codeName && sectionNumber) {
                 // Map code names to their lawCode values for leginfo.legislature.ca.gov
                 const codeMap: Record<string, string> = {
@@ -2127,7 +2127,7 @@ Answer:`;
                     'VEHICLE': 'VEH',
                     'WELFARE AND INSTITUTIONS': 'WIC'
                 };
-                
+
                 const lawCode = codeMap[codeName.toUpperCase()];
                 if (lawCode) {
                     // Clean section number: remove any trailing year-like patterns (e.g., "12058.2024" -> "12058")
@@ -2140,7 +2140,7 @@ Answer:`;
                         // If it matches pattern like "12058.2024", use just the base section number
                         cleanSectionNumber = yearMatch[1];
                     }
-                    
+
                     const url = `https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=${lawCode}&sectionNum=${cleanSectionNumber}`;
                     collectedSources.push({
                         title: `${codeName} Code § ${cleanSectionNumber}`,
@@ -2151,7 +2151,7 @@ Answer:`;
                 }
             }
         }
-        
+
         const matches = new Map<string, { label: string; searchTerm: string; year?: string }>();
         let match;
         while ((match = billPattern.exec(message)) !== null) {
@@ -2174,7 +2174,7 @@ Answer:`;
             console.log(`✅ Returning ${collectedSources.length} code section sources (no bills found)`);
             return { context: '', sources: collectedSources };
         }
-        
+
         if (matches.size === 0) {
             console.log('⚠️ No bills or code sections found in message');
             return { context: '', sources: [] };
@@ -2197,7 +2197,7 @@ Answer:`;
             const searchPromises = queryVariants.flatMap(query => {
                 // Check if cancelled before starting searches
                 if (signal?.aborted) return [];
-                
+
                 return [
                     fetchWithRetry(
                         `/api/openstates-search?q=${encodeURIComponent(query)}`,
@@ -2208,8 +2208,8 @@ Answer:`;
                         .then(async (response) => {
                             if (signal?.aborted) return null;
                             const data = await response.json();
-                        const items = Array.isArray(data?.items) ? data.items : [];
-                        const matchItem = items.find((item: any) => (item?.identifier || '').toUpperCase().includes(normalized));
+                            const items = Array.isArray(data?.items) ? data.items : [];
+                            const matchItem = items.find((item: any) => (item?.identifier || '').toUpperCase().includes(normalized));
                             return matchItem ? { type: 'openstates', item: matchItem } : null;
                         })
                         .catch(error => {
@@ -2240,12 +2240,12 @@ Answer:`;
             });
 
             const results = await Promise.all(searchPromises);
-            
+
             // Check if cancelled during bill searches
             if (signal?.aborted) {
                 throw new Error('Request cancelled');
             }
-            
+
             let openStatesMatched = false;
             let legiscanMatched = false;
             let openStatesBillId: string | null = null;
@@ -2254,40 +2254,40 @@ Answer:`;
             // Process results (find first match for each service and extract bill IDs)
             for (const result of results) {
                 if (!result) continue;
-                
+
                 if (result.type === 'openstates' && !openStatesMatched) {
                     const matchItem = result.item;
-                            const title = matchItem.title || 'Title unavailable';
-                            const session = typeof matchItem.session === 'string' ? matchItem.session : (matchItem.session?.name || matchItem.session?.identifier || '');
-                            const updatedAt = matchItem.updatedAt ? new Date(matchItem.updatedAt).toISOString().split('T')[0] : '';
-                            const openStatesUrl = matchItem.url;
-                            openStatesBillId = matchItem.id; // Extract bill ID for text fetching
-                            billSummaries.push(`OpenStates: ${title}${session ? ` (Session: ${session})` : ''}${updatedAt ? ` [updated ${updatedAt}]` : ''}`);
-                            if (openStatesUrl) {
+                    const title = matchItem.title || 'Title unavailable';
+                    const session = typeof matchItem.session === 'string' ? matchItem.session : (matchItem.session?.name || matchItem.session?.identifier || '');
+                    const updatedAt = matchItem.updatedAt ? new Date(matchItem.updatedAt).toISOString().split('T')[0] : '';
+                    const openStatesUrl = matchItem.url;
+                    openStatesBillId = matchItem.id; // Extract bill ID for text fetching
+                    billSummaries.push(`OpenStates: ${title}${session ? ` (Session: ${session})` : ''}${updatedAt ? ` [updated ${updatedAt}]` : ''}`);
+                    if (openStatesUrl) {
                         sources.push({ title: `${label} – OpenStates`, url: openStatesUrl });
-                            }
-                            openStatesMatched = true;
+                    }
+                    openStatesMatched = true;
                 } else if (result.type === 'legiscan' && !legiscanMatched) {
                     const matchEntry = result.entry;
-                            const title = matchEntry.title || 'Title unavailable';
-                            const lastAction = matchEntry.last_action || 'Status unavailable';
-                            const lastActionDate = matchEntry.last_action_date || '';
-                            const legiscanUrl = matchEntry.url || matchEntry.text_url || matchEntry.research_url;
-                            legiscanBillId = matchEntry.bill_id; // Extract bill ID for text fetching
-                            billSummaries.push(`LegiScan: ${title}${lastActionDate ? ` (Last action: ${lastActionDate})` : ''} – ${lastAction}`);
-                            if (legiscanUrl) {
+                    const title = matchEntry.title || 'Title unavailable';
+                    const lastAction = matchEntry.last_action || 'Status unavailable';
+                    const lastActionDate = matchEntry.last_action_date || '';
+                    const legiscanUrl = matchEntry.url || matchEntry.text_url || matchEntry.research_url;
+                    legiscanBillId = matchEntry.bill_id; // Extract bill ID for text fetching
+                    billSummaries.push(`LegiScan: ${title}${lastActionDate ? ` (Last action: ${lastActionDate})` : ''} – ${lastAction}`);
+                    if (legiscanUrl) {
                         sources.push({ title: `${label} – LegiScan`, url: legiscanUrl });
-                            }
-                            legiscanMatched = true;
+                    }
+                    legiscanMatched = true;
                 }
-                
+
                 // Exit early if both matched
                 if (openStatesMatched && legiscanMatched) break;
             }
 
             // Fetch full bill text if we found a match
             let billTextContent = '';
-            
+
             if (openStatesBillId) {
                 try {
                     console.log(`📄 Fetching full bill text from OpenStates for: ${openStatesBillId}`);
@@ -2334,7 +2334,7 @@ Answer:`;
 
             if (billSummaries.length > 0) {
                 // Append bill text to summaries if available
-                const summariesWithText = billTextContent 
+                const summariesWithText = billTextContent
                     ? billSummaries.map(s => s + billTextContent)
                     : billSummaries;
                 return { label, summaries: summariesWithText, sources };
@@ -2345,12 +2345,12 @@ Answer:`;
 
         // Wait for all bill searches to complete in parallel
         const billResults = await Promise.all(billSearchPromises);
-        
+
         // Check if cancelled during parallel bill searches
         if (signal?.aborted) {
             throw new Error('Request cancelled');
-            }
-        
+        }
+
         billResults.forEach(({ label, summaries, sources }) => {
             summaryChunks.push(`${label}:\n${summaries.map(summary => `  • ${summary}`).join('\n')}`);
             collectedSources.push(...sources);
@@ -2438,7 +2438,7 @@ Answer:`;
      */
     private extractDateRange(message: string): { after?: string; before?: string } {
         const lowerMessage = message.toLowerCase();
-        
+
         // Match "in YYYY" or "from YYYY" or "YYYY cases"
         const yearMatch = lowerMessage.match(/(?:in|from|during|for)\s+(\d{4})|(\d{4})\s+cases/);
         if (yearMatch) {
@@ -2448,19 +2448,19 @@ Answer:`;
                 before: `${year}-12-31`
             };
         }
-        
+
         // Match "since YYYY" or "after YYYY"
         const afterMatch = lowerMessage.match(/(?:since|after)\s+(\d{4})/);
         if (afterMatch) {
             return { after: `${afterMatch[1]}-01-01` };
         }
-        
+
         // Match "before YYYY" or "until YYYY"
         const beforeMatch = lowerMessage.match(/(?:before|until)\s+(\d{4})/);
         if (beforeMatch) {
             return { before: `${beforeMatch[1]}-12-31` };
         }
-        
+
         return {};
     }
 
@@ -2470,7 +2470,7 @@ Answer:`;
     private generateQueryVariations(query: string): string[] {
         const lowerQuery = query.toLowerCase();
         const variations: string[] = [query];
-        
+
         if (lowerQuery.includes('trust modification') || lowerQuery.includes('trust amendment')) {
             variations.push('trust modification', 'trust amendment', 'revocable trust modification',
                 'trust settlor amendment', 'Probate Code 15402', 'Probate Code 15401',
@@ -2484,7 +2484,7 @@ Answer:`;
             variations.push('child custody', 'custody modification',
                 'Family Code 3020', 'Family Code 3080', 'best interest of child', 'parenting time');
         }
-        
+
         // Remove duplicates (avoiding Set spread for TS compatibility)
         const filtered = variations.filter(v => v.trim().length > 0);
         const uniqueSet = new Set(filtered);
@@ -2502,12 +2502,12 @@ Answer:`;
         options?: { limit?: number; after?: string; before?: string; californiaOnly?: boolean }
     ): Promise<{ content: string; sources: Source[] }> {
         const variations = this.generateQueryVariations(query);
-        
+
         console.log(`🔍 Exhaustive: Running ${variations.length} query variations in parallel...`);
         variations.forEach((v, i) => console.log(`   ${i + 1}. "${v}"`));
-        
+
         const limitPerQuery = Math.max(10, Math.floor((options?.limit || 50) / variations.length));
-        
+
         const searchPromises = variations.map(async (varQuery, index) => {
             try {
                 if (signal?.aborted) return { content: '', sources: [] };
@@ -2524,13 +2524,13 @@ Answer:`;
                 return { content: '', sources: [] };
             }
         });
-        
+
         const results = await Promise.all(searchPromises);
         if (signal?.aborted) throw new Error('Request cancelled');
-        
+
         const allSources: Source[] = [];
         const seenUrls = new Set<string>();
-        
+
         for (const result of results) {
             for (const source of result.sources) {
                 if (!seenUrls.has(source.url)) {
@@ -2539,13 +2539,13 @@ Answer:`;
                 }
             }
         }
-        
+
         console.log(`✅ Exhaustive: Found ${allSources.length} unique cases across ${variations.length} queries`);
-        
-        const content = allSources.map((source, i) => 
+
+        const content = allSources.map((source, i) =>
             `Result ${i + 1}:\nCase Name: ${source.title || 'Untitled'}\nURL: ${source.url || ''}\nExcerpt: ${source.excerpt || ''}`
         ).join('\n\n');
-        
+
         return { content, sources: allSources };
     }
 
@@ -2559,23 +2559,23 @@ Answer:`;
     ): Promise<{ content: string; sources: Source[] }> {
         try {
             // Add "California" to query if California-specific filtering is enabled
-            const enhancedQuery = options?.californiaOnly && !query.toLowerCase().includes('california') 
-                ? `${query} California` 
+            const enhancedQuery = options?.californiaOnly && !query.toLowerCase().includes('california')
+                ? `${query} California`
                 : query;
-            
+
             const params = new URLSearchParams({
                 q: enhancedQuery,
                 californiaOnly: options?.californiaOnly ? 'true' : 'false',
                 limit: (options?.limit || 20).toString()
             });
-            
+
             const r = await fetchWithRetry(
                 `/api/serper-scholar?${params.toString()}`,
                 { signal },
                 2,
                 1000
             );
-            
+
             const data = await r.json();
             return { content: data.content || '', sources: data.sources || [] };
         } catch (error: any) {
@@ -2588,7 +2588,7 @@ Answer:`;
     }
 
     private async searchCourtListenerAPI(
-        query: string, 
+        query: string,
         signal?: AbortSignal,
         options?: { limit?: number; after?: string; before?: string; page?: number }
     ): Promise<{ content: string; sources: Source[] }> {
@@ -2597,7 +2597,7 @@ Answer:`;
             const params = new URLSearchParams({
                 q: query
             });
-            
+
             if (options?.limit) {
                 params.append('limit', options.limit.toString());
             }
@@ -2610,14 +2610,14 @@ Answer:`;
             if (options?.page) {
                 params.append('page', options.page.toString());
             }
-            
+
             const r = await fetchWithRetry(
                 `/api/courtlistener-search?${params.toString()}`,
                 { signal },
                 3, // maxRetries: 3 for CourtListener
                 1000 // baseDelay: 1s
             );
-            
+
             const data = await r.json();
             return { content: data.content || '', sources: data.sources || [] };
         } catch (error: any) {
@@ -2721,7 +2721,7 @@ Answer:`;
         while ((match = pattern1.exec(text)) !== null) {
             const [fullMatch, caseName, volume, reporter, page, pinCite, year] = match;
             const normalizedCitation = `${volume} ${reporter.replace(/\s+/g, '')} ${page}`;
-            
+
             if (!seenCitations.has(normalizedCitation)) {
                 seenCitations.add(normalizedCitation);
                 citations.push({
@@ -2740,7 +2740,7 @@ Answer:`;
         while ((match = pattern2.exec(text)) !== null) {
             const [fullMatch, caseName, year, volume, reporter, page, pinCite] = match;
             const normalizedCitation = `${volume} ${reporter.replace(/\s+/g, '')} ${page}`;
-            
+
             if (!seenCitations.has(normalizedCitation)) {
                 seenCitations.add(normalizedCitation);
                 citations.push({
@@ -2788,31 +2788,85 @@ Answer:`;
 
             try {
                 // Build search query for CourtListener
-                // Try case name first, fall back to citation
+                // Use the full citation format for more precise matching
                 const searchQuery = `${citation.caseName} ${citation.volume} ${citation.reporter} ${citation.page}`;
-                
-                const result = await this.searchCourtListenerAPI(searchQuery, signal, { limit: 1 });
-                
+
+                const result = await this.searchCourtListenerAPI(searchQuery, signal, { limit: 3 });
+
                 if (result.sources.length > 0) {
-                    const source: Source = {
-                        ...result.sources[0],
-                        title: `${citation.caseName} (${citation.year || 'Cal.'})`,
-                        excerpt: `${citation.fullCitation} - ${result.content.substring(0, 300)}...`
-                    };
-                    
-                    // Cache the result
-                    this.extractedCaseCache.set(cacheKey, source);
-                    console.log(`  ✓ Found: ${citation.caseName}`);
-                    return source;
+                    // Validate that the returned case actually matches our citation
+                    // Extract key parts of the case name for matching (handle "In re Marriage of X" patterns)
+                    const expectedNameLower = citation.caseName.toLowerCase();
+                    const expectedNameParts = expectedNameLower
+                        .replace(/in re\s+/i, '')
+                        .replace(/marriage of\s+/i, '')
+                        .replace(/estate of\s+/i, '')
+                        .replace(/\s+v\.?\s+/i, ' ')
+                        .split(/\s+/)
+                        .filter(p => p.length > 2);
+
+                    // Find the best matching result
+                    let bestMatch = result.sources[0];
+                    let bestMatchScore = 0;
+
+                    for (const candidateSource of result.sources) {
+                        const candidateTitleLower = candidateSource.title.toLowerCase();
+                        let matchScore = 0;
+
+                        // Check how many key parts of the expected name appear in the candidate
+                        for (const part of expectedNameParts) {
+                            if (candidateTitleLower.includes(part)) {
+                                matchScore++;
+                            }
+                        }
+
+                        // Also check if citation volume/page appears in URL or excerpt
+                        if (candidateSource.url?.includes(citation.volume) ||
+                            candidateSource.excerpt?.includes(citation.volume)) {
+                            matchScore += 0.5;
+                        }
+
+                        if (matchScore > bestMatchScore) {
+                            bestMatchScore = matchScore;
+                            bestMatch = candidateSource;
+                        }
+                    }
+
+                    // Only use direct link if we have reasonable confidence it's the right case
+                    // (at least 1 key name part matched)
+                    if (bestMatchScore >= 1) {
+                        const source: Source = {
+                            ...bestMatch,
+                            title: `${citation.caseName} (${citation.year || 'Cal.'})`,
+                            excerpt: `${citation.fullCitation} - ${result.content.substring(0, 300)}...`
+                        };
+
+                        // Cache the result
+                        this.extractedCaseCache.set(cacheKey, source);
+                        console.log(`  ✓ Found: ${citation.caseName} (match score: ${bestMatchScore})`);
+                        return source;
+                    } else {
+                        // Low confidence match - use search link instead
+                        console.log(`  ⚠ Low confidence match (${bestMatchScore}) for ${citation.caseName}, using search link`);
+                        const searchUrl = `https://www.courtlistener.com/?q=${encodeURIComponent(citation.fullCitation)}&type=o&order_by=score%20desc&stat_Precedential=on`;
+                        const source: Source = {
+                            title: `${citation.caseName} (${citation.year || 'Cal.'})`,
+                            url: searchUrl,
+                            excerpt: `${citation.fullCitation} - Click to search on CourtListener`
+                        };
+
+                        this.extractedCaseCache.set(cacheKey, source);
+                        return source;
+                    }
                 } else {
                     // Create a source with CourtListener search link even if not found directly
-                    const searchUrl = `https://www.courtlistener.com/?q=${encodeURIComponent(citation.caseName)}&type=o&order_by=score%20desc&stat_Precedential=on`;
+                    const searchUrl = `https://www.courtlistener.com/?q=${encodeURIComponent(citation.fullCitation)}&type=o&order_by=score%20desc&stat_Precedential=on`;
                     const source: Source = {
                         title: `${citation.caseName} (${citation.year || 'Cal.'})`,
                         url: searchUrl,
                         excerpt: `${citation.fullCitation} - Click to search on CourtListener`
                     };
-                    
+
                     this.extractedCaseCache.set(cacheKey, source);
                     console.log(`  ⚠ Not found directly, created search link: ${citation.caseName}`);
                     return source;
@@ -2822,7 +2876,7 @@ Answer:`;
                     throw error;
                 }
                 console.error(`  ✗ Error fetching ${citation.caseName}:`, error.message);
-                
+
                 // Return a basic source with search link on error
                 const searchUrl = `https://www.courtlistener.com/?q=${encodeURIComponent(citation.caseName)}&type=o&order_by=score%20desc&stat_Precedential=on`;
                 return {
@@ -2836,7 +2890,7 @@ Answer:`;
         // Execute in parallel with a concurrency limit to avoid overwhelming the API
         const results: Source[] = [];
         const batchSize = 3; // Process 3 at a time
-        
+
         for (let i = 0; i < caseSourcePromises.length; i += batchSize) {
             const batch = caseSourcePromises.slice(i, i + batchSize);
             const batchResults = await Promise.all(batch);
@@ -2857,10 +2911,10 @@ Answer:`;
     ): Promise<{ caseSources: Source[]; allCitations: string[] }> {
         // Combine all CEB excerpts to extract citations
         const allText = cebSources.map(s => s.excerpt || '').join('\n\n');
-        
+
         // Extract citations
         const citations = this.extractCaseCitations(allText);
-        
+
         if (citations.length === 0) {
             return { caseSources: [], allCitations: [] };
         }
@@ -2870,7 +2924,7 @@ Answer:`;
 
         // Fetch case info from CourtListener
         const caseSources = await this.fetchCaseInfoForCitations(citations, signal);
-        
+
         // Return citation strings for highlighting
         const allCitations = citations.map(c => c.fullCitation);
 
