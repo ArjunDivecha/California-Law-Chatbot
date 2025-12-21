@@ -109,6 +109,7 @@ async function verifyCitationWithCourtListener(
 
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
+      'User-Agent': 'California Law Chatbot/1.0',
     };
 
     if (apiKey) {

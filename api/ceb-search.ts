@@ -79,9 +79,9 @@ const REDIS_CACHE_TTL = 86400; // 24 hours
 async function getRedisCache(key: string): Promise<number[] | null> {
   const redisUrl = process.env.UPSTASH_REDIS_REST_URL;
   const redisToken = process.env.UPSTASH_REDIS_REST_TOKEN;
-  
+
   if (!redisUrl || !redisToken) return null;
-  
+
   try {
     const response = await fetch(`${redisUrl}/get/${encodeURIComponent(key)}`, {
       headers: { Authorization: `Bearer ${redisToken}` }
@@ -100,9 +100,9 @@ async function getRedisCache(key: string): Promise<number[] | null> {
 async function setRedisCache(key: string, value: number[]): Promise<void> {
   const redisUrl = process.env.UPSTASH_REDIS_REST_URL;
   const redisToken = process.env.UPSTASH_REDIS_REST_TOKEN;
-  
+
   if (!redisUrl || !redisToken) return;
-  
+
   try {
     await fetch(`${redisUrl}/set/${encodeURIComponent(key)}/${encodeURIComponent(JSON.stringify(value))}/ex/${REDIS_CACHE_TTL}`, {
       headers: { Authorization: `Bearer ${redisToken}` }
@@ -138,14 +138,14 @@ const LEGAL_SYNONYMS: Record<string, string[]> = {
   'trustee': ['successor trustee', 'co-trustee', 'trust administrator'],
   'beneficiary': ['trust beneficiary', 'remainder beneficiary', 'income beneficiary'],
   'settlor': ['trustor', 'grantor', 'trust creator'],
-  
+
   // Estate terms
   'will': ['last will', 'testament', 'last will and testament'],
   'probate': ['probate administration', 'probate proceeding', 'estate administration'],
   'executor': ['personal representative', 'estate administrator'],
   'heir': ['beneficiary', 'devisee', 'legatee'],
   'intestate': ['without a will', 'intestacy'],
-  
+
   // Family law terms
   'divorce': ['dissolution', 'dissolution of marriage', 'marital dissolution'],
   'custody': ['child custody', 'legal custody', 'physical custody'],
@@ -173,10 +173,10 @@ const LEGAL_SYNONYMS: Record<string, string[]> = {
 function expandQuery(query: string): string {
   let expandedQuery = query;
   const lowerQuery = query.toLowerCase();
-  
+
   // Find matching terms and add synonyms
   const addedTerms: string[] = [];
-  
+
   for (const [term, synonyms] of Object.entries(LEGAL_SYNONYMS)) {
     if (lowerQuery.includes(term.toLowerCase())) {
       // Add first 2 synonyms that aren't already in the query
@@ -187,12 +187,12 @@ function expandQuery(query: string): string {
       }
     }
   }
-  
+
   if (addedTerms.length > 0) {
     expandedQuery = `${query} (related: ${addedTerms.join(', ')})`;
     console.log(`🔍 Query expanded: "${query}" → "${expandedQuery}"`);
   }
-  
+
   return expandedQuery;
 }
 
@@ -203,7 +203,7 @@ function expandQuery(query: string): string {
 async function getCachedEmbedding(query: string): Promise<{ embedding: number[]; cached: boolean; cacheType?: string }> {
   const cacheKey = normalizeQuery(query);
   const redisCacheKey = `emb:${cacheKey.substring(0, 100)}`; // Limit key length
-  
+
   // Check in-memory cache first (fastest)
   const memCached = embeddingCache.get(cacheKey);
   if (memCached) {
@@ -211,7 +211,7 @@ async function getCachedEmbedding(query: string): Promise<{ embedding: number[];
     console.log(`📦 Memory cache HIT`);
     return { embedding: memCached.embedding, cached: true, cacheType: 'memory' };
   }
-  
+
   // Check Redis cache (cross-request persistence)
   const redisCached = await getRedisCache(redisCacheKey);
   if (redisCached) {
@@ -219,11 +219,11 @@ async function getCachedEmbedding(query: string): Promise<{ embedding: number[];
     embeddingCache.set(cacheKey, { embedding: redisCached, timestamp: Date.now() });
     return { embedding: redisCached, cached: true, cacheType: 'redis' };
   }
-  
+
   // Generate new embedding
   console.log(`🔄 Cache MISS - generating embedding`);
   const embedding = await generateEmbedding(query);
-  
+
   // Store in both caches
   // Memory cache with LRU eviction
   if (embeddingCache.size >= EMBEDDING_CACHE_SIZE) {
@@ -238,10 +238,10 @@ async function getCachedEmbedding(query: string): Promise<{ embedding: number[];
     if (oldestKey) embeddingCache.delete(oldestKey);
   }
   embeddingCache.set(cacheKey, { embedding, timestamp: Date.now() });
-  
+
   // Redis cache (async, don't await)
-  setRedisCache(redisCacheKey, embedding).catch(() => {});
-  
+  setRedisCache(redisCacheKey, embedding).catch(() => { });
+
   return { embedding, cached: false };
 }
 
@@ -343,12 +343,31 @@ export default async function handler(req: any, res: any) {
       expandedQuery = `${queryBoost} - ${expandedQuery}`;
       console.log(`📜 Query expanded with statutory boost`);
     }
-    
+
     // Generate query embedding using OpenAI (with caching)
-    const startTime = Date.now();
-    const { embedding, cached } = await getCachedEmbedding(expandedQuery);
-    const embeddingTime = Date.now() - startTime;
-    console.log(`⏱️ Embedding ${cached ? 'retrieved from cache' : 'generated'} in ${embeddingTime}ms`);
+    let embedding: number[] = [];
+    let cached = false;
+
+    try {
+      const startTime = Date.now();
+      const result = await getCachedEmbedding(expandedQuery);
+      embedding = result.embedding;
+      cached = result.cached;
+      const embeddingTime = Date.now() - startTime;
+      console.log(`⏱️ Embedding ${cached ? 'retrieved from cache' : 'generated'} in ${embeddingTime}ms`);
+    } catch (err: any) {
+      console.error('⚠️ Failed to generate embedding (likely invalid OpenAI key). Returning empty results.');
+      // Return empty successful response so the chat doesn't crash
+      res.status(200).json({
+        sources: [],
+        context: '',
+        isCEB: true,
+        category: 'error',
+        confidence: 0,
+        _warning: 'Embedding generation failed'
+      });
+      return;
+    }
 
     // Determine namespace(s) to search
     const namespaces = category
@@ -364,7 +383,7 @@ export default async function handler(req: any, res: any) {
           vector: embedding,
           topK,
           includeMetadata: true,
-          namespace: ns,
+          ...({ namespace: ns } as any),
         });
 
         // Filter by minimum score
@@ -379,15 +398,14 @@ export default async function handler(req: any, res: any) {
 
     // Sort by score (descending)
     const sortedResults = allResults.sort((a: any, b: any) => b.score - a.score);
-    
+
     // Deduplicate results based on content similarity
     const topResults = deduplicateResults(sortedResults, topK);
 
-    console.log(`✅ Found ${topResults.length} results (avg confidence: ${
-      topResults.length > 0
-        ? (topResults.reduce((sum: number, r: any) => sum + r.score, 0) / topResults.length).toFixed(2)
-        : 0
-    })`);
+    console.log(`✅ Found ${topResults.length} results (avg confidence: ${topResults.length > 0
+      ? (topResults.reduce((sum: number, r: any) => sum + r.score, 0) / topResults.length).toFixed(2)
+      : 0
+      })`);
 
     // Format results as CEBSource objects
     const sources = topResults.map((result: any) => ({
@@ -454,24 +472,24 @@ function deduplicateResults(results: any[], topK: number): any[] {
   // Use simple hash-based deduplication on first 500 chars of text
   const seen = new Set<string>();
   const deduplicated: any[] = [];
-  
+
   for (const result of results) {
     if (deduplicated.length >= topK) break;
-    
+
     const text = (result.metadata?.text || '').substring(0, 500).toLowerCase().trim();
-    
+
     // Create a simple hash key from the text
     const hashKey = text.replace(/\s+/g, ' ');
-    
+
     if (seen.has(hashKey)) {
       console.log(`🔄 Skipping duplicate: "${result.metadata?.title?.substring(0, 40)}..."`);
       continue;
     }
-    
+
     seen.add(hashKey);
     deduplicated.push(result);
   }
-  
+
   console.log(`📊 Deduplication: ${results.length} → ${deduplicated.length} unique results`);
   return deduplicated;
 }

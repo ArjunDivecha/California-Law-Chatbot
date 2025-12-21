@@ -17,7 +17,7 @@ export default async function handler(req: any, res: any) {
     const before = (req.query?.before || '').toString().trim(); // Date filter: before (YYYY-MM-DD)
     const page = parseInt(req.query?.page as string) || 1;    // Pagination support
     const californiaOnly = (req.query?.californiaOnly || '').toString().toLowerCase() === 'true';
-    
+
     // Cap limit at 50 for performance
     const cappedLimit = Math.min(Math.max(1, limit), 50);
 
@@ -28,8 +28,8 @@ export default async function handler(req: any, res: any) {
     }
 
     // Build endpoint with date filters and pagination
-    let endpoint = `https://www.courtlistener.com/api/rest/v4/search/?q=${encodeURIComponent(q)}&type=o&order_by=dateFiled%20desc&stat_Precedential=on${californiaOnly ? "&court=ca" : ""}`;
-    
+    let endpoint = `https://www.courtlistener.com/api/rest/v4/search/?q=${encodeURIComponent(q)}&type=o&order_by=score%20desc&stat_Precedential=on${californiaOnly ? "&court=ca" : ""}`;
+
     if (after) {
       endpoint += `&filed_after=${after}`;
     }
@@ -60,7 +60,13 @@ export default async function handler(req: any, res: any) {
     const topResults = results.slice(0, cappedLimit);
 
     const content = topResults
-      .map((r: any, i: number) => `Result ${i + 1}:\nCase Name: ${r.caseName}\nCitation: ${r.citation}\nDate Filed: ${r.dateFiled}\nSnippet: ${r.snippet}`)
+      .map((r: any, i: number) => {
+        const snippet = r.snippet || r.opinions?.[0]?.snippet || 'No snippet available';
+        const opinionId = r.id || r.opinions?.[0]?.id || '';
+        const clusterId = r.cluster_id || '';
+
+        return `Result ${i + 1}:\nCase Name: ${r.caseName}\nCitation: ${r.citation}\nDate Filed: ${r.dateFiled}\nID: ${opinionId} (Cluster: ${clusterId})\nSnippet: ${snippet}`;
+      })
       .join('\n\n');
 
     const sources = topResults.map((r: any) => ({

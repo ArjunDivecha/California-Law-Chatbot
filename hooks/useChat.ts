@@ -8,7 +8,7 @@ export const useChat = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [sourceMode, setSourceMode] = useState<SourceMode>('hybrid'); // Default to hybrid mode
   const [practiceArea, setPracticeArea] = useState<PracticeArea>(''); // Default to all practice areas
-  
+
   const chatServiceRef = useRef<ChatService | null>(null);
   const courtListenerApiKeyRef = useRef<string | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -34,26 +34,26 @@ export const useChat = () => {
       try {
         await fetchConfig();
         chatServiceRef.current = new ChatService(courtListenerApiKeyRef.current);
-        
+
         const initialText = 'Hello! I\'m your California law research assistant. I can help you with questions about California statutes, case law, and legal research. What would you like to know?';
 
-      setMessages([
-        {
-          id: 'initial-bot-message',
-          role: MessageRole.BOT,
-          text: initialText,
-          // No sourceMode - welcome message doesn't need mode badge
-        },
-      ]);
-    } catch (error) {
-      console.error("Failed to initialize ChatService:", error);
-      const text = error instanceof Error ? error.message : "An unknown error occurred.";
-      setMessages([{
+        setMessages([
+          {
+            id: 'initial-bot-message',
+            role: MessageRole.BOT,
+            text: initialText,
+            // No sourceMode - welcome message doesn't need mode badge
+          },
+        ]);
+      } catch (error) {
+        console.error("Failed to initialize ChatService:", error);
+        const text = error instanceof Error ? error.message : "An unknown error occurred.";
+        setMessages([{
           id: 'init-error-message',
           role: MessageRole.BOT,
           text: `Critical Error: Could not start the chat service. Please check your Gemini API key configuration and console for details.\nDetails: ${text}`
-      }]);
-    }
+        }]);
+      }
     };
 
     initializeChat();
@@ -110,26 +110,54 @@ export const useChat = () => {
       }));
 
       // Create streaming callbacks
+      // Create streaming callbacks with throttling
+      const lastUpdateRef = { current: Date.now() };
+      const accumulatedTextRef = { current: '' };
+
       const streamCallbacks = {
         onToken: (token: string) => {
-          console.log('📝 Received token:', token.substring(0, 50) + (token.length > 50 ? '...' : ''));
-          // Update the bot message with new token
-          setMessages(prevMessages =>
-            prevMessages.map(msg =>
-              msg.id === botMessageId
-                ? { ...msg, text: msg.text + token }
-                : msg
-            )
-          );
+          accumulatedTextRef.current += token;
+
+          const now = Date.now();
+          // Throttle updates to ~60fps (16ms) or even slower (50ms) to prevent UI freeze
+          if (now - lastUpdateRef.current > 50) {
+            setMessages(prevMessages =>
+              prevMessages.map(msg =>
+                msg.id === botMessageId
+                  ? { ...msg, text: msg.text + accumulatedTextRef.current }
+                  : msg
+              )
+            );
+            accumulatedTextRef.current = '';
+            lastUpdateRef.current = now;
+          }
         },
         onComplete: (fullText: string) => {
           console.log('✅ Streaming completed. Total length:', fullText.length);
+          // Ensure final text is set (flush any remaining accumulated text)
+          setMessages(prevMessages =>
+            prevMessages.map(msg =>
+              msg.id === botMessageId
+                ? { ...msg, text: fullText } // Use authoritative full text
+                : msg
+            )
+          );
         },
         onMetadata: (metadata: any) => {
           console.log('📊 Received metadata:', metadata);
         },
         onError: (error: Error) => {
           console.error('❌ Streaming error:', error);
+          // Flush pending text on error too
+          if (accumulatedTextRef.current) {
+            setMessages(prevMessages =>
+              prevMessages.map(msg =>
+                msg.id === botMessageId
+                  ? { ...msg, text: msg.text + accumulatedTextRef.current }
+                  : msg
+              )
+            );
+          }
         }
       };
 
@@ -144,15 +172,15 @@ export const useChat = () => {
             prevMessages.map(msg =>
               msg.id === botMessageId
                 ? {
-                    ...msg,
-                    text: response.text,
-                    sources: response.sources,
-                    verificationStatus: response.verificationStatus as VerificationStatus,
-                    claims: response.claims,
-                    sourceMode: response.sourceMode,
-                    isCEBBased: response.isCEBBased,
-                    cebCategory: response.cebCategory,
-                  }
+                  ...msg,
+                  text: response.text,
+                  sources: response.sources,
+                  verificationStatus: response.verificationStatus as VerificationStatus,
+                  claims: response.claims,
+                  sourceMode: response.sourceMode,
+                  isCEBBased: response.isCEBBased,
+                  cebCategory: response.cebCategory,
+                }
                 : msg
             )
           );
@@ -164,11 +192,11 @@ export const useChat = () => {
             prevMessages.map(msg =>
               msg.id === botMessageId
                 ? {
-                    ...msg,
-                    text: response.text,
-                    verificationStatus: response.verificationStatus,
-                    verificationReport: response.verificationReport,
-                  }
+                  ...msg,
+                  text: response.text,
+                  verificationStatus: response.verificationStatus,
+                  verificationReport: response.verificationReport,
+                }
                 : msg
             )
           );
@@ -198,16 +226,16 @@ export const useChat = () => {
         prevMessages.map(msg =>
           msg.id === botMessageId
             ? {
-                ...msg,
-                text: msg.text || botResponseData.text, // Preserve streamed text
-                sources: botResponseData.sources,
-                verificationStatus: botResponseData.verificationStatus,
-                verificationReport: botResponseData.verificationReport,
-                claims: botResponseData.claims,
-                sourceMode: botResponseData.sourceMode,
-                isCEBBased: botResponseData.isCEBBased,
-                cebCategory: botResponseData.cebCategory,
-              }
+              ...msg,
+              text: msg.text || botResponseData.text, // Preserve streamed text
+              sources: botResponseData.sources,
+              verificationStatus: botResponseData.verificationStatus,
+              verificationReport: botResponseData.verificationReport,
+              claims: botResponseData.claims,
+              sourceMode: botResponseData.sourceMode,
+              isCEBBased: botResponseData.isCEBBased,
+              cebCategory: botResponseData.cebCategory,
+            }
             : msg
         )
       );
@@ -226,9 +254,9 @@ export const useChat = () => {
         prevMessages.map(msg =>
           msg.id === botMessageId
             ? {
-                ...msg,
-                text: "I'm sorry, but I'm having trouble connecting to my knowledge base right now. Please try again in a moment.",
-              }
+              ...msg,
+              text: "I'm sorry, but I'm having trouble connecting to my knowledge base right now. Please try again in a moment.",
+            }
             : msg
         )
       );
