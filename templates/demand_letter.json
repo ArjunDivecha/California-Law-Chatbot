@@ -1,0 +1,173 @@
+{
+  "id": "demand_letter",
+  "name": "Demand Letter",
+  "description": "Formal demand letter for payment, performance, or cease and desist",
+  "practiceAreas": ["civil_litigation", "business"],
+  "cebCategories": ["business_litigation", "business_transactions"],
+
+  "variables": [
+    {
+      "id": "sender_name",
+      "name": "Sender Name",
+      "type": "text",
+      "required": true,
+      "placeholder": "Attorney Name"
+    },
+    {
+      "id": "sender_firm",
+      "name": "Firm Name",
+      "type": "text",
+      "required": false,
+      "placeholder": "Law Firm Name"
+    },
+    {
+      "id": "sender_address",
+      "name": "Sender Address",
+      "type": "textarea",
+      "required": true,
+      "placeholder": "123 Main St\\nCity, CA 90000"
+    },
+    {
+      "id": "recipient_name",
+      "name": "Recipient Name",
+      "type": "text",
+      "required": true,
+      "placeholder": "Recipient's Full Name"
+    },
+    {
+      "id": "recipient_address",
+      "name": "Recipient Address",
+      "type": "textarea",
+      "required": true,
+      "placeholder": "456 Oak Ave\\nCity, CA 90000"
+    },
+    {
+      "id": "date",
+      "name": "Date",
+      "type": "date",
+      "required": true,
+      "default": "today"
+    },
+    {
+      "id": "demand_type",
+      "name": "Type of Demand",
+      "type": "select",
+      "required": true,
+      "options": [
+        "Payment of Debt",
+        "Breach of Contract",
+        "Cease and Desist",
+        "Return of Property",
+        "Performance of Agreement"
+      ]
+    },
+    {
+      "id": "amount",
+      "name": "Amount Demanded (if applicable)",
+      "type": "text",
+      "required": false,
+      "placeholder": "$10,000.00"
+    },
+    {
+      "id": "response_deadline",
+      "name": "Response Deadline (days)",
+      "type": "number",
+      "required": true,
+      "default": "30"
+    },
+    {
+      "id": "client_name",
+      "name": "Client Name",
+      "type": "text",
+      "required": true,
+      "placeholder": "Your Client's Name"
+    }
+  ],
+
+  "sections": [
+    {
+      "id": "letterhead",
+      "name": "Letterhead",
+      "order": 1,
+      "type": "template",
+      "content": "**{{sender_firm}}**\n\n{{sender_address}}\n\n---\n\n{{date}}\n\n**VIA CERTIFIED MAIL, RETURN RECEIPT REQUESTED**\n\n{{recipient_name}}\n{{recipient_address}}\n\n**Re: Demand on Behalf of {{client_name}}**\n\nDear {{recipient_name}}:",
+      "required": true,
+      "editable": false
+    },
+    {
+      "id": "introduction",
+      "name": "Introduction",
+      "order": 2,
+      "type": "generated",
+      "promptInstruction": "Write a formal opening paragraph that: (1) Identifies the sender as counsel for the client, (2) States the purpose of the letter, (3) Sets a professional but firm tone. Keep it brief - 2-3 sentences.",
+      "maxLengthWords": 100,
+      "required": true
+    },
+    {
+      "id": "factual_background",
+      "name": "Factual Background",
+      "order": 3,
+      "type": "generated",
+      "promptInstruction": "Describe the relevant facts that give rise to the demand. Be specific about dates, agreements, and actions taken. Present facts objectively but from the client's perspective. Use placeholders like [SPECIFIC DATE] or [SPECIFIC AMOUNT] for facts to be filled in.",
+      "maxLengthWords": 300,
+      "required": true
+    },
+    {
+      "id": "legal_basis",
+      "name": "Legal Basis",
+      "order": 4,
+      "type": "generated",
+      "promptInstruction": "Explain the legal basis for the demand. Cite applicable California statutes, case law, or contractual provisions. Be authoritative but not overly aggressive. This section establishes that the client has valid legal claims.",
+      "maxLengthWords": 300,
+      "required": true
+    },
+    {
+      "id": "demand",
+      "name": "Specific Demand",
+      "order": 5,
+      "type": "generated",
+      "promptInstruction": "State the specific demand clearly. What exactly must the recipient do? By when? Include the amount if monetary, or specific actions if non-monetary. Make the demand clear and unambiguous. Reference the response deadline from the variables.",
+      "maxLengthWords": 200,
+      "required": true
+    },
+    {
+      "id": "consequences",
+      "name": "Consequences of Non-Compliance",
+      "order": 6,
+      "type": "generated",
+      "promptInstruction": "Explain the consequences if the recipient fails to comply. Reference potential legal action, damages, attorney fees, and costs. Be firm but professional - avoid threats that could be seen as improper. Mention that this letter may be used as evidence of bad faith if litigation ensues.",
+      "maxLengthWords": 200,
+      "required": true
+    },
+    {
+      "id": "closing",
+      "name": "Closing",
+      "order": 7,
+      "type": "template",
+      "content": "Please govern yourself accordingly.\n\nVery truly yours,\n\n{{sender_firm}}\n\n\n_______________________\n{{sender_name}}\n\ncc: {{client_name}}\n\n*This letter is sent in an attempt to resolve this matter without litigation. This letter is not intended as a complete statement of the facts or law, and nothing herein should be construed as a waiver of any rights or remedies, all of which are expressly reserved.*",
+      "required": true,
+      "editable": true
+    }
+  ],
+
+  "formatting": {
+    "fontFamily": "Times New Roman",
+    "fontSize": 12,
+    "lineSpacing": "single",
+    "margins": {
+      "top": 1,
+      "bottom": 1,
+      "left": 1,
+      "right": 1
+    },
+    "pageNumbers": false,
+    "headerStyle": "left"
+  },
+
+  "metadata": {
+    "version": "1.0",
+    "created": "2026-01-30",
+    "author": "California Law Chatbot",
+    "crcCompliance": null
+  }
+}

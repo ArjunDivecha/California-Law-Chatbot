@@ -1,0 +1,463 @@
+/**
+ * useDrafting Hook
+ * 
+ * State management for the document drafting workflow.
+ */
+
+import { useState, useCallback, useRef } from 'react';
+import type {
+  DocumentTemplate,
+  GeneratedDocument,
+  GeneratedSection,
+  DocumentStatus,
+  DraftRequest,
+  DraftOptions,
+  TemplateSummary,
+  VariableDefinition,
+} from '../types';
+
+// =============================================================================
+// TYPES
+// =============================================================================
+
+interface UseDraftingReturn {
+  // Template state
+  templates: TemplateSummary[];
+  templatesLoading: boolean;
+  selectedTemplateId: string | null;
+  template: DocumentTemplate | null;
+  
+  // Variable state
+  variables: Record<string, string>;
+  
+  // Document state
+  document: GeneratedDocument | null;
+  sections: GeneratedSection[];
+  status: DocumentStatus;
+  progress: number;
+  progressMessage: string;
+  generatingSection: string | null;
+  
+  // Error state
+  error: string | null;
+  
+  // Selected section for revision
+  selectedSection: string | null;
+  
+  // Actions
+  loadTemplates: () => Promise<void>;
+  selectTemplate: (templateId: string) => Promise<void>;
+  setVariables: (variables: Record<string, string>) => void;
+  startGeneration: (instructions: string) => Promise<void>;
+  reviseSection: (sectionId: string, instructions: string) => Promise<void>;
+  selectSection: (sectionId: string | null) => void;
+  exportDocument: (format: 'html' | 'pdf') => Promise<void>;
+  reset: () => void;
+}
+
+// =============================================================================
+// HOOK
+// =============================================================================
+
+export function useDrafting(): UseDraftingReturn {
+  // Template state
+  const [templates, setTemplates] = useState<TemplateSummary[]>([]);
+  const [templatesLoading, setTemplatesLoading] = useState(false);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
+  const [template, setTemplate] = useState<DocumentTemplate | null>(null);
+  
+  // Variable state
+  const [variables, setVariablesState] = useState<Record<string, string>>({});
+  
+  // Document state
+  const [document, setDocument] = useState<GeneratedDocument | null>(null);
+  const [sections, setSections] = useState<GeneratedSection[]>([]);
+  const [status, setStatus] = useState<DocumentStatus>('initializing');
+  const [progress, setProgress] = useState(0);
+  const [progressMessage, setProgressMessage] = useState('');
+  const [generatingSection, setGeneratingSection] = useState<string | null>(null);
+  
+  // Error state
+  const [error, setError] = useState<string | null>(null);
+  
+  // Selected section
+  const [selectedSection, setSelectedSection] = useState<string | null>(null);
+  
+  // Event source ref for cleanup
+  const eventSourceRef = useRef<EventSource | null>(null);
+
+  // ==========================================================================
+  // LOAD TEMPLATES
+  // ==========================================================================
+  
+  const loadTemplates = useCallback(async () => {
+    setTemplatesLoading(true);
+    setError(null);
+    
+    try {
+      const response = await fetch('/api/templates');
+      if (!response.ok) throw new Error('Failed to load templates');
+      
+      const data = await response.json();
+      setTemplates(data.templates || []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load templates');
+    } finally {
+      setTemplatesLoading(false);
+    }
+  }, []);
+
+  // ==========================================================================
+  // SELECT TEMPLATE
+  // ==========================================================================
+  
+  const selectTemplate = useCallback(async (templateId: string) => {
+    setSelectedTemplateId(templateId);
+    setError(null);
+    
+    try {
+      const response = await fetch(`/api/template-by-id?id=${templateId}`);
+      if (!response.ok) throw new Error('Failed to load template');
+      
+      const templateData: DocumentTemplate = await response.json();
+      setTemplate(templateData);
+      
+      // Initialize variables with defaults
+      const defaults: Record<string, string> = {};
+      templateData.variables.forEach((v: VariableDefinition) => {
+        if (v.default === 'today') {
+          defaults[v.id] = new Date().toISOString().split('T')[0];
+        } else if (v.default) {
+          defaults[v.id] = v.default;
+        }
+      });
+      setVariablesState(defaults);
+      
+      // Reset document state
+      setSections([]);
+      setDocument(null);
+      setStatus('initializing');
+      setProgress(0);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load template');
+    }
+  }, []);
+
+  // ==========================================================================
+  // SET VARIABLES
+  // ==========================================================================
+  
+  const setVariables = useCallback((newVariables: Record<string, string>) => {
+    setVariablesState(newVariables);
+  }, []);
+
+  // ==========================================================================
+  // START GENERATION
+  // ==========================================================================
+  
+  const startGeneration = useCallback(async (instructions: string) => {
+    if (!template) {
+      setError('No template selected');
+      return;
+    }
+    
+    // Reset state
+    setStatus('researching');
+    setProgress(0);
+    setError(null);
+    setSections([]);
+    setDocument(null);
+    setProgressMessage('Starting document generation...');
+    
+    // Build request
+    const request: DraftRequest = {
+      documentType: template.id as any,
+      userInstructions: instructions,
+      variables,
+      options: {
+        citationStyle: 'california',
+        includeTableOfAuthorities: true,
+        maxLength: 'medium',
+        tone: 'formal',
+      },
+    };
+    
+    try {
+      // Use fetch for SSE
+      const response = await fetch('/api/orchestrate-document', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(request),
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Generation failed: ${response.status}`);
+      }
+      
+      // Read SSE stream
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+      
+      if (!reader) {
+        throw new Error('No response body');
+      }
+      
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        
+        const chunk = decoder.decode(value);
+        const lines = chunk.split('\n');
+        
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const data = JSON.parse(line.slice(6));
+              handleStreamEvent(data);
+            } catch (e) {
+              // Ignore parse errors
+            }
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Generation error:', err);
+      setError(err instanceof Error ? err.message : 'Generation failed');
+      setStatus('error');
+    }
+  }, [template, variables]);
+
+  // ==========================================================================
+  // HANDLE STREAM EVENTS
+  // ==========================================================================
+  
+  const handleStreamEvent = useCallback((event: any) => {
+    switch (event.type) {
+      case 'progress':
+        setStatus(event.phase);
+        setProgress(event.percentComplete);
+        setProgressMessage(event.message);
+        if (event.currentSection) {
+          setGeneratingSection(event.currentSection);
+        }
+        break;
+        
+      case 'section_complete':
+        setSections((prev) => {
+          const existing = prev.findIndex((s) => s.sectionId === event.sectionId);
+          const newSection: GeneratedSection = {
+            sectionId: event.sectionId,
+            sectionName: event.sectionName,
+            content: event.content,
+            wordCount: event.wordCount,
+            citations: [],
+            generatedAt: new Date().toISOString(),
+            revisionCount: 0,
+          };
+          
+          if (existing >= 0) {
+            const updated = [...prev];
+            updated[existing] = newSection;
+            return updated;
+          }
+          return [...prev, newSection];
+        });
+        setGeneratingSection(null);
+        break;
+        
+      case 'document_complete':
+        setDocument(event.document);
+        setStatus('complete');
+        setProgress(100);
+        setProgressMessage('Document generation complete');
+        setGeneratingSection(null);
+        break;
+        
+      case 'error':
+        setError(event.error);
+        setStatus('error');
+        break;
+    }
+  }, []);
+
+  // ==========================================================================
+  // REVISE SECTION
+  // ==========================================================================
+  
+  const reviseSection = useCallback(async (sectionId: string, instructions: string) => {
+    const section = sections.find((s) => s.sectionId === sectionId);
+    if (!section) {
+      setError('Section not found');
+      return;
+    }
+    
+    setGeneratingSection(sectionId);
+    setError(null);
+    
+    try {
+      const response = await fetch('/api/revise-section', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          documentId: document?.id,
+          sectionId,
+          sectionName: section.sectionName,
+          revisionInstructions: instructions,
+          currentContent: section.content,
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Revision failed');
+      }
+      
+      const result = await response.json();
+      
+      // Update section
+      setSections((prev) =>
+        prev.map((s) =>
+          s.sectionId === sectionId
+            ? {
+                ...s,
+                content: result.revisedContent,
+                wordCount: result.wordCount,
+                revisedAt: new Date().toISOString(),
+                revisionCount: s.revisionCount + 1,
+              }
+            : s
+        )
+      );
+      
+      setSelectedSection(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Revision failed');
+    } finally {
+      setGeneratingSection(null);
+    }
+  }, [sections, document]);
+
+  // ==========================================================================
+  // SELECT SECTION
+  // ==========================================================================
+  
+  const selectSection = useCallback((sectionId: string | null) => {
+    setSelectedSection(sectionId);
+  }, []);
+
+  // ==========================================================================
+  // EXPORT DOCUMENT
+  // ==========================================================================
+  
+  const exportDocument = useCallback(async (format: 'html' | 'pdf') => {
+    if (!document) {
+      setError('No document to export');
+      return;
+    }
+    
+    try {
+      const response = await fetch('/api/export-document', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          document,
+          format,
+          formatting: {
+            includeTableOfAuthorities: true,
+          },
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Export failed');
+      }
+      
+      if (format === 'html') {
+        const html = await response.text();
+        const blob = new Blob([html], { type: 'text/html' });
+        const url = URL.createObjectURL(blob);
+        const a = window.document.createElement('a');
+        a.href = url;
+        a.download = `${document.templateId}_${Date.now()}.html`;
+        a.click();
+        URL.revokeObjectURL(url);
+      } else {
+        // For PDF, open in new window for printing
+        const html = await response.text();
+        const printWindow = window.open('', '_blank');
+        if (printWindow) {
+          printWindow.document.write(html);
+          printWindow.document.close();
+          printWindow.print();
+        }
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Export failed');
+    }
+  }, [document]);
+
+  // ==========================================================================
+  // RESET
+  // ==========================================================================
+  
+  const reset = useCallback(() => {
+    setSelectedTemplateId(null);
+    setTemplate(null);
+    setVariablesState({});
+    setDocument(null);
+    setSections([]);
+    setStatus('initializing');
+    setProgress(0);
+    setProgressMessage('');
+    setError(null);
+    setSelectedSection(null);
+    setGeneratingSection(null);
+    
+    if (eventSourceRef.current) {
+      eventSourceRef.current.close();
+      eventSourceRef.current = null;
+    }
+  }, []);
+
+  return {
+    // Template state
+    templates,
+    templatesLoading,
+    selectedTemplateId,
+    template,
+    
+    // Variable state
+    variables,
+    
+    // Document state
+    document,
+    sections,
+    status,
+    progress,
+    progressMessage,
+    generatingSection,
+    
+    // Error state
+    error,
+    
+    // Selected section
+    selectedSection,
+    
+    // Actions
+    loadTemplates,
+    selectTemplate,
+    setVariables,
+    startGeneration,
+    reviseSection,
+    selectSection,
+    exportDocument,
+    reset,
+  };
+}
+
+export default useDrafting;

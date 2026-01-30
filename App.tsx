@@ -5,12 +5,16 @@ import ChatWindow from './components/ChatWindow';
 import ChatInput from './components/ChatInput';
 import ErrorBoundary from './components/ErrorBoundary';
 import { SourceModeSelector } from './components/SourceModeSelector';
+import { ModeSelector } from './components/ModeSelector';
+import { DraftingMode } from './components/drafting/DraftingMode';
+import type { AppMode } from './types';
 
 const App: React.FC = () => {
   const { messages, sendMessage, isLoading, sourceMode, setSourceMode } = useChat();
   const [showConfidentialityWarning, setShowConfidentialityWarning] = useState(true);
   const [showAIDisclosure, setShowAIDisclosure] = useState(false);
   const [isClient, setIsClient] = useState(false);
+  const [appMode, setAppMode] = useState<AppMode>('research');
 
   // Only access localStorage on client side
   useEffect(() => {
@@ -190,7 +194,7 @@ const App: React.FC = () => {
       )}
 
        <header className="bg-white border-b border-gray-200 p-4 shadow-sm">
-        <div className="w-[85%] mx-auto flex items-center">
+        <div className="w-[85%] mx-auto flex items-center justify-between">
           <div className="flex items-center">
             <img src="https://picsum.photos/seed/lawbot/40/40" alt="CA Seal" className="w-10 h-10 rounded-full mr-4" />
             <div>
@@ -198,6 +202,8 @@ const App: React.FC = () => {
               <p className="text-sm text-gray-500">Your AI legal research assistant</p>
             </div>
           </div>
+          {/* App Mode Selector - Research vs Drafting */}
+          <ModeSelector mode={appMode} onModeChange={setAppMode} />
         </div>
         {/* Fixed disclaimer header */}
         <div className="w-[85%] mx-auto mt-3 pt-3 border-t border-gray-200">
@@ -207,17 +213,23 @@ const App: React.FC = () => {
             </p>
           </div>
         </div>
-        {/* Source Mode Selector */}
-        <div className="w-[85%] mx-auto mt-3">
-          <SourceModeSelector mode={sourceMode} onModeChange={setSourceMode} />
-        </div>
+        {/* Source Mode Selector - Only show in research mode */}
+        {appMode === 'research' && (
+          <div className="w-[85%] mx-auto mt-3">
+            <SourceModeSelector mode={sourceMode} onModeChange={setSourceMode} />
+          </div>
+        )}
       </header>
 
       <main className="flex-1 overflow-hidden">
-      <div className="h-full w-[85%] mx-auto flex flex-col">
-      <ChatWindow messages={messages} isLoading={isLoading} />
-      <ChatInput onSend={sendMessage} disabled={isLoading} />
-      </div>
+        {appMode === 'research' ? (
+          <div className="h-full w-[85%] mx-auto flex flex-col">
+            <ChatWindow messages={messages} isLoading={isLoading} />
+            <ChatInput onSend={sendMessage} disabled={isLoading} />
+          </div>
+        ) : (
+          <DraftingMode onModeChange={() => setAppMode('research')} />
+        )}
       </main>
     </div>
     </ErrorBoundary>

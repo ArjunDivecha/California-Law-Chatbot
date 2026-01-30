@@ -1,0 +1,54 @@
+{
+  "version": "1.0",
+  "updated": "2026-01-30",
+  "templates": [
+    {
+      "id": "legal_memo",
+      "name": "Legal Research Memorandum",
+      "description": "Internal legal memorandum analyzing a legal question with IRAC/CREAC structure",
+      "practiceAreas": ["all"],
+      "complexity": "medium",
+      "estimatedTime": "60-90 seconds"
+    },
+    {
+      "id": "demand_letter",
+      "name": "Demand Letter",
+      "description": "Formal demand letter for payment, performance, or cease and desist",
+      "practiceAreas": ["civil_litigation", "business"],
+      "complexity": "low",
+      "estimatedTime": "30-45 seconds"
+    },
+    {
+      "id": "client_letter",
+      "name": "Client Advisory Letter",
+      "description": "Letter advising client on legal matter, options, and recommendations",
+      "practiceAreas": ["all"],
+      "complexity": "low",
+      "estimatedTime": "30-45 seconds"
+    },
+    {
+      "id": "motion_compel",
+      "name": "Motion to Compel Discovery",
+      "description": "Motion to compel further responses to discovery requests under CCP sections 2030-2033",
+      "practiceAreas": ["civil_litigation"],
+      "complexity": "high",
+      "estimatedTime": "90-120 seconds"
+    },
+    {
+      "id": "discovery_request",
+      "name": "Discovery Requests",
+      "description": "Form interrogatories, special interrogatories, or requests for production",
+      "practiceAreas": ["civil_litigation"],
+      "complexity": "medium",
+      "estimatedTime": "60-90 seconds"
+    },
+    {
+      "id": "trust_basic",
+      "name": "Revocable Living Trust",
+      "description": "Basic revocable living trust document for estate planning",
+      "practiceAreas": ["trusts_estates"],
+      "complexity": "high",
+      "estimatedTime": "90-120 seconds"
+    }
+  ]
+}

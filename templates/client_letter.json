@@ -1,0 +1,156 @@
+{
+  "id": "client_letter",
+  "name": "Client Advisory Letter",
+  "description": "Letter advising client on legal matter, options, and recommendations",
+  "practiceAreas": ["all"],
+  "cebCategories": ["trusts_estates", "family_law", "business_litigation", "business_entities", "business_transactions"],
+
+  "variables": [
+    {
+      "id": "attorney_name",
+      "name": "Attorney Name",
+      "type": "text",
+      "required": true,
+      "placeholder": "Your Name"
+    },
+    {
+      "id": "firm_name",
+      "name": "Firm Name",
+      "type": "text",
+      "required": false,
+      "placeholder": "Law Firm Name"
+    },
+    {
+      "id": "firm_address",
+      "name": "Firm Address",
+      "type": "textarea",
+      "required": true,
+      "placeholder": "123 Main St\\nCity, CA 90000"
+    },
+    {
+      "id": "client_name",
+      "name": "Client Name",
+      "type": "text",
+      "required": true,
+      "placeholder": "Client's Name"
+    },
+    {
+      "id": "client_address",
+      "name": "Client Address",
+      "type": "textarea",
+      "required": true,
+      "placeholder": "456 Oak Ave\\nCity, CA 90000"
+    },
+    {
+      "id": "date",
+      "name": "Date",
+      "type": "date",
+      "required": true,
+      "default": "today"
+    },
+    {
+      "id": "matter_description",
+      "name": "Matter Description",
+      "type": "text",
+      "required": true,
+      "placeholder": "Brief description of the matter"
+    },
+    {
+      "id": "salutation",
+      "name": "Salutation",
+      "type": "text",
+      "required": true,
+      "default": "Dear",
+      "placeholder": "Dear"
+    }
+  ],
+
+  "sections": [
+    {
+      "id": "letterhead",
+      "name": "Letterhead",
+      "order": 1,
+      "type": "template",
+      "content": "**{{firm_name}}**\n\n{{firm_address}}\n\n---\n\n{{date}}\n\n**PRIVILEGED AND CONFIDENTIAL**\n**ATTORNEY-CLIENT COMMUNICATION**\n\n{{client_name}}\n{{client_address}}\n\n**Re: {{matter_description}}**\n\n{{salutation}} {{client_name}}:",
+      "required": true,
+      "editable": false
+    },
+    {
+      "id": "introduction",
+      "name": "Introduction",
+      "order": 2,
+      "type": "generated",
+      "promptInstruction": "Write a warm but professional opening that: (1) Thanks the client for consulting with you or references your recent meeting/discussion, (2) States the purpose of the letter - to summarize your advice regarding the matter, (3) Notes that this letter reflects your understanding of the facts as discussed.",
+      "maxLengthWords": 100,
+      "required": true
+    },
+    {
+      "id": "facts_summary",
+      "name": "Summary of Facts",
+      "order": 3,
+      "type": "generated",
+      "promptInstruction": "Summarize the key facts as you understand them from the client. This serves to confirm your understanding and provides context for the analysis. Use placeholders like [SPECIFIC DATE] or [SPECIFIC FACT] for details to be confirmed. Ask the client to correct any inaccuracies.",
+      "maxLengthWords": 300,
+      "required": true
+    },
+    {
+      "id": "legal_analysis",
+      "name": "Legal Analysis",
+      "order": 4,
+      "type": "generated",
+      "promptInstruction": "Provide clear, accessible legal analysis. Explain the relevant law in terms the client can understand - avoid unnecessary jargon. Cite California law where appropriate. Explain how the law applies to the client's situation. Be honest about both strengths and weaknesses.",
+      "maxLengthWords": 500,
+      "required": true,
+      "subsectionsAllowed": true
+    },
+    {
+      "id": "options",
+      "name": "Options and Recommendations",
+      "order": 5,
+      "type": "generated",
+      "promptInstruction": "Present the client's options clearly. For each option: (1) Describe the action, (2) Explain pros and cons, (3) Discuss potential outcomes, (4) Estimate costs/timeline if applicable. Provide your recommendation and explain your reasoning. Emphasize that the decision is ultimately the client's.",
+      "maxLengthWords": 400,
+      "required": true,
+      "subsectionsAllowed": true
+    },
+    {
+      "id": "next_steps",
+      "name": "Next Steps",
+      "order": 6,
+      "type": "generated",
+      "promptInstruction": "Outline the recommended next steps. What does the client need to do? What information do you need from them? Are there any deadlines? Be specific and action-oriented.",
+      "maxLengthWords": 200,
+      "required": true
+    },
+    {
+      "id": "closing",
+      "name": "Closing",
+      "order": 7,
+      "type": "template",
+      "content": "Please review this letter carefully and let me know if you have any questions or if any facts need to be corrected. I look forward to discussing this matter further with you.\n\nVery truly yours,\n\n{{firm_name}}\n\n\n_______________________\n{{attorney_name}}\n\n*This letter is protected by the attorney-client privilege and contains confidential information. It is intended solely for the addressee. If you are not the intended recipient, please notify us immediately and destroy this letter.*",
+      "required": true,
+      "editable": true
+    }
+  ],
+
+  "formatting": {
+    "fontFamily": "Times New Roman",
+    "fontSize": 12,
+    "lineSpacing": "single",
+    "margins": {
+      "top": 1,
+      "bottom": 1,
+      "left": 1,
+      "right": 1
+    },
+    "pageNumbers": false,
+    "headerStyle": "left"
+  },
+
+  "metadata": {
+    "version": "1.0",
+    "created": "2026-01-30",
+    "author": "California Law Chatbot",
+    "crcCompliance": null
+  }
+}

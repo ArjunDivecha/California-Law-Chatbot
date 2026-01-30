@@ -1,0 +1,263 @@
+{
+  "id": "motion_compel",
+  "name": "Motion to Compel Discovery",
+  "description": "Motion to compel further responses to discovery requests under CCP sections 2030-2033",
+  "practiceAreas": ["civil_litigation"],
+  "cebCategories": ["business_litigation"],
+
+  "variables": [
+    {
+      "id": "court_name",
+      "name": "Court",
+      "type": "select",
+      "required": true,
+      "options": [
+        "Superior Court of California, County of Los Angeles",
+        "Superior Court of California, County of San Francisco",
+        "Superior Court of California, County of San Diego",
+        "Superior Court of California, County of Orange",
+        "Superior Court of California, County of Santa Clara",
+        "Superior Court of California, County of Alameda",
+        "Superior Court of California, County of Sacramento",
+        "Superior Court of California, County of Riverside",
+        "Superior Court of California, County of San Bernardino",
+        "Superior Court of California, County of [Other]"
+      ]
+    },
+    {
+      "id": "case_number",
+      "name": "Case Number",
+      "type": "text",
+      "required": true,
+      "placeholder": "XX-XXXXX"
+    },
+    {
+      "id": "plaintiff",
+      "name": "Plaintiff(s)",
+      "type": "text",
+      "required": true,
+      "placeholder": "Plaintiff Name"
+    },
+    {
+      "id": "defendant",
+      "name": "Defendant(s)",
+      "type": "text",
+      "required": true,
+      "placeholder": "Defendant Name"
+    },
+    {
+      "id": "moving_party",
+      "name": "Moving Party",
+      "type": "text",
+      "required": true,
+      "placeholder": "Party filing the motion"
+    },
+    {
+      "id": "responding_party",
+      "name": "Responding Party",
+      "type": "text",
+      "required": true,
+      "placeholder": "Party who must respond"
+    },
+    {
+      "id": "attorney_name",
+      "name": "Attorney Name",
+      "type": "text",
+      "required": true,
+      "placeholder": "Your Name"
+    },
+    {
+      "id": "firm_name",
+      "name": "Firm Name",
+      "type": "text",
+      "required": false,
+      "placeholder": "Law Firm Name"
+    },
+    {
+      "id": "bar_number",
+      "name": "State Bar Number",
+      "type": "text",
+      "required": true,
+      "placeholder": "123456"
+    },
+    {
+      "id": "discovery_type",
+      "name": "Discovery Type",
+      "type": "select",
+      "required": true,
+      "options": [
+        "Form Interrogatories",
+        "Special Interrogatories",
+        "Request for Production of Documents",
+        "Request for Admissions",
+        "Deposition Questions"
+      ]
+    },
+    {
+      "id": "discovery_set_number",
+      "name": "Discovery Set Number",
+      "type": "text",
+      "required": true,
+      "default": "One",
+      "placeholder": "One, Two, etc."
+    },
+    {
+      "id": "discovery_date",
+      "name": "Date Discovery Served",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "response_date",
+      "name": "Date Responses Received",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "hearing_date",
+      "name": "Hearing Date",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "hearing_time",
+      "name": "Hearing Time",
+      "type": "text",
+      "required": true,
+      "placeholder": "9:00 a.m."
+    },
+    {
+      "id": "department",
+      "name": "Department",
+      "type": "text",
+      "required": true,
+      "placeholder": "Department number"
+    },
+    {
+      "id": "sanctions_amount",
+      "name": "Sanctions Amount Requested",
+      "type": "text",
+      "required": false,
+      "placeholder": "$1,500.00"
+    }
+  ],
+
+  "sections": [
+    {
+      "id": "caption",
+      "name": "Caption",
+      "order": 1,
+      "type": "template",
+      "content": "{{attorney_name}} (State Bar No. {{bar_number}})\n{{firm_name}}\n[ADDRESS]\n[PHONE] | [EMAIL]\n\nAttorney for {{moving_party}}\n\n---\n\n# {{court_name}}\n\n| | |\n|---|---|\n| **{{plaintiff}}**, | Case No. {{case_number}} |\n| Plaintiff(s), | |\n| vs. | **NOTICE OF MOTION AND MOTION TO COMPEL FURTHER RESPONSES TO {{discovery_type}}; MEMORANDUM OF POINTS AND AUTHORITIES; DECLARATION OF {{attorney_name}}** |\n| **{{defendant}}**, | |\n| Defendant(s). | Date: {{hearing_date}} |\n| | Time: {{hearing_time}} |\n| | Dept: {{department}} |\n\n---",
+      "required": true,
+      "editable": false
+    },
+    {
+      "id": "notice_of_motion",
+      "name": "Notice of Motion",
+      "order": 2,
+      "type": "template",
+      "content": "## NOTICE OF MOTION\n\nTO ALL PARTIES AND THEIR ATTORNEYS OF RECORD:\n\nPLEASE TAKE NOTICE that on {{hearing_date}}, at {{hearing_time}}, or as soon thereafter as the matter may be heard, in Department {{department}} of the above-entitled court, {{moving_party}} will and hereby does move the Court for an order compelling {{responding_party}} to provide further responses to {{discovery_type}}, Set {{discovery_set_number}}.\n\nThis motion is made on the grounds that {{responding_party}}'s responses are incomplete, evasive, and/or contain improper objections that have been waived or are without merit.\n\nThis motion is based on this Notice, the attached Memorandum of Points and Authorities, the Declaration of {{attorney_name}}, the exhibits attached thereto, all pleadings and papers on file in this action, and such other matters as may be presented at the hearing.",
+      "required": true,
+      "editable": true
+    },
+    {
+      "id": "introduction",
+      "name": "Introduction",
+      "order": 3,
+      "type": "generated",
+      "promptInstruction": "Write a brief introduction (2-3 paragraphs) explaining: (1) What discovery is at issue and when it was served, (2) The general nature of the deficiencies in the responses, (3) The relief sought (order to compel and sanctions if applicable). Be factual and professional. Reference the variables for party names and discovery type.",
+      "maxLengthWords": 250,
+      "required": true
+    },
+    {
+      "id": "facts",
+      "name": "Statement of Facts",
+      "order": 4,
+      "type": "generated",
+      "promptInstruction": "Describe the relevant procedural history: (1) When discovery was served, (2) When responses were due (including any extensions granted), (3) When responses were received, (4) The specific deficiencies in the responses. Be precise with dates. Use placeholders for specific response numbers to address.",
+      "maxLengthWords": 400,
+      "required": true
+    },
+    {
+      "id": "meet_confer",
+      "name": "Meet and Confer Declaration",
+      "order": 5,
+      "type": "generated",
+      "promptInstruction": "Detail the meet and confer efforts made in compliance with CCP section 2016.040. Include: (1) Dates and method of communications (letter, email, phone), (2) Specific issues raised and responses received, (3) Positions of each party, (4) Why agreement could not be reached despite good faith efforts. Emphasize that the moving party made genuine attempts to resolve the dispute informally. This is critical for the motion to be heard.",
+      "maxLengthWords": 500,
+      "required": true,
+      "legalRequirements": ["CCP § 2016.040"]
+    },
+    {
+      "id": "legal_standard",
+      "name": "Legal Standard",
+      "order": 6,
+      "type": "generated",
+      "promptInstruction": "Set forth the legal standards governing motions to compel further responses. Based on the discovery type, cite the appropriate statute: CCP section 2030.300 (interrogatories), section 2031.310 (document requests), or section 2033.290 (admissions). Explain: (1) The standard for a complete response, (2) What constitutes an improper objection, (3) The burden of proof, (4) For document requests, explain the 'good cause' requirement. Cite California cases supporting these standards.",
+      "maxLengthWords": 500,
+      "required": true,
+      "legalRequirements": ["CCP § 2030.300", "CCP § 2031.310", "CCP § 2033.290"]
+    },
+    {
+      "id": "argument",
+      "name": "Argument",
+      "order": 7,
+      "type": "generated",
+      "promptInstruction": "Present the legal argument for why further responses should be compelled. Structure with subheadings for each category of deficiency (e.g., 'A. Responses Are Incomplete', 'B. Objections Are Without Merit', 'C. Boilerplate Objections Were Waived'). For each issue: (1) State the problem, (2) Cite the applicable legal standard, (3) Apply to the specific responses, (4) Explain why the court should order further responses. Be specific about which responses or requests are at issue. For document requests, establish good cause by explaining relevance and need.",
+      "maxLengthWords": 1500,
+      "required": true,
+      "subsectionsAllowed": true
+    },
+    {
+      "id": "sanctions",
+      "name": "Request for Sanctions",
+      "order": 8,
+      "type": "generated",
+      "promptInstruction": "Request monetary sanctions under CCP section 2023.010 et seq. Explain: (1) That sanctions are mandatory unless the opposing party acted with substantial justification or other circumstances make sanctions unjust, (2) Calculate reasonable attorney fees (estimate hours spent on motion × hourly rate), (3) Note that the opposing party's conduct was not substantially justified. Cite Sinaiko Healthcare Consulting, Inc. v. Pacific Healthcare Consultants and other relevant authority. If no sanctions are sought, explain why.",
+      "maxLengthWords": 300,
+      "required": false,
+      "legalRequirements": ["CCP § 2023.010", "CCP § 2023.030"]
+    },
+    {
+      "id": "conclusion",
+      "name": "Conclusion",
+      "order": 9,
+      "type": "generated",
+      "promptInstruction": "Summarize the relief requested in a formal conclusion. Request: (1) An order compelling further responses within a specific number of days (typically 15-20), (2) Responses to be verified if applicable, (3) Monetary sanctions in the amount requested against the responding party and/or their counsel.",
+      "maxLengthWords": 150,
+      "required": true
+    },
+    {
+      "id": "signature_block",
+      "name": "Signature Block",
+      "order": 10,
+      "type": "template",
+      "content": "Dated: [DATE]\n\nRespectfully submitted,\n\n{{firm_name}}\n\n\n_______________________\n{{attorney_name}}\nAttorney for {{moving_party}}",
+      "required": true,
+      "editable": true
+    }
+  ],
+
+  "formatting": {
+    "fontFamily": "Times New Roman",
+    "fontSize": 12,
+    "lineSpacing": "double",
+    "margins": {
+      "top": 1,
+      "bottom": 0.5,
+      "left": 1,
+      "right": 1
+    },
+    "pageNumbers": true,
+    "lineNumbers": true,
+    "footerText": "MOTION TO COMPEL FURTHER RESPONSES"
+  },
+
+  "metadata": {
+    "version": "1.0",
+    "created": "2026-01-30",
+    "author": "California Law Chatbot",
+    "crcCompliance": ["CRC 3.1110", "CRC 3.1113", "CRC 3.1345"]
+  }
+}

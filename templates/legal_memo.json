@@ -1,0 +1,124 @@
+{
+  "id": "legal_memo",
+  "name": "Legal Research Memorandum",
+  "description": "Internal legal memorandum analyzing a legal question",
+  "practiceAreas": ["all"],
+  "cebCategories": ["trusts_estates", "family_law", "business_litigation", "business_entities", "business_transactions"],
+
+  "variables": [
+    {
+      "id": "to",
+      "name": "To",
+      "type": "text",
+      "required": true,
+      "placeholder": "Partner Name"
+    },
+    {
+      "id": "from",
+      "name": "From",
+      "type": "text",
+      "required": true,
+      "placeholder": "Associate Name"
+    },
+    {
+      "id": "client_matter",
+      "name": "Client/Matter",
+      "type": "text",
+      "required": true,
+      "placeholder": "Client Name / Matter Description"
+    },
+    {
+      "id": "date",
+      "name": "Date",
+      "type": "date",
+      "required": true,
+      "default": "today"
+    },
+    {
+      "id": "subject",
+      "name": "Re (Subject)",
+      "type": "text",
+      "required": true,
+      "placeholder": "Subject of memorandum"
+    }
+  ],
+
+  "sections": [
+    {
+      "id": "header",
+      "name": "Header",
+      "order": 1,
+      "type": "template",
+      "content": "# MEMORANDUM\n\n**TO:** {{to}}\n\n**FROM:** {{from}}\n\n**DATE:** {{date}}\n\n**RE:** {{subject}}\n\n**CLIENT/MATTER:** {{client_matter}}\n\n---",
+      "required": true,
+      "editable": false
+    },
+    {
+      "id": "question_presented",
+      "name": "Question Presented",
+      "order": 2,
+      "type": "generated",
+      "promptInstruction": "Write a clear, concise statement of the legal question(s) to be analyzed. Frame as a question that can be answered yes/no or with a specific legal conclusion. Include key facts that affect the answer. Use formal legal style.",
+      "maxLengthWords": 150,
+      "required": true
+    },
+    {
+      "id": "brief_answer",
+      "name": "Brief Answer",
+      "order": 3,
+      "type": "generated",
+      "promptInstruction": "Provide a direct answer to the question presented, followed by a brief explanation of the key reasons. This should be 2-4 sentences summarizing the conclusion. Start with 'Yes', 'No', 'Probably yes', 'Probably no', or a similar direct response.",
+      "maxLengthWords": 200,
+      "required": true
+    },
+    {
+      "id": "facts",
+      "name": "Statement of Facts",
+      "order": 4,
+      "type": "generated",
+      "promptInstruction": "Present the relevant facts in a clear, objective manner. Include all facts that are legally significant to the analysis. Use past tense. Do not include legal conclusions. Organize facts chronologically or by topic as appropriate.",
+      "maxLengthWords": 500,
+      "required": true
+    },
+    {
+      "id": "analysis",
+      "name": "Analysis",
+      "order": 5,
+      "type": "generated",
+      "promptInstruction": "Provide detailed legal analysis applying the law to the facts. Structure with clear subheadings for each issue. For each issue: (1) State the legal rule with citations, (2) Explain the rule, (3) Apply the rule to the facts, (4) Reach a conclusion. Use IRAC or CREAC structure. Cite California authorities (cases, statutes, CEB) for all legal propositions. Address counterarguments where relevant.",
+      "maxLengthWords": 2000,
+      "required": true,
+      "subsectionsAllowed": true
+    },
+    {
+      "id": "conclusion",
+      "name": "Conclusion",
+      "order": 6,
+      "type": "generated",
+      "promptInstruction": "Summarize the analysis and provide practical recommendations. What should the client do? What are the risks? Are there alternative approaches? Keep this focused and actionable.",
+      "maxLengthWords": 300,
+      "required": true
+    }
+  ],
+
+  "formatting": {
+    "fontFamily": "Times New Roman",
+    "fontSize": 12,
+    "lineSpacing": "double",
+    "margins": {
+      "top": 1,
+      "bottom": 1,
+      "left": 1,
+      "right": 1
+    },
+    "pageNumbers": true,
+    "headerStyle": "left"
+  },
+
+  "metadata": {
+    "version": "1.0",
+    "created": "2026-01-30",
+    "author": "California Law Chatbot",
+    "crcCompliance": null
+  }
+}
