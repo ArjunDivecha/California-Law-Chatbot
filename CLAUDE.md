@@ -4,9 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-California Law Chatbot is a sophisticated legal research assistant powered by a two-pass AI verification system combining Google Gemini 2.5 Pro (generator) with Anthropic Claude Sonnet 4.5 (verifier). The system includes a fully-implemented CEB (Continuing Education of the Bar) RAG system with 77,406 vector embeddings across 5 legal verticals.
+California Law Chatbot is a legal research assistant powered by a two-pass AI verification system: Google Gemini 2.5 Pro (generator) + Anthropic Claude Sonnet 4.5 (verifier). Includes a CEB (Continuing Education of the Bar) RAG system with 77,406 vector embeddings across 5 legal verticals.
 
-**Tech Stack**: React 19, TypeScript, Vite, serverless functions (Vercel), Upstash Vector, OpenAI embeddings
+**Tech Stack**: React 19, TypeScript, Vite, Vercel serverless functions, Upstash Vector, OpenAI embeddings
 
 ## Development Commands
 
@@ -18,6 +18,12 @@ npm run preview          # Preview production build
 
 # Testing
 npm run test:verification # Run verification system tests
+node test-harvey-upgrades.js  # Test Harvey upgrade features
+
+# Local API testing (requires dev server running)
+curl -X POST http://localhost:5173/api/ceb-search \
+  -H "Content-Type: application/json" \
+  -d '{"query": "revocable living trust", "topK": 3}'
 ```
 
 ## Python Scripts (CEB Processing)
@@ -36,299 +42,154 @@ python3 generate_embeddings.py --category trusts_estates --input-file data/ceb_p
 
 # 3. Upload to Upstash Vector
 python3 upload_to_upstash.py --category trusts_estates --input-file data/ceb_processed/trusts_estates/embeddings.jsonl
+
+# Test CEB RAG queries
+python3 test_ceb_rag.py
 ```
 
-**Available categories**: `trusts_estates`, `family_law`, `business_litigation`, `business_entities`, `business_transactions`
+**Categories**: `trusts_estates`, `family_law`, `business_litigation`, `business_entities`, `business_transactions`
 
-## Architecture Overview
+## Architecture
 
-### Two-Pass Verification System
-
-The core architecture uses a two-stage AI pipeline:
-
-1. **Generator (Gemini 2.5 Pro)**:
-   - Generates comprehensive legal answers with Google Search grounding
-   - Extracts claims and citations from sources
-   - Located in: `gemini/chatService.ts`
-
-2. **Verifier (Claude Sonnet 4.5)**:
-   - Validates claims against source excerpts
-   - Produces verification reports with coverage metrics
-   - Rewrites answers to remove unsupported claims
-   - Located in: `services/verifierService.ts`
-
-### Three Source Modes
-
-The system supports three operational modes (see `types.ts`):
-
-- **CEB Only**: Searches only CEB practice guides (no verification needed, authoritative)
-- **AI Only**: Uses case law, legislation, web search (standard verification)
-- **Hybrid**: Combines CEB + case law + legislation (recommended)
-
-Mode selection is controlled by `SourceModeSelector.tsx` component.
-
-### Data Flow
+### Two-Pass Verification Pipeline
 
 ```
 User Query → ChatService.sendMessage()
     ↓
 [Mode Detection: CEB Only / AI Only / Hybrid]
     ↓
-[CEB Search] → /api/ceb-search.ts → Upstash Vector → OpenAI embeddings
+[CEB Search] → /api/ceb-search.ts → Upstash Vector
     ↓
 [Case Law?] → /api/courtlistener-search.ts → CourtListener API
     ↓
-[Generate Answer] → /api/gemini-chat.ts → Gemini 2.5 Pro
+[Legislative?] → /api/openstates-search.ts + /api/legiscan-search.ts
     ↓
-[Verify Answer] → /api/claude-chat.ts → Claude Sonnet 4.5
+[Generate] → /api/gemini-chat.ts → Gemini 2.5 Pro
+    ↓
+[Verify] → /api/claude-chat.ts → Claude Sonnet 4.5
     ↓
 [Confidence Gating] → services/confidenceGating.ts
     ↓
-Response → UI (Message.tsx with badges)
+Response → UI (Message.tsx)
 ```
 
-### Serverless API Endpoints
+### Three Source Modes
 
-All AI/database operations are server-side via `/api/*.ts` endpoints:
+Defined in `types.ts` as `SourceMode`:
 
-- **ceb-search.ts**: Query Upstash Vector for CEB content (includes statutory citation pre-filter & LGBT query expansion)
-- **gemini-chat.ts**: Stream Gemini responses
-- **claude-chat.ts**: Verify answers with Claude
-- **courtlistener-search.ts**: Search California case law
-- **openstates-search.ts**: Legislative API (fully integrated)
-- **legiscan-search.ts**: Bill text API (fully integrated)
-- **verify-citations.ts**: Citation verification against CourtListener database
+- **CEB Only** (`ceb-only`): Authoritative CEB practice guides only. Bypasses verification (trusted source).
+- **AI Only** (`ai-only`): Case law, legislation, web search. Standard verification applies.
+- **Hybrid** (`hybrid`): CEB + case law + legislation. Recommended mode.
 
-These are Vercel serverless functions with CORS enabled and 60s max duration.
+Mode selection: `components/SourceModeSelector.tsx` → persists to localStorage
+
+### Key Services
+
+| File | Role |
+|------|------|
+| `gemini/chatService.ts` | Main orchestrator: query detection, source coordination, verification pipeline |
+| `gemini/cebIntegration.ts` | CEB category routing and context formatting |
+| `services/verifierService.ts` | Claim extraction, Claude verification, report parsing |
+| `services/confidenceGating.ts` | Post-verification quality checks |
+| `services/guardrailsService.ts` | Input validation and safety checks |
+
+### API Endpoints (`/api/*.ts`)
+
+All are Vercel serverless functions (1024MB, 60s timeout, CORS enabled):
+
+| Endpoint | Purpose |
+|----------|---------|
+| `ceb-search.ts` | Upstash Vector search with statutory pre-filter & LGBT query expansion |
+| `gemini-chat.ts` | Stream Gemini responses |
+| `claude-chat.ts` | Claude verification |
+| `courtlistener-search.ts` | California case law search |
+| `openstates-search.ts` | California bills via OpenStates API |
+| `legiscan-search.ts` | Bill text via LegiScan API |
+| `verify-citations.ts` | Citation verification against CourtListener |
 
 ### CEB RAG System
 
-The CEB (Continuing Education of the Bar) integration provides authoritative legal practice guides:
-
-**Storage**: Upstash Vector database with cosine similarity
+**Storage**: Upstash Vector (cosine similarity)
 **Embeddings**: OpenAI `text-embedding-3-small` (1536 dimensions)
-**Namespace structure**: `ceb_trusts_estates`, `ceb_family_law`, etc.
+**Namespace**: `ceb_trusts_estates`, `ceb_family_law`, etc.
 
-**Query flow**: User query → OpenAI embedding → Upstash vector search → Top K results → Context formatting
-
-**Response handling**: CEB-based responses bypass verification (marked as authoritative with amber badge)
-
-## Key Files and Their Roles
-
-### Core Services
-
-**`gemini/chatService.ts`** (105KB)
-- Main orchestrator for all AI interactions
-- Manages conversation history with context expansion (10 messages)
-- Detects query type (case law vs. legislation vs. general)
-- Implements three source modes (CEB Only, AI Only, Hybrid)
-- Coordinates CEB search, CourtListener, and legislative APIs
-- Handles verification pipeline
-
-**`gemini/cebIntegration.ts`**
-- CEB-specific utilities
-- Category detection (routes queries to correct CEB vertical)
-- Formats CEB context for LLM consumption
-
-**`services/verifierService.ts`**
-- Extracts claims from generator output
-- Calls Claude via `/api/claude-chat.ts` for verification
-- Parses verification reports (coverage, supported/unsupported claims)
-- Returns verified answer or refusal
-
-**`services/guardrailsService.ts`**
-- Input validation and safety checks
-- Detects confidential information warnings
-- Prevents harmful queries
-
-**`services/confidenceGating.ts`**
-- Post-verification quality checks
-- Ensures minimum confidence thresholds
-
-### Frontend Components
-
-**`components/Message.tsx`**
-- Renders chat messages with rich formatting
-- Displays verification badges (CEB Verified, CourtListener Enhanced)
-- Parses and links legal citations (California codes, case names)
-- Shows verification reports and warnings
-
-**`components/SourceModeSelector.tsx`**
-- UI for selecting CEB Only / AI Only / Hybrid modes
-- Persists selection to localStorage
-
-**`hooks/useChat.ts`**
-- React hook managing chat state
-- Handles message sending, loading states, errors
-- Manages source mode selection
+CEB-based responses bypass verification and display an amber "CEB Verified" badge.
 
 ## Environment Variables
 
-Required for development/deployment (set in `.env` or Vercel dashboard):
-
 ```env
 # Required: AI Models
-GEMINI_API_KEY=xxx                    # Google Gemini 2.5 Pro (generator)
+GEMINI_API_KEY=xxx                    # Gemini 2.5 Pro (generator)
 ANTHROPIC_API_KEY=xxx                 # Claude Sonnet 4.5 (verifier)
-OPENAI_API_KEY=xxx                    # Embeddings (text-embedding-3-small)
+OPENAI_API_KEY=xxx                    # Embeddings
 
-# Required: CEB RAG System
+# Required: CEB RAG
 UPSTASH_VECTOR_REST_URL=https://xxx.upstash.io
 UPSTASH_VECTOR_REST_TOKEN=xxx
 
-# Optional: Case Law
-COURTLISTENER_API_KEY=xxx             # Enhances case law searches
-
-# Optional: Legislative APIs (handlers exist, integration pending)
-OPENSTATES_API_KEY=xxx
-LEGISCAN_API_KEY=xxx
+# Optional: External APIs
+COURTLISTENER_API_KEY=xxx             # Case law (enhances results)
+OPENSTATES_API_KEY=xxx                # Legislative bills
+LEGISCAN_API_KEY=xxx                  # Bill text
 ```
 
-**Important**: All API keys are used server-side only. Frontend never has access to keys.
+All keys are server-side only.
 
-## Common Development Patterns
+## Type System
+
+Core interfaces in `types.ts`:
+
+- `ChatMessage`: Message with verification metadata
+- `Source` / `CEBSource`: Legal source references (CEB sources have `isCEB: true`)
+- `SourceMode`: `'ceb-only' | 'ai-only' | 'hybrid'`
+- `VerificationReport`: Coverage metrics and claim status
+- `VerificationStatus`: `'verified' | 'partially_verified' | 'refusal' | 'unverified' | 'not_needed'`
+
+## Development Patterns
 
 ### Adding a New API Endpoint
 
 1. Create `/api/your-endpoint.ts` with default export function
-2. Add CORS headers (see existing endpoints)
-3. Validate inputs, check environment variables
-4. Use try-catch with detailed error logging
-5. Return JSON with proper status codes
-
-### Modifying Verification Logic
-
-Verification happens in two places:
-1. `gemini/chatService.ts` - decides when to verify (skips for CEB-only responses)
-2. `services/verifierService.ts` - implements verification via Claude
-
-To adjust verification strictness, modify the system prompt in `verifierService.ts` constructor.
+2. Copy CORS headers from existing endpoints
+3. Validate inputs and check environment variables
+4. Return JSON with proper status codes
 
 ### Adding CEB Categories
 
-To add new CEB verticals:
-1. Process PDFs: `scripts/process_ceb_pdfs.py --category new_category`
-2. Generate embeddings: `scripts/generate_embeddings.py --category new_category`
-3. Upload to Upstash: `scripts/upload_to_upstash.py --category new_category`
-4. Update `types.ts` CEBSource category union type
+1. Process PDFs: `python3 process_ceb_pdfs.py --category new_category`
+2. Generate embeddings: `python3 generate_embeddings.py --category new_category`
+3. Upload: `python3 upload_to_upstash.py --category new_category`
+4. Update `types.ts` CEBSource category type
 5. Update category detection in `gemini/cebIntegration.ts`
 
-### Frontend State Management
+### Query Detection
 
-State is managed via React hooks (no Redux/Zustand):
-- Chat history: `useChat` hook with useState
-- Source mode: `useChat` hook with localStorage persistence
-- Individual message state: Component-local state
+`chatService.ts` has detection methods:
+- `isLegislativeQuery()`: Detects "bill", "legislation", "AB 123", "SB 456"
+- `isCaseLawQuery()`: Detects "v.", "case", "court", "opinion"
 
-## Type System
+## Constraints
 
-**`types.ts`** defines all core interfaces:
-
-- `ChatMessage`: Chat message with verification metadata
-- `Source` / `CEBSource`: Legal source references
-- `SourceMode`: 'ceb-only' | 'ai-only' | 'hybrid'
-- `VerificationReport`: Claims coverage and support metrics
-- `VerificationStatus`: 'verified' | 'partially_verified' | 'refusal' | 'unverified' | 'not_needed'
-
-CEB sources have `isCEB: true` flag and additional metadata (category, citation, page number, confidence score).
+1. **No client-side API keys**: All keys in env vars (server-side)
+2. **CEB responses skip verification**: Authoritative source
+3. **Conversation history**: 10 messages with intelligent context expansion
+4. **Vercel timeout**: 60s max
+5. **CORS required**: All `/api/*` endpoints
 
 ## Deployment (Vercel)
 
-**Configuration**: `vercel.json`
-- API functions: 1024MB memory, 60s timeout
-- CORS headers configured for `/api/*` routes
+1. Push to GitHub (auto-deploys)
+2. Set env vars in Vercel dashboard (Production, Preview, Development)
+3. Redeploy after env var changes
 
-**Deployment steps**:
-1. Push to GitHub (auto-deploys if connected to Vercel)
-2. Set environment variables in Vercel dashboard (Production, Preview, Development)
-3. Redeploy if env vars change
-
-**Build command**: `npm run build`
-**Output directory**: `dist/`
-
-## Legislative API Integration ✅ (Complete)
-
-The OpenStates and LegiScan API integration is now fully complete and live on production:
-
-**Implementation Details:**
-- `isLegislativeQuery()` method in `gemini/chatService.ts` automatically detects legislative queries
-- `searchLegislativeAPIs()` method queries OpenStates and LegiScan APIs in parallel
-- Results are formatted into Source[] and included in verification pipeline
-- Automatic query detection for patterns: "bill", "legislation", "AB 123", "SB 456", etc.
-
-**Endpoints:**
-- `/api/openstates-search.ts` - OpenStates API integration
-- `/api/legiscan-search.ts` - LegiScan API integration
-
-**Status:** Production tested with 10/10 tests passing (response times: 500-900ms)
-
-## Harvey Upgrade Features ✅ (All Complete)
-
-Four major features were added to match Harvey AI capabilities:
-
-### Priority 1: Legislative Research APIs ✅
-- Full integration of OpenStates and LegiScan APIs into the chat flow
-- Automatic detection of legislative queries (keywords, bill patterns)
-- Real-time California bill tracking and statute text retrieval
-- Response times: 500-900ms
-- **Files Modified:** `gemini/chatService.ts` (added `isLegislativeQuery()`, `searchLegislativeAPIs()`)
-
-### Priority 2: Statutory Citation Pre-Filter ✅
-- Automatic detection and parsing of California code citations
-- Supports all 29 California codes with multiple citation formats
-- Query boost: Statutory terms automatically boosted in CEB search
-- Direct links to leginfo.legislature.ca.gov for each statute
-- **Files Modified:** `api/ceb-search.ts` (inlined citation detection functions to avoid Vercel import issues)
-
-### Priority 3: Citation Verification ✅
-- Real-time citation verification against CourtListener database
-- Supports California and Federal case citations
-- Verification status included in responses
-- **Files Created:** `api/verify-citations.ts`
-- **Files Modified:** `services/verifierService.ts` (integrated citation verification)
-
-### Priority 4: LGBT Practice Area Features ✅
-- Specialized query expansion for LGBT family law topics
-- Enhanced keywords: same-sex couples, domestic partners, parentage, adoption
-- Automatic expansion of search terms for better results
-- **Files Modified:** `api/ceb-search.ts` (added LGBT synonyms and query expansion)
-
-**Production Testing Results:** 10/10 tests passing (100%)
-
-## Testing and Debugging
-
-**Verification testing**: `npm run test:verification` runs `test-verification-system.js`
-
-**Console logging**:
-- CEB searches log to console with 🔍 emoji
-- API endpoints log request/response details
-- Verification reports include coverage metrics
-
-**Local testing of API endpoints**:
-```bash
-# Start dev server
-npm run dev
-
-# Test CEB search (requires UPSTASH_* and OPENAI_API_KEY)
-curl -X POST http://localhost:5173/api/ceb-search \
-  -H "Content-Type: application/json" \
-  -d '{"query": "revocable living trust", "topK": 3}'
-```
-
-## Important Constraints
-
-1. **No client-side API keys**: All keys must be in environment variables (server-side)
-2. **CEB responses skip verification**: They're authoritative, no need to verify
-3. **Conversation history**: Limited to 10 most recent messages (with intelligent context expansion)
-4. **Vercel function timeout**: 60s max (set in vercel.json)
-5. **CORS**: Required for all `/api/*` endpoints
+**Build**: `npm run build` → `dist/`
 
 ## Legal Compliance
 
-The system implements California State Bar guidance for AI in legal practice:
-- Prominent confidentiality warnings
-- Verification system for accuracy
+Implements California State Bar guidance for AI in legal practice:
+- Confidentiality warnings
+- Verification system
 - Source citations with direct links
-- Disclosure of AI usage and limitations
+- AI usage disclosure
 
 See `COMPLIANCE_ANALYSIS.md` and `PRIVACY_AND_CONFIDENTIALITY.md` for details.
