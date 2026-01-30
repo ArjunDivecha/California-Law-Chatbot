@@ -199,13 +199,15 @@ export function useDrafting(): UseDraftingReturn {
     
     setTemplate(templateData);
     
-    // Initialize variables with defaults
+    // Initialize variables with defaults (use empty string for no default)
     const defaults: Record<string, string> = {};
     templateData.variables.forEach((v: VariableDefinition) => {
       if (v.default === 'today') {
         defaults[v.id] = new Date().toISOString().split('T')[0];
-      } else if (v.default) {
-        defaults[v.id] = v.default;
+      } else if (v.default !== undefined && v.default !== null) {
+        defaults[v.id] = String(v.default);
+      } else {
+        defaults[v.id] = ''; // Ensure empty string, not undefined
       }
     });
     setVariablesState(defaults);
@@ -307,12 +309,35 @@ export function useDrafting(): UseDraftingReturn {
   // HANDLE STREAM EVENTS
   // ==========================================================================
   
+  /**
+   * Map API progress phases to DocumentStatus values.
+   * This normalizes the phase names from the backend to valid DocumentStatus enum values.
+   */
+  const mapPhaseToStatus = (phase: string): DocumentStatus => {
+    const phaseMapping: Record<string, DocumentStatus> = {
+      // Direct matches
+      'initializing': 'initializing',
+      'researching': 'researching',
+      'drafting': 'drafting',
+      'verifying_citations': 'verifying_citations',
+      'final_verification': 'final_verification',
+      'complete': 'complete',
+      'error': 'error',
+      // Alternate phase names from API
+      'research': 'researching',
+      'citations': 'verifying_citations',
+      'verification': 'final_verification',
+    };
+    return phaseMapping[phase] || 'drafting'; // Default to drafting if unknown
+  };
+  
   const handleStreamEvent = useCallback((event: any) => {
     switch (event.type) {
       case 'progress':
-        setStatus(event.phase);
-        setProgress(event.percentComplete);
-        setProgressMessage(event.message);
+        // Map API phase to valid DocumentStatus
+        setStatus(mapPhaseToStatus(event.phase));
+        setProgress(event.percentComplete || 0);
+        setProgressMessage(event.message || '');
         if (event.currentSection) {
           setGeneratingSection(event.currentSection);
         }
@@ -321,14 +346,15 @@ export function useDrafting(): UseDraftingReturn {
       case 'section_complete':
         setSections((prev) => {
           const existing = prev.findIndex((s) => s.sectionId === event.sectionId);
+          // Use event data with fallbacks for required GeneratedSection fields
           const newSection: GeneratedSection = {
             sectionId: event.sectionId,
             sectionName: event.sectionName,
             content: event.content,
-            wordCount: event.wordCount,
-            citations: [],
-            generatedAt: new Date().toISOString(),
-            revisionCount: 0,
+            wordCount: event.wordCount || 0,
+            citations: event.citations || [],  // Use from event if provided
+            generatedAt: event.generatedAt || new Date().toISOString(),  // Use from event if provided
+            revisionCount: event.revisionCount ?? 0,  // Use from event if provided (nullish coalescing)
           };
           
           if (existing >= 0) {
@@ -350,7 +376,7 @@ export function useDrafting(): UseDraftingReturn {
         break;
         
       case 'error':
-        setError(event.error);
+        setError(event.error || event.message || 'Unknown error');
         setStatus('error');
         break;
     }

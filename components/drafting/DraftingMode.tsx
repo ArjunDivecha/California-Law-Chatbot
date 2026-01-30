@@ -10,7 +10,7 @@ import { TemplateSelector } from './TemplateSelector';
 import { VariableInputPanel } from './VariableInputPanel';
 import { ProgressIndicator } from './ProgressIndicator';
 import { DocumentPreview } from './DocumentPreview';
-import { OrchestrationVisual } from './OrchestrationVisual';
+import { OrchestrationModal } from './OrchestrationModal';
 
 interface DraftingModeProps {
   onModeChange?: () => void;
@@ -56,7 +56,7 @@ export const DraftingMode: React.FC<DraftingModeProps> = ({ onModeChange }) => {
   const [instructions, setInstructions] = useState('');
   const [revisionInstructions, setRevisionInstructions] = useState('');
   const [showRevisionInput, setShowRevisionInput] = useState(false);
-  const [showOrchestration, setShowOrchestration] = useState(true); // Toggle for orchestration view
+  const [showOrchestrationModal, setShowOrchestrationModal] = useState(false); // Modal state
 
   // Load templates on mount
   useEffect(() => {
@@ -77,8 +77,20 @@ export const DraftingMode: React.FC<DraftingModeProps> = ({ onModeChange }) => {
   // Handle generate
   const handleGenerate = async () => {
     if (!canGenerate) return;
+    setShowOrchestrationModal(true); // Show modal when generation starts
     await startGeneration(instructions);
   };
+
+  // Close modal when generation completes
+  useEffect(() => {
+    if (status === 'complete' || status === 'error') {
+      // Keep modal open for a moment to show completion
+      const timer = setTimeout(() => {
+        // Don't auto-close, let user click "View Document"
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [status]);
 
   // Handle section click
   const handleSectionClick = (sectionId: string) => {
@@ -201,53 +213,27 @@ export const DraftingMode: React.FC<DraftingModeProps> = ({ onModeChange }) => {
           )}
         </div>
 
-        {/* Right panel - Preview / Orchestration */}
+        {/* Right panel - Document Preview */}
         <div style={styles.rightPanel}>
-          {/* Toggle button for orchestration view */}
+          {/* Show orchestration button when generating */}
           {isGenerating && (
-            <div style={styles.viewToggle}>
-              <button
-                onClick={() => setShowOrchestration(true)}
-                style={{
-                  ...styles.toggleButton,
-                  ...(showOrchestration ? styles.toggleButtonActive : {}),
-                }}
-              >
-                🎯 Orchestration View
-              </button>
-              <button
-                onClick={() => setShowOrchestration(false)}
-                style={{
-                  ...styles.toggleButton,
-                  ...(!showOrchestration ? styles.toggleButtonActive : {}),
-                }}
-              >
-                📄 Document Preview
-              </button>
-            </div>
+            <button
+              onClick={() => setShowOrchestrationModal(true)}
+              style={styles.showOrchestrationButton}
+            >
+              🎯 View Orchestration Progress
+            </button>
           )}
 
-          {/* Show orchestration visual when generating and toggle is on */}
-          {isGenerating && showOrchestration ? (
-            <OrchestrationVisual
-              isGenerating={isGenerating}
-              progress={progress}
-              progressMessage={progressMessage}
-              currentPhase={status}
-              currentSection={generatingSection || undefined}
-              sections={sections}
-              verificationScore={document?.verificationReport?.overallScore}
-            />
-          ) : (
-            <DocumentPreview
-              document={document}
-              sections={sections}
-              selectedSection={selectedSection}
-              onSectionClick={handleSectionClick}
-              isGenerating={isGenerating}
-              generatingSection={generatingSection || undefined}
-            />
-          )}
+          {/* Document Preview */}
+          <DocumentPreview
+            document={document}
+            sections={sections}
+            selectedSection={selectedSection}
+            onSectionClick={handleSectionClick}
+            isGenerating={isGenerating}
+            generatingSection={generatingSection || undefined}
+          />
 
           {/* Revision input */}
           {showRevisionInput && selectedSection && !isGenerating && (
@@ -296,6 +282,18 @@ export const DraftingMode: React.FC<DraftingModeProps> = ({ onModeChange }) => {
           Use placeholders like [CLIENT NAME] instead. All generated documents require attorney review.
         </span>
       </div>
+
+      {/* Orchestration Modal */}
+      <OrchestrationModal
+        isOpen={showOrchestrationModal}
+        onClose={() => setShowOrchestrationModal(false)}
+        progress={progress}
+        progressMessage={progressMessage}
+        currentPhase={status}
+        currentSection={generatingSection || undefined}
+        sections={sections}
+        verificationScore={document?.verificationReport?.overallScore}
+      />
     </div>
   );
 };
@@ -503,27 +501,18 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: '13px',
     color: '#92400e',
   },
-  viewToggle: {
-    display: 'flex',
-    gap: '8px',
-    marginBottom: '16px',
-  },
-  toggleButton: {
-    flex: 1,
-    padding: '10px 16px',
+  showOrchestrationButton: {
+    width: '100%',
+    padding: '12px 16px',
     fontSize: '14px',
-    fontWeight: 500,
-    color: '#6b7280',
-    backgroundColor: '#f3f4f6',
-    border: '1px solid #e5e7eb',
-    borderRadius: '8px',
+    fontWeight: 600,
+    color: '#7c3aed',
+    backgroundColor: '#ede9fe',
+    border: '2px solid #7c3aed',
+    borderRadius: '12px',
     cursor: 'pointer',
+    marginBottom: '16px',
     transition: 'all 0.2s ease',
-  },
-  toggleButtonActive: {
-    color: '#ffffff',
-    backgroundColor: '#3b82f6',
-    borderColor: '#3b82f6',
   },
 };
 

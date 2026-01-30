@@ -10,3 +10,4 @@ export { VariableInputPanel } from './VariableInputPanel';
 export { ProgressIndicator } from './ProgressIndicator';
 export { DocumentPreview } from './DocumentPreview';
 export { OrchestrationVisual } from './OrchestrationVisual';
+export { OrchestrationModal } from './OrchestrationModal';

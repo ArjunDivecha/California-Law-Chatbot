@@ -212,27 +212,32 @@ function countWords(text: string): number {
 }
 
 function extractCitations(text: string): string[] {
+  // Simplified citation extraction to avoid catastrophic backtracking
   const citations: string[] = [];
   
-  // California case citations
-  const casePattern = /[A-Z][a-z]+\s+v\.\s+[A-Z][a-z]+\s*\(\d{4}\)\s*\d+\s+Cal\.\s*(?:App\.)?\s*\d+(?:th|st|nd|rd)?\s*\d+/g;
-  const caseMatches = text.match(casePattern) || [];
-  citations.push(...caseMatches);
-  
-  // California statute citations
-  const statPattern = /(?:Cal\.\s*)?(?:[A-Z][a-z]+\.?\s*)+(?:Code\s*)?§\s*\d+(?:\.\d+)?(?:\([a-z]\))?/gi;
-  const statMatches = text.match(statPattern) || [];
-  citations.push(...statMatches);
-  
-  // Probate Code citations
-  const probPattern = /Prob(?:ate)?\s*(?:Code)?\s*§+\s*\d+/gi;
-  const probMatches = text.match(probPattern) || [];
-  citations.push(...probMatches);
-  
-  // CEB citations
-  const cebPattern = /CEB\s+[A-Za-z\s]+§\s*\d+(?:\.\d+)?/gi;
-  const cebMatches = text.match(cebPattern) || [];
-  citations.push(...cebMatches);
+  try {
+    // California case citations: "People v. Smith (2020) 50 Cal.App.5th 123"
+    const casePattern = /\b[A-Z][a-z]+\s+v\.\s+[A-Z][a-z]+\s*\(\d{4}\)\s*\d+\s+Cal/g;
+    const caseMatches = text.match(casePattern) || [];
+    citations.push(...caseMatches);
+    
+    // Simple statute pattern: "§ 1234" or "Section 1234"
+    const statPattern = /§\s*\d+(?:\.\d+)?/g;
+    const statMatches = text.match(statPattern) || [];
+    citations.push(...statMatches);
+    
+    // Probate Code
+    const probPattern = /Prob(?:ate)?\s*Code\s*§?\s*\d+/gi;
+    const probMatches = text.match(probPattern) || [];
+    citations.push(...probMatches);
+    
+    // CEB citations
+    const cebPattern = /CEB\s+[\w\s]{1,30}§\s*\d+/gi;
+    const cebMatches = text.match(cebPattern) || [];
+    citations.push(...cebMatches);
+  } catch (e) {
+    console.error('Citation extraction error:', e);
+  }
   
   return [...new Set(citations)];
 }
@@ -467,8 +472,11 @@ async function callGemini(prompt: string): Promise<string> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error('GEMINI_API_KEY not configured');
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key=${apiKey}`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
 
+  console.log('   🤖 Calling Gemini 2.5 Flash...');
+  const startTime = Date.now();
+  
   const response = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -496,12 +504,17 @@ async function callGemini(prompt: string): Promise<string> {
 
   if (!response.ok) {
     const error = await response.text();
+    console.log(`   ❌ Gemini error after ${Date.now() - startTime}ms: ${response.status}`);
     throw new Error(`Gemini API error: ${response.status} - ${error}`);
   }
 
   const data = await response.json();
+  console.log(`   ✓ Gemini responded in ${Date.now() - startTime}ms`);
   const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!text) throw new Error('No content in Gemini response');
+  if (!text) {
+    console.log('   ❌ No content in Gemini response:', JSON.stringify(data).substring(0, 200));
+    throw new Error('No content in Gemini response');
+  }
   
   return text.trim();
 }
@@ -524,6 +537,8 @@ async function runDraftingPhase(
     const section = template.sections[i];
     const percent = 30 + Math.round((i / totalSections) * 40);
 
+    console.log(`   📄 Section ${i + 1}/${totalSections}: ${section.name}`);
+    
     sendEvent('progress', { 
       phase: 'drafting', 
       message: `Drafting: ${section.name}`, 
@@ -533,6 +548,7 @@ async function runDraftingPhase(
 
     let content: string;
 
+    try {
     if (section.type === 'template' && section.content) {
       // Template section - apply variables only
       content = applyVariables(section.content, variables);
@@ -580,9 +596,13 @@ async function runDraftingPhase(
       
       prompt += `\nNow write the "${section.name}" section. Remember to cite California authorities.`;
 
+      console.log(`   🤖 Starting Gemini call for ${section.name}...`);
       content = await callGemini(prompt);
+      console.log(`   ✓ ${section.name}: ${countWords(content)} words generated`);
+      console.log(`   📦 Creating section object...`);
     }
 
+    console.log(`   📊 Processing section: ${section.name}`);
     const generatedSection: GeneratedSection = {
       sectionId: section.id,
       sectionName: section.name,
@@ -593,18 +613,49 @@ async function runDraftingPhase(
       revisionCount: 0,
     };
 
+    console.log(`   ➕ Adding section to arrays...`);
     sections.push(generatedSection);
     previousSections.push(generatedSection);
 
+    console.log(`   📤 Sending section_complete event...`);
+    // Send complete GeneratedSection fields to match frontend expectations
     sendEvent('section_complete', {
       sectionId: generatedSection.sectionId,
       sectionName: generatedSection.sectionName,
       content: generatedSection.content,
       wordCount: generatedSection.wordCount,
       citations: generatedSection.citations,
+      generatedAt: generatedSection.generatedAt,
+      revisionCount: generatedSection.revisionCount,
     });
 
-    console.log(`   ✓ ${section.name}: ${generatedSection.wordCount} words, ${generatedSection.citations.length} citations`);
+    console.log(`   ✅ SECTION COMPLETE: ${section.name} (${generatedSection.wordCount} words, ${generatedSection.citations.length} citations)`);
+    console.log(`   🔄 Moving to next section...`);
+    } catch (sectionError) {
+      console.error(`   ❌ Error generating ${section.name}:`, sectionError);
+      // Continue with placeholder content
+      const errorSection: GeneratedSection = {
+        sectionId: section.id,
+        sectionName: section.name,
+        content: `[Error generating ${section.name} - please revise manually]`,
+        wordCount: 0,
+        citations: [],
+        generatedAt: new Date().toISOString(),
+        revisionCount: 0,
+      };
+      sections.push(errorSection);
+      // Send complete GeneratedSection fields even for error cases
+      sendEvent('section_complete', {
+        sectionId: errorSection.sectionId,
+        sectionName: errorSection.sectionName,
+        content: errorSection.content,
+        wordCount: errorSection.wordCount,
+        citations: errorSection.citations,
+        generatedAt: errorSection.generatedAt,
+        revisionCount: errorSection.revisionCount,
+        error: String(sectionError),
+      });
+    }
   }
 
   sendEvent('progress', { phase: 'drafting', message: 'All sections drafted', percentComplete: 70 });
