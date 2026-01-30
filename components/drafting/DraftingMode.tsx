@@ -10,6 +10,7 @@ import { TemplateSelector } from './TemplateSelector';
 import { VariableInputPanel } from './VariableInputPanel';
 import { ProgressIndicator } from './ProgressIndicator';
 import { DocumentPreview } from './DocumentPreview';
+import { OrchestrationVisual } from './OrchestrationVisual';
 
 interface DraftingModeProps {
   onModeChange?: () => void;
@@ -55,6 +56,7 @@ export const DraftingMode: React.FC<DraftingModeProps> = ({ onModeChange }) => {
   const [instructions, setInstructions] = useState('');
   const [revisionInstructions, setRevisionInstructions] = useState('');
   const [showRevisionInput, setShowRevisionInput] = useState(false);
+  const [showOrchestration, setShowOrchestration] = useState(true); // Toggle for orchestration view
 
   // Load templates on mount
   useEffect(() => {
@@ -199,19 +201,56 @@ export const DraftingMode: React.FC<DraftingModeProps> = ({ onModeChange }) => {
           )}
         </div>
 
-        {/* Right panel - Preview */}
+        {/* Right panel - Preview / Orchestration */}
         <div style={styles.rightPanel}>
-          <DocumentPreview
-            document={document}
-            sections={sections}
-            selectedSection={selectedSection}
-            onSectionClick={handleSectionClick}
-            isGenerating={isGenerating}
-            generatingSection={generatingSection || undefined}
-          />
+          {/* Toggle button for orchestration view */}
+          {isGenerating && (
+            <div style={styles.viewToggle}>
+              <button
+                onClick={() => setShowOrchestration(true)}
+                style={{
+                  ...styles.toggleButton,
+                  ...(showOrchestration ? styles.toggleButtonActive : {}),
+                }}
+              >
+                🎯 Orchestration View
+              </button>
+              <button
+                onClick={() => setShowOrchestration(false)}
+                style={{
+                  ...styles.toggleButton,
+                  ...(!showOrchestration ? styles.toggleButtonActive : {}),
+                }}
+              >
+                📄 Document Preview
+              </button>
+            </div>
+          )}
+
+          {/* Show orchestration visual when generating and toggle is on */}
+          {isGenerating && showOrchestration ? (
+            <OrchestrationVisual
+              isGenerating={isGenerating}
+              progress={progress}
+              progressMessage={progressMessage}
+              currentPhase={status}
+              currentSection={generatingSection || undefined}
+              sections={sections}
+              verificationScore={document?.verificationReport?.overallScore}
+            />
+          ) : (
+            <DocumentPreview
+              document={document}
+              sections={sections}
+              selectedSection={selectedSection}
+              onSectionClick={handleSectionClick}
+              isGenerating={isGenerating}
+              generatingSection={generatingSection || undefined}
+            />
+          )}
 
           {/* Revision input */}
-          {showRevisionInput && selectedSection && (
+          {showRevisionInput && selectedSection && !isGenerating && (
             <div style={styles.revisionPanel}>
               <h4 style={styles.revisionTitle}>
                 Revise: {sections.find((s) => s.sectionId === selectedSection)?.sectionName}
@@ -463,6 +502,28 @@ const styles: Record<string, React.CSSProperties> = {
     borderTop: '1px solid #fcd34d',
     fontSize: '13px',
     color: '#92400e',
+  },
+  viewToggle: {
+    display: 'flex',
+    gap: '8px',
+    marginBottom: '16px',
+  },
+  toggleButton: {
+    flex: 1,
+    padding: '10px 16px',
+    fontSize: '14px',
+    fontWeight: 500,
+    color: '#6b7280',
+    backgroundColor: '#f3f4f6',
+    border: '1px solid #e5e7eb',
+    borderRadius: '8px',
+    cursor: 'pointer',
+    transition: 'all 0.2s ease',
+  },
+  toggleButtonActive: {
+    color: '#ffffff',
+    backgroundColor: '#3b82f6',
+    borderColor: '#3b82f6',
   },
 };
 

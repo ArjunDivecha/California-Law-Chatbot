@@ -1,0 +1,900 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document Orchestration Visualization</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+      min-height: 100vh;
+      color: #e2e8f0;
+      overflow-x: hidden;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 40px 20px;
+    }
+
+    h1 {
+      text-align: center;
+      font-size: 2.5rem;
+      font-weight: 700;
+      margin-bottom: 10px;
+      background: linear-gradient(135deg, #60a5fa 0%, #a78bfa 50%, #f472b6 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .subtitle {
+      text-align: center;
+      color: #94a3b8;
+      margin-bottom: 50px;
+      font-size: 1.1rem;
+    }
+
+    /* Pipeline Container */
+    .pipeline {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 20px;
+      margin-bottom: 40px;
+      position: relative;
+    }
+
+    /* Connection Lines */
+    .pipeline::before {
+      content: '';
+      position: absolute;
+      top: 80px;
+      left: 12%;
+      right: 12%;
+      height: 3px;
+      background: linear-gradient(90deg, #3b82f6, #8b5cf6, #ec4899, #10b981);
+      z-index: 0;
+      opacity: 0.3;
+    }
+
+    /* Agent Card */
+    .agent-card {
+      flex: 1;
+      background: rgba(30, 41, 59, 0.8);
+      border-radius: 20px;
+      padding: 25px;
+      position: relative;
+      z-index: 1;
+      border: 1px solid rgba(148, 163, 184, 0.1);
+      backdrop-filter: blur(10px);
+      transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+      min-height: 280px;
+    }
+
+    .agent-card.active {
+      border-color: var(--agent-color);
+      box-shadow: 0 0 40px var(--agent-glow);
+      transform: translateY(-5px) scale(1.02);
+    }
+
+    .agent-card.completed {
+      border-color: #10b981;
+      opacity: 0.7;
+    }
+
+    .agent-card.pending {
+      opacity: 0.4;
+    }
+
+    /* Agent Icon */
+    .agent-icon {
+      width: 70px;
+      height: 70px;
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 32px;
+      margin: 0 auto 15px;
+      position: relative;
+      background: var(--agent-bg);
+    }
+
+    .agent-card.active .agent-icon {
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 var(--agent-glow); }
+      50% { transform: scale(1.05); box-shadow: 0 0 30px var(--agent-glow); }
+    }
+
+    /* Spinning Ring for Active Agent */
+    .agent-card.active .agent-icon::after {
+      content: '';
+      position: absolute;
+      inset: -4px;
+      border-radius: 20px;
+      border: 2px solid transparent;
+      border-top-color: var(--agent-color);
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .agent-name {
+      text-align: center;
+      font-size: 1.2rem;
+      font-weight: 600;
+      margin-bottom: 5px;
+      color: #f1f5f9;
+    }
+
+    .agent-model {
+      text-align: center;
+      font-size: 0.8rem;
+      color: #64748b;
+      margin-bottom: 15px;
+    }
+
+    .agent-status {
+      text-align: center;
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      font-weight: 500;
+      background: rgba(0,0,0,0.2);
+      margin-bottom: 15px;
+    }
+
+    .agent-card.active .agent-status {
+      background: var(--agent-bg);
+      color: var(--agent-color);
+      animation: statusPulse 1.5s infinite;
+    }
+
+    @keyframes statusPulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.7; }
+    }
+
+    .agent-card.completed .agent-status {
+      background: rgba(16, 185, 129, 0.2);
+      color: #10b981;
+    }
+
+    /* Task List */
+    .task-list {
+      margin-top: 15px;
+    }
+
+    .task-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 0;
+      font-size: 0.9rem;
+      color: #94a3b8;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+    }
+
+    .task-item:last-child {
+      border-bottom: none;
+    }
+
+    .task-icon {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      flex-shrink: 0;
+    }
+
+    .task-item.completed .task-icon {
+      background: rgba(16, 185, 129, 0.2);
+      color: #10b981;
+    }
+
+    .task-item.active .task-icon {
+      background: rgba(59, 130, 246, 0.2);
+      color: #3b82f6;
+      animation: taskPulse 1s infinite;
+    }
+
+    @keyframes taskPulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.2); }
+    }
+
+    .task-item.pending .task-icon {
+      background: rgba(148, 163, 184, 0.1);
+      color: #475569;
+    }
+
+    /* Agent Colors */
+    .agent-card[data-agent="research"] {
+      --agent-color: #3b82f6;
+      --agent-bg: rgba(59, 130, 246, 0.15);
+      --agent-glow: rgba(59, 130, 246, 0.3);
+    }
+
+    .agent-card[data-agent="drafter"] {
+      --agent-color: #8b5cf6;
+      --agent-bg: rgba(139, 92, 246, 0.15);
+      --agent-glow: rgba(139, 92, 246, 0.3);
+    }
+
+    .agent-card[data-agent="citation"] {
+      --agent-color: #ec4899;
+      --agent-bg: rgba(236, 72, 153, 0.15);
+      --agent-glow: rgba(236, 72, 153, 0.3);
+    }
+
+    .agent-card[data-agent="verifier"] {
+      --agent-color: #10b981;
+      --agent-bg: rgba(16, 185, 129, 0.15);
+      --agent-glow: rgba(16, 185, 129, 0.3);
+    }
+
+    /* Progress Section */
+    .progress-section {
+      background: rgba(30, 41, 59, 0.6);
+      border-radius: 20px;
+      padding: 30px;
+      margin-bottom: 30px;
+      border: 1px solid rgba(148, 163, 184, 0.1);
+    }
+
+    .progress-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .progress-title {
+      font-size: 1.3rem;
+      font-weight: 600;
+    }
+
+    .progress-percent {
+      font-size: 2rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, #60a5fa, #a78bfa);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .progress-bar-container {
+      height: 12px;
+      background: rgba(0,0,0,0.3);
+      border-radius: 10px;
+      overflow: hidden;
+      margin-bottom: 15px;
+    }
+
+    .progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, #3b82f6, #8b5cf6, #ec4899, #10b981);
+      border-radius: 10px;
+      transition: width 0.5s ease;
+      position: relative;
+    }
+
+    .progress-bar::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+      animation: shimmer 2s infinite;
+    }
+
+    @keyframes shimmer {
+      0% { transform: translateX(-100%); }
+      100% { transform: translateX(100%); }
+    }
+
+    .progress-message {
+      color: #94a3b8;
+      font-size: 0.95rem;
+    }
+
+    /* Live Output */
+    .output-section {
+      background: rgba(15, 23, 42, 0.8);
+      border-radius: 20px;
+      padding: 25px;
+      border: 1px solid rgba(148, 163, 184, 0.1);
+    }
+
+    .output-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .output-title {
+      font-size: 1.1rem;
+      font-weight: 600;
+    }
+
+    .live-indicator {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 12px;
+      background: rgba(239, 68, 68, 0.2);
+      border-radius: 20px;
+      font-size: 0.75rem;
+      color: #ef4444;
+    }
+
+    .live-dot {
+      width: 8px;
+      height: 8px;
+      background: #ef4444;
+      border-radius: 50%;
+      animation: livePulse 1s infinite;
+    }
+
+    @keyframes livePulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+
+    .output-content {
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-size: 0.85rem;
+      line-height: 1.6;
+      max-height: 300px;
+      overflow-y: auto;
+      padding: 15px;
+      background: rgba(0,0,0,0.3);
+      border-radius: 12px;
+    }
+
+    .output-line {
+      margin-bottom: 8px;
+      padding: 4px 0;
+      opacity: 0;
+      animation: fadeIn 0.3s forwards;
+    }
+
+    @keyframes fadeIn {
+      to { opacity: 1; }
+    }
+
+    .output-line.research { color: #60a5fa; }
+    .output-line.draft { color: #a78bfa; }
+    .output-line.citation { color: #f472b6; }
+    .output-line.verify { color: #34d399; }
+    .output-line.system { color: #fbbf24; }
+
+    /* Floating Particles */
+    .particles {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      overflow: hidden;
+      z-index: -1;
+    }
+
+    .particle {
+      position: absolute;
+      width: 4px;
+      height: 4px;
+      background: rgba(139, 92, 246, 0.5);
+      border-radius: 50%;
+      animation: float 15s infinite;
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(100vh) rotate(0deg); opacity: 0; }
+      10% { opacity: 1; }
+      90% { opacity: 1; }
+      100% { transform: translateY(-100vh) rotate(720deg); opacity: 0; }
+    }
+
+    /* Start Button */
+    .start-btn {
+      display: block;
+      margin: 30px auto;
+      padding: 16px 48px;
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: white;
+      background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 20px rgba(139, 92, 246, 0.4);
+    }
+
+    .start-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 30px rgba(139, 92, 246, 0.5);
+    }
+
+    .start-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    /* Document Preview */
+    .document-preview {
+      margin-top: 30px;
+      background: rgba(30, 41, 59, 0.6);
+      border-radius: 20px;
+      padding: 30px;
+      border: 1px solid rgba(148, 163, 184, 0.1);
+      display: none;
+    }
+
+    .document-preview.visible {
+      display: block;
+      animation: slideUp 0.5s ease;
+    }
+
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .section-tabs {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+
+    .section-tab {
+      padding: 8px 16px;
+      border-radius: 8px;
+      background: rgba(0,0,0,0.2);
+      color: #94a3b8;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      border: 1px solid transparent;
+    }
+
+    .section-tab.completed {
+      background: rgba(16, 185, 129, 0.15);
+      color: #10b981;
+      border-color: rgba(16, 185, 129, 0.3);
+    }
+
+    .section-tab.active {
+      background: rgba(139, 92, 246, 0.2);
+      color: #a78bfa;
+      border-color: rgba(139, 92, 246, 0.3);
+    }
+
+    .section-content {
+      background: rgba(0,0,0,0.2);
+      border-radius: 12px;
+      padding: 20px;
+      max-height: 400px;
+      overflow-y: auto;
+      line-height: 1.7;
+    }
+  </style>
+</head>
+<body>
+  <!-- Floating Particles -->
+  <div class="particles" id="particles"></div>
+
+  <div class="container">
+    <h1>🏛️ Legal Document Orchestration</h1>
+    <p class="subtitle">Multi-Agent AI Document Generation Pipeline</p>
+
+    <!-- Agent Pipeline -->
+    <div class="pipeline">
+      <!-- Research Agent -->
+      <div class="agent-card pending" data-agent="research" id="agent-research">
+        <div class="agent-icon">🔍</div>
+        <div class="agent-name">Research Agent</div>
+        <div class="agent-model">Claude Haiku</div>
+        <div class="agent-status">Waiting...</div>
+        <div class="task-list">
+          <div class="task-item pending" data-task="ceb">
+            <div class="task-icon">○</div>
+            <span>Search CEB Practice Guides</span>
+          </div>
+          <div class="task-item pending" data-task="cases">
+            <div class="task-icon">○</div>
+            <span>Find California Case Law</span>
+          </div>
+          <div class="task-item pending" data-task="statutes">
+            <div class="task-icon">○</div>
+            <span>Lookup Relevant Statutes</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Drafter Agent -->
+      <div class="agent-card pending" data-agent="drafter" id="agent-drafter">
+        <div class="agent-icon">✍️</div>
+        <div class="agent-name">Drafter Agent</div>
+        <div class="agent-model">Gemini 2.5 Pro</div>
+        <div class="agent-status">Waiting...</div>
+        <div class="task-list" id="drafter-tasks">
+          <!-- Tasks will be populated dynamically -->
+        </div>
+      </div>
+
+      <!-- Citation Agent -->
+      <div class="agent-card pending" data-agent="citation" id="agent-citation">
+        <div class="agent-icon">📚</div>
+        <div class="agent-name">Citation Agent</div>
+        <div class="agent-model">Pattern Matching</div>
+        <div class="agent-status">Waiting...</div>
+        <div class="task-list">
+          <div class="task-item pending" data-task="extract">
+            <div class="task-icon">○</div>
+            <span>Extract Citations</span>
+          </div>
+          <div class="task-item pending" data-task="verify">
+            <div class="task-icon">○</div>
+            <span>Verify Authorities</span>
+          </div>
+          <div class="task-item pending" data-task="toa">
+            <div class="task-icon">○</div>
+            <span>Build Table of Authorities</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Verifier Agent -->
+      <div class="agent-card pending" data-agent="verifier" id="agent-verifier">
+        <div class="agent-icon">✅</div>
+        <div class="agent-name">Verifier Agent</div>
+        <div class="agent-model">Claude Sonnet</div>
+        <div class="agent-status">Waiting...</div>
+        <div class="task-list">
+          <div class="task-item pending" data-task="accuracy">
+            <div class="task-icon">○</div>
+            <span>Check Citation Accuracy</span>
+          </div>
+          <div class="task-item pending" data-task="consistency">
+            <div class="task-icon">○</div>
+            <span>Verify Consistency</span>
+          </div>
+          <div class="task-item pending" data-task="compliance">
+            <div class="task-icon">○</div>
+            <span>California Compliance</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Progress Section -->
+    <div class="progress-section">
+      <div class="progress-header">
+        <div class="progress-title">📊 Overall Progress</div>
+        <div class="progress-percent" id="progress-percent">0%</div>
+      </div>
+      <div class="progress-bar-container">
+        <div class="progress-bar" id="progress-bar" style="width: 0%"></div>
+      </div>
+      <div class="progress-message" id="progress-message">Ready to generate document...</div>
+    </div>
+
+    <!-- Start Button -->
+    <button class="start-btn" id="start-btn" onclick="startGeneration()">
+      🚀 Generate Legal Memorandum
+    </button>
+
+    <!-- Live Output -->
+    <div class="output-section">
+      <div class="output-header">
+        <div class="output-title">📡 Live Activity Feed</div>
+        <div class="live-indicator" id="live-indicator" style="display: none;">
+          <div class="live-dot"></div>
+          LIVE
+        </div>
+      </div>
+      <div class="output-content" id="output-content">
+        <div class="output-line system">Awaiting start command...</div>
+      </div>
+    </div>
+
+    <!-- Document Preview -->
+    <div class="document-preview" id="document-preview">
+      <h3 style="margin-bottom: 20px;">📄 Generated Document</h3>
+      <div class="section-tabs" id="section-tabs"></div>
+      <div class="section-content" id="section-content"></div>
+    </div>
+  </div>
+
+  <script>
+    // Create floating particles
+    const particlesContainer = document.getElementById('particles');
+    for (let i = 0; i < 30; i++) {
+      const particle = document.createElement('div');
+      particle.className = 'particle';
+      particle.style.left = Math.random() * 100 + '%';
+      particle.style.animationDelay = Math.random() * 15 + 's';
+      particle.style.animationDuration = 10 + Math.random() * 10 + 's';
+      particlesContainer.appendChild(particle);
+    }
+
+    // State
+    let isGenerating = false;
+    let eventSource = null;
+    let sections = {};
+
+    // Agent states
+    const agents = {
+      research: { card: document.getElementById('agent-research'), status: 'pending' },
+      drafter: { card: document.getElementById('agent-drafter'), status: 'pending' },
+      citation: { card: document.getElementById('agent-citation'), status: 'pending' },
+      verifier: { card: document.getElementById('agent-verifier'), status: 'pending' }
+    };
+
+    function setAgentState(agentId, state, statusText) {
+      const agent = agents[agentId];
+      if (!agent) return;
+      
+      agent.card.classList.remove('pending', 'active', 'completed');
+      agent.card.classList.add(state);
+      agent.card.querySelector('.agent-status').textContent = statusText;
+      agent.status = state;
+    }
+
+    function setTaskState(agentId, taskId, state) {
+      const agent = agents[agentId];
+      if (!agent) return;
+      
+      const task = agent.card.querySelector(`[data-task="${taskId}"]`);
+      if (task) {
+        task.classList.remove('pending', 'active', 'completed');
+        task.classList.add(state);
+        const icon = task.querySelector('.task-icon');
+        if (state === 'completed') icon.textContent = '✓';
+        else if (state === 'active') icon.textContent = '●';
+        else icon.textContent = '○';
+      }
+    }
+
+    function addOutput(message, type = 'system') {
+      const output = document.getElementById('output-content');
+      const line = document.createElement('div');
+      line.className = `output-line ${type}`;
+      line.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+      output.appendChild(line);
+      output.scrollTop = output.scrollHeight;
+    }
+
+    function updateProgress(percent, message) {
+      document.getElementById('progress-bar').style.width = percent + '%';
+      document.getElementById('progress-percent').textContent = percent + '%';
+      document.getElementById('progress-message').textContent = message;
+    }
+
+    function addSectionTab(sectionId, sectionName, state) {
+      const tabs = document.getElementById('section-tabs');
+      let tab = tabs.querySelector(`[data-section="${sectionId}"]`);
+      
+      if (!tab) {
+        tab = document.createElement('div');
+        tab.className = 'section-tab';
+        tab.dataset.section = sectionId;
+        tab.textContent = sectionName;
+        tab.onclick = () => showSection(sectionId);
+        tabs.appendChild(tab);
+      }
+      
+      tab.classList.remove('pending', 'active', 'completed');
+      tab.classList.add(state);
+    }
+
+    function showSection(sectionId) {
+      document.querySelectorAll('.section-tab').forEach(t => t.classList.remove('selected'));
+      document.querySelector(`[data-section="${sectionId}"]`)?.classList.add('selected');
+      
+      const content = document.getElementById('section-content');
+      content.innerHTML = sections[sectionId]?.content?.replace(/\n/g, '<br>') || 'Loading...';
+    }
+
+    async function startGeneration() {
+      if (isGenerating) return;
+      isGenerating = true;
+
+      const btn = document.getElementById('start-btn');
+      btn.disabled = true;
+      btn.textContent = '⏳ Generating...';
+
+      document.getElementById('live-indicator').style.display = 'flex';
+      document.getElementById('output-content').innerHTML = '';
+      document.getElementById('document-preview').classList.remove('visible');
+      sections = {};
+
+      addOutput('🚀 Starting multi-agent document generation...', 'system');
+
+      try {
+        const response = await fetch('/api/orchestrate-document', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            documentType: 'legal_memo',
+            userInstructions: 'Analyze whether a revocable living trust protects assets from creditors under California law.',
+            variables: {
+              to: 'John Smith',
+              from: 'Jane Doe',
+              date: new Date().toLocaleDateString(),
+              subject: 'Revocable Trust Creditor Protection Analysis',
+              client_matter: 'Trust Analysis - 2026-001'
+            }
+          })
+        });
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+
+          const text = decoder.decode(value);
+          const lines = text.split('\n');
+
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              try {
+                const data = JSON.parse(line.slice(6));
+                handleEvent(data);
+              } catch (e) {}
+            }
+          }
+        }
+
+      } catch (error) {
+        addOutput(`❌ Error: ${error.message}`, 'system');
+      }
+
+      isGenerating = false;
+      btn.disabled = false;
+      btn.textContent = '🔄 Generate Another Document';
+      document.getElementById('live-indicator').style.display = 'none';
+    }
+
+    function handleEvent(data) {
+      switch (data.type) {
+        case 'progress':
+          handleProgress(data);
+          break;
+        case 'section_complete':
+          handleSectionComplete(data);
+          break;
+        case 'document_complete':
+          handleDocumentComplete(data);
+          break;
+        case 'error':
+          addOutput(`❌ ${data.error}`, 'system');
+          break;
+      }
+    }
+
+    function handleProgress(data) {
+      updateProgress(data.percentComplete, data.message);
+
+      switch (data.phase) {
+        case 'initializing':
+          addOutput('📋 Initializing orchestration pipeline...', 'system');
+          break;
+
+        case 'researching':
+          setAgentState('research', 'active', data.message);
+          addOutput(`🔍 ${data.message}`, 'research');
+          
+          if (data.message.includes('CEB')) {
+            setTaskState('research', 'ceb', 'active');
+          } else if (data.message.includes('case law')) {
+            setTaskState('research', 'ceb', 'completed');
+            setTaskState('research', 'cases', 'active');
+          } else if (data.message.includes('Ranking')) {
+            setTaskState('research', 'cases', 'completed');
+            setTaskState('research', 'statutes', 'active');
+          } else if (data.message.includes('complete')) {
+            setTaskState('research', 'statutes', 'completed');
+            setAgentState('research', 'completed', 'Research Complete ✓');
+          }
+          break;
+
+        case 'drafting':
+          setAgentState('drafter', 'active', data.message);
+          addOutput(`✍️ ${data.message}`, 'draft');
+          
+          if (data.currentSection) {
+            addSectionTab(data.currentSection, data.message.replace('Drafting: ', ''), 'active');
+          }
+          break;
+
+        case 'verifying_citations':
+          setAgentState('drafter', 'completed', 'Drafting Complete ✓');
+          setAgentState('citation', 'active', data.message);
+          addOutput(`📚 ${data.message}`, 'citation');
+          
+          if (data.message.includes('Verifying')) {
+            setTaskState('citation', 'extract', 'completed');
+            setTaskState('citation', 'verify', 'active');
+          } else if (data.message.includes('processed')) {
+            setTaskState('citation', 'verify', 'completed');
+            setTaskState('citation', 'toa', 'completed');
+            setAgentState('citation', 'completed', 'Citations Verified ✓');
+          }
+          break;
+
+        case 'final_verification':
+          setAgentState('verifier', 'active', data.message);
+          addOutput(`✅ ${data.message}`, 'verify');
+          
+          if (data.message.includes('Performing')) {
+            setTaskState('verifier', 'accuracy', 'active');
+          } else if (data.message.includes('complete')) {
+            setTaskState('verifier', 'accuracy', 'completed');
+            setTaskState('verifier', 'consistency', 'completed');
+            setTaskState('verifier', 'compliance', 'completed');
+            setAgentState('verifier', 'completed', 'Verification Complete ✓');
+          }
+          break;
+
+        case 'complete':
+          addOutput('🎉 Document generation complete!', 'system');
+          break;
+      }
+    }
+
+    function handleSectionComplete(data) {
+      sections[data.sectionId] = {
+        name: data.sectionName,
+        content: data.content,
+        wordCount: data.wordCount,
+        citations: data.citations
+      };
+
+      addSectionTab(data.sectionId, data.sectionName, 'completed');
+      addOutput(`📄 Section "${data.sectionName}" complete (${data.wordCount} words, ${data.citations?.length || 0} citations)`, 'draft');
+      
+      document.getElementById('document-preview').classList.add('visible');
+      showSection(data.sectionId);
+    }
+
+    function handleDocumentComplete(data) {
+      const doc = data.document;
+      const report = data.verificationReport;
+      
+      addOutput(`📊 Final Statistics:`, 'system');
+      addOutput(`   Total Words: ${doc.wordCount}`, 'system');
+      addOutput(`   Estimated Pages: ${doc.pageEstimate}`, 'system');
+      addOutput(`   Verification Score: ${report.overallScore}/100`, 'verify');
+      addOutput(`   Status: ${report.approvalStatus}`, 'verify');
+      
+      updateProgress(100, `✅ Complete! Score: ${report.overallScore}/100`);
+    }
+  </script>
+</body>
+</html>

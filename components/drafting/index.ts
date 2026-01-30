@@ -9,3 +9,4 @@ export { TemplateSelector } from './TemplateSelector';
 export { VariableInputPanel } from './VariableInputPanel';
 export { ProgressIndicator } from './ProgressIndicator';
 export { DocumentPreview } from './DocumentPreview';
+export { OrchestrationVisual } from './OrchestrationVisual';
