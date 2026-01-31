@@ -235,15 +235,28 @@ export default async function handler(
       throw new Error(data.error.message || JSON.stringify(data.error));
     }
 
-    const text = data.choices?.[0]?.message?.content || '';
+    let text = data.choices?.[0]?.message?.content || '';
+
+    // If primary model returns empty, try fallback
+    if (!text && usedModel === PRIMARY_MODEL) {
+      console.warn(`⚠️ ${PRIMARY_MODEL} returned empty response, trying fallback...`);
+      try {
+        const fallbackResponse = await executeRequest(FALLBACK_MODEL, 60000);
+        const fallbackData = await fallbackResponse.json();
+        text = fallbackData.choices?.[0]?.message?.content || '';
+        if (text) {
+          usedModel = FALLBACK_MODEL;
+          console.log(`✅ Fallback model ${FALLBACK_MODEL} succeeded`);
+        }
+      } catch (fallbackError: any) {
+        console.error('Fallback also failed:', fallbackError.message);
+      }
+    }
 
     if (!text) {
-      console.error('No text content found in OpenRouter response');
-      res.status(500).json({
-        error: 'No text content in response',
-        message: 'OpenRouter returned no text output'
-      });
-      return;
+      console.error('No text content found in OpenRouter response from either model');
+      // Return a user-friendly message instead of 500 error
+      text = "I apologize, but I'm having difficulty generating a response right now. This may be due to high demand. Please try again in a moment, or try simplifying your question.";
     }
 
     console.log(`✅ OpenRouter response received (${text.length} chars) via ${usedModel}`);
