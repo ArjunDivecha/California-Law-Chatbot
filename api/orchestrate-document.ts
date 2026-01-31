@@ -441,49 +441,40 @@ OUTPUT:
 Return ONLY the section content in clean markdown format. Do not include the section heading (it will be added automatically).`;
 
 function formatResearchContext(research: ResearchPackage): string {
-  let context = `\n## RESEARCH CONTEXT (use these sources):\n\n`;
+  let context = `\n## RESEARCH CONTEXT:\n\n`;
 
-  // Key authorities
+  // Key authorities (reduced to top 3)
   if (research.keyAuthorities && research.keyAuthorities.length > 0) {
-    context += `### Key Authorities (ranked by relevance):\n`;
-    research.keyAuthorities.slice(0, 5).forEach((auth, i) => {
-      context += `${i + 1}. [${auth.type.toUpperCase()}] ${auth.citation}\n   ${auth.summary}\n`;
+    context += `### Key Authorities:\n`;
+    research.keyAuthorities.slice(0, 3).forEach((auth, i) => {
+      context += `${i + 1}. ${auth.citation} - ${auth.summary.substring(0, 120)}...\n`;
     });
     context += '\n';
   }
 
-  // CEB sources
+  // CEB sources (reduced to top 2, shorter excerpts)
   if (research.cebSources && research.cebSources.length > 0) {
-    context += `### CEB Practice Guide Sources:\n`;
-    research.cebSources.slice(0, 4).forEach(src => {
-      context += `- ${src.cebCitation}: "${src.excerpt?.substring(0, 250)}..."\n`;
+    context += `### CEB Sources:\n`;
+    research.cebSources.slice(0, 2).forEach(src => {
+      context += `- ${src.cebCitation}: ${src.excerpt?.substring(0, 150)}...\n`;
     });
     context += '\n';
   }
 
-  // Case law
+  // Case law (reduced to top 2)
   if (research.caseLaw && research.caseLaw.length > 0) {
-    context += `### California Case Law:\n`;
-    research.caseLaw.slice(0, 4).forEach(c => {
-      context += `- ${c.caseName} (${c.year}) ${c.citation}\n  Holding: ${c.holding?.substring(0, 180)}...\n`;
+    context += `### Cases:\n`;
+    research.caseLaw.slice(0, 2).forEach(c => {
+      context += `- ${c.caseName} (${c.year}) ${c.citation}\n`;
     });
     context += '\n';
   }
 
-  // Statutes
+  // Statutes (brief)
   if (research.statutes && research.statutes.length > 0) {
-    context += `### Applicable Statutes:\n`;
-    research.statutes.forEach(s => {
+    context += `### Statutes:\n`;
+    research.statutes.slice(0, 3).forEach(s => {
       context += `- ${s.code} § ${s.section}\n`;
-    });
-    context += '\n';
-  }
-
-  // Model language
-  if (research.modelLanguage && research.modelLanguage.length > 0) {
-    context += `### Model Language (from CEB):\n`;
-    research.modelLanguage.slice(0, 2).forEach(ml => {
-      context += `- Source: ${ml.citation}\n  "${ml.text.substring(0, 250)}..."\n`;
     });
     context += '\n';
   }
@@ -520,7 +511,7 @@ async function callGemini(prompt: string): Promise<string> {
         }],
         generationConfig: {
           temperature: 0.7,
-          maxOutputTokens: 4096,
+          maxOutputTokens: 2048, // Reduced from 4096 to speed up generation
           topP: 0.95,
         },
         safetySettings: [
@@ -623,14 +614,12 @@ async function runDraftingPhase(
       }
       prompt += '\n';
       
-      // Add previous sections for coherence
+      // Add previous sections for coherence (limit to most recent one to reduce prompt size)
       if (previousSections.length > 0) {
-        prompt += `PREVIOUS SECTIONS (maintain coherence):\n`;
-        const recent = previousSections.slice(-2);
-        recent.forEach(s => {
-          prompt += `--- ${s.sectionName} ---\n`;
-          prompt += `${s.content.substring(0, 400)}${s.content.length > 400 ? '...' : ''}\n\n`;
-        });
+        prompt += `PREVIOUS SECTION (maintain coherence):\n`;
+        const recent = previousSections[previousSections.length - 1];
+        prompt += `--- ${recent.sectionName} ---\n`;
+        prompt += `${recent.content.substring(0, 300)}${recent.content.length > 300 ? '...' : ''}\n\n`;
       }
       
       prompt += `\nNow write the "${section.name}" section. Remember to cite California authorities.`;
