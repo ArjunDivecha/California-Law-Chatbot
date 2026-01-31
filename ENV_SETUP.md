@@ -11,7 +11,7 @@
   - Claude Sonnet 4.5 (verifier): `anthropic/claude-sonnet-4.5`
   - Claude Haiku 4.5 (research agent): `anthropic/claude-haiku-4.5`
 - **ZDR Support**: Enable Zero Data Retention in OpenRouter settings for privacy compliance
-- **Example**: `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`
+- **Example**: `sk-or-v1-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx`
 - **Cost**: Pay-per-use, typically $0.10-0.50 per document
 
 ### OPENAI_API_KEY (Required)
