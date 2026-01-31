@@ -47,7 +47,17 @@ export async function fetchWithRetry(
       // Retry server errors (5xx) and network errors
       // On last attempt, throw the error
       if (attempt === maxRetries) {
-        throw new Error(`Server error: ${response.status} ${response.statusText}`);
+        // Try to get more details from the response body
+        let errorDetails = '';
+        try {
+          const errorBody = await response.text();
+          if (errorBody) {
+            errorDetails = ` - ${errorBody.substring(0, 200)}`;
+          }
+        } catch (e) {
+          // Ignore if we can't read the body
+        }
+        throw new Error(`Server error: ${response.status} at ${url}${errorDetails}`);
       }
       
       // Calculate exponential backoff delay: 1s, 2s, 4s...
