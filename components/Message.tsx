@@ -429,8 +429,8 @@ const Message: React.FC<MessageProps> = ({ message }) => {
     }
   };
 
-  // Conditionally render source list only if there are no inline citations
-  const showSourceList = message.sources && message.sources.length > 0 && !message.text.match(/\[\d+\]/);
+  // Always show source list at the bottom when sources exist
+  const showSourceList = message.sources && message.sources.length > 0;
 
   // Check if this is a CEB-based response
   const isCEBBased = message.isCEBBased || (message.sources && message.sources.some(s => 'isCEB' in s && s.isCEB));
