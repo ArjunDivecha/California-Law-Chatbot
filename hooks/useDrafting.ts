@@ -369,7 +369,14 @@ export function useDrafting(): UseDraftingReturn {
         break;
         
       case 'document_complete':
-        setDocument(event.document);
+        // Merge verificationReport and citations into the document object
+        // (backend sends them as sibling properties, but we need them inside document)
+        const completeDocument = {
+          ...event.document,
+          verificationReport: event.verificationReport || event.document?.verificationReport,
+          citationReport: event.citations || event.document?.citationReport,
+        };
+        setDocument(completeDocument);
         setStatus('complete');
         setProgress(100);
         setProgressMessage('Document generation complete');
