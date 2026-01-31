@@ -498,12 +498,13 @@ async function callGemini(prompt: string, maxWords?: number, retryCount: number 
   const startTime = Date.now();
   
   // Calculate maxOutputTokens based on word count requirement
-  // Rough estimate: 1 token ≈ 0.75 words, add 50% buffer for safety margin
-  // For 2500 words: 2500 / 0.75 * 1.5 ≈ 5000 tokens
-  let maxOutputTokens = 4096; // Higher default
+  // Rough estimate: 1 token ≈ 0.75 words, add 100% buffer for safety margin
+  // Gemini 2.5 Flash supports up to 65,535 output tokens
+  // For 2500 words: 2500 / 0.75 * 2 ≈ 6667 tokens
+  let maxOutputTokens = 8192; // Higher default
   if (maxWords) {
-    // Use 1.5x buffer to ensure we get complete output
-    maxOutputTokens = Math.min(Math.ceil((maxWords / 0.75) * 1.5), 8192); // Cap at 8192 (model max)
+    // Use 2x buffer to ensure we get complete output - model supports up to 65,535 tokens
+    maxOutputTokens = Math.min(Math.ceil((maxWords / 0.75) * 2), 16384); // Cap at 16384 for reasonable latency
   }
   console.log(`   📊 Token budget: ${maxOutputTokens} tokens (target: ${maxWords || 'default'} words)`);
   
@@ -529,6 +530,11 @@ async function callGemini(prompt: string, maxWords?: number, retryCount: number 
           temperature: 0.7,
           maxOutputTokens: maxOutputTokens,
           topP: 0.95,
+          // Disable thinking mode for faster generation - we don't need complex reasoning
+          // for document drafting, just fast and comprehensive text generation
+          thinkingConfig: {
+            thinkingBudget: 0,
+          },
         },
         safetySettings: [
           { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
