@@ -1710,7 +1710,7 @@ Key California legal sources to reference:
             }
 
             // Generate response using CEB context + extracted cases
-            const prompt = `You are a California legal research assistant. Write a comprehensive, well-organized answer to the following question using the authoritative CEB (Continuing Education of the Bar) practice guide excerpts and the relevant case law provided below.
+            const prompt = `You are a California legal research assistant. Write a comprehensive, well-organized answer to the following question using the authoritative CEB (Continuing Education of the Bar) practice guide excerpts provided below.
 
 Question: ${message}
 
@@ -1718,20 +1718,23 @@ CEB Practice Guide Excerpts:
 ${cebContext}
 ${caseContext}
 
-CRITICAL INSTRUCTIONS - YOU MUST FOLLOW THESE:
-1. Write a COMPLETE, COHERENT ANSWER in proper paragraphs - DO NOT just list snippets or raw text
-2. SYNTHESIZE information from the CEB excerpts into a unified, professional legal explanation
-3. Base your answer PRIMARILY on the CEB excerpts provided
-4. CITE CASE LAW: When the CEB text references a case, include the full case citation (e.g., "Estate of Bibb (2001) 87 Cal.App.4th 461")
-5. Cite CEB sources using [1], [2], etc. format throughout your answer
-6. Include relevant CEB citations (e.g., "Cal. Prac. Guide: Family Law § 3:45")
-7. Use clear topic sentences and logical organization
-8. If the excerpts don't fully answer the question, acknowledge this limitation clearly
-9. Be thorough but readable - write for a 10th grade reading level
-10. DO NOT output raw JSON, snippets, or unformatted data - write a professional legal analysis
-11. When citing cases, use proper legal citation format with the case name in italics conceptually
+CRITICAL CITATION INSTRUCTIONS - YOU MUST FOLLOW THESE EXACTLY:
+1. EVERY factual claim MUST have a bracketed citation like [1], [2], [3] at the end of the sentence
+2. The numbers [1], [2], etc. correspond to the numbered CEB sources above - USE THESE EXACT NUMBERS
+3. Example: "A court may modify custody upon showing changed circumstances [1]."
+4. DO NOT write citations without brackets - ALWAYS use [1] format, not "1" or "(1)"
+5. If citing case law mentioned in a CEB source, include BOTH: "In Montenegro v. Diaz, the court held... [2]"
 
-Your answer should read like a legal memorandum based on authoritative sources, not a list of search results.
+WRITING INSTRUCTIONS:
+1. Write a COMPLETE, COHERENT ANSWER in proper paragraphs
+2. SYNTHESIZE information from the CEB excerpts into a unified explanation
+3. Base your answer PRIMARILY on the CEB excerpts provided
+4. Use clear topic sentences and logical organization
+5. If the excerpts don't fully answer the question, acknowledge this clearly
+6. Be thorough but readable - write for a 10th grade reading level
+7. DO NOT output raw JSON, snippets, or unformatted data
+
+Your answer should read like a legal memorandum with proper [1], [2] source citations throughout.
 
 Answer:`;
 
@@ -1904,20 +1907,22 @@ Question: ${message}
 
 ${context}
 
-CRITICAL INSTRUCTIONS - YOU MUST FOLLOW THESE:
-1. Write a COMPLETE, COHERENT ANSWER in proper paragraphs - DO NOT just list snippets or raw source text
-2. SYNTHESIZE information from multiple sources into a unified, professional legal explanation
-3. START with the most important information from CEB practice guides (these are authoritative)
-4. CITE CASE LAW with full citations (e.g., "Estate of Bibb (2001) 87 Cal.App.4th 461")
-5. INTEGRATE case law and legislation to support and expand on CEB guidance
-6. Cite sources using [1], [2], etc. format throughout your answer
-7. For CEB sources, include the CEB citation (e.g., "Cal. Prac. Guide: Family Law § 3:45")
-8. Use clear topic sentences and logical organization
-9. If sources conflict, explain the different approaches
-10. Be thorough but readable - write for a 10th grade reading level
-11. DO NOT output raw JSON, snippets, or unformatted data - write a professional legal analysis
+CRITICAL CITATION INSTRUCTIONS - YOU MUST FOLLOW THESE EXACTLY:
+1. EVERY factual claim MUST have a bracketed citation like [1], [2], [3] at the end of the sentence
+2. The numbers [1], [2], etc. correspond to the numbered sources above - USE THESE EXACT NUMBERS
+3. Example: "A court may modify custody upon showing changed circumstances [1]."
+4. DO NOT write citations without brackets - ALWAYS use [1] format, not "1" or "(1)"
+5. If citing case law mentioned in a source, include BOTH: "In Montenegro v. Diaz, the court held... [2]"
 
-Your answer should read like a legal memorandum, not a list of search results.
+WRITING INSTRUCTIONS:
+1. Write a COMPLETE, COHERENT ANSWER in proper paragraphs
+2. SYNTHESIZE information from multiple sources into a unified explanation
+3. START with the most important information from CEB practice guides (authoritative)
+4. Use clear topic sentences and logical organization
+5. Be thorough but readable - write for a 10th grade reading level
+6. DO NOT output raw JSON, snippets, or unformatted data
+
+Your answer should read like a legal memorandum with proper source citations throughout.
 
 Answer:`;
 

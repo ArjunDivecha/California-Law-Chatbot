@@ -420,17 +420,22 @@ export default async function handler(req: any, res: any) {
       })`);
 
     // Format results as CEBSource objects
-    const sources = topResults.map((result: any) => ({
-      title: result.metadata.title || 'CEB Document',
-      url: `ceb://${result.metadata.source_file}`, // Custom URL scheme for CEB docs
-      excerpt: result.metadata.text || '',
-      isCEB: true as const,
-      category: result.metadata.category,
-      cebCitation: result.metadata.ceb_citation || `CEB: ${result.metadata.title}`,
-      pageNumber: result.metadata.page_number,
-      section: result.metadata.section,
-      confidence: result.score,
-    }));
+    const sources = topResults.map((result: any) => {
+      const title = result.metadata.title || 'CEB Document';
+      // Create a searchable URL to CEB Online (even without subscription, shows the book exists)
+      const searchTitle = encodeURIComponent(title);
+      return {
+        title,
+        url: `https://research.ceb.com/search?q=${searchTitle}`, // Link to CEB search
+        excerpt: result.metadata.text || '',
+        isCEB: true as const,
+        category: result.metadata.category,
+        cebCitation: result.metadata.ceb_citation || `CEB: ${title}`,
+        pageNumber: result.metadata.page_number,
+        section: result.metadata.section,
+        confidence: result.score,
+      };
+    });
 
     // Format context for LLM
     const context = formatCEBContext(sources);
