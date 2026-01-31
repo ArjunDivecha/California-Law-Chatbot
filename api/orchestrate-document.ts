@@ -1000,8 +1000,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Origin', '*');
 
   const sendEvent = (type: string, data: unknown) => {
-    res.write(`data: ${JSON.stringify({ type, ...data as object })}\n\n`);
+    try {
+      res.write(`data: ${JSON.stringify({ type, ...data as object })}\n\n`);
+    } catch (e) {
+      console.error('Failed to send SSE event:', e);
+    }
   };
+
+  // Send heartbeat every 10 seconds to keep connection alive
+  const heartbeatInterval = setInterval(() => {
+    try {
+      res.write(`: heartbeat\n\n`);
+    } catch (e) {
+      clearInterval(heartbeatInterval);
+    }
+  }, 10000);
 
   try {
     const request: DraftRequest = req.body;
@@ -1032,13 +1045,45 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const citationStyle = request.options?.citationStyle || 'california';
 
     // ===================
-    // PHASE 1: RESEARCH
+    // PHASE 1: RESEARCH (with overall timeout)
     // ===================
-    const researchPackage = await runResearchPhase(
-      request.userInstructions,
-      template.practiceAreas || ['general'],
-      sendEvent
-    );
+    let researchPackage: ResearchPackage;
+    try {
+      // Wrap research phase with timeout
+      researchPackage = await Promise.race([
+        runResearchPhase(
+          request.userInstructions,
+          template.practiceAreas || ['general'],
+          sendEvent
+        ),
+        new Promise<ResearchPackage>((_, reject) => {
+          setTimeout(() => {
+            reject(new Error('Research phase timed out after 90 seconds'));
+          }, 90000);
+        }),
+      ]);
+    } catch (researchError: any) {
+      if (researchError.message?.includes('timed out')) {
+        // Create minimal research package to allow generation to continue
+        sendEvent('progress', {
+          phase: 'researching',
+          message: 'Research timeout - continuing with available sources',
+          percentComplete: 25,
+        });
+        researchPackage = {
+          query: request.userInstructions,
+          completedAt: new Date().toISOString(),
+          cebSources: [],
+          caseLaw: [],
+          statutes: [],
+          keyAuthorities: [],
+          researchNotes: 'Research incomplete due to timeout - proceeding with generation',
+        };
+        console.warn('⚠️ Research phase timed out - continuing with minimal research');
+      } else {
+        throw researchError;
+      }
+    }
 
     // ===================
     // PHASE 2: DRAFTING
@@ -1106,10 +1151,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     console.log(`   Citations: ${citationReport.totalCitations} (${citationReport.verifiedCitations} verified)`);
     console.log(`   Verification score: ${verificationReport.overallScore}/100`);
 
+    clearInterval(heartbeatInterval);
     return res.end();
 
   } catch (error) {
     console.error('❌ Orchestrator error:', error);
+    clearInterval(heartbeatInterval);
     sendEvent('error', {
       error: error instanceof Error ? error.message : 'Document generation failed',
       recoverable: false,
