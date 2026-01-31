@@ -482,7 +482,7 @@ function formatResearchContext(research: ResearchPackage): string {
   return context;
 }
 
-async function callGemini(prompt: string, retryCount: number = 0): Promise<string> {
+async function callGemini(prompt: string, maxWords?: number, retryCount: number = 0): Promise<string> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error('GEMINI_API_KEY not configured');
 
@@ -490,6 +490,14 @@ async function callGemini(prompt: string, retryCount: number = 0): Promise<strin
 
   console.log(`   🤖 Calling Gemini 2.5 Flash...${retryCount > 0 ? ` (retry ${retryCount})` : ''}`);
   const startTime = Date.now();
+  
+  // Calculate maxOutputTokens based on word count requirement
+  // Rough estimate: 1 token ≈ 0.75 words, add 20% buffer for safety
+  // For 2500 words: 2500 / 0.75 * 1.2 ≈ 4000 tokens
+  let maxOutputTokens = 2048; // Default
+  if (maxWords) {
+    maxOutputTokens = Math.min(Math.ceil((maxWords / 0.75) * 1.2), 8192); // Cap at 8192 (model max)
+  }
   
   // Add timeout to prevent hanging (60 seconds max per section)
   const controller = new AbortController();
@@ -511,7 +519,7 @@ async function callGemini(prompt: string, retryCount: number = 0): Promise<strin
         }],
         generationConfig: {
           temperature: 0.7,
-          maxOutputTokens: 2048, // Reduced from 4096 to speed up generation
+          maxOutputTokens: maxOutputTokens,
           topP: 0.95,
         },
         safetySettings: [
@@ -531,11 +539,21 @@ async function callGemini(prompt: string, retryCount: number = 0): Promise<strin
     }
 
     const data = await response.json();
-    console.log(`   ✓ Gemini responded in ${Date.now() - startTime}ms`);
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    const candidate = data.candidates?.[0];
+    const finishReason = candidate?.finishReason;
+    
+    console.log(`   ✓ Gemini responded in ${Date.now() - startTime}ms (finishReason: ${finishReason})`);
+    
+    const text = candidate?.content?.parts?.[0]?.text;
     if (!text) {
       console.log('   ❌ No content in Gemini response:', JSON.stringify(data).substring(0, 200));
       throw new Error('No content in Gemini response');
+    }
+    
+    // Check if response was truncated
+    if (finishReason === 'MAX_TOKENS') {
+      console.warn(`   ⚠️ Response truncated due to token limit (maxOutputTokens: ${maxOutputTokens})`);
+      // For now, return what we have - user can edit if needed
     }
     
     return text.trim();
@@ -550,11 +568,11 @@ async function callGemini(prompt: string, retryCount: number = 0): Promise<strin
       error.message?.includes('ETIMEDOUT') ||
       (error.status >= 500 && error.status < 600);
     
-    if (isRetryable && retryCount < 2) {
+      if (isRetryable && retryCount < 2) {
       const delay = Math.min(1000 * Math.pow(2, retryCount), 5000); // Exponential backoff, max 5s
       console.log(`   ⚠️ Gemini error (retryable), retrying in ${delay}ms...`);
       await new Promise(resolve => setTimeout(resolve, delay));
-      return callGemini(prompt, retryCount + 1);
+      return callGemini(prompt, maxWords, retryCount + 1);
     }
     
     if (error.name === 'AbortError' || error.message?.includes('aborted')) {
@@ -641,8 +659,9 @@ async function runDraftingPhase(
       prompt += `\nNow write the "${section.name}" section. Remember to cite California authorities.`;
 
       console.log(`   🤖 Starting Gemini call for ${section.name}...`);
-      content = await callGemini(prompt);
-      console.log(`   ✓ ${section.name}: ${countWords(content)} words generated`);
+      content = await callGemini(prompt, section.maxLengthWords);
+      const wordCount = countWords(content);
+      console.log(`   ✓ ${section.name}: ${wordCount} words generated${section.maxLengthWords && wordCount < section.maxLengthWords * 0.8 ? ' (may be incomplete)' : ''}`);
       console.log(`   📦 Creating section object...`);
     }
 
