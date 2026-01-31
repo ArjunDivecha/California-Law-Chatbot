@@ -384,7 +384,7 @@ export default async function handler(req: any, res: any) {
     // Determine namespace(s) to search
     const namespaces = category
       ? [`ceb_${category}`]
-      : ['ceb_trusts_estates', 'ceb_family_law', 'ceb_business_litigation'];
+      : ['ceb_trusts_estates', 'ceb_family_law', 'ceb_business_litigation', 'ceb_business_entities', 'ceb_business_transactions'];
 
     console.log(`📚 Searching namespaces: ${namespaces.join(', ')}`);
 
