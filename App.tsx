@@ -61,7 +61,7 @@ const App: React.FC = () => {
               </div>
               <div>
                 <h1 className="text-lg font-semibold text-gray-900">California Law Chatbot</h1>
-                <p className="text-sm text-gray-500">AI Legal Research Assistant</p>
+                <a href="https://www.femmeandfemmelaw.com/" target="_blank" rel="noopener noreferrer" className="text-sm text-pink-500 hover:text-pink-600 hover:underline transition-colors">femme & femme LLP</a>
               </div>
             </div>
           </div>
@@ -196,9 +196,9 @@ const App: React.FC = () => {
               <div className="w-10 h-10 rounded-xl overflow-hidden shadow-sm">
                 <img src="/Heart Favicon.png" alt="Logo" className="w-full h-full object-contain" />
               </div>
-            <div>
+            <div className="text-center">
               <h1 className="text-lg font-semibold text-gray-900">California Law Chatbot</h1>
-              <p className="text-sm text-gray-500">AI Legal Research Assistant</p>
+              <a href="https://www.femmeandfemmelaw.com/" target="_blank" rel="noopener noreferrer" className="text-sm text-pink-500 hover:text-pink-600 hover:underline transition-colors">femme & femme LLP</a>
             </div>
           </div>
           <ModeSelector mode={appMode} onModeChange={setAppMode} />
