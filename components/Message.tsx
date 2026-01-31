@@ -361,12 +361,12 @@ const Message: React.FC<MessageProps> = ({ message }) => {
   if (isUser) {
     return (
       <div className="flex justify-end">
-        <div className="flex items-start space-x-4 w-full max-w-[90%]">
-          <div className="bg-blue-500 text-white rounded-lg rounded-br-none p-4 shadow-md" style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}>
-            <p className="whitespace-pre-wrap">{message.text}</p>
+        <div className="flex items-start gap-3 w-full max-w-[85%]">
+          <div className="bg-gray-900 text-white rounded-2xl rounded-br-md px-5 py-3 shadow-sm">
+            <p className="whitespace-pre-wrap text-[15px] leading-relaxed">{message.text}</p>
           </div>
-          <div className="flex-shrink-0 w-10 h-10 rounded-full bg-blue-200 flex items-center justify-center">
-             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6 text-blue-600"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center">
+             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-600"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
           </div>
         </div>
       </div>
@@ -479,11 +479,11 @@ const Message: React.FC<MessageProps> = ({ message }) => {
 
   return (
   <div className="flex justify-start">
-      <div className="flex items-start space-x-4 w-full max-w-[90%]">
-        <div className="flex-shrink-0 w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6 text-gray-600"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg>
+      <div className="flex items-start gap-3 w-full max-w-[90%]">
+        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-pink-400 to-pink-500 flex items-center justify-center">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg>
         </div>
-        <div className="bg-white rounded-lg rounded-bl-none p-5 border border-gray-200 shadow-md w-full relative" style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}>
+        <div className="bg-white rounded-2xl rounded-tl-md px-5 py-4 border border-gray-100 shadow-sm w-full relative">
         {/* Action Buttons - Copy and Print */}
         {message.id !== 'initial-bot-message' && (
           <div className="absolute top-3 right-3 flex items-center gap-1">

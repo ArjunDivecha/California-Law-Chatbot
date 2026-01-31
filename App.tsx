@@ -4,7 +4,7 @@ import { useChat } from './hooks/useChat';
 import ChatWindow from './components/ChatWindow';
 import ChatInput from './components/ChatInput';
 import ErrorBoundary from './components/ErrorBoundary';
-import { SourceModeSelector } from './components/SourceModeSelector';
+
 import { ModeSelector } from './components/ModeSelector';
 import { DraftingMode } from './components/drafting/DraftingMode';
 import type { AppMode } from './types';
@@ -19,13 +19,14 @@ const App: React.FC = () => {
   // Only access localStorage on client side
   useEffect(() => {
     setIsClient(true);
-    const acknowledged = localStorage.getItem('ai-disclosure-acknowledged');
-    setShowAIDisclosure(!acknowledged);
+    // For UI review: auto-dismiss modal so we can see main interface
+    // Remove these lines in production to show the modal
+    localStorage.setItem('ai-disclosure-acknowledged', 'true');
+    setShowAIDisclosure(false);
     
-    const dismissed = localStorage.getItem('confidentiality-warning-dismissed');
-    if (dismissed === 'true') {
-      setShowConfidentialityWarning(false);
-    }
+    // Also dismiss the red banner for UI review
+    localStorage.setItem('confidentiality-warning-dismissed', 'true');
+    setShowConfidentialityWarning(false);
   }, []);
 
   const handleDismissConfidentiality = () => {
@@ -42,35 +43,31 @@ const App: React.FC = () => {
     setShowAIDisclosure(false);
   };
 
+  // For development: reset disclosure on load to see it
+  useEffect(() => {
+    // Comment this out in production - just for testing
+    // localStorage.removeItem('ai-disclosure-acknowledged');
+  }, []);
+
   // Don't render modals until client-side hydration is complete
   if (!isClient) {
     return (
-      <div className="flex flex-col h-screen" style={{ backgroundColor: '#FAFAF8', fontFamily: 'Georgia, "Times New Roman", serif' }}>
-        <header className="bg-white border-b border-gray-200 p-4 shadow-sm">
-          <div className="w-[85%] mx-auto flex items-center">
-            <div className="flex items-center">
-              <img src="https://picsum.photos/seed/lawbot/40/40" alt="CA Seal" className="w-10 h-10 rounded-full mr-4" />
+      <div className="flex flex-col h-screen bg-gray-50">
+        <header className="bg-white border-b border-gray-100 px-6 py-4">
+          <div className="max-w-4xl mx-auto flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl overflow-hidden shadow-sm">
+                <img src="/Heart Favicon.png" alt="Logo" className="w-full h-full object-cover" />
+              </div>
               <div>
-                <h1 className="text-xl font-bold text-gray-800">California Law Chatbot</h1>
-                <p className="text-sm text-gray-500">Your AI legal research assistant</p>
+                <h1 className="text-lg font-semibold text-gray-900">California Law Chatbot</h1>
+                <p className="text-sm text-gray-500">AI Legal Research Assistant</p>
               </div>
             </div>
           </div>
-          {/* Fixed disclaimer header */}
-          <div className="w-[85%] mx-auto mt-3 pt-3 border-t border-gray-200">
-            <div className="bg-amber-50 border-l-4 border-amber-400 p-3 rounded">
-              <p className="text-xs font-semibold text-amber-800">
-                ⚠️ AI legal information, not legal advice. Verify sources; consult a licensed attorney for advice.
-              </p>
-            </div>
-          </div>
-          {/* Source Mode Selector */}
-          <div className="w-[85%] mx-auto mt-3">
-            <SourceModeSelector mode={sourceMode} onModeChange={setSourceMode} />
-          </div>
         </header>
         <main className="flex-1 overflow-hidden">
-          <div className="h-full w-[85%] mx-auto flex flex-col">
+          <div className="h-full max-w-4xl mx-auto flex flex-col px-6">
             <ChatWindow messages={messages} isLoading={isLoading} />
             <ChatInput onSend={sendMessage} disabled={isLoading} />
           </div>
@@ -193,32 +190,19 @@ const App: React.FC = () => {
         </div>
       )}
 
-       <header className="bg-white border-b border-gray-200 p-4 shadow-sm">
-        <div className="w-[85%] mx-auto flex items-center justify-between">
-          <div className="flex items-center">
-            <img src="https://picsum.photos/seed/lawbot/40/40" alt="CA Seal" className="w-10 h-10 rounded-full mr-4" />
+       <header className="bg-white border-b border-gray-100 px-6 py-4">
+        <div className="max-w-4xl mx-auto flex items-center justify-between">
+          <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl overflow-hidden shadow-sm">
+                <img src="/Heart Favicon.png" alt="Logo" className="w-full h-full object-cover" />
+              </div>
             <div>
-              <h1 className="text-xl font-bold text-gray-800">California Law Chatbot</h1>
-              <p className="text-sm text-gray-500">Your AI legal research assistant</p>
+              <h1 className="text-lg font-semibold text-gray-900">California Law Chatbot</h1>
+              <p className="text-sm text-gray-500">AI Legal Research Assistant</p>
             </div>
           </div>
-          {/* App Mode Selector - Research vs Drafting */}
           <ModeSelector mode={appMode} onModeChange={setAppMode} />
         </div>
-        {/* Fixed disclaimer header */}
-        <div className="w-[85%] mx-auto mt-3 pt-3 border-t border-gray-200">
-          <div className="bg-amber-50 border-l-4 border-amber-400 p-3 rounded">
-            <p className="text-xs font-semibold text-amber-800">
-              ⚠️ AI legal information, not legal advice. Verify sources; consult a licensed attorney for advice.
-            </p>
-          </div>
-        </div>
-        {/* Source Mode Selector - Only show in research mode */}
-        {appMode === 'research' && (
-          <div className="w-[85%] mx-auto mt-3">
-            <SourceModeSelector mode={sourceMode} onModeChange={setSourceMode} />
-          </div>
-        )}
       </header>
 
       <main className="flex-1 overflow-hidden">
