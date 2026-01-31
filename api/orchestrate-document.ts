@@ -417,6 +417,11 @@ async function runResearchPhase(
 
 const DRAFTER_SYSTEM_PROMPT = `You are a skilled legal writer drafting sections of California legal documents. You write in formal legal style appropriate for court filings and professional correspondence.
 
+CRITICAL INSTRUCTIONS:
+1. YOU MUST WRITE COMPLETE, COMPREHENSIVE SECTIONS - Never write abbreviated or summary content
+2. ALWAYS meet the target word count specified - this is a MINIMUM requirement
+3. Each section must be FULLY DEVELOPED with detailed analysis, not bullet points or outlines
+
 WRITING REQUIREMENTS:
 1. Use formal legal writing style - clear, precise, professional
 2. Cite authorities in proper California format:
@@ -436,9 +441,10 @@ STRUCTURE:
 - Use markdown formatting (headers, bold, lists) for readability
 - Include all citations inline with the text
 - Build arguments progressively with clear topic sentences
+- Write in full paragraphs, NOT bullet points (unless specifically requested)
 
 OUTPUT:
-Return ONLY the section content in clean markdown format. Do not include the section heading (it will be added automatically).`;
+Return ONLY the section content in clean markdown format. Do not include the section heading (it will be added automatically). Write the COMPLETE section - do not truncate or summarize.`;
 
 function formatResearchContext(research: ResearchPackage): string {
   let context = `\n## RESEARCH CONTEXT:\n\n`;
@@ -492,12 +498,14 @@ async function callGemini(prompt: string, maxWords?: number, retryCount: number 
   const startTime = Date.now();
   
   // Calculate maxOutputTokens based on word count requirement
-  // Rough estimate: 1 token ≈ 0.75 words, add 20% buffer for safety
-  // For 2500 words: 2500 / 0.75 * 1.2 ≈ 4000 tokens
-  let maxOutputTokens = 2048; // Default
+  // Rough estimate: 1 token ≈ 0.75 words, add 50% buffer for safety margin
+  // For 2500 words: 2500 / 0.75 * 1.5 ≈ 5000 tokens
+  let maxOutputTokens = 4096; // Higher default
   if (maxWords) {
-    maxOutputTokens = Math.min(Math.ceil((maxWords / 0.75) * 1.2), 8192); // Cap at 8192 (model max)
+    // Use 1.5x buffer to ensure we get complete output
+    maxOutputTokens = Math.min(Math.ceil((maxWords / 0.75) * 1.5), 8192); // Cap at 8192 (model max)
   }
+  console.log(`   📊 Token budget: ${maxOutputTokens} tokens (target: ${maxWords || 'default'} words)`);
   
   // Add timeout to prevent hanging (60 seconds max per section)
   const controller = new AbortController();
@@ -627,7 +635,7 @@ async function runDraftingPhase(
       }
       
       if (section.maxLengthWords) {
-        prompt += `TARGET LENGTH: Approximately ${section.maxLengthWords} words\n\n`;
+        prompt += `**CRITICAL WORD COUNT REQUIREMENT**: You MUST write AT LEAST ${section.maxLengthWords} words for this section. This is a MINIMUM, not a maximum. Write comprehensive, detailed content that fully addresses all aspects. Do NOT write a summary or abbreviated version.\n\n`;
       }
       
       if (section.legalRequirements && section.legalRequirements.length > 0) {
@@ -656,12 +664,23 @@ async function runDraftingPhase(
         prompt += `${recent.content.substring(0, 300)}${recent.content.length > 300 ? '...' : ''}\n\n`;
       }
       
-      prompt += `\nNow write the "${section.name}" section. Remember to cite California authorities.`;
+      prompt += `\nNow write the "${section.name}" section. Remember to cite California authorities.\n\n`;
+      prompt += `REMINDER: Write a COMPLETE, FULLY DEVELOPED section. ${section.maxLengthWords ? `You MUST write at least ${section.maxLengthWords} words. ` : ''}Do not write bullet points or summaries - write full prose with detailed analysis.`;
 
-      console.log(`   🤖 Starting Gemini call for ${section.name}...`);
+      console.log(`   🤖 Starting Gemini call for ${section.name} (target: ${section.maxLengthWords || 'default'} words)...`);
       content = await callGemini(prompt, section.maxLengthWords);
       const wordCount = countWords(content);
-      console.log(`   ✓ ${section.name}: ${wordCount} words generated${section.maxLengthWords && wordCount < section.maxLengthWords * 0.8 ? ' (may be incomplete)' : ''}`);
+      
+      // Check if we got too little content
+      if (section.maxLengthWords && wordCount < section.maxLengthWords * 0.5) {
+        console.error(`   ⚠️ CRITICAL: ${section.name} is SEVERELY underweight: ${wordCount}/${section.maxLengthWords} words (${Math.round(wordCount/section.maxLengthWords*100)}%)`);
+        // Log first 200 chars of response to debug
+        console.log(`   📝 Content preview: "${content.substring(0, 200)}..."`);
+      } else if (section.maxLengthWords && wordCount < section.maxLengthWords * 0.8) {
+        console.warn(`   ⚠️ ${section.name} is underweight: ${wordCount}/${section.maxLengthWords} words`);
+      } else {
+        console.log(`   ✓ ${section.name}: ${wordCount} words generated`);
+      }
       console.log(`   📦 Creating section object...`);
     }
 
