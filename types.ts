@@ -17,7 +17,7 @@ export interface Source {
 
 export interface CEBSource extends Source {
   isCEB: true;
-  category: 'trusts_estates' | 'family_law' | 'business_litigation';
+  category: 'trusts_estates' | 'family_law' | 'business_litigation' | 'business_entities' | 'business_transactions';
   cebCitation: string;
   pageNumber?: number;
   section?: string;

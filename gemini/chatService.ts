@@ -2031,7 +2031,7 @@ Answer:`;
     /**
      * Detect CEB category from message content
      */
-    private detectCEBCategory(message: string): 'trusts_estates' | 'family_law' | 'business_litigation' {
+    private detectCEBCategory(message: string): 'trusts_estates' | 'family_law' | 'business_litigation' | 'business_entities' | 'business_transactions' {
         const lowerMessage = message.toLowerCase();
 
         // Family law keywords
@@ -2040,28 +2040,46 @@ Answer:`;
             'domestic violence', 'restraining order', 'family code'];
 
         // Business litigation keywords
-        const businessKeywords = ['contract', 'breach', 'business', 'litigation', 'commercial',
-            'corporate', 'partnership', 'llc', 'shareholder', 'fraud',
-            'negligence', 'tort', 'damages', 'civil procedure'];
+        const litigationKeywords = ['breach', 'litigation', 'lawsuit', 'sue', 'damages', 'fraud',
+            'negligence', 'tort', 'fiduciary duty', 'trade secret', 'misappropriation',
+            'civil procedure', 'derivative', 'injunction'];
+
+        // Business entities keywords
+        const entitiesKeywords = ['llc', 'corporation', 'incorporate', 'forming', 'formation', 'organize',
+            'articles of incorporation', 'operating agreement', 'bylaws', 'board of directors',
+            'shareholder', 's corp', 'c corp', 'partnership agreement', 'general partner',
+            'limited partner', 'corporate governance', 'business entity'];
+
+        // Business transactions keywords
+        const transactionsKeywords = ['acquisition', 'merger', 'purchase agreement', 'asset purchase',
+            'stock purchase', 'due diligence', 'commercial lease', 'financing', 'loan',
+            'security agreement', 'buy sell', 'business sale', 'closing', 'escrow'];
 
         // Trusts & estates keywords
         const trustsKeywords = ['trust', 'estate', 'will', 'probate', 'inheritance', 'beneficiary',
             'executor', 'administrator', 'conservatorship', 'guardianship',
-            'power of attorney', 'advance directive', 'probate code'];
+            'power of attorney', 'advance directive', 'probate code', 'settlor', 'trustee'];
 
         // Count matches for each category
         const familyScore = familyKeywords.filter(kw => lowerMessage.includes(kw)).length;
-        const businessScore = businessKeywords.filter(kw => lowerMessage.includes(kw)).length;
+        const litigationScore = litigationKeywords.filter(kw => lowerMessage.includes(kw)).length;
+        const entitiesScore = entitiesKeywords.filter(kw => lowerMessage.includes(kw)).length;
+        const transactionsScore = transactionsKeywords.filter(kw => lowerMessage.includes(kw)).length;
         const trustsScore = trustsKeywords.filter(kw => lowerMessage.includes(kw)).length;
 
-        // Return category with highest score (default to trusts_estates)
-        if (familyScore > businessScore && familyScore > trustsScore) {
-            return 'family_law';
-        } else if (businessScore > trustsScore) {
-            return 'business_litigation';
-        } else {
-            return 'trusts_estates'; // Default
-        }
+        // Find highest scoring category
+        const scores = [
+            { category: 'family_law' as const, score: familyScore },
+            { category: 'business_litigation' as const, score: litigationScore },
+            { category: 'business_entities' as const, score: entitiesScore },
+            { category: 'business_transactions' as const, score: transactionsScore },
+            { category: 'trusts_estates' as const, score: trustsScore },
+        ];
+
+        const best = scores.reduce((a, b) => a.score > b.score ? a : b);
+
+        // Return category with highest score (default to trusts_estates if no matches)
+        return best.score > 0 ? best.category : 'trusts_estates';
     }
 
     private verifyResponse(responseText: string, specificSources: Source[], courtListenerContent: string): { needsVerification: boolean; verifiedClaims: string[]; unverifiedClaims: string[] } {

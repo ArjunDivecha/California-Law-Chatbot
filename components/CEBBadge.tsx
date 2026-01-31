@@ -1,11 +1,12 @@
 /**
  * CEB Verification Badge Component
- * 
+ *
  * Displays a prominent badge for responses based on authoritative CEB sources.
- * Shows the CEB category (Trusts & Estates, Family Law, Business Litigation).
- * 
- * Version: 1.0
- * Last Updated: November 1, 2025
+ * Shows the CEB category (Trusts & Estates, Family Law, Business Litigation,
+ * Business Entities, Business Transactions).
+ *
+ * Version: 1.1
+ * Last Updated: January 31, 2026
  */
 
 import React from 'react';
@@ -24,6 +25,10 @@ const CEBBadge: React.FC<CEBBadgeProps> = ({ category }) => {
         return 'Family Law';
       case 'business_litigation':
         return 'Business Litigation';
+      case 'business_entities':
+        return 'Business Entities';
+      case 'business_transactions':
+        return 'Business Transactions';
       default:
         return 'CEB';
     }
