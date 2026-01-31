@@ -512,34 +512,33 @@ function deduplicateResults(results: any[], topK: number): any[] {
 }
 
 /**
- * Generate embedding for query using OpenRouter (OpenAI text-embedding-3-small)
+ * Generate embedding for query using native OpenAI API (text-embedding-3-small)
+ * Using direct OpenAI API for better reliability and ZDR compliance
  */
 async function generateEmbedding(text: string): Promise<number[]> {
-  const openrouterKey = process.env.OPENROUTER_API_KEY;
+  const openaiKey = process.env.OPENAI_API_KEY;
 
-  if (!openrouterKey) {
-    throw new Error('OPENROUTER_API_KEY not configured');
+  if (!openaiKey) {
+    throw new Error('OPENAI_API_KEY not configured');
   }
 
   try {
-    // Use OpenRouter embeddings API with text-embedding-3-small (1536 dimensions)
-    const response = await fetch('https://openrouter.ai/api/v1/embeddings', {
+    // Use native OpenAI embeddings API with text-embedding-3-small (1536 dimensions)
+    const response = await fetch('https://api.openai.com/v1/embeddings', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${openrouterKey}`,
+        'Authorization': `Bearer ${openaiKey}`,
         'Content-Type': 'application/json',
-        'HTTP-Referer': 'https://california-law-chatbot.vercel.app',
-        'X-Title': 'California Law Chatbot'
       },
       body: JSON.stringify({
-        model: 'openai/text-embedding-3-small',
+        model: 'text-embedding-3-small',
         input: text,
       }),
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(`OpenRouter embeddings API error: ${response.status} - ${errorText}`);
+      throw new Error(`OpenAI embeddings API error: ${response.status} - ${errorText}`);
     }
 
     const data = await response.json();
@@ -549,7 +548,7 @@ async function generateEmbedding(text: string): Promise<number[]> {
     }
     return embedding;
   } catch (error) {
-    console.error('Failed to generate embedding via OpenRouter:', error);
+    console.error('Failed to generate embedding via OpenAI:', error);
     throw error;
   }
 }
