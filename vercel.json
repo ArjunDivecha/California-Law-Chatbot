@@ -5,7 +5,7 @@
       "memory": 1024,
       "maxDuration": 60
     },
-    "api/orchestrate-document.ts": {
+    "api/orchestrate-document": {
       "memory": 2048,
       "maxDuration": 300
     }
