@@ -2005,8 +2005,8 @@ Answer:`;
             console.error('Error stack:', error.stack);
             
             // Provide more specific error messages based on error type
-            let errorMessage = "I'm having trouble processing your request. Please try again.";
             const errorStr = String(error.message || error || '').toLowerCase();
+            let errorMessage = `I'm having trouble processing your request. Please try again. (Debug: ${error.message || 'Unknown error'})`;
             
             if (errorStr.includes('timeout') || errorStr.includes('timed out')) {
                 errorMessage = "The request timed out. This might be due to high server load. Please try again in a moment.";
