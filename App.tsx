@@ -2,7 +2,6 @@
 import React, { useState, useEffect } from 'react';
 import { useChat } from './hooks/useChat';
 import ChatWindow from './components/ChatWindow';
-import ChatInput from './components/ChatInput';
 import ErrorBoundary from './components/ErrorBoundary';
 
 import { ModeSelector } from './components/ModeSelector';
@@ -68,8 +67,7 @@ const App: React.FC = () => {
         </header>
         <main className="flex-1 overflow-hidden">
           <div className="h-full max-w-4xl mx-auto flex flex-col px-6">
-            <ChatWindow messages={messages} isLoading={isLoading} />
-            <ChatInput onSend={sendMessage} disabled={isLoading} />
+            <ChatWindow messages={messages} isLoading={isLoading} onSend={sendMessage} />
           </div>
         </main>
       </div>
@@ -208,8 +206,7 @@ const App: React.FC = () => {
       <main className="flex-1 overflow-hidden">
         {appMode === 'research' ? (
           <div className="h-full w-[85%] mx-auto flex flex-col">
-            <ChatWindow messages={messages} isLoading={isLoading} />
-            <ChatInput onSend={sendMessage} disabled={isLoading} />
+            <ChatWindow messages={messages} isLoading={isLoading} onSend={sendMessage} />
           </div>
         ) : (
           <DraftingMode onModeChange={() => setAppMode('research')} />
