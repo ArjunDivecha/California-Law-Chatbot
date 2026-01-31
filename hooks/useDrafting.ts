@@ -183,7 +183,7 @@ export function useDrafting(): UseDraftingReturn {
     let templateData: DocumentTemplate;
     
     try {
-      const response = await fetch(`/api/template-by-id?id=${templateId}`);
+      const response = await fetch(`/api/templates?id=${templateId}`);
       if (!response.ok) throw new Error('Failed to load template');
       
       templateData = await response.json();

@@ -1,4 +1,14 @@
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI } from '@google/genai';
+
+/**
+ * Unified Gemini API Endpoint
+ * 
+ * POST /api/gemini-chat - Generate content with Gemini (supports streaming and conversation history)
+ * 
+ * Supports both chat (with history) and generation (without history) modes
+ */
+
+import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 /**
  * Gemini Model Configuration
@@ -14,14 +24,31 @@ import { GoogleGenAI } from "@google/genai";
 const PRIMARY_MODEL = 'gemini-3-pro-preview';
 const FALLBACK_MODEL = 'gemini-2.5-pro';
 
-export default async function handler(req: any, res: any) {
+export const config = {
+  maxDuration: 60,
+};
+
+export default async function handler(
+  req: VercelRequest,
+  res: VercelResponse
+) {
+  // Enable CORS
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  if (req.method === 'OPTIONS') {
+    res.status(200).end();
+    return;
+  }
+
   try {
     if (req.method !== 'POST') {
       res.status(405).json({ error: 'Method Not Allowed' });
       return;
     }
 
-    const { message, systemPrompt } = req.body;
+    const { message, systemPrompt, conversationHistory, stream = false } = req.body;
     
     if (!message || typeof message !== 'string' || !message.trim()) {
       res.status(400).json({ error: 'Missing or invalid message parameter' });
@@ -30,15 +57,65 @@ export default async function handler(req: any, res: any) {
 
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      res.status(500).json({ error: 'Server is missing GEMINI_API_KEY' });
+      console.error('GEMINI_API_KEY is not set in environment variables');
+      res.status(500).json({ 
+        error: 'Server configuration error', 
+        message: 'GEMINI_API_KEY environment variable is not configured. Please set it in Vercel environment variables.' 
+      });
       return;
     }
 
-    // Initialize Gemini AI (server-side only - API key never exposed to client)
+    console.log('Initializing Google GenAI client...');
     const ai = new GoogleGenAI({ apiKey });
 
-    const generateWithModel = async (modelName: string, timeoutMs: number = 30000) => {
-      console.log(`🤖 Initializing chat with model: ${modelName}`);
+    // Build conversation contents from history
+    const contents: any[] = [];
+    
+    // Add conversation history (last 10 messages for context)
+    if (conversationHistory && Array.isArray(conversationHistory)) {
+      const recentHistory = conversationHistory.slice(-10);
+      for (const msg of recentHistory) {
+        if (msg.role && msg.text) {
+          contents.push({
+            role: msg.role === 'user' ? 'user' : 'model',
+            parts: [{ text: msg.text }]
+          });
+        }
+      }
+    }
+    
+    // Add current message
+    contents.push({
+      role: 'user',
+      parts: [{ text: message.trim() }]
+    });
+
+    const createConfig = (model: string) => ({
+      model: model,
+      contents: contents,
+      config: {
+        tools: [{googleSearch: {}}],
+        generationConfig: {
+          temperature: 0.2, // Keep low for legal accuracy
+        }
+      },
+      // systemInstruction goes at top level, NOT in config
+      systemInstruction: systemPrompt ? {
+        role: 'system',
+        parts: [{
+          text: systemPrompt
+        }]
+      } : {
+        role: 'system',
+        parts: [{
+          text: "You are an expert legal research assistant specializing in California law."
+        }]
+      }
+    });
+
+    const executeRequest = async (model: string, timeoutMs: number = 30000) => {
+      console.log(`Calling Gemini API with model: ${model} (${contents.length} messages in context)`);
+      const config = createConfig(model);
       
       // Wrap API call with timeout to fail fast
       const timeoutPromise = new Promise((_, reject) => {
@@ -48,33 +125,36 @@ export default async function handler(req: any, res: any) {
       });
       
       const apiCall = async () => {
-        const chat = ai.chats.create({
-          model: modelName,
-          config: {
-            systemInstruction: systemPrompt || "You are an expert legal research assistant specializing in California law.",
-          }
-        });
-        
-        console.log(`📤 Sending message to ${modelName}...`);
-        return await chat.sendMessage({ message: message.trim() });
+        if (stream) {
+          console.log('📡 Using streaming mode for real-time response...');
+          return await ai.models.generateContentStream(config);
+        } else {
+          return await ai.models.generateContent(config);
+        }
       };
       
       // Race between API call and timeout
       return Promise.race([apiCall(), timeoutPromise]) as Promise<any>;
     };
 
-    let response;
+    // Handling headers for streaming is tricky with retry logic if we fail mid-stream.
+    // But usually connection errors happen at start.
+    if (stream) {
+      res.setHeader('Content-Type', 'text/event-stream');
+      res.setHeader('Cache-Control', 'no-cache');
+      res.setHeader('Connection', 'keep-alive');
+    }
+
     let usedModel = PRIMARY_MODEL;
+    let response;
 
     try {
-      // Try primary model with shorter timeout (15 seconds) to fail fast
-      response = await generateWithModel(PRIMARY_MODEL, 15000);
-      console.log(`✅ Success with ${PRIMARY_MODEL}`);
+      // Use shorter timeout for primary model (15 seconds) to fail fast
+      response = await executeRequest(PRIMARY_MODEL, 15000);
     } catch (error: any) {
       console.warn(`⚠️  Failed with ${PRIMARY_MODEL}:`, error.message);
       
       // Check if we should fallback
-      // Fallback on: 429 (Too Many Requests), 503 (Service Unavailable), 500 (Internal Error), or 404 (Model not found)
       const errorMessage = String(error.message || error || '').toLowerCase();
       const errorStatus = error.status || error.code || error.statusCode;
       
@@ -114,7 +194,7 @@ export default async function handler(req: any, res: any) {
         try {
           usedModel = FALLBACK_MODEL;
           // Use longer timeout for fallback (30 seconds) since it's more reliable
-          response = await generateWithModel(FALLBACK_MODEL, 30000);
+          response = await executeRequest(FALLBACK_MODEL, 30000);
           console.log(`✅ Success with fallback model ${FALLBACK_MODEL}`);
         } catch (fallbackError: any) {
           console.error(`❌ Fallback model also failed:`, fallbackError.message);
@@ -126,11 +206,79 @@ export default async function handler(req: any, res: any) {
       }
     }
 
-    // Extract response text
-    const responseText = response.text || '';
+    if (stream) {
+      try {
+        // streamResponse is the async iterable
+        const streamResponse = response; 
+        
+        let fullText = '';
+        let groundingMetadata: any = null;
+
+        // Stream each chunk to the client
+        for await (const chunk of streamResponse) {
+          const chunkText = chunk.text || '';
+          fullText += chunkText;
+
+          if (chunkText) {
+            res.write(`data: ${JSON.stringify({ type: 'content', text: chunkText })}\n\n`);
+          }
+
+          if (chunk.candidates?.[0]?.groundingMetadata) {
+            groundingMetadata = chunk.candidates[0].groundingMetadata;
+          }
+        }
+
+        if (groundingMetadata) {
+          const webSearchQueries = groundingMetadata.webSearchQueries || [];
+          const groundingChunks = groundingMetadata.groundingChunks || [];
+          console.log(`✅ Google Search grounding was used!`);
+          console.log(`   - Search queries: ${webSearchQueries.join(', ')}`);
+          console.log(`   - ${groundingChunks.length} source URLs found`);
+        }
+
+        res.write(`data: ${JSON.stringify({
+          type: 'metadata',
+          groundingMetadata,
+          hasGrounding: !!groundingMetadata,
+          model: usedModel // Send used model info
+        })}\n\n`);
+
+        res.write('data: [DONE]\n\n');
+        res.end();
+        console.log('✅ Streaming completed successfully');
+
+      } catch (streamError: any) {
+        console.error('Streaming error:', streamError);
+        // If headers are already sent, we can only send data event
+        res.write(`data: ${JSON.stringify({
+          type: 'error',
+          error: streamError.message || 'Streaming failed'
+        })}\n\n`);
+        res.end();
+      }
+      return;
+    }
+
+    // Non-streaming response handling
+    const text = response.text;
+    const candidate = response.candidates?.[0];
+    const groundingMetadata = candidate?.groundingMetadata;
+    const hasGroundingData = !!groundingMetadata;
+
+    if (hasGroundingData) {
+      const webSearchQueries = groundingMetadata.webSearchQueries || [];
+      const groundingChunks = groundingMetadata.groundingChunks || [];
+      console.log(`✅ Google Search grounding was used!`);
+      console.log(`   - Search queries: ${webSearchQueries.join(', ')}`);
+      console.log(`   - ${groundingChunks.length} source URLs found`);
+      groundingChunks.forEach((chunk: any, idx: number) => {
+        const uri = chunk?.web?.uri;
+        if (uri) console.log(`   - [${idx+1}] ${uri}`);
+      });
+    }
 
     // Extract grounding sources if available
-    const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
+    const groundingChunks = groundingMetadata?.groundingChunks || [];
     const sources = groundingChunks
       .map((chunk: any) => {
         if (chunk.web) {
@@ -140,17 +288,41 @@ export default async function handler(req: any, res: any) {
       })
       .filter((source): source is { title: string; url: string } => source !== null);
 
+    if (!text) {
+      console.error('No text content found in Gemini response');
+      res.status(500).json({
+        error: 'No text content in response',
+        message: 'Gemini returned no text output'
+      });
+      return;
+    }
+
     res.status(200).json({
-      text: responseText,
-      sources: sources,
-      model: usedModel // Return which model was used for debugging/UI
+      text: text,
+      sources: sources.length > 0 ? sources : undefined,
+      groundingMetadata: groundingMetadata,
+      hasGrounding: hasGroundingData,
+      model: usedModel
     });
 
   } catch (err: any) {
     console.error('Gemini Chat API error:', err);
+    
+    const errorMessage = err?.message || String(err);
+    const isAuthError = errorMessage.includes('api_key') || errorMessage.includes('401') || errorMessage.includes('403');
+    const isModelError = errorMessage.includes('model') || errorMessage.includes('404');
+    
+    let userMessage = errorMessage;
+    if (isAuthError) {
+      userMessage = 'Authentication error. Please check GEMINI_API_KEY in Vercel environment variables.';
+    } else if (isModelError) {
+      userMessage = 'Model error. Please verify the model name is correct.';
+    }
+    
     res.status(500).json({ 
       error: 'Internal Server Error', 
-      message: err?.message || String(err) 
+      message: userMessage,
+      details: process.env.NODE_ENV === 'development' ? err?.stack : undefined
     });
   }
 }

@@ -177,7 +177,7 @@ export class ChatService {
             // Run OpenStates and LegiScan searches in parallel
             const [openStatesResult, legiScanResult] = await Promise.all([
                 fetchWithRetry(
-                    `/api/openstates-search?q=${encodeURIComponent(searchTerms)}`,
+                    `/api/legislative-search?q=${encodeURIComponent(searchTerms)}&source=openstates`,
                     { signal },
                     2,
                     500
@@ -189,7 +189,7 @@ export class ChatService {
                         return { items: [] };
                     }),
                 fetchWithRetry(
-                    `/api/legiscan-search?q=${encodeURIComponent(searchTerms)}`,
+                    `/api/legislative-search?q=${encodeURIComponent(searchTerms)}&source=legiscan`,
                     { signal },
                     2,
                     500
@@ -412,7 +412,7 @@ Remember: You're trained on California law AND you have access to real-time sear
 
         try {
             const response = await fetchWithRetry(
-                '/api/gemini-generate',
+                '/api/gemini-chat',
                 {
                     method: 'POST',
                     headers: {
@@ -1032,7 +1032,7 @@ Key California legal sources to reference:
                         // Search for this bill in OpenStates and LegiScan
                         const [openStatesRes, legiScanRes] = await Promise.all([
                             fetchWithRetry(
-                                `/api/openstates-search?q=${encodeURIComponent(billKey)}`,
+                                `/api/legislative-search?q=${encodeURIComponent(billKey)}&source=openstates`,
                                 { signal },
                                 1, // maxRetries: 1 for post-processing
                                 500
@@ -1046,7 +1046,7 @@ Key California legal sources to reference:
                                 return match ? { type: 'openstates', item: match } : null;
                             }).catch(() => null),
                             fetchWithRetry(
-                                `/api/legiscan-search?q=${encodeURIComponent(billKey)}`,
+                                `/api/legislative-search?q=${encodeURIComponent(billKey)}&source=legiscan`,
                                 { signal },
                                 1,
                                 500
@@ -2200,7 +2200,7 @@ Answer:`;
 
                 return [
                     fetchWithRetry(
-                        `/api/openstates-search?q=${encodeURIComponent(query)}`,
+                        `/api/legislative-search?q=${encodeURIComponent(query)}&source=openstates`,
                         { signal },
                         2, // maxRetries: 2 for legislative APIs
                         500 // baseDelay: 500ms (faster retries for legislative APIs)
@@ -2218,7 +2218,7 @@ Answer:`;
                             return null;
                         }),
                     fetchWithRetry(
-                        `/api/legiscan-search?q=${encodeURIComponent(query)}`,
+                        `/api/legislative-search?q=${encodeURIComponent(query)}&source=legiscan`,
                         { signal },
                         2, // maxRetries: 2
                         500 // baseDelay: 500ms
@@ -2292,7 +2292,7 @@ Answer:`;
                 try {
                     console.log(`📄 Fetching full bill text from OpenStates for: ${openStatesBillId}`);
                     const textResponse = await fetchWithRetry(
-                        `/api/openstates-billtext?billId=${encodeURIComponent(openStatesBillId)}`,
+                        `/api/legislative-billtext?billId=${encodeURIComponent(openStatesBillId)}&source=openstates`,
                         { signal },
                         1, // Only 1 retry for text fetching
                         500
@@ -2313,7 +2313,7 @@ Answer:`;
                 try {
                     console.log(`📄 Fetching full bill text from LegiScan for: ${legiscanBillId}`);
                     const textResponse = await fetchWithRetry(
-                        `/api/legiscan-billtext?billId=${encodeURIComponent(legiscanBillId)}`,
+                        `/api/legislative-billtext?billId=${encodeURIComponent(legiscanBillId)}&source=legiscan`,
                         { signal },
                         1, // Only 1 retry for text fetching
                         500

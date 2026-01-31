@@ -263,13 +263,8 @@ export async function legislativeSearchTool(params: LegislativeSearchParams): Pr
   
   try {
     // Try OpenStates first
-    const response = await fetch(`${baseUrl}/api/openstates-search`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        query: params.billNumber || params.query,
-        state: 'ca',
-      }),
+    const response = await fetch(`${baseUrl}/api/legislative-search?q=${encodeURIComponent(params.billNumber || params.query)}&source=openstates`, {
+      method: 'GET',
     });
 
     if (!response.ok) {
