@@ -13,9 +13,9 @@
 
     body {
       font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+      background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 50%, #f1f5f9 100%);
       min-height: 100vh;
-      color: #e2e8f0;
+      color: #1e293b;
       overflow-x: hidden;
     }
 
@@ -30,7 +30,7 @@
       font-size: 2.5rem;
       font-weight: 700;
       margin-bottom: 10px;
-      background: linear-gradient(135deg, #60a5fa 0%, #a78bfa 50%, #f472b6 100%);
+      background: linear-gradient(135deg, #2563eb 0%, #7c3aed 50%, #db2777 100%);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
@@ -38,7 +38,7 @@
 
     .subtitle {
       text-align: center;
-      color: #94a3b8;
+      color: #64748b;
       margin-bottom: 50px;
       font-size: 1.1rem;
     }
@@ -69,30 +69,31 @@
     /* Agent Card */
     .agent-card {
       flex: 1;
-      background: rgba(30, 41, 59, 0.8);
+      background: white;
       border-radius: 20px;
       padding: 25px;
       position: relative;
       z-index: 1;
-      border: 1px solid rgba(148, 163, 184, 0.1);
-      backdrop-filter: blur(10px);
+      border: 1px solid #e2e8f0;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
       transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
       min-height: 280px;
     }
 
     .agent-card.active {
       border-color: var(--agent-color);
-      box-shadow: 0 0 40px var(--agent-glow);
+      box-shadow: 0 0 40px var(--agent-glow), 0 10px 25px -5px rgba(0, 0, 0, 0.1);
       transform: translateY(-5px) scale(1.02);
     }
 
     .agent-card.completed {
       border-color: #10b981;
-      opacity: 0.7;
+      background: #f0fdf4;
     }
 
     .agent-card.pending {
-      opacity: 0.4;
+      opacity: 0.5;
+      background: #f8fafc;
     }
 
     /* Agent Icon */
@@ -138,7 +139,7 @@
       font-size: 1.2rem;
       font-weight: 600;
       margin-bottom: 5px;
-      color: #f1f5f9;
+      color: #1e293b;
     }
 
     .agent-model {
@@ -154,7 +155,8 @@
       border-radius: 20px;
       font-size: 0.85rem;
       font-weight: 500;
-      background: rgba(0,0,0,0.2);
+      background: #f1f5f9;
+      color: #64748b;
       margin-bottom: 15px;
     }
 
@@ -185,8 +187,8 @@
       gap: 10px;
       padding: 8px 0;
       font-size: 0.9rem;
-      color: #94a3b8;
-      border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+      color: #64748b;
+      border-bottom: 1px solid #e2e8f0;
     }
 
     .task-item:last-child {
@@ -221,8 +223,8 @@
     }
 
     .task-item.pending .task-icon {
-      background: rgba(148, 163, 184, 0.1);
-      color: #475569;
+      background: #f1f5f9;
+      color: #94a3b8;
     }
 
     /* Agent Colors */
@@ -252,11 +254,12 @@
 
     /* Progress Section */
     .progress-section {
-      background: rgba(30, 41, 59, 0.6);
+      background: white;
       border-radius: 20px;
       padding: 30px;
       margin-bottom: 30px;
-      border: 1px solid rgba(148, 163, 184, 0.1);
+      border: 1px solid #e2e8f0;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
     }
 
     .progress-header {
@@ -281,7 +284,7 @@
 
     .progress-bar-container {
       height: 12px;
-      background: rgba(0,0,0,0.3);
+      background: #e2e8f0;
       border-radius: 10px;
       overflow: hidden;
       margin-bottom: 15px;
@@ -312,16 +315,17 @@
     }
 
     .progress-message {
-      color: #94a3b8;
+      color: #64748b;
       font-size: 0.95rem;
     }
 
     /* Live Output */
     .output-section {
-      background: rgba(15, 23, 42, 0.8);
+      background: white;
       border-radius: 20px;
       padding: 25px;
-      border: 1px solid rgba(148, 163, 184, 0.1);
+      border: 1px solid #e2e8f0;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
     }
 
     .output-header {
@@ -367,8 +371,9 @@
       max-height: 300px;
       overflow-y: auto;
       padding: 15px;
-      background: rgba(0,0,0,0.3);
+      background: #f8fafc;
       border-radius: 12px;
+      border: 1px solid #e2e8f0;
     }
 
     .output-line {
@@ -382,11 +387,11 @@
       to { opacity: 1; }
     }
 
-    .output-line.research { color: #60a5fa; }
-    .output-line.draft { color: #a78bfa; }
-    .output-line.citation { color: #f472b6; }
-    .output-line.verify { color: #34d399; }
-    .output-line.system { color: #fbbf24; }
+    .output-line.research { color: #2563eb; }
+    .output-line.draft { color: #7c3aed; }
+    .output-line.citation { color: #db2777; }
+    .output-line.verify { color: #059669; }
+    .output-line.system { color: #d97706; }
 
     /* Floating Particles */
     .particles {
@@ -404,15 +409,15 @@
       position: absolute;
       width: 4px;
       height: 4px;
-      background: rgba(139, 92, 246, 0.5);
+      background: rgba(99, 102, 241, 0.3);
       border-radius: 50%;
       animation: float 15s infinite;
     }
 
     @keyframes float {
       0%, 100% { transform: translateY(100vh) rotate(0deg); opacity: 0; }
-      10% { opacity: 1; }
-      90% { opacity: 1; }
+      10% { opacity: 0.5; }
+      90% { opacity: 0.5; }
       100% { transform: translateY(-100vh) rotate(720deg); opacity: 0; }
     }
 
@@ -442,13 +447,32 @@
       cursor: not-allowed;
     }
 
+    .demo-btn {
+      display: block;
+      margin: 10px auto;
+      padding: 12px 36px;
+      font-size: 0.95rem;
+      font-weight: 500;
+      color: #7c3aed;
+      background: transparent;
+      border: 2px solid #7c3aed;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .demo-btn:hover {
+      background: rgba(124, 58, 237, 0.1);
+    }
+
     /* Document Preview */
     .document-preview {
       margin-top: 30px;
-      background: rgba(30, 41, 59, 0.6);
+      background: white;
       border-radius: 20px;
       padding: 30px;
-      border: 1px solid rgba(148, 163, 184, 0.1);
+      border: 1px solid #e2e8f0;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
       display: none;
     }
 
@@ -472,33 +496,35 @@
     .section-tab {
       padding: 8px 16px;
       border-radius: 8px;
-      background: rgba(0,0,0,0.2);
-      color: #94a3b8;
+      background: #f1f5f9;
+      color: #64748b;
       font-size: 0.85rem;
       cursor: pointer;
       transition: all 0.3s ease;
-      border: 1px solid transparent;
+      border: 1px solid #e2e8f0;
     }
 
     .section-tab.completed {
-      background: rgba(16, 185, 129, 0.15);
-      color: #10b981;
-      border-color: rgba(16, 185, 129, 0.3);
+      background: #dcfce7;
+      color: #059669;
+      border-color: #86efac;
     }
 
     .section-tab.active {
-      background: rgba(139, 92, 246, 0.2);
-      color: #a78bfa;
-      border-color: rgba(139, 92, 246, 0.3);
+      background: #ede9fe;
+      color: #7c3aed;
+      border-color: #a78bfa;
     }
 
     .section-content {
-      background: rgba(0,0,0,0.2);
+      background: #f8fafc;
       border-radius: 12px;
       padding: 20px;
       max-height: 400px;
       overflow-y: auto;
       line-height: 1.7;
+      border: 1px solid #e2e8f0;
+      color: #334155;
     }
   </style>
 </head>
@@ -538,7 +564,7 @@
       <div class="agent-card pending" data-agent="drafter" id="agent-drafter">
         <div class="agent-icon">✍️</div>
         <div class="agent-name">Drafter Agent</div>
-        <div class="agent-model">Gemini 2.5 Pro</div>
+        <div class="agent-model">Gemini 3 Flash</div>
         <div class="agent-status">Waiting...</div>
         <div class="task-list" id="drafter-tasks">
           <!-- Tasks will be populated dynamically -->
@@ -604,7 +630,10 @@
 
     <!-- Start Button -->
     <button class="start-btn" id="start-btn" onclick="startGeneration()">
-      🚀 Generate Legal Memorandum
+      🚀 Generate Legal Memorandum (Live API)
+    </button>
+    <button class="demo-btn" onclick="runDemo()">
+      ▶️ Run Demo Animation (No API Required)
     </button>
 
     <!-- Live Output -->
@@ -894,6 +923,168 @@
       addOutput(`   Status: ${report.approvalStatus}`, 'verify');
       
       updateProgress(100, `✅ Complete! Score: ${report.overallScore}/100`);
+    }
+
+    // ==========================================
+    // DEMO MODE - Simulates the full animation
+    // ==========================================
+    async function runDemo() {
+      if (isGenerating) return;
+      isGenerating = true;
+
+      const btn = document.getElementById('start-btn');
+      btn.disabled = true;
+
+      document.getElementById('live-indicator').style.display = 'flex';
+      document.getElementById('output-content').innerHTML = '';
+      document.getElementById('document-preview').classList.remove('visible');
+      sections = {};
+
+      const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+
+      addOutput('🚀 Starting demo animation...', 'system');
+      updateProgress(5, 'Initializing orchestration pipeline...');
+      await sleep(500);
+
+      // PHASE 1: RESEARCH
+      setAgentState('research', 'active', 'Searching...');
+      addOutput('🔍 Research Agent activated', 'research');
+      updateProgress(10, 'Gathering legal authorities...');
+      await sleep(600);
+
+      setTaskState('research', 'ceb', 'active');
+      addOutput('🔍 Searching CEB Practice Guides...', 'research');
+      updateProgress(12, 'Searching CEB practice guides...');
+      await sleep(800);
+      setTaskState('research', 'ceb', 'completed');
+      addOutput('   ✓ Found 5 CEB sources on trust law', 'research');
+
+      setTaskState('research', 'cases', 'active');
+      addOutput('🔍 Finding California case law...', 'research');
+      updateProgress(16, 'Searching California case law...');
+      await sleep(700);
+      setTaskState('research', 'cases', 'completed');
+      addOutput('   ✓ Found 3 relevant cases', 'research');
+
+      setTaskState('research', 'statutes', 'active');
+      addOutput('🔍 Looking up statutes...', 'research');
+      updateProgress(20, 'Ranking authorities...');
+      await sleep(600);
+      setTaskState('research', 'statutes', 'completed');
+      addOutput('   ✓ Identified Probate Code §§ 18200, 15304', 'research');
+
+      setAgentState('research', 'completed', 'Research Complete ✓');
+      updateProgress(25, 'Research complete');
+      await sleep(400);
+
+      // PHASE 2: DRAFTING
+      setAgentState('drafter', 'active', 'Drafting sections...');
+      addOutput('✍️ Drafter Agent activated (Gemini 2.5 Pro)', 'draft');
+      updateProgress(30, 'Drafting document sections...');
+
+      const demoSections = [
+        { id: 'header', name: 'Header', words: 23, citations: 0, content: '# MEMORANDUM\n\n**TO:** John Smith\n**FROM:** Jane Doe\n**DATE:** January 30, 2026\n**RE:** Trust Creditor Protection\n**CLIENT/MATTER:** Trust-2026-001' },
+        { id: 'question', name: 'Question Presented', words: 98, citations: 1, content: 'Under California law, to what extent do assets held in a revocable living trust receive protection from the claims of the settlor\'s creditors during the settlor\'s lifetime, pursuant to California Probate Code section 18200?' },
+        { id: 'answer', name: 'Brief Answer', words: 145, citations: 2, content: 'A revocable living trust provides NO creditor protection during the settlor\'s lifetime. Under Cal. Prob. Code § 18200, trust assets remain fully accessible to creditors because the settlor retains the power to revoke.' },
+        { id: 'facts', name: 'Statement of Facts', words: 210, citations: 0, content: 'Client seeks to establish a revocable living trust primarily for estate planning purposes but inquires whether such trust would also provide protection from potential creditor claims...' },
+        { id: 'analysis', name: 'Analysis', words: 850, citations: 8, content: 'I. LEGAL FRAMEWORK\n\nCalifornia Probate Code section 18200 establishes the fundamental principle governing creditor access to revocable trust assets...\n\nII. APPLICATION\n\nApplying this framework to the present situation...' },
+        { id: 'conclusion', name: 'Conclusion', words: 120, citations: 1, content: 'In conclusion, a revocable living trust does not provide asset protection from creditors during the settlor\'s lifetime. For creditor protection, alternative strategies should be considered.' },
+      ];
+
+      for (let i = 0; i < demoSections.length; i++) {
+        const section = demoSections[i];
+        const percent = 30 + Math.round((i / demoSections.length) * 40);
+
+        updateProgress(percent, `Drafting: ${section.name}`);
+        addSectionTab(section.id, section.name, 'active');
+        addOutput(`✍️ Drafting: ${section.name}...`, 'draft');
+        
+        await sleep(800 + Math.random() * 400);
+
+        sections[section.id] = { name: section.name, content: section.content };
+        addSectionTab(section.id, section.name, 'completed');
+        addOutput(`   ✓ ${section.name} complete (${section.words} words, ${section.citations} citations)`, 'draft');
+        
+        document.getElementById('document-preview').classList.add('visible');
+        showSection(section.id);
+      }
+
+      setAgentState('drafter', 'completed', 'Drafting Complete ✓');
+      updateProgress(70, 'All sections drafted');
+      await sleep(400);
+
+      // PHASE 3: CITATIONS
+      setAgentState('citation', 'active', 'Processing citations...');
+      addOutput('📚 Citation Agent activated', 'citation');
+      updateProgress(75, 'Verifying citations...');
+      await sleep(500);
+
+      setTaskState('citation', 'extract', 'active');
+      addOutput('📚 Extracting citations from document...', 'citation');
+      await sleep(600);
+      setTaskState('citation', 'extract', 'completed');
+      addOutput('   ✓ Extracted 12 citations', 'citation');
+
+      setTaskState('citation', 'verify', 'active');
+      addOutput('📚 Verifying authorities...', 'citation');
+      await sleep(700);
+      setTaskState('citation', 'verify', 'completed');
+      addOutput('   ✓ 11 citations verified, 1 unverified', 'citation');
+
+      setTaskState('citation', 'toa', 'active');
+      addOutput('📚 Building Table of Authorities...', 'citation');
+      updateProgress(85, 'Citations processed');
+      await sleep(500);
+      setTaskState('citation', 'toa', 'completed');
+      addOutput('   ✓ Table of Authorities generated', 'citation');
+
+      setAgentState('citation', 'completed', 'Citations Verified ✓');
+      await sleep(300);
+
+      // PHASE 4: VERIFICATION
+      setAgentState('verifier', 'active', 'Verifying document...');
+      addOutput('✅ Verifier Agent activated (Claude Sonnet)', 'verify');
+      updateProgress(88, 'Performing final verification...');
+      await sleep(600);
+
+      setTaskState('verifier', 'accuracy', 'active');
+      addOutput('✅ Checking citation accuracy...', 'verify');
+      await sleep(700);
+      setTaskState('verifier', 'accuracy', 'completed');
+      addOutput('   ✓ All claims properly supported', 'verify');
+
+      setTaskState('verifier', 'consistency', 'active');
+      addOutput('✅ Verifying internal consistency...', 'verify');
+      await sleep(600);
+      setTaskState('verifier', 'consistency', 'completed');
+      addOutput('   ✓ No inconsistencies found', 'verify');
+
+      setTaskState('verifier', 'compliance', 'active');
+      addOutput('✅ Checking California compliance...', 'verify');
+      updateProgress(95, 'Verification complete');
+      await sleep(500);
+      setTaskState('verifier', 'compliance', 'completed');
+      addOutput('   ✓ California Rules of Court compliant', 'verify');
+
+      setAgentState('verifier', 'completed', 'Verification Complete ✓');
+      await sleep(400);
+
+      // COMPLETE
+      addOutput('', 'system');
+      addOutput('🎉 Document generation complete!', 'system');
+      addOutput('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 'system');
+      addOutput('📊 Final Statistics:', 'system');
+      addOutput('   Total Words: 1,446', 'system');
+      addOutput('   Estimated Pages: 6', 'system');
+      addOutput('   Citations: 12 (11 verified)', 'citation');
+      addOutput('   Verification Score: 92/100', 'verify');
+      addOutput('   Status: ✅ APPROVED', 'verify');
+
+      updateProgress(100, '✅ Complete! Score: 92/100 - Document Ready');
+
+      isGenerating = false;
+      btn.disabled = false;
+      document.getElementById('live-indicator').style.display = 'none';
     }
   </script>
 </body>

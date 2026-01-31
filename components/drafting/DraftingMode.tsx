@@ -46,7 +46,7 @@ export const DraftingMode: React.FC<DraftingModeProps> = ({ onModeChange }) => {
     selectTemplate,
     setVariables,
     startGeneration,
-    reviseSection,
+    editSection,
     selectSection,
     exportDocument,
     reset,
@@ -54,8 +54,6 @@ export const DraftingMode: React.FC<DraftingModeProps> = ({ onModeChange }) => {
 
   // Local state for instructions
   const [instructions, setInstructions] = useState('');
-  const [revisionInstructions, setRevisionInstructions] = useState('');
-  const [showRevisionInput, setShowRevisionInput] = useState(false);
   const [showOrchestrationModal, setShowOrchestrationModal] = useState(false); // Modal state
 
   // Load templates on mount
@@ -92,24 +90,14 @@ export const DraftingMode: React.FC<DraftingModeProps> = ({ onModeChange }) => {
     }
   }, [status]);
 
-  // Handle section click
+  // Handle section click - now just selects for inline editing
   const handleSectionClick = (sectionId: string) => {
     if (status !== 'complete') return;
     selectSection(sectionId);
-    setShowRevisionInput(true);
-    setRevisionInstructions('');
-  };
-
-  // Handle revision submit
-  const handleRevisionSubmit = async () => {
-    if (!selectedSection || !revisionInstructions.trim()) return;
-    await reviseSection(selectedSection, revisionInstructions);
-    setShowRevisionInput(false);
-    setRevisionInstructions('');
   };
 
   // Handle export
-  const handleExport = (format: 'html' | 'pdf') => {
+  const handleExport = (format: 'docx' | 'pdf' | 'html') => {
     exportDocument(format);
   };
 
@@ -125,16 +113,16 @@ export const DraftingMode: React.FC<DraftingModeProps> = ({ onModeChange }) => {
           {document && status === 'complete' && (
             <div style={styles.exportButtons}>
               <button
-                onClick={() => handleExport('html')}
-                style={styles.exportButton}
+                onClick={() => handleExport('docx')}
+                style={styles.exportButtonPrimary}
               >
-                📄 Export HTML
+                📝 Export to Word
               </button>
               <button
                 onClick={() => handleExport('pdf')}
-                style={styles.exportButtonPrimary}
+                style={styles.exportButton}
               >
-                🖨️ Print / PDF
+                📄 Export to PDF
               </button>
             </div>
           )}
@@ -225,52 +213,19 @@ export const DraftingMode: React.FC<DraftingModeProps> = ({ onModeChange }) => {
             </button>
           )}
 
-          {/* Document Preview */}
+          {/* Document Preview - WYSIWYG editable after generation */}
           <DocumentPreview
             document={document}
             sections={sections}
             selectedSection={selectedSection}
             onSectionClick={handleSectionClick}
+            onSectionEdit={editSection}
             isGenerating={isGenerating}
             generatingSection={generatingSection || undefined}
+            isComplete={status === 'complete'}
           />
 
-          {/* Revision input */}
-          {showRevisionInput && selectedSection && !isGenerating && (
-            <div style={styles.revisionPanel}>
-              <h4 style={styles.revisionTitle}>
-                Revise: {sections.find((s) => s.sectionId === selectedSection)?.sectionName}
-              </h4>
-              <textarea
-                value={revisionInstructions}
-                onChange={(e) => setRevisionInstructions(e.target.value)}
-                placeholder="Describe the changes you want. For example: 'Make this section more detailed' or 'Add more case citations'..."
-                style={styles.revisionInput}
-                rows={3}
-              />
-              <div style={styles.revisionButtons}>
-                <button
-                  onClick={() => {
-                    setShowRevisionInput(false);
-                    selectSection(null);
-                  }}
-                  style={styles.cancelButton}
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleRevisionSubmit}
-                  disabled={!revisionInstructions.trim() || generatingSection !== null}
-                  style={{
-                    ...styles.reviseButton,
-                    ...(!revisionInstructions.trim() ? styles.reviseButtonDisabled : {}),
-                  }}
-                >
-                  {generatingSection ? '⏳ Revising...' : '✏️ Revise Section'}
-                </button>
-              </div>
-            </div>
-          )}
+          {/* Inline editing is now available directly in DocumentPreview */}
         </div>
       </div>
 

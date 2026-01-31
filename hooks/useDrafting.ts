@@ -50,8 +50,9 @@ interface UseDraftingReturn {
   setVariables: (variables: Record<string, string>) => void;
   startGeneration: (instructions: string) => Promise<void>;
   reviseSection: (sectionId: string, instructions: string) => Promise<void>;
+  editSection: (sectionId: string, newContent: string) => void;
   selectSection: (sectionId: string | null) => void;
-  exportDocument: (format: 'html' | 'pdf') => Promise<void>;
+  exportDocument: (format: 'docx' | 'pdf' | 'html') => Promise<void>;
   reset: () => void;
 }
 
@@ -449,10 +450,54 @@ export function useDrafting(): UseDraftingReturn {
   }, []);
 
   // ==========================================================================
+  // EDIT SECTION (inline WYSIWYG editing)
+  // ==========================================================================
+  
+  const editSection = useCallback((sectionId: string, newContent: string) => {
+    // Update the section content in state
+    setSections((prev) =>
+      prev.map((s) =>
+        s.sectionId === sectionId
+          ? {
+              ...s,
+              content: newContent,
+              wordCount: newContent.replace(/<[^>]*>/g, '').replace(/[#*_`~\[\]]/g, '').split(/\s+/).filter(w => w.length > 0).length,
+              revisedAt: new Date().toISOString(),
+            }
+          : s
+      )
+    );
+    
+    // Also update the document object if it exists
+    setDocument((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        sections: prev.sections.map((s) =>
+          s.sectionId === sectionId
+            ? {
+                ...s,
+                content: newContent,
+                wordCount: newContent.replace(/<[^>]*>/g, '').replace(/[#*_`~\[\]]/g, '').split(/\s+/).filter(w => w.length > 0).length,
+                revisedAt: new Date().toISOString(),
+              }
+            : s
+        ),
+        wordCount: prev.sections.reduce((total, s) => 
+          total + (s.sectionId === sectionId 
+            ? newContent.replace(/<[^>]*>/g, '').replace(/[#*_`~\[\]]/g, '').split(/\s+/).filter(w => w.length > 0).length
+            : s.wordCount
+          ), 0),
+        updatedAt: new Date().toISOString(),
+      };
+    });
+  }, []);
+
+  // ==========================================================================
   // EXPORT DOCUMENT
   // ==========================================================================
   
-  const exportDocument = useCallback(async (format: 'html' | 'pdf') => {
+  const exportDocument = useCallback(async (format: 'docx' | 'pdf' | 'html') => {
     if (!document) {
       setError('No document to export');
       return;
@@ -474,28 +519,30 @@ export function useDrafting(): UseDraftingReturn {
       });
       
       if (!response.ok) {
-        throw new Error('Export failed');
+        const errorText = await response.text();
+        throw new Error(`Export failed: ${response.status} - ${errorText}`);
       }
       
-      if (format === 'html') {
-        const html = await response.text();
-        const blob = new Blob([html], { type: 'text/html' });
-        const url = URL.createObjectURL(blob);
-        const a = window.document.createElement('a');
-        a.href = url;
-        a.download = `${document.templateId}_${Date.now()}.html`;
-        a.click();
-        URL.revokeObjectURL(url);
-      } else {
-        // For PDF, open in new window for printing
-        const html = await response.text();
-        const printWindow = window.open('', '_blank');
-        if (printWindow) {
-          printWindow.document.write(html);
-          printWindow.document.close();
-          printWindow.print();
-        }
-      }
+      // Get the file as a blob
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      
+      // Determine file extension and MIME type
+      const extensions: Record<string, string> = {
+        docx: 'docx',
+        pdf: 'pdf',
+        html: 'html',
+      };
+      
+      const fileName = `${document.templateId}_${Date.now()}.${extensions[format]}`;
+      
+      // Trigger download
+      const a = window.document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      a.click();
+      URL.revokeObjectURL(url);
+      
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Export failed');
     }
@@ -554,6 +601,7 @@ export function useDrafting(): UseDraftingReturn {
     setVariables,
     startGeneration,
     reviseSection,
+    editSection,
     selectSection,
     exportDocument,
     reset,

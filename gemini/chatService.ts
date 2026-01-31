@@ -615,7 +615,7 @@ Remember: You're trained on California law AND you have access to real-time sear
             console.log(`📅 Date filter: ${dateRange.after || 'any'} to ${dateRange.before || 'any'}`);
         }
 
-        const [legislationData, legislativeApiData, caseLawData, scholarData] = await Promise.all([
+            const [legislationData, legislativeApiData, caseLawData, scholarData] = await Promise.all([
             // Always run fetchLegislationData for explicit bill numbers and code sections
             this.fetchLegislationData(message, signal).catch(err => {
                 if (signal?.aborted || err.message === 'Request cancelled') {
@@ -636,8 +636,8 @@ Remember: You're trained on California law AND you have access to real-time sear
                 : Promise.resolve({ context: '', sources: [] }),
             enableCourtListener
                 ? (isExhaustive
-                    ? this.searchCourtListenerExhaustive(message, signal, { limit: 50, ...dateRange })
-                    : this.searchCourtListenerAPI(message, signal, { limit: 3, ...dateRange })).catch(err => {
+                    ? this.searchCourtListenerExhaustive(message, signal, { limit: 50, californiaOnly: true, ...dateRange })
+                    : this.searchCourtListenerAPI(message, signal, { limit: 3, californiaOnly: true, ...dateRange })).catch(err => {
                         if (signal?.aborted || err.message === 'Request cancelled') {
                             throw err; // Re-throw cancellation errors
                         }
@@ -2514,7 +2514,8 @@ Answer:`;
                 const result = await this.searchCourtListenerAPI(varQuery, signal, {
                     limit: limitPerQuery,
                     after: options?.after,
-                    before: options?.before
+                    before: options?.before,
+                    californiaOnly: options?.californiaOnly
                 });
                 console.log(`   ✅ Query ${index + 1} returned ${result.sources.length} cases`);
                 return result;
@@ -2590,7 +2591,7 @@ Answer:`;
     private async searchCourtListenerAPI(
         query: string,
         signal?: AbortSignal,
-        options?: { limit?: number; after?: string; before?: string; page?: number }
+        options?: { limit?: number; after?: string; before?: string; page?: number; californiaOnly?: boolean }
     ): Promise<{ content: string; sources: Source[] }> {
         try {
             // Build query parameters
@@ -2598,6 +2599,9 @@ Answer:`;
                 q: query
             });
 
+            if (typeof options?.californiaOnly === 'boolean') {
+                params.append('californiaOnly', options.californiaOnly ? 'true' : 'false');
+            }
             if (options?.limit) {
                 params.append('limit', options.limit.toString());
             }

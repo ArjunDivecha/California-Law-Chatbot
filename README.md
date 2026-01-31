@@ -29,9 +29,9 @@ This chatbot combines Google's Gemini 2.5 Pro (generator) with Anthropic's Claud
 - **CEB Verified Badge**: Responses from CEB sources display authoritative badge (no verification needed)
 
 ### 🏛️ CourtListener Integration
-- **✅ Fully Implemented**: Real-time case law searches from CourtListener database
+- **✅ Fully Implemented**: Real-time case law searches via CourtListener API v4 (`/api/rest/v4/search/`)
 - Automatic detection of case law queries (keywords like "v.", "case", "court", "opinion")
-- Access to millions of California court opinions
+- California filtering uses CourtListener’s `court_id:<abbrev>` query operators (e.g., `court_id:cal`, `court_id:calctapp`)
 - Enhanced analysis with actual court case data
 
 ### 📋 Legislative Research ✅ (Harvey Upgrade #1)

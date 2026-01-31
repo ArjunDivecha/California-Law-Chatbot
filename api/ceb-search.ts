@@ -119,6 +119,8 @@ async function setRedisCache(key: string, value: number[]): Promise<void> {
 // ============================================================================
 const EMBEDDING_CACHE_SIZE = 100; // Max cached embeddings
 const embeddingCache = new Map<string, { embedding: number[]; timestamp: number }>();
+const EXPECTED_EMBEDDING_DIMENSIONS = 1536;
+const EMBEDDING_CACHE_VERSION = 'v2-1536'; // bump when embedding dimensions/model change
 
 /**
  * Normalize query for cache key (lowercase, trim, collapse whitespace)
@@ -202,22 +204,32 @@ function expandQuery(query: string): string {
  */
 async function getCachedEmbedding(query: string): Promise<{ embedding: number[]; cached: boolean; cacheType?: string }> {
   const cacheKey = normalizeQuery(query);
-  const redisCacheKey = `emb:${cacheKey.substring(0, 100)}`; // Limit key length
+  // Versioned cache key prevents collisions with older cached embeddings (e.g., previous 512-dimension vectors).
+  const redisCacheKey = `emb:${EMBEDDING_CACHE_VERSION}:${cacheKey.substring(0, 100)}`; // Limit key length
 
   // Check in-memory cache first (fastest)
   const memCached = embeddingCache.get(cacheKey);
   if (memCached) {
+    if (!Array.isArray(memCached.embedding) || memCached.embedding.length !== EXPECTED_EMBEDDING_DIMENSIONS) {
+      console.log(`⚠️ Memory cache embedding dimension mismatch (${memCached.embedding?.length}); regenerating`);
+      embeddingCache.delete(cacheKey);
+    } else {
     memCached.timestamp = Date.now();
     console.log(`📦 Memory cache HIT`);
     return { embedding: memCached.embedding, cached: true, cacheType: 'memory' };
+    }
   }
 
   // Check Redis cache (cross-request persistence)
   const redisCached = await getRedisCache(redisCacheKey);
   if (redisCached) {
+    if (!Array.isArray(redisCached) || redisCached.length !== EXPECTED_EMBEDDING_DIMENSIONS) {
+      console.log(`⚠️ Redis cache embedding dimension mismatch (${redisCached?.length}); regenerating`);
+    } else {
     // Also store in memory for faster subsequent access
     embeddingCache.set(cacheKey, { embedding: redisCached, timestamp: Date.now() });
     return { embedding: redisCached, cached: true, cacheType: 'redis' };
+    }
   }
 
   // Generate new embedding
@@ -505,7 +517,7 @@ async function generateEmbedding(text: string): Promise<number[]> {
   }
 
   try {
-    // Use text-embedding-3-small with reduced dimensions for faster processing
+    // Use text-embedding-3-small default 1536 dimensions (matches Upstash Vector database)
     const response = await fetch('https://api.openai.com/v1/embeddings', {
       method: 'POST',
       headers: {
@@ -515,7 +527,6 @@ async function generateEmbedding(text: string): Promise<number[]> {
       body: JSON.stringify({
         model: 'text-embedding-3-small',
         input: text,
-        dimensions: 512, // Reduced from 1536 for ~3x faster search (still good quality)
       }),
     });
 
@@ -524,7 +535,11 @@ async function generateEmbedding(text: string): Promise<number[]> {
     }
 
     const data = await response.json();
-    return data.data[0].embedding;
+    const embedding = data?.data?.[0]?.embedding;
+    if (!Array.isArray(embedding) || embedding.length !== EXPECTED_EMBEDDING_DIMENSIONS) {
+      throw new Error(`Unexpected embedding dimensions: ${Array.isArray(embedding) ? embedding.length : 'unknown'}`);
+    }
+    return embedding;
   } catch (error) {
     console.error('Failed to generate embedding:', error);
     throw error;

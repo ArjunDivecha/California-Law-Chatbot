@@ -261,14 +261,17 @@ async function runResearchPhase(
   const modelLanguage: ResearchPackage['modelLanguage'] = [];
 
   // Determine base URL for API calls
-  // In Vercel dev, use localhost with the port from environment or default to common ports
+  // In Vercel dev, use localhost with the port from environment or default to 3003
   const baseUrl = process.env.VERCEL_URL 
     ? `https://${process.env.VERCEL_URL}` 
-    : `http://localhost:${process.env.PORT || '3002'}`;
+    : `http://localhost:${process.env.PORT || '3003'}`;
 
-  // 1. CEB Search
+  // 1. CEB Search (with 15s timeout)
   try {
     sendEvent('progress', { phase: 'researching', message: 'Searching CEB practice guides...', percentComplete: 12 });
+    
+    const cebController = new AbortController();
+    const cebTimeout = setTimeout(() => cebController.abort(), 15000);
     
     const cebResponse = await fetch(`${baseUrl}/api/ceb-search`, {
       method: 'POST',
@@ -277,7 +280,9 @@ async function runResearchPhase(
         query: query,
         topK: 8,
       }),
+      signal: cebController.signal,
     });
+    clearTimeout(cebTimeout);
 
     if (cebResponse.ok) {
       const cebData = await cebResponse.json();
@@ -314,34 +319,53 @@ async function runResearchPhase(
   }
 
   // 2. CourtListener Case Law Search
+  // Uses our `/api/courtlistener-search` proxy which calls CourtListener v4 search.
   try {
-    sendEvent('progress', { phase: 'researching', message: 'Searching California case law...', percentComplete: 16 });
-    
-    const clResponse = await fetch(`${baseUrl}/api/courtlistener-search`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        query: query + ' California',
-        jurisdiction: 'ca',
-      }),
+    sendEvent('progress', { phase: 'researching', message: 'Searching California case law (CourtListener)...', percentComplete: 16 });
+
+    const clParams = new URLSearchParams({
+      q: query,
+      limit: '5',
+      californiaOnly: 'true',
     });
 
-    if (clResponse.ok) {
-      const clData = await clResponse.json();
-      if (clData.results) {
-        caseLaw.push(...clData.results.slice(0, 6).map((r: any) => ({
-          caseName: r.caseName || r.case_name || 'Unknown Case',
-          citation: r.citation || '',
-          court: r.court || 'California',
-          year: r.dateFiled ? new Date(r.dateFiled).getFullYear() : 2020,
-          holding: r.snippet || r.holding || '',
-          url: r.absolute_url ? `https://www.courtlistener.com${r.absolute_url}` : undefined,
-        })));
-      }
-      console.log(`   CourtListener: Found ${caseLaw.length} cases`);
+    // Allow enough time for upstream retries/backoff in the proxy.
+    const clController = new AbortController();
+    const clTimeoutMs = 45000;
+    const clTimeout = setTimeout(() => clController.abort(), clTimeoutMs);
+
+    const clResponse = await fetch(`${baseUrl}/api/courtlistener-search?${clParams.toString()}`, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' },
+      signal: clController.signal,
+    }).finally(() => clearTimeout(clTimeout));
+
+    if (!clResponse.ok) {
+      const details = await clResponse.text().catch(() => '');
+      throw new Error(
+        `CourtListener proxy error: ${clResponse.status} ${clResponse.statusText}` +
+        (details ? ` - ${details.slice(0, 200)}` : '')
+      );
     }
+
+    const clData = await clResponse.json();
+    const clResults = Array.isArray(clData?.results) ? clData.results : [];
+
+    caseLaw.push(
+      ...clResults.slice(0, 6).map((r: any) => ({
+        caseName: r.caseName || 'Unknown Case',
+        citation: r.citation || '',
+        court: r.court || 'California',
+        year: r.dateFiled ? new Date(r.dateFiled).getFullYear() : 2020,
+        holding: r.snippet || '',
+        url: r.url || (r.absolute_url ? `https://www.courtlistener.com${r.absolute_url}` : undefined),
+      }))
+    );
+
+    console.log(`   CourtListener: Found ${caseLaw.length} cases`);
   } catch (error) {
-    console.error('CourtListener search error:', error);
+    // FAIL LOUD: if CourtListener is unavailable, stop generation rather than silently drafting without case-law context.
+    throw error;
   }
 
   // 3. Build key authorities (ranked)
