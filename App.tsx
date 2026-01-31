@@ -57,7 +57,7 @@ const App: React.FC = () => {
           <div className="max-w-4xl mx-auto flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl overflow-hidden shadow-sm">
-                <img src="/Heart Favicon.png" alt="Logo" className="w-full h-full object-cover" />
+                <img src="/Heart Favicon.png" alt="Logo" className="w-full h-full object-contain" />
               </div>
               <div>
                 <h1 className="text-lg font-semibold text-gray-900">California Law Chatbot</h1>
@@ -194,7 +194,7 @@ const App: React.FC = () => {
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl overflow-hidden shadow-sm">
-                <img src="/Heart Favicon.png" alt="Logo" className="w-full h-full object-cover" />
+                <img src="/Heart Favicon.png" alt="Logo" className="w-full h-full object-contain" />
               </div>
             <div>
               <h1 className="text-lg font-semibold text-gray-900">California Law Chatbot</h1>
