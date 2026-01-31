@@ -1,13 +1,13 @@
 {
   "framework": "vite",
   "functions": {
+    "api/orchestrate-document.ts": {
+      "memory": 2048,
+      "maxDuration": 300
+    },
     "api/**/*.ts": {
       "memory": 1024,
       "maxDuration": 60
-    },
-    "api/orchestrate-document": {
-      "memory": 2048,
-      "maxDuration": 300
     }
   },
   "headers": [
