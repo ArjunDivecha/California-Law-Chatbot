@@ -498,13 +498,15 @@ async function callGemini(prompt: string, maxWords?: number, retryCount: number 
   const startTime = Date.now();
   
   // Calculate maxOutputTokens based on word count requirement
-  // Rough estimate: 1 token ≈ 0.75 words, add 100% buffer for safety margin
+  // Rough estimate: 1 token ≈ 0.75 words
   // Gemini 2.5 Flash supports up to 65,535 output tokens
-  // For 2500 words: 2500 / 0.75 * 2 ≈ 6667 tokens
-  let maxOutputTokens = 8192; // Higher default
+  // We need EXTRA margin because the model often EXCEEDS the target word count (2-3x)
+  // For 2500 words: actual output may be 5000+ words = 6667+ tokens
+  let maxOutputTokens = 16384; // Higher default for comprehensive legal content
   if (maxWords) {
-    // Use 2x buffer to ensure we get complete output - model supports up to 65,535 tokens
-    maxOutputTokens = Math.min(Math.ceil((maxWords / 0.75) * 2), 16384); // Cap at 16384 for reasonable latency
+    // Use 4x buffer to ensure we get complete output even when model over-generates
+    // Model supports up to 65,535 tokens, but we cap at 32768 for reasonable latency
+    maxOutputTokens = Math.min(Math.ceil((maxWords / 0.75) * 4), 32768);
   }
   console.log(`   📊 Token budget: ${maxOutputTokens} tokens (target: ${maxWords || 'default'} words)`);
   
@@ -641,7 +643,7 @@ async function runDraftingPhase(
       }
       
       if (section.maxLengthWords) {
-        prompt += `**CRITICAL WORD COUNT REQUIREMENT**: You MUST write AT LEAST ${section.maxLengthWords} words for this section. This is a MINIMUM, not a maximum. Write comprehensive, detailed content that fully addresses all aspects. Do NOT write a summary or abbreviated version.\n\n`;
+        prompt += `**WORD COUNT REQUIREMENT**: Write approximately ${section.maxLengthWords} words for this section. This should be a comprehensive, detailed section that fully addresses all aspects - not a summary. If the topic requires more depth, you may write up to ${Math.round(section.maxLengthWords * 1.5)} words.\n\n`;
       }
       
       if (section.legalRequirements && section.legalRequirements.length > 0) {
@@ -671,7 +673,7 @@ async function runDraftingPhase(
       }
       
       prompt += `\nNow write the "${section.name}" section. Remember to cite California authorities.\n\n`;
-      prompt += `REMINDER: Write a COMPLETE, FULLY DEVELOPED section. ${section.maxLengthWords ? `You MUST write at least ${section.maxLengthWords} words. ` : ''}Do not write bullet points or summaries - write full prose with detailed analysis.`;
+      prompt += `REMINDER: Write a COMPLETE, FULLY DEVELOPED section. ${section.maxLengthWords ? `Target approximately ${section.maxLengthWords} words. ` : ''}Do not write bullet points or summaries - write full prose with detailed analysis. IMPORTANT: Ensure you end with a complete sentence.`;
 
       console.log(`   🤖 Starting Gemini call for ${section.name} (target: ${section.maxLengthWords || 'default'} words)...`);
       content = await callGemini(prompt, section.maxLengthWords);
