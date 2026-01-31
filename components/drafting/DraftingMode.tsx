@@ -11,6 +11,7 @@ import { VariableInputPanel } from './VariableInputPanel';
 import { ProgressIndicator } from './ProgressIndicator';
 import { DocumentPreview } from './DocumentPreview';
 import { OrchestrationModal } from './OrchestrationModal';
+import { getDefaultTestData } from './defaultTestData';
 
 interface DraftingModeProps {
   onModeChange?: () => void;
@@ -60,6 +61,21 @@ export const DraftingMode: React.FC<DraftingModeProps> = ({ onModeChange }) => {
   useEffect(() => {
     loadTemplates();
   }, [loadTemplates]);
+
+  // Populate default test data when template is selected
+  useEffect(() => {
+    if (selectedTemplateId && template) {
+      const defaultData = getDefaultTestData(selectedTemplateId);
+      if (defaultData) {
+        // Always populate variables and instructions with test data for easy debugging
+        // Use setTimeout to ensure this runs after useDrafting's variable initialization
+        setTimeout(() => {
+          setVariables(defaultData.variables);
+          setInstructions(defaultData.instructions);
+        }, 100);
+      }
+    }
+  }, [selectedTemplateId, template, setVariables]); // Run when template changes
 
   // Check if variables are complete
   const isVariablesComplete = template?.variables
@@ -229,14 +245,6 @@ export const DraftingMode: React.FC<DraftingModeProps> = ({ onModeChange }) => {
         </div>
       </div>
 
-      {/* Confidentiality warning */}
-      <div style={styles.warning}>
-        <span>⚠️</span>
-        <span>
-          <strong>Confidentiality Warning:</strong> Do not enter confidential client information.
-          Use placeholders like [CLIENT NAME] instead. All generated documents require attorney review.
-        </span>
-      </div>
 
       {/* Orchestration Modal */}
       <OrchestrationModal
@@ -445,16 +453,6 @@ const styles: Record<string, React.CSSProperties> = {
   reviseButtonDisabled: {
     backgroundColor: '#9ca3af',
     cursor: 'not-allowed',
-  },
-  warning: {
-    display: 'flex',
-    gap: '8px',
-    alignItems: 'center',
-    padding: '12px 24px',
-    backgroundColor: '#fffbeb',
-    borderTop: '1px solid #fcd34d',
-    fontSize: '13px',
-    color: '#92400e',
   },
   showOrchestrationButton: {
     width: '100%',

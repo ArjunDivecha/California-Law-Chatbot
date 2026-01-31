@@ -91,6 +91,16 @@ const FALLBACK_TEMPLATES: TemplateSummary[] = [
     variableCount: 8,
     sectionCount: 7,
   },
+  {
+    id: 'motion_compel',
+    name: 'Motion to Compel Discovery',
+    description: 'Motion to compel further responses to discovery requests under CCP sections 2030-2033',
+    practiceAreas: ['civil_litigation'],
+    complexity: 'high',
+    estimatedTime: '90-120 seconds',
+    variableCount: 16,
+    sectionCount: 10,
+  },
 ];
 
 const FALLBACK_TEMPLATE_MEMO: DocumentTemplate = {
