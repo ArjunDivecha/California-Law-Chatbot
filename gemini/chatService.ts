@@ -1611,8 +1611,25 @@ Key California legal sources to reference:
             }
             console.error('❌ processAIOnly error:', error);
             console.error('Error details:', error.message, error.stack);
+            
+            // Provide more specific error messages based on error type
+            let errorMessage = "I'm having trouble connecting right now. Please try again.";
+            const errorStr = String(error.message || error || '').toLowerCase();
+            
+            if (errorStr.includes('timeout') || errorStr.includes('timed out')) {
+                errorMessage = "The request timed out. This might be due to high server load. Please try again in a moment.";
+            } else if (errorStr.includes('429') || errorStr.includes('quota') || errorStr.includes('rate limit')) {
+                errorMessage = "API rate limit reached. Please wait a moment before trying again.";
+            } else if (errorStr.includes('503') || errorStr.includes('overloaded') || errorStr.includes('capacity')) {
+                errorMessage = "The AI service is currently at capacity. Please try again in a few seconds.";
+            } else if (errorStr.includes('network') || errorStr.includes('fetch') || errorStr.includes('connection')) {
+                errorMessage = "Network connection issue. Please check your internet connection and try again.";
+            } else if (errorStr.includes('401') || errorStr.includes('403') || errorStr.includes('api_key')) {
+                errorMessage = "Authentication error with AI service. Please contact support.";
+            }
+            
             return {
-                text: "I'm having trouble connecting right now. Please try again.",
+                text: errorMessage,
                 sources: [],
                 sourceMode: 'ai-only'
             };
@@ -1983,9 +2000,28 @@ Answer:`;
             if (signal?.aborted || error.message === 'Request cancelled') {
                 throw error;
             }
-            console.error('Error in processHybrid:', error);
+            console.error('❌ Error in processHybrid:', error);
+            console.error('Error message:', error.message);
+            console.error('Error stack:', error.stack);
+            
+            // Provide more specific error messages based on error type
+            let errorMessage = "I'm having trouble processing your request. Please try again.";
+            const errorStr = String(error.message || error || '').toLowerCase();
+            
+            if (errorStr.includes('timeout') || errorStr.includes('timed out')) {
+                errorMessage = "The request timed out. This might be due to high server load. Please try again in a moment.";
+            } else if (errorStr.includes('429') || errorStr.includes('quota') || errorStr.includes('rate limit')) {
+                errorMessage = "API rate limit reached. Please wait a moment before trying again.";
+            } else if (errorStr.includes('503') || errorStr.includes('overloaded') || errorStr.includes('capacity')) {
+                errorMessage = "The AI service is currently at capacity. Please try again in a few seconds.";
+            } else if (errorStr.includes('network') || errorStr.includes('fetch') || errorStr.includes('connection')) {
+                errorMessage = "Network connection issue. Please check your internet connection and try again.";
+            } else if (errorStr.includes('401') || errorStr.includes('403') || errorStr.includes('api_key')) {
+                errorMessage = "Authentication error with AI service. Please contact support.";
+            }
+            
             return {
-                text: "I'm having trouble processing your request. Please try again.",
+                text: errorMessage,
                 sources: [],
                 sourceMode: 'hybrid'
             };

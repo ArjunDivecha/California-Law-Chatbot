@@ -896,10 +896,10 @@ async function runVerificationPhase(
   console.log('🔍 Verifier Agent: Starting verification');
   sendEvent('progress', { phase: 'final_verification', message: 'Performing final verification...', percentComplete: 88 });
 
-  const anthropicKey = process.env.ANTHROPIC_API_KEY;
+  const openrouterKey = process.env.OPENROUTER_API_KEY;
   
-  if (!anthropicKey) {
-    console.warn('⚠️ ANTHROPIC_API_KEY not set - using basic verification');
+  if (!openrouterKey) {
+    console.warn('⚠️ OPENROUTER_API_KEY not set - using basic verification');
     return createBasicVerificationReport(sections);
   }
 
@@ -949,35 +949,38 @@ async function runVerificationPhase(
 \`\`\`
 Provide ONLY the JSON response.`;
 
-    // Call Claude Sonnet with timeout (30 seconds)
+    // Call Claude Sonnet via OpenRouter with timeout (45 seconds)
     const verifierController = new AbortController();
-    const verifierTimeout = setTimeout(() => verifierController.abort(), 30000);
+    const verifierTimeout = setTimeout(() => verifierController.abort(), 45000);
     
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
+    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: {
+        'Authorization': `Bearer ${openrouterKey}`,
         'Content-Type': 'application/json',
-        'x-api-key': anthropicKey,
-        'anthropic-version': '2023-06-01',
+        'HTTP-Referer': 'https://california-law-chatbot.vercel.app',
+        'X-Title': 'California Law Chatbot'
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
+        model: 'anthropic/claude-sonnet-4.5',
         max_tokens: 4096,
-        system: VERIFIER_SYSTEM_PROMPT,
-        messages: [{ role: 'user', content: prompt }],
+        messages: [
+          { role: 'system', content: VERIFIER_SYSTEM_PROMPT },
+          { role: 'user', content: prompt }
+        ],
+        temperature: 0.2
       }),
       signal: verifierController.signal,
     }).finally(() => clearTimeout(verifierTimeout));
 
     if (!response.ok) {
       const error = await response.text();
-      console.error('Claude API error:', error);
+      console.error('OpenRouter Claude API error:', error);
       return createBasicVerificationReport(sections);
     }
 
     const data = await response.json();
-    const textContent = data.content?.find((block: any) => block.type === 'text');
-    const responseText = textContent?.text || '';
+    const responseText = data.choices?.[0]?.message?.content || '';
 
     // Parse JSON from response
     const jsonMatch = responseText.match(/```json\s*([\s\S]*?)\s*```/) || responseText.match(/\{[\s\S]*\}/);

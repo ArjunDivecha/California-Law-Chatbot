@@ -507,31 +507,34 @@ function deduplicateResults(results: any[], topK: number): any[] {
 }
 
 /**
- * Generate embedding for query using OpenAI
+ * Generate embedding for query using OpenRouter (OpenAI text-embedding-3-small)
  */
 async function generateEmbedding(text: string): Promise<number[]> {
-  const openaiKey = process.env.OPENAI_API_KEY;
+  const openrouterKey = process.env.OPENROUTER_API_KEY;
 
-  if (!openaiKey) {
-    throw new Error('OPENAI_API_KEY not configured');
+  if (!openrouterKey) {
+    throw new Error('OPENROUTER_API_KEY not configured');
   }
 
   try {
-    // Use text-embedding-3-small default 1536 dimensions (matches Upstash Vector database)
-    const response = await fetch('https://api.openai.com/v1/embeddings', {
+    // Use OpenRouter embeddings API with text-embedding-3-small (1536 dimensions)
+    const response = await fetch('https://openrouter.ai/api/v1/embeddings', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${openaiKey}`,
+        'Authorization': `Bearer ${openrouterKey}`,
         'Content-Type': 'application/json',
+        'HTTP-Referer': 'https://california-law-chatbot.vercel.app',
+        'X-Title': 'California Law Chatbot'
       },
       body: JSON.stringify({
-        model: 'text-embedding-3-small',
+        model: 'openai/text-embedding-3-small',
         input: text,
       }),
     });
 
     if (!response.ok) {
-      throw new Error(`OpenAI API error: ${response.status}`);
+      const errorText = await response.text();
+      throw new Error(`OpenRouter embeddings API error: ${response.status} - ${errorText}`);
     }
 
     const data = await response.json();
@@ -541,7 +544,7 @@ async function generateEmbedding(text: string): Promise<number[]> {
     }
     return embedding;
   } catch (error) {
-    console.error('Failed to generate embedding:', error);
+    console.error('Failed to generate embedding via OpenRouter:', error);
     throw error;
   }
 }

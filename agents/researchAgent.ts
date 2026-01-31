@@ -2,10 +2,9 @@
  * Research Agent
  * 
  * Gathers relevant legal authorities from CEB, CourtListener, and statutory sources.
- * Uses Claude Haiku for fast, cost-effective research operations.
+ * Uses Claude Haiku 4.5 via OpenRouter for fast, cost-effective research operations.
  */
 
-import Anthropic from '@anthropic-ai/sdk';
 import type { ResearchPackage, CEBSource, CaseLawSource, StatuteSource } from '../types';
 import {
   cebSearchTool,
@@ -45,126 +44,155 @@ After gathering sources, provide a structured summary with:
 Be thorough but focused. Quality over quantity. Prioritize California-specific authorities.`;
 
 // =============================================================================
-// TOOL DEFINITIONS FOR CLAUDE
+// TOOL DEFINITIONS FOR OPENROUTER (OpenAI format)
 // =============================================================================
 
-const researchTools: Anthropic.Tool[] = [
+const researchTools = [
   {
-    name: 'ceb_search',
-    description: 'Search CEB practice guides for relevant content. Use for authoritative California legal guidance and model language.',
-    input_schema: {
-      type: 'object' as const,
-      properties: {
-        query: {
-          type: 'string',
-          description: 'Search query for CEB content',
-        },
-        categories: {
-          type: 'array',
-          items: { type: 'string' },
-          description: 'CEB categories to search: trusts_estates, family_law, business_litigation, business_entities, business_transactions',
-        },
-        top_k: {
-          type: 'number',
-          description: 'Number of results to return (default 5, max 10)',
-        },
-      },
-      required: ['query'],
-    },
-  },
-  {
-    name: 'courtlistener_search',
-    description: 'Search CourtListener for California case law',
-    input_schema: {
-      type: 'object' as const,
-      properties: {
-        query: {
-          type: 'string',
-          description: 'Case law search query',
-        },
-        court_filter: {
-          type: 'string',
-          description: 'Court filter: california_all, california_supreme, california_appeals, federal_ninth, all',
-        },
-        max_results: {
-          type: 'number',
-          description: 'Maximum number of cases to return (default 5)',
-        },
-      },
-      required: ['query'],
-    },
-  },
-  {
-    name: 'statute_lookup',
-    description: 'Look up a specific California statute section',
-    input_schema: {
-      type: 'object' as const,
-      properties: {
-        code: {
-          type: 'string',
-          description: 'California code name (e.g., "Code of Civil Procedure", "Family Code", "Probate Code")',
-        },
-        section: {
-          type: 'string',
-          description: 'Section number (e.g., "2030.300", "1615")',
-        },
-      },
-      required: ['code', 'section'],
-    },
-  },
-  {
-    name: 'legislative_search',
-    description: 'Search for California legislation and bills',
-    input_schema: {
-      type: 'object' as const,
-      properties: {
-        query: {
-          type: 'string',
-          description: 'Legislative search query',
-        },
-        bill_number: {
-          type: 'string',
-          description: 'Specific bill number (e.g., "AB 123", "SB 456")',
-        },
-      },
-      required: ['query'],
-    },
-  },
-  {
-    name: 'complete_research',
-    description: 'Signal that research is complete and provide final summary',
-    input_schema: {
-      type: 'object' as const,
-      properties: {
-        research_notes: {
-          type: 'string',
-          description: 'Summary of research findings, key issues identified, and any caveats',
-        },
-        key_authorities: {
-          type: 'array',
-          items: {
-            type: 'object',
-            properties: {
-              rank: { type: 'number' },
-              type: { type: 'string' },
-              citation: { type: 'string' },
-              summary: { type: 'string' },
-            },
+    type: 'function',
+    function: {
+      name: 'ceb_search',
+      description: 'Search CEB practice guides for relevant content. Use for authoritative California legal guidance and model language.',
+      parameters: {
+        type: 'object',
+        properties: {
+          query: {
+            type: 'string',
+            description: 'Search query for CEB content',
           },
-          description: 'Ranked list of key authorities',
+          categories: {
+            type: 'array',
+            items: { type: 'string' },
+            description: 'CEB categories to search: trusts_estates, family_law, business_litigation, business_entities, business_transactions',
+          },
+          top_k: {
+            type: 'number',
+            description: 'Number of results to return (default 5, max 10)',
+          },
         },
+        required: ['query'],
       },
-      required: ['research_notes'],
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'courtlistener_search',
+      description: 'Search CourtListener for California case law',
+      parameters: {
+        type: 'object',
+        properties: {
+          query: {
+            type: 'string',
+            description: 'Case law search query',
+          },
+          court_filter: {
+            type: 'string',
+            description: 'Court filter: california_all, california_supreme, california_appeals, federal_ninth, all',
+          },
+          max_results: {
+            type: 'number',
+            description: 'Maximum number of cases to return (default 5)',
+          },
+        },
+        required: ['query'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'statute_lookup',
+      description: 'Look up a specific California statute section',
+      parameters: {
+        type: 'object',
+        properties: {
+          code: {
+            type: 'string',
+            description: 'California code name (e.g., "Code of Civil Procedure", "Family Code", "Probate Code")',
+          },
+          section: {
+            type: 'string',
+            description: 'Section number (e.g., "2030.300", "1615")',
+          },
+        },
+        required: ['code', 'section'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'legislative_search',
+      description: 'Search for California legislation and bills',
+      parameters: {
+        type: 'object',
+        properties: {
+          query: {
+            type: 'string',
+            description: 'Legislative search query',
+          },
+          bill_number: {
+            type: 'string',
+            description: 'Specific bill number (e.g., "AB 123", "SB 456")',
+          },
+        },
+        required: ['query'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'complete_research',
+      description: 'Signal that research is complete and provide final summary',
+      parameters: {
+        type: 'object',
+        properties: {
+          research_notes: {
+            type: 'string',
+            description: 'Summary of research findings, key issues identified, and any caveats',
+          },
+          key_authorities: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                rank: { type: 'number' },
+                type: { type: 'string' },
+                citation: { type: 'string' },
+                summary: { type: 'string' },
+              },
+            },
+            description: 'Ranked list of key authorities',
+          },
+        },
+        required: ['research_notes'],
+      },
     },
   },
 ];
+
+// =============================================================================
+// OPENROUTER API TYPES
+// =============================================================================
+
+interface OpenRouterMessage {
+  role: 'system' | 'user' | 'assistant' | 'tool';
+  content: string | null;
+  tool_calls?: Array<{
+    id: string;
+    type: 'function';
+    function: { name: string; arguments: string };
+  }>;
+  tool_call_id?: string;
+}
 
 // =============================================================================
 // RESEARCH AGENT CLASS
 // =============================================================================
 
 export class ResearchAgent {
-  private client: Anthropic;
   private cebSources: CEBSource[] = [];
   private caseLaw: CaseLawSource[] = [];
   private statutes: StatuteSource[] = [];
@@ -173,9 +201,7 @@ export class ResearchAgent {
   private keyAuthorities: ResearchPackage['keyAuthorities'] = [];
 
   constructor() {
-    this.client = new Anthropic({
-      apiKey: process.env.ANTHROPIC_API_KEY,
-    });
+    // No client initialization needed - using fetch
   }
 
   /**
@@ -186,7 +212,7 @@ export class ResearchAgent {
     sources: Array<'ceb' | 'courtlistener' | 'statutes' | 'legislative'>,
     focusAreas?: string[]
   ): Promise<ResearchPackage> {
-    console.log('🔍 Research Agent: Starting research for:', query);
+    console.log('🔍 Research Agent: Starting research via OpenRouter for:', query);
     
     // Reset state
     this.cebSources = [];
@@ -196,11 +222,17 @@ export class ResearchAgent {
     this.researchNotes = '';
     this.keyAuthorities = [];
 
+    const apiKey = process.env.OPENROUTER_API_KEY;
+    if (!apiKey) {
+      console.error('OPENROUTER_API_KEY not configured');
+      return this.buildResearchPackage(query);
+    }
+
     // Build the user message
     const userMessage = this.buildUserMessage(query, sources, focusAreas);
 
     // Run the agent loop
-    const messages: Anthropic.MessageParam[] = [
+    const messages: OpenRouterMessage[] = [
       { role: 'user', content: userMessage },
     ];
 
@@ -212,37 +244,87 @@ export class ResearchAgent {
       console.log(`🔄 Research Agent: Iteration ${iterations}`);
 
       try {
-        const response = await this.client.messages.create({
-          model: 'claude-haiku-4-5-20250514',
-          max_tokens: 2048,
-          system: RESEARCH_SYSTEM_PROMPT,
-          tools: researchTools,
-          messages,
+        const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+            'HTTP-Referer': 'https://california-law-chatbot.vercel.app',
+            'X-Title': 'California Law Chatbot'
+          },
+          body: JSON.stringify({
+            model: 'anthropic/claude-haiku-4.5',
+            messages: [
+              { role: 'system', content: RESEARCH_SYSTEM_PROMPT },
+              ...messages
+            ],
+            tools: researchTools,
+            tool_choice: 'auto',
+            temperature: 0.2,
+            max_tokens: 2048
+          })
         });
 
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('OpenRouter API error:', errorText);
+          break;
+        }
+
+        const data = await response.json();
+        const choice = data.choices?.[0];
+        const finishReason = choice?.finish_reason;
+        const assistantMessage = choice?.message;
+
         // Check if we're done
-        if (response.stop_reason === 'end_turn') {
-          console.log('✅ Research Agent: Completed (end_turn)');
+        if (finishReason === 'stop' || !assistantMessage?.tool_calls?.length) {
+          console.log('✅ Research Agent: Completed (no more tool calls)');
           break;
         }
 
         // Process tool calls
-        if (response.stop_reason === 'tool_use') {
-          const toolResults = await this.processToolCalls(response.content);
-          
-          // Check if research is complete
-          const completeCall = response.content.find(
-            (block) => block.type === 'tool_use' && block.name === 'complete_research'
-          );
-          
-          if (completeCall) {
+        if (assistantMessage?.tool_calls?.length > 0) {
+          // Add assistant message to history
+          messages.push({
+            role: 'assistant',
+            content: assistantMessage.content,
+            tool_calls: assistantMessage.tool_calls
+          });
+
+          // Process each tool call
+          let researchComplete = false;
+          for (const toolCall of assistantMessage.tool_calls) {
+            const toolName = toolCall.function.name;
+            console.log(`  🔧 Tool call: ${toolName}`);
+            
+            try {
+              const args = JSON.parse(toolCall.function.arguments);
+              const result = await this.executeTool(toolName, args);
+              
+              // Add tool result to messages
+              messages.push({
+                role: 'tool',
+                tool_call_id: toolCall.id,
+                content: JSON.stringify(result)
+              });
+
+              if (toolName === 'complete_research') {
+                researchComplete = true;
+              }
+            } catch (error) {
+              console.error(`  ❌ Tool error (${toolName}):`, error);
+              messages.push({
+                role: 'tool',
+                tool_call_id: toolCall.id,
+                content: JSON.stringify({ error: error instanceof Error ? error.message : 'Tool execution failed' })
+              });
+            }
+          }
+
+          if (researchComplete) {
             console.log('✅ Research Agent: Completed (complete_research called)');
             break;
           }
-
-          // Add assistant response and tool results to messages
-          messages.push({ role: 'assistant', content: response.content });
-          messages.push({ role: 'user', content: toolResults });
         }
       } catch (error) {
         console.error('❌ Research Agent error:', error);
@@ -277,40 +359,6 @@ export class ResearchAgent {
     message += `4. When done, call complete_research with your findings summary\n`;
     
     return message;
-  }
-
-  /**
-   * Process tool calls from Claude's response
-   */
-  private async processToolCalls(
-    content: Anthropic.ContentBlock[]
-  ): Promise<Anthropic.ToolResultBlockParam[]> {
-    const results: Anthropic.ToolResultBlockParam[] = [];
-
-    for (const block of content) {
-      if (block.type !== 'tool_use') continue;
-
-      console.log(`  🔧 Tool call: ${block.name}`);
-      
-      try {
-        const result = await this.executeTool(block.name, block.input as Record<string, any>);
-        results.push({
-          type: 'tool_result',
-          tool_use_id: block.id,
-          content: JSON.stringify(result),
-        });
-      } catch (error) {
-        console.error(`  ❌ Tool error (${block.name}):`, error);
-        results.push({
-          type: 'tool_result',
-          tool_use_id: block.id,
-          content: JSON.stringify({ error: error instanceof Error ? error.message : 'Tool execution failed' }),
-          is_error: true,
-        });
-      }
-    }
-
-    return results;
   }
 
   /**

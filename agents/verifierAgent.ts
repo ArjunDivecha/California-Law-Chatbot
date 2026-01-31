@@ -2,10 +2,9 @@
  * Verifier Agent
  * 
  * Performs final quality control on generated documents.
- * Uses Claude Sonnet for accurate verification and reasoning.
+ * Uses Claude Sonnet 4.5 via OpenRouter for accurate verification and reasoning.
  */
 
-import Anthropic from '@anthropic-ai/sdk';
 import type {
   GeneratedSection,
   DocumentVerificationReport,
@@ -53,16 +52,54 @@ VERIFICATION CHECKLIST:
 You will receive the document content and research package. Analyze thoroughly and provide a structured report.`;
 
 // =============================================================================
+// OPENROUTER API HELPER
+// =============================================================================
+
+async function callOpenRouterClaude(
+  systemPrompt: string,
+  userMessage: string,
+  maxTokens: number = 4096
+): Promise<string> {
+  const apiKey = process.env.OPENROUTER_API_KEY;
+  if (!apiKey) {
+    throw new Error('OPENROUTER_API_KEY not configured');
+  }
+
+  const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+      'HTTP-Referer': 'https://california-law-chatbot.vercel.app',
+      'X-Title': 'California Law Chatbot'
+    },
+    body: JSON.stringify({
+      model: 'anthropic/claude-sonnet-4.5',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userMessage }
+      ],
+      temperature: 0.2,
+      max_tokens: maxTokens
+    })
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`OpenRouter API error: ${response.status} - ${errorText}`);
+  }
+
+  const data = await response.json();
+  return data.choices?.[0]?.message?.content || '';
+}
+
+// =============================================================================
 // VERIFIER AGENT CLASS
 // =============================================================================
 
 export class VerifierAgent {
-  private client: Anthropic;
-
   constructor() {
-    this.client = new Anthropic({
-      apiKey: process.env.ANTHROPIC_API_KEY,
-    });
+    // No client initialization needed - using fetch
   }
 
   /**
@@ -73,22 +110,13 @@ export class VerifierAgent {
     researchPackage: ResearchPackage,
     documentType: DocumentType
   ): Promise<DocumentVerificationReport> {
-    console.log('🔍 Verifier Agent: Starting document verification...');
+    console.log('🔍 Verifier Agent: Starting document verification via OpenRouter...');
 
     // Build the verification prompt
     const prompt = this.buildVerificationPrompt(sections, researchPackage, documentType);
 
     try {
-      const response = await this.client.messages.create({
-        model: 'claude-sonnet-4-5-20250514',
-        max_tokens: 4096,
-        system: VERIFIER_SYSTEM_PROMPT,
-        messages: [{ role: 'user', content: prompt }],
-      });
-
-      // Extract text response
-      const textContent = response.content.find(block => block.type === 'text');
-      const responseText = textContent?.type === 'text' ? textContent.text : '';
+      const responseText = await callOpenRouterClaude(VERIFIER_SYSTEM_PROMPT, prompt, 4096);
 
       // Parse the verification report
       const report = this.parseVerificationResponse(responseText, sections);

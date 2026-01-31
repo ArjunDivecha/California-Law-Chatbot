@@ -1,4 +1,11 @@
-import Anthropic from '@anthropic-ai/sdk';
+/**
+ * Claude Chat API Endpoint via OpenRouter
+ * 
+ * POST /api/claude-chat - Generate content with Claude via OpenRouter
+ * 
+ * Uses OpenRouter for unified API access to Anthropic Claude models
+ * MODEL: Claude Sonnet 4.5 (anthropic/claude-sonnet-4.5)
+ */
 
 export default async function handler(req: any, res: any) {
   // Enable CORS
@@ -24,22 +31,18 @@ export default async function handler(req: any, res: any) {
       return;
     }
 
-    const apiKey = process.env.ANTHROPIC_API_KEY;
+    const apiKey = process.env.OPENROUTER_API_KEY;
     if (!apiKey) {
-      console.error('ANTHROPIC_API_KEY is not set in environment variables');
+      console.error('OPENROUTER_API_KEY is not set in environment variables');
       res.status(500).json({ 
         error: 'Server configuration error', 
-        message: 'ANTHROPIC_API_KEY environment variable is not configured. Please set it in Vercel environment variables.' 
+        message: 'OPENROUTER_API_KEY environment variable is not configured.' 
       });
       return;
     }
 
-    console.log('Initializing Anthropic client...');
-    // Initialize Anthropic (server-side only - API key never exposed to client)
-    const anthropic = new Anthropic({ apiKey });
-
-    // Build conversation messages from history
-    const messages: any[] = [];
+    // Build messages array from conversation history
+    const messages: Array<{role: string, content: string}> = [];
     
     // Add conversation history (last 10 messages for context)
     if (conversationHistory && Array.isArray(conversationHistory)) {
@@ -60,48 +63,75 @@ export default async function handler(req: any, res: any) {
       content: message.trim()
     });
 
-    console.log(`Calling Claude API with model: claude-sonnet-4-5-20250929 with extended thinking (${messages.length} messages in context)`);
-    const response = await anthropic.messages.create({
-      model: 'claude-sonnet-4-5-20250929',
-      max_tokens: 8192,
-      thinking: {
-        type: 'enabled',
-        budget_tokens: 4096
-      },
-      system: systemPrompt || `You are an expert legal research assistant specializing in California law.`,
-      messages: messages
-    });
+    console.log(`📡 Calling OpenRouter Claude API with model: anthropic/claude-sonnet-4.5 (${messages.length} messages in context)`);
+    
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
 
-      console.log('Claude API response received successfully');
+    try {
+      const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+          'HTTP-Referer': 'https://california-law-chatbot.vercel.app',
+          'X-Title': 'California Law Chatbot'
+        },
+        body: JSON.stringify({
+          model: 'anthropic/claude-sonnet-4.5',
+          messages: [
+            {
+              role: 'system',
+              content: systemPrompt || 'You are an expert legal research assistant specializing in California law.'
+            },
+            ...messages
+          ],
+          temperature: 0.2,
+          max_tokens: 8192
+        }),
+        signal: controller.signal
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`OpenRouter error ${response.status}: ${errorText}`);
+      }
+
+      const data = await response.json();
       
-      // Claude Sonnet 4.5 returns content blocks with types: 'thinking' and 'text'
-      // We only want the 'text' blocks for the actual response
-      const textBlocks = response.content.filter((block: any) => block.type === 'text');
-      const thinkingBlocks = response.content.filter((block: any) => block.type === 'thinking');
-      
-      console.log(`Response contains ${textBlocks.length} text blocks and ${thinkingBlocks.length} thinking blocks`);
-      
-      // Extract only the text content (not the thinking)
-      const text = textBlocks
-        .map((block: any) => block.text)
-        .join('\n')
-        .trim();
+      if (data.error) {
+        throw new Error(data.error.message || JSON.stringify(data.error));
+      }
+
+      const text = data.choices?.[0]?.message?.content || '';
 
       if (!text) {
-        console.error('No text content found in Claude response');
+        console.error('No text content found in OpenRouter Claude response');
         res.status(500).json({
           error: 'No text content in response',
-          message: 'Claude returned thinking blocks but no text output'
+          message: 'Claude returned no text output'
         });
         return;
       }
 
+      console.log(`✅ OpenRouter Claude response received (${text.length} chars)`);
+
       res.status(200).json({
-        text: text,
+        text: text
       });
 
+    } catch (fetchError: any) {
+      clearTimeout(timeoutId);
+      if (fetchError.name === 'AbortError') {
+        throw new Error('Request timeout after 60000ms');
+      }
+      throw fetchError;
+    }
+
   } catch (err: any) {
-    console.error('Claude Chat API error:', err);
+    console.error('OpenRouter Claude API error:', err);
     console.error('Error details:', {
       message: err?.message,
       stack: err?.stack,
@@ -110,16 +140,12 @@ export default async function handler(req: any, res: any) {
       code: err?.code
     });
     
-    // Provide more detailed error information
     const errorMessage = err?.message || String(err);
     const isAuthError = errorMessage.includes('api_key') || errorMessage.includes('401') || errorMessage.includes('403');
-    const isModelError = errorMessage.includes('model') || errorMessage.includes('404');
     
     let userMessage = errorMessage;
     if (isAuthError) {
-      userMessage = 'Authentication error. Please check ANTHROPIC_API_KEY in Vercel environment variables.';
-    } else if (isModelError) {
-      userMessage = 'Model error. Please verify the model name is correct.';
+      userMessage = 'Authentication error. Please check OPENROUTER_API_KEY in environment variables.';
     }
     
     res.status(500).json({ 
