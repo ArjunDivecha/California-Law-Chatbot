@@ -281,8 +281,7 @@ async function runResearchPhase(
         topK: 8,
       }),
       signal: cebController.signal,
-    });
-    clearTimeout(cebTimeout);
+    }).finally(() => clearTimeout(cebTimeout));
 
     if (cebResponse.ok) {
       const cebData = await cebResponse.json();
@@ -501,46 +500,62 @@ async function callGemini(prompt: string): Promise<string> {
   console.log('   🤖 Calling Gemini 2.5 Flash...');
   const startTime = Date.now();
   
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contents: [{
-        role: 'user',
-        parts: [
-          { text: DRAFTER_SYSTEM_PROMPT },
-          { text: prompt },
-        ],
-      }],
-      generationConfig: {
-        temperature: 0.7,
-        maxOutputTokens: 4096,
-        topP: 0.95,
-      },
-      safetySettings: [
-        { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
-        { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
-        { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
-        { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
-      ],
-    }),
-  });
-
-  if (!response.ok) {
-    const error = await response.text();
-    console.log(`   ❌ Gemini error after ${Date.now() - startTime}ms: ${response.status}`);
-    throw new Error(`Gemini API error: ${response.status} - ${error}`);
-  }
-
-  const data = await response.json();
-  console.log(`   ✓ Gemini responded in ${Date.now() - startTime}ms`);
-  const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!text) {
-    console.log('   ❌ No content in Gemini response:', JSON.stringify(data).substring(0, 200));
-    throw new Error('No content in Gemini response');
-  }
+  // Add timeout to prevent hanging (60 seconds max per section)
+  const controller = new AbortController();
+  const timeout = setTimeout(() => {
+    controller.abort();
+  }, 60000); // 60 second timeout
   
-  return text.trim();
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{
+          role: 'user',
+          parts: [
+            { text: DRAFTER_SYSTEM_PROMPT },
+            { text: prompt },
+          ],
+        }],
+        generationConfig: {
+          temperature: 0.7,
+          maxOutputTokens: 4096,
+          topP: 0.95,
+        },
+        safetySettings: [
+          { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
+          { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
+          { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
+          { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
+        ],
+      }),
+      signal: controller.signal,
+    }).finally(() => clearTimeout(timeout));
+
+    if (!response.ok) {
+      const error = await response.text();
+      console.log(`   ❌ Gemini error after ${Date.now() - startTime}ms: ${response.status}`);
+      throw new Error(`Gemini API error: ${response.status} - ${error}`);
+    }
+
+    const data = await response.json();
+    console.log(`   ✓ Gemini responded in ${Date.now() - startTime}ms`);
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!text) {
+      console.log('   ❌ No content in Gemini response:', JSON.stringify(data).substring(0, 200));
+      throw new Error('No content in Gemini response');
+    }
+    
+    return text.trim();
+  } catch (error: any) {
+    clearTimeout(timeout);
+    if (error.name === 'AbortError' || error.message?.includes('aborted')) {
+      console.log(`   ❌ Gemini timeout after ${Date.now() - startTime}ms`);
+      throw new Error('Gemini API request timed out after 60 seconds');
+    }
+    throw error;
+  }
 }
 
 async function runDraftingPhase(
@@ -867,7 +882,10 @@ async function runVerificationPhase(
 \`\`\`
 Provide ONLY the JSON response.`;
 
-    // Call Claude Sonnet
+    // Call Claude Sonnet with timeout (30 seconds)
+    const verifierController = new AbortController();
+    const verifierTimeout = setTimeout(() => verifierController.abort(), 30000);
+    
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -881,7 +899,8 @@ Provide ONLY the JSON response.`;
         system: VERIFIER_SYSTEM_PROMPT,
         messages: [{ role: 'user', content: prompt }],
       }),
-    });
+      signal: verifierController.signal,
+    }).finally(() => clearTimeout(verifierTimeout));
 
     if (!response.ok) {
       const error = await response.text();
@@ -921,8 +940,11 @@ Provide ONLY the JSON response.`;
       summary: parsed.summary || 'Document verified successfully.',
       recommendations: parsed.recommendations || [],
     };
-  } catch (error) {
+  } catch (error: any) {
     console.error('Verifier error:', error);
+    if (error.name === 'AbortError' || error.message?.includes('aborted')) {
+      console.warn('⚠️ Verification timed out - using basic verification report');
+    }
     return createBasicVerificationReport(sections);
   }
 }
