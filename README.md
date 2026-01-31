@@ -4,17 +4,21 @@ A sophisticated AI-powered legal research assistant specializing in California l
 
 ## 🎯 Overview
 
-This chatbot combines Google's Gemini 2.5 Pro (generator) with Anthropic's Claude Sonnet 4.5 (verifier) and direct access to official California legal sources to provide accurate, well-researched answers to legal questions. It automatically detects case law queries and searches CourtListener's database of millions of court opinions, while providing verified citations to official legal codes and statutes.
+This chatbot combines Google's Gemini 3 Pro (generator, via OpenRouter) with Anthropic's Claude Sonnet 4.5 (verifier, via OpenRouter) and direct access to official California legal sources to provide accurate, well-researched answers to legal questions. It automatically detects case law queries and searches CourtListener's database of millions of court opinions, while providing verified citations to official legal codes and statutes.
 
 ## ✨ Key Features
 
 ### 🤖 AI-Powered Legal Analysis
-- **Generator**: Google Gemini 2.5 Pro for comprehensive legal research and answer generation
-- **Verifier**: Anthropic Claude Sonnet 4.5 for claim verification and fact-checking
+- **Generator**: Google Gemini 3 Pro (primary) via OpenRouter for comprehensive legal research and answer generation
+- **Fallback**: Google Gemini 2.5 Pro via OpenRouter (automatic fallback when primary model returns empty)
+- **Verifier**: Anthropic Claude Sonnet 4.5 via OpenRouter for claim verification and fact-checking
+- **Research Agent**: Anthropic Claude Haiku 4.5 via OpenRouter for fast research tasks
+- **Embeddings**: Native OpenAI API (`text-embedding-3-small`) for CEB document search
 - Two-pass verification system for accuracy
 - Contextual understanding of California law
 - Comprehensive explanations with proper citations
 - Intelligent query analysis and response generation
+- **ZDR Compliance**: All models support Zero Data Retention policies where available
 
 ### 📚 CEB (Continuing Education of the Bar) Integration
 - **✅ Fully Implemented**: Authoritative CEB practice guides integrated as primary RAG source
@@ -120,9 +124,12 @@ Supports citations for:
 
 - **Frontend**: React 19, TypeScript, Vite
 - **AI Engine**: 
-  - **Generator**: Google Gemini 2.5 Pro (advanced reasoning with Google Search grounding)
-  - **Verifier**: Anthropic Claude Sonnet 4.5 (comprehensive claim verification)
-  - **Embeddings**: OpenAI `text-embedding-3-small` (for CEB RAG)
+  - **Generator**: Google Gemini 3 Pro via OpenRouter (primary, deeper reasoning)
+  - **Fallback**: Google Gemini 2.5 Pro via OpenRouter (automatic fallback)
+  - **Verifier**: Anthropic Claude Sonnet 4.5 via OpenRouter (comprehensive claim verification)
+  - **Research**: Anthropic Claude Haiku 4.5 via OpenRouter (fast research tasks)
+  - **Embeddings**: Native OpenAI API `text-embedding-3-small` (for CEB RAG)
+- **API Routing**: OpenRouter for unified AI model access (ZDR-compliant endpoints)
 - **Vector Database**: Upstash Vector (for CEB document search)
 - **Styling**: Tailwind CSS (via inline styles)
 - **APIs**: CourtListener API v4, LegiScan API, OpenStates API
@@ -135,8 +142,8 @@ Supports citations for:
 
 - Node.js 18+
 - npm or yarn
-- Google Gemini API key (for Gemini 2.5 Pro generator)
-- Anthropic API key (for Claude Sonnet 4.5 verifier)
+- OpenRouter API key (for Gemini and Claude models via OpenRouter)
+- OpenAI API key (for embeddings via native OpenAI API)
 - CourtListener API key (optional, enhances functionality)
 
 ### Installation
@@ -161,14 +168,11 @@ Supports citations for:
 
    Edit `.env` and add your API keys:
    ```env
-   # Required: Google Gemini API key (for Gemini 2.5 Pro generator)
-   GEMINI_API_KEY=your_gemini_api_key_here
+   # Required: OpenRouter API key (for Gemini 3 Pro, Gemini 2.5 Pro, Claude Sonnet 4.5, Claude Haiku 4.5)
+   OPENROUTER_API_KEY=sk-or-v1-your_openrouter_key_here
    
-   # Required: Anthropic API key (for Claude Sonnet 4.5 verifier)
-   ANTHROPIC_API_KEY=your_anthropic_api_key_here
-
-   # Required: OpenAI API key (for embedding generation for CEB RAG)
-   OPENAI_API_KEY=your_openai_api_key_here
+   # Required: OpenAI API key (for embedding generation via native OpenAI API)
+   OPENAI_API_KEY=sk-proj-your_openai_key_here
 
    # Required: Upstash Vector credentials (for CEB vector database)
    UPSTASH_VECTOR_REST_URL=https://your-index.upstash.io
@@ -180,6 +184,10 @@ Supports citations for:
    # Optional: Legislative research APIs (fully integrated - enables legislative query detection)
    OPENSTATES_API_KEY=your_openstates_api_key_here
    LEGISCAN_API_KEY=your_legiscan_api_key_here
+   
+   # Legacy keys (kept for backward compatibility, not actively used)
+   GEMINI_API_KEY=your_gemini_api_key_here
+   ANTHROPIC_API_KEY=your_anthropic_api_key_here
    ```
 
 4. **Start development server**
@@ -195,23 +203,25 @@ Supports citations for:
 
 ### Required API Keys
 
-#### Google Gemini API (Required - Generator)
-1. Visit [Google AI Studio](https://aistudio.google.com/)
-2. Create a new API key
-3. Add it to your `.env` file as `GEMINI_API_KEY`
-4. Used by Gemini 2.5 Pro for generating legal research answers with Google Search grounding
+#### OpenRouter API (Required - AI Models)
+1. Visit [OpenRouter.ai](https://openrouter.ai/)
+2. Create an account and generate an API key
+3. Add it to your `.env` file as `OPENROUTER_API_KEY`
+4. Used for:
+   - **Gemini 3 Pro** (primary generator): `google/gemini-3-pro-preview`
+   - **Gemini 2.5 Pro** (fallback generator): `google/gemini-2.5-pro`
+   - **Claude Sonnet 4.5** (verifier): `anthropic/claude-sonnet-4.5`
+   - **Claude Haiku 4.5** (research agent): `anthropic/claude-haiku-4.5`
+5. **ZDR Support**: Enable Zero Data Retention in OpenRouter settings for privacy compliance
+6. **Cost**: Pay-per-use pricing, typically $0.10-0.50 per document
 
-#### Anthropic API (Required - Verifier)
-1. Visit [Anthropic Console](https://console.anthropic.com/)
-2. Create a new API key
-3. Add it to your `.env` file as `ANTHROPIC_API_KEY`
-4. Used by Claude Sonnet 4.5 for verifying claims against sources
-
-#### OpenAI API (Required - CEB RAG)
+#### OpenAI API (Required - Embeddings)
 1. Visit [OpenAI Platform](https://platform.openai.com/api-keys)
 2. Create a new API key
 3. Add it to your `.env` file as `OPENAI_API_KEY`
-4. Used for generating embeddings for CEB document search (`text-embedding-3-small` model)
+4. Used for generating embeddings via **native OpenAI API** (`text-embedding-3-small` model)
+5. **Why Native API**: Better reliability and direct control over data retention policies
+6. **Cost**: ~$0.00002 per 1K tokens (very affordable)
 
 #### Upstash Vector (Required - CEB Database)
 1. Visit [Upstash Console](https://console.upstash.com/)
@@ -501,12 +511,13 @@ The system automatically parses AI responses for legal citations and creates dir
 
 1. **Connect repository** to Vercel
 2. **Set environment variables** in Vercel dashboard (all three environments: Production, Preview, Development):
-   - `GEMINI_API_KEY`: Your Google Gemini API key (for generator)
-   - `ANTHROPIC_API_KEY`: Your Anthropic API key (for verifier)
-   - `OPENAI_API_KEY`: Your OpenAI API key (for CEB embeddings)
+   - `OPENROUTER_API_KEY`: Your OpenRouter API key (for Gemini and Claude models)
+   - `OPENAI_API_KEY`: Your OpenAI API key (for embeddings via native API)
    - `UPSTASH_VECTOR_REST_URL`: Your Upstash Vector REST URL
    - `UPSTASH_VECTOR_REST_TOKEN`: Your Upstash Vector REST token
    - `COURTLISTENER_API_KEY`: Your CourtListener API key (optional)
+   - `OPENSTATES_API_KEY`: Your OpenStates API key (optional, for legislative research)
+   - `LEGISCAN_API_KEY`: Your LegiScan API key (optional, for bill text)
 3. **Deploy automatically** on git push
 
 **Important**: After adding environment variables, you must redeploy for changes to take effect.
@@ -673,4 +684,4 @@ For technical issues or feature requests:
 
 ---
 
-**Last Updated**: December 18, 2025 (4 Harvey-level upgrades completed: legislative APIs, statutory citation pre-filter, citation verification, LGBT practice area features - all 10/10 tests passing on production)
+**Last Updated**: January 31, 2026 (OpenRouter migration complete: Gemini 3 Pro primary, Gemini 2.5 Pro fallback, native OpenAI embeddings, ZDR compliance support)
