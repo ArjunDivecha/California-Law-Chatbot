@@ -482,13 +482,13 @@ function formatResearchContext(research: ResearchPackage): string {
   return context;
 }
 
-async function callGemini(prompt: string): Promise<string> {
+async function callGemini(prompt: string, retryCount: number = 0): Promise<string> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error('GEMINI_API_KEY not configured');
 
   const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
 
-  console.log('   🤖 Calling Gemini 2.5 Flash...');
+  console.log(`   🤖 Calling Gemini 2.5 Flash...${retryCount > 0 ? ` (retry ${retryCount})` : ''}`);
   const startTime = Date.now();
   
   // Add timeout to prevent hanging (60 seconds max per section)
@@ -541,6 +541,22 @@ async function callGemini(prompt: string): Promise<string> {
     return text.trim();
   } catch (error: any) {
     clearTimeout(timeout);
+    
+    // Retry logic for transient errors (max 2 retries)
+    const isRetryable = 
+      error.name === 'AbortError' ||
+      error.message?.includes('timeout') ||
+      error.message?.includes('ECONNRESET') ||
+      error.message?.includes('ETIMEDOUT') ||
+      (error.status >= 500 && error.status < 600);
+    
+    if (isRetryable && retryCount < 2) {
+      const delay = Math.min(1000 * Math.pow(2, retryCount), 5000); // Exponential backoff, max 5s
+      console.log(`   ⚠️ Gemini error (retryable), retrying in ${delay}ms...`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+      return callGemini(prompt, retryCount + 1);
+    }
+    
     if (error.name === 'AbortError' || error.message?.includes('aborted')) {
       console.log(`   ❌ Gemini timeout after ${Date.now() - startTime}ms`);
       throw new Error('Gemini API request timed out after 60 seconds');
@@ -988,11 +1004,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Connection', 'keep-alive');
   res.setHeader('Access-Control-Allow-Origin', '*');
 
+  // Generate correlation ID for request tracking
+  const correlationId = crypto.randomUUID();
+  console.log(`[${correlationId}] Starting document generation`);
+  
   const sendEvent = (type: string, data: unknown) => {
     try {
-      res.write(`data: ${JSON.stringify({ type, ...data as object })}\n\n`);
+      const eventData = {
+        ...data as object,
+        correlationId,
+        timestamp: new Date().toISOString(),
+      };
+      res.write(`data: ${JSON.stringify({ type, ...eventData })}\n\n`);
     } catch (e) {
-      console.error('Failed to send SSE event:', e);
+      console.error(`[${correlationId}] Failed to send SSE event:`, e);
     }
   };
 

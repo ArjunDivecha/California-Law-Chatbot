@@ -4,6 +4,10 @@
     "api/**/*.ts": {
       "memory": 1024,
       "maxDuration": 60
+    },
+    "api/orchestrate-document.ts": {
+      "memory": 2048,
+      "maxDuration": 300
     }
   },
   "headers": [
