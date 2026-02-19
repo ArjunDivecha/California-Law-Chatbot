@@ -7,11 +7,36 @@
  * MODEL: Claude Sonnet 4.5 (anthropic/claude-sonnet-4.5)
  */
 
+const CLAUDE_TIMEOUT_MS = 25000;
+
+function normalizeOpenRouterContent(content: any): string {
+  if (typeof content === 'string') return content;
+
+  if (Array.isArray(content)) {
+    return content
+      .map((part: any) => {
+        if (typeof part === 'string') return part;
+        if (part && typeof part.text === 'string') return part.text;
+        if (part && typeof part.content === 'string') return part.content;
+        return '';
+      })
+      .join('');
+  }
+
+  if (content && typeof content === 'object') {
+    if (typeof content.text === 'string') return content.text;
+    if (typeof content.content === 'string') return content.content;
+  }
+
+  return '';
+}
+
 export default async function handler(req: any, res: any) {
   // Enable CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Cache-Control', 'no-store');
 
   if (req.method === 'OPTIONS') {
     res.status(200).end();
@@ -66,7 +91,7 @@ export default async function handler(req: any, res: any) {
     console.log(`📡 Calling OpenRouter Claude API with model: anthropic/claude-sonnet-4.5 (${messages.length} messages in context)`);
     
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
+    const timeoutId = setTimeout(() => controller.abort(), CLAUDE_TIMEOUT_MS);
 
     try {
       const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
@@ -105,7 +130,7 @@ export default async function handler(req: any, res: any) {
         throw new Error(data.error.message || JSON.stringify(data.error));
       }
 
-      const text = data.choices?.[0]?.message?.content || '';
+      const text = normalizeOpenRouterContent(data.choices?.[0]?.message?.content);
 
       if (!text) {
         console.error('No text content found in OpenRouter Claude response');
@@ -125,7 +150,7 @@ export default async function handler(req: any, res: any) {
     } catch (fetchError: any) {
       clearTimeout(timeoutId);
       if (fetchError.name === 'AbortError') {
-        throw new Error('Request timeout after 60000ms');
+        throw new Error(`Request timeout after ${CLAUDE_TIMEOUT_MS}ms`);
       }
       throw fetchError;
     }
@@ -141,16 +166,31 @@ export default async function handler(req: any, res: any) {
     });
     
     const errorMessage = err?.message || String(err);
-    const isAuthError = errorMessage.includes('api_key') || errorMessage.includes('401') || errorMessage.includes('403');
-    
+    const statusMatch = errorMessage.match(/OpenRouter error (\d{3})/i);
+    const upstreamStatus = statusMatch ? Number(statusMatch[1]) : null;
+
+    let statusCode = upstreamStatus || 500;
     let userMessage = errorMessage;
-    if (isAuthError) {
-      userMessage = 'Authentication error. Please check OPENROUTER_API_KEY in environment variables.';
+
+    if (upstreamStatus === 401) {
+      userMessage = 'AI provider authentication failed on the server.';
+    } else if (upstreamStatus === 403) {
+      userMessage = 'AI provider rejected this request (access or policy restriction).';
+    } else if (upstreamStatus === 429) {
+      userMessage = 'AI provider rate limit reached. Please retry in a moment.';
+    } else if (errorMessage.toLowerCase().includes('timeout')) {
+      statusCode = 504;
+      userMessage = 'AI provider request timed out. Please try again.';
     }
-    
-    res.status(500).json({ 
+
+    if (!upstreamStatus && statusCode < 500 && statusCode >= 400) {
+      statusCode = 500;
+    }
+
+    res.status(statusCode).json({ 
       error: 'Internal Server Error', 
       message: userMessage,
+      upstreamStatus,
       details: process.env.NODE_ENV === 'development' ? err?.stack : undefined
     });
   }

@@ -39,9 +39,18 @@ export async function fetchWithRetry(
         throw new Error('Request cancelled');
       }
       
-      // Don't retry client errors (4xx) - these are user errors, not transient
+      // Don't retry client errors (4xx) - these are usually not transient
       if (response.status >= 400 && response.status < 500) {
-        throw new Error(`Client error: ${response.status} ${response.statusText}`);
+        let errorDetails = '';
+        try {
+          const errorBody = await response.text();
+          if (errorBody) {
+            errorDetails = ` - ${errorBody.substring(0, 300)}`;
+          }
+        } catch (e) {
+          // Ignore if we can't read the body
+        }
+        throw new Error(`Client error: ${response.status} ${response.statusText} at ${url}${errorDetails}`);
       }
       
       // Retry server errors (5xx) and network errors
@@ -52,7 +61,7 @@ export async function fetchWithRetry(
         try {
           const errorBody = await response.text();
           if (errorBody) {
-            errorDetails = ` - ${errorBody.substring(0, 200)}`;
+            errorDetails = ` - ${errorBody.substring(0, 300)}`;
           }
         } catch (e) {
           // Ignore if we can't read the body

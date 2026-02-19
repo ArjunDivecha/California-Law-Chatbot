@@ -1624,8 +1624,12 @@ Key California legal sources to reference:
                 errorMessage = "The AI service is currently at capacity. Please try again in a few seconds.";
             } else if (errorStr.includes('network') || errorStr.includes('fetch') || errorStr.includes('connection')) {
                 errorMessage = "Network connection issue. Please check your internet connection and try again.";
-            } else if (errorStr.includes('401') || errorStr.includes('403') || errorStr.includes('api_key')) {
+            } else if (errorStr.includes('401') || errorStr.includes('api_key') || errorStr.includes('unauthorized')) {
                 errorMessage = "Authentication error with AI service. Please contact support.";
+            } else if (errorStr.includes('403') || errorStr.includes('forbidden') || errorStr.includes('policy restriction')) {
+                errorMessage = "The AI provider rejected this request. Please try again, or rephrase your question.";
+            } else if (errorStr.includes('504') || errorStr.includes('gateway timeout')) {
+                errorMessage = "The AI provider request timed out. Please try again in a moment.";
             }
             
             return {
@@ -2021,8 +2025,12 @@ Answer:`;
                 errorMessage = "The AI service is currently at capacity. Please try again in a few seconds.";
             } else if (errorStr.includes('network') || errorStr.includes('fetch') || errorStr.includes('connection')) {
                 errorMessage = "Network connection issue. Please check your internet connection and try again.";
-            } else if (errorStr.includes('401') || errorStr.includes('403') || errorStr.includes('api_key')) {
+            } else if (errorStr.includes('401') || errorStr.includes('api_key') || errorStr.includes('unauthorized')) {
                 errorMessage = "Authentication error with AI service. Please contact support.";
+            } else if (errorStr.includes('403') || errorStr.includes('forbidden') || errorStr.includes('policy restriction')) {
+                errorMessage = "The AI provider rejected this request. Please try again, or rephrase your question.";
+            } else if (errorStr.includes('504') || errorStr.includes('gateway timeout')) {
+                errorMessage = "The AI provider request timed out. Please try again in a moment.";
             }
             
             return {

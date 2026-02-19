@@ -13,6 +13,30 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 // OpenRouter model names
 const PRIMARY_MODEL = 'google/gemini-3-pro-preview';
 const FALLBACK_MODEL = 'google/gemini-2.5-pro';
+const PRIMARY_TIMEOUT_MS = 25000;
+const FALLBACK_TIMEOUT_MS = 25000;
+
+function normalizeOpenRouterContent(content: any): string {
+  if (typeof content === 'string') return content;
+
+  if (Array.isArray(content)) {
+    return content
+      .map((part: any) => {
+        if (typeof part === 'string') return part;
+        if (part && typeof part.text === 'string') return part.text;
+        if (part && typeof part.content === 'string') return part.content;
+        return '';
+      })
+      .join('');
+  }
+
+  if (content && typeof content === 'object') {
+    if (typeof content.text === 'string') return content.text;
+    if (typeof content.content === 'string') return content.content;
+  }
+
+  return '';
+}
 
 export const config = {
   maxDuration: 60,
@@ -26,6 +50,7 @@ export default async function handler(
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Cache-Control', 'no-store');
 
   if (req.method === 'OPTIONS') {
     res.status(200).end();
@@ -77,7 +102,7 @@ export default async function handler(
       content: message.trim()
     });
 
-    const executeRequest = async (model: string, timeoutMs: number = 45000) => {
+    const executeRequest = async (model: string, timeoutMs: number = PRIMARY_TIMEOUT_MS) => {
       console.log(`📡 Calling OpenRouter with model: ${model} (${messages.length} messages in context)`);
       
       const controller = new AbortController();
@@ -136,7 +161,7 @@ export default async function handler(
     let response;
 
     try {
-      response = await executeRequest(PRIMARY_MODEL, 45000);
+      response = await executeRequest(PRIMARY_MODEL, PRIMARY_TIMEOUT_MS);
     } catch (error: any) {
       console.warn(`⚠️  Failed with ${PRIMARY_MODEL}:`, error.message);
       
@@ -157,7 +182,7 @@ export default async function handler(
         console.log(`🔄 Falling back to ${FALLBACK_MODEL}...`);
         try {
           usedModel = FALLBACK_MODEL;
-          response = await executeRequest(FALLBACK_MODEL, 60000);
+          response = await executeRequest(FALLBACK_MODEL, FALLBACK_TIMEOUT_MS);
           console.log(`✅ Success with fallback model ${FALLBACK_MODEL}`);
         } catch (fallbackError: any) {
           console.error(`❌ Fallback model also failed:`, fallbackError.message);
@@ -195,7 +220,7 @@ export default async function handler(
               }
               try {
                 const parsed = JSON.parse(data);
-                const content = parsed.choices?.[0]?.delta?.content || '';
+                const content = normalizeOpenRouterContent(parsed.choices?.[0]?.delta?.content);
                 if (content) {
                   fullText += content;
                   res.write(`data: ${JSON.stringify({ type: 'content', text: content })}\n\n`);
@@ -235,15 +260,15 @@ export default async function handler(
       throw new Error(data.error.message || JSON.stringify(data.error));
     }
 
-    let text = data.choices?.[0]?.message?.content || '';
+    let text = normalizeOpenRouterContent(data.choices?.[0]?.message?.content);
 
     // If primary model returns empty, try fallback
     if (!text && usedModel === PRIMARY_MODEL) {
       console.warn(`⚠️ ${PRIMARY_MODEL} returned empty response, trying fallback...`);
       try {
-        const fallbackResponse = await executeRequest(FALLBACK_MODEL, 60000);
+        const fallbackResponse = await executeRequest(FALLBACK_MODEL, FALLBACK_TIMEOUT_MS);
         const fallbackData = await fallbackResponse.json();
-        text = fallbackData.choices?.[0]?.message?.content || '';
+        text = normalizeOpenRouterContent(fallbackData.choices?.[0]?.message?.content);
         if (text) {
           usedModel = FALLBACK_MODEL;
           console.log(`✅ Fallback model ${FALLBACK_MODEL} succeeded`);
@@ -271,16 +296,31 @@ export default async function handler(
     console.error('OpenRouter Gemini API error:', err);
     
     const errorMessage = err?.message || String(err);
-    const isAuthError = errorMessage.includes('api_key') || errorMessage.includes('401') || errorMessage.includes('403');
-    
+    const statusMatch = errorMessage.match(/OpenRouter error (\d{3})/i);
+    const upstreamStatus = statusMatch ? Number(statusMatch[1]) : null;
+
+    let statusCode = upstreamStatus || 500;
     let userMessage = errorMessage;
-    if (isAuthError) {
-      userMessage = 'Authentication error. Please check OPENROUTER_API_KEY in environment variables.';
+
+    if (upstreamStatus === 401) {
+      userMessage = 'AI provider authentication failed on the server.';
+    } else if (upstreamStatus === 403) {
+      userMessage = 'AI provider rejected this request (access or policy restriction).';
+    } else if (upstreamStatus === 429) {
+      userMessage = 'AI provider rate limit reached. Please retry in a moment.';
+    } else if (errorMessage.toLowerCase().includes('timeout')) {
+      statusCode = 504;
+      userMessage = 'AI provider request timed out. Please try again.';
     }
-    
-    res.status(500).json({ 
+
+    if (!upstreamStatus && statusCode < 500 && statusCode >= 400) {
+      statusCode = 500;
+    }
+
+    res.status(statusCode).json({ 
       error: 'Internal Server Error', 
       message: userMessage,
+      upstreamStatus,
       details: process.env.NODE_ENV === 'development' ? err?.stack : undefined
     });
   }
