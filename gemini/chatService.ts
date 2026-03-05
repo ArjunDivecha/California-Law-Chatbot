@@ -313,11 +313,17 @@ export class ChatService {
             throw new Error('Request cancelled');
         }
 
+        const todayLong = new Date().toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        });
+
         const systemPrompt = `You are an expert legal research assistant specializing in California law with MANDATORY Google Search grounding capabilities.
 
 🚨 ABSOLUTE REQUIREMENTS - READ CAREFULLY:
 
-1. TODAY'S DATE: November 1, 2025
+1. TODAY'S DATE: ${todayLong}
 2. YOUR TRAINING DATA CUTOFF: April 2024 (OUTDATED - DO NOT RELY ON IT FOR 2025 QUESTIONS)
 3. YOU MUST USE GOOGLE SEARCH: You have Google Search grounding enabled. This is NOT optional for 2025 questions.
 
@@ -905,22 +911,28 @@ Provide a thorough legal analysis explaining how these cases relate to the query
             // Add comprehensive search instructions for vague queries
             const isVagueBillQuery = /find (all |the )?(bills?|laws?|legislation)|list (all |the )?(bills?|laws?)|all (the )?(bills?|laws?)|what (bills?|laws?)/i.test(message);
             const is2025Query = /2025|october|september|recent|new|signed|passed/i.test(message);
+            const todayLong = new Date().toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+            const targetYear = message.match(/\b(20\d{2})\b/)?.[1] || String(new Date().getFullYear());
 
             if (isVagueBillQuery || is2025Query) {
                 enhancedMessage = `🚨 MANDATORY GOOGLE SEARCH REQUIRED 🚨
 
-TODAY IS NOVEMBER 1, 2025. The user is asking about October 2025 (LAST MONTH).
+TODAY IS ${todayLong}. The user may be asking about recent legislation or legislation from ${targetYear}.
 
-You MUST use Google Search grounding RIGHT NOW to answer this question. Do NOT say "information is not available" or "will be available in the future" - October 2025 is in the PAST.
+You MUST use Google Search grounding RIGHT NOW to answer this question. Do NOT say "information is not available" or "will be available in the future" without checking current sources.
 
 USER'S QUESTION: ${message}
 
 REQUIRED ACTIONS:
 1. Use Google Search with these EXACT queries:
-   - "California AI bills signed October 2025"
-   - "Governor Newsom AI legislation October 2025 site:leginfo.legislature.ca.gov"
-   - "California artificial intelligence bills 2025 complete list"
-   - "SB AB California AI October 2025"
+   - "California AI bills signed ${targetYear}"
+   - "Governor Newsom AI legislation ${targetYear} site:leginfo.legislature.ca.gov"
+   - "California artificial intelligence bills ${targetYear} complete list"
+   - "SB AB California AI ${targetYear}"
 
 2. Find ACTUAL BILL NUMBERS (like AB 2013, SB 942, AB 2885, etc.)
 
