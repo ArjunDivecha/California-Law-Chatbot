@@ -11,7 +11,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 // OpenRouter model names
-const PRIMARY_MODEL = 'google/gemini-3-pro-preview';
+const PRIMARY_MODEL = 'google/gemini-3.1-pro-preview';
 const FALLBACK_MODEL = 'google/gemini-2.5-pro';
 const PRIMARY_TIMEOUT_MS = 25000;
 const FALLBACK_TIMEOUT_MS = 25000;
