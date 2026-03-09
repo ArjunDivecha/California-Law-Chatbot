@@ -320,32 +320,28 @@ export class DrafterAgent {
    * Call the Gemini API
    */
   private async callGemini(prompt: string): Promise<string> {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key=${this.apiKey}`;
+    const openRouterKey = process.env.OPENROUTER_API_KEY;
+    if (!openRouterKey) {
+      throw new Error('OPENROUTER_API_KEY not configured');
+    }
 
-    const response = await fetch(url, {
+    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Authorization': `Bearer ${openRouterKey}`,
+        'Content-Type': 'application/json',
+        'HTTP-Referer': 'https://california-law-chatbot.vercel.app',
+        'X-Title': 'California Law Chatbot'
+      },
       body: JSON.stringify({
-        contents: [
-          {
-            role: 'user',
-            parts: [
-              { text: DRAFTER_SYSTEM_PROMPT },
-              { text: prompt },
-            ],
-          },
+        model: 'google/gemini-2.5-pro',
+        messages: [
+          { role: 'system', content: DRAFTER_SYSTEM_PROMPT },
+          { role: 'user', content: prompt },
         ],
-        generationConfig: {
-          temperature: 0.7,
-          maxOutputTokens: 4096,
-          topP: 0.95,
-        },
-        safetySettings: [
-          { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
-          { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
-          { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
-          { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
-        ],
+        temperature: 0.7,
+        max_tokens: 4096,
+        top_p: 0.95,
       }),
     });
 
@@ -358,7 +354,12 @@ export class DrafterAgent {
     const data = await response.json();
     
     // Extract text from response
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    const content = data.choices?.[0]?.message?.content;
+    const text = typeof content === 'string'
+      ? content
+      : Array.isArray(content)
+        ? content.map((part: any) => typeof part?.text === 'string' ? part.text : '').join('')
+        : '';
     if (!text) {
       throw new Error('No content in Gemini response');
     }

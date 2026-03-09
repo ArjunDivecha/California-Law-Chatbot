@@ -505,12 +505,10 @@ function formatResearchContext(research: ResearchPackage): string {
 }
 
 async function callGemini(prompt: string, maxWords?: number, retryCount: number = 0): Promise<string> {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) throw new Error('GEMINI_API_KEY not configured');
+  const apiKey = process.env.OPENROUTER_API_KEY;
+  if (!apiKey) throw new Error('OPENROUTER_API_KEY not configured');
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
-
-  console.log(`   🤖 Calling Gemini 2.5 Flash...${retryCount > 0 ? ` (retry ${retryCount})` : ''}`);
+  console.log(`   🤖 Calling Gemini 2.5 Flash via OpenRouter...${retryCount > 0 ? ` (retry ${retryCount})` : ''}`);
   const startTime = Date.now();
   
   // Calculate maxOutputTokens based on word count requirement
@@ -533,33 +531,23 @@ async function callGemini(prompt: string, maxWords?: number, retryCount: number 
   }, 60000); // 60 second timeout
   
   try {
-    const response = await fetch(url, {
+    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+        'HTTP-Referer': 'https://california-law-chatbot.vercel.app',
+        'X-Title': 'California Law Chatbot'
+      },
       body: JSON.stringify({
-        contents: [{
-          role: 'user',
-          parts: [
-            { text: DRAFTER_SYSTEM_PROMPT },
-            { text: prompt },
-          ],
-        }],
-        generationConfig: {
-          temperature: 0.7,
-          maxOutputTokens: maxOutputTokens,
-          topP: 0.95,
-          // Disable thinking mode for faster generation - we don't need complex reasoning
-          // for document drafting, just fast and comprehensive text generation
-          thinkingConfig: {
-            thinkingBudget: 0,
-          },
-        },
-        safetySettings: [
-          { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
-          { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
-          { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
-          { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
+        model: 'google/gemini-2.5-flash',
+        messages: [
+          { role: 'system', content: DRAFTER_SYSTEM_PROMPT },
+          { role: 'user', content: prompt },
         ],
+        temperature: 0.7,
+        max_tokens: maxOutputTokens,
+        top_p: 0.95,
       }),
       signal: controller.signal,
     }).finally(() => clearTimeout(timeout));
@@ -571,20 +559,25 @@ async function callGemini(prompt: string, maxWords?: number, retryCount: number 
     }
 
     const data = await response.json();
-    const candidate = data.candidates?.[0];
-    const finishReason = candidate?.finishReason;
+    const choice = data.choices?.[0];
+    const finishReason = choice?.finish_reason;
     
     console.log(`   ✓ Gemini responded in ${Date.now() - startTime}ms (finishReason: ${finishReason})`);
     
-    const text = candidate?.content?.parts?.[0]?.text;
+    const content = choice?.message?.content;
+    const text = typeof content === 'string'
+      ? content
+      : Array.isArray(content)
+        ? content.map((part: any) => typeof part?.text === 'string' ? part.text : '').join('')
+        : '';
     if (!text) {
       console.log('   ❌ No content in Gemini response:', JSON.stringify(data).substring(0, 200));
       throw new Error('No content in Gemini response');
     }
     
     // Check if response was truncated
-    if (finishReason === 'MAX_TOKENS') {
-      console.warn(`   ⚠️ Response truncated due to token limit (maxOutputTokens: ${maxOutputTokens})`);
+    if (finishReason === 'length') {
+      console.warn(`   ⚠️ Response truncated due to token limit (max_tokens: ${maxOutputTokens})`);
       // For now, return what we have - user can edit if needed
     }
     
