@@ -33,6 +33,11 @@ app.all('/api/claude-chat', async (req, res) => {
   await handler(req, res);
 });
 
+app.all('/api/anthropic-chat', async (req, res) => {
+  const handler = await loadHandler('./api/anthropic-chat.ts');
+  await handler(req, res);
+});
+
 app.all('/api/ceb-search', async (req, res) => {
   const handler = await loadHandler('./api/ceb-search.ts');
   await handler(req, res);
@@ -92,7 +97,11 @@ app.listen(PORT, () => {
   console.log('='.repeat(60));
   console.log('');
   console.log('Environment variables loaded:');
-  console.log('  OPENROUTER_API_KEY:', process.env.OPENROUTER_API_KEY ? '✅ Set' : '❌ Missing');
+  console.log('  GOOGLE_GENAI_USE_VERTEXAI:', process.env.GOOGLE_GENAI_USE_VERTEXAI ? '✅ Set' : 'ℹ️ Not set');
+  console.log('  VERTEX_API_KEY:', process.env.VERTEX_API_KEY ? '✅ Set' : '❌ Missing');
+  console.log('  GOOGLE_API_KEY:', process.env.GOOGLE_API_KEY ? '✅ Set' : 'ℹ️ Not set');
+  console.log('  GEMINI_API_KEY:', process.env.GEMINI_API_KEY ? '✅ Set' : 'ℹ️ Not set');
+  console.log('  ANTHROPIC_API_KEY:', process.env.ANTHROPIC_API_KEY ? '✅ Set' : '❌ Missing');
   console.log('  UPSTASH_VECTOR_REST_URL:', process.env.UPSTASH_VECTOR_REST_URL ? '✅ Set' : '❌ Missing');
   console.log('  COURTLISTENER_API_KEY:', process.env.COURTLISTENER_API_KEY ? '✅ Set' : '❌ Missing');
   console.log('');

@@ -5,11 +5,12 @@ import ChatWindow from './components/ChatWindow';
 import ErrorBoundary from './components/ErrorBoundary';
 
 import { ModeSelector } from './components/ModeSelector';
+import { ResponseModeToggle } from './components/ResponseModeToggle';
 import { DraftingMode } from './components/drafting/DraftingMode';
 import type { AppMode } from './types';
 
 const App: React.FC = () => {
-  const { messages, sendMessage, isLoading, sourceMode, setSourceMode } = useChat();
+  const { messages, sendMessage, isLoading, responseMode, setResponseMode } = useChat();
   const [showConfidentialityWarning, setShowConfidentialityWarning] = useState(true);
   const [showAIDisclosure, setShowAIDisclosure] = useState(false);
   const [isClient, setIsClient] = useState(false);
@@ -199,7 +200,12 @@ const App: React.FC = () => {
               <a href="https://www.femmeandfemmelaw.com/" target="_blank" rel="noopener noreferrer" className="text-sm text-pink-500 hover:text-pink-600 hover:underline transition-colors">femme & femme LLP</a>
             </div>
           </div>
-          <ModeSelector mode={appMode} onModeChange={setAppMode} />
+          <div className="flex items-center gap-2">
+            {appMode === 'research' && (
+              <ResponseModeToggle mode={responseMode} onModeChange={setResponseMode} disabled={isLoading} />
+            )}
+            <ModeSelector mode={appMode} onModeChange={setAppMode} />
+          </div>
         </div>
       </header>
 

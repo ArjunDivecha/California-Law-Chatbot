@@ -1,5 +1,5 @@
 
-import type { Source, Claim, VerificationReport, VerificationStatus, SourceMode, CEBSource } from '../types';
+import type { Source, Claim, VerificationReport, VerificationStatus, SourceMode, CEBSource, ResponseMode } from '../types';
 import { fetchWithRetry } from '../utils/fetchWithRetry';
 import { VerifierService } from '../services/verifierService';
 import { GuardrailsService } from '../services/guardrailsService';
@@ -15,6 +15,7 @@ export interface BotResponse {
     isCEBBased?: boolean;
     cebCategory?: string;
     sourceMode?: SourceMode;
+    responseMode?: ResponseMode;
 }
 
 // Callback for optimistic UI updates during verification
@@ -305,7 +306,7 @@ export class ChatService {
     }
 
     /**
-     * Send message to Gemini 3 Pro Preview (Generator) via server-side API
+     * Send message to Gemini 3.1 Pro Preview (Generator) via server-side API
      * Falls back to Gemini 2.5 Pro automatically if capacity issues occur
      */
     private async sendToGemini(message: string, conversationHistory?: Array<{ role: string, text: string }>, signal?: AbortSignal): Promise<{ text: string; hasGrounding?: boolean; groundingMetadata?: any }> {
@@ -460,10 +461,14 @@ Remember: You're trained on California law AND you have access to real-time sear
         }
     }
 
-    async sendMessage(message: string, conversationHistory?: Array<{ role: string, text: string }>, sourceMode: SourceMode = 'hybrid', signal?: AbortSignal, progressCallback?: ProgressCallback): Promise<BotResponse> {
+    async sendMessage(message: string, conversationHistory?: Array<{ role: string, text: string }>, responseMode: ResponseMode = 'accuracy', sourceMode: SourceMode = 'hybrid', signal?: AbortSignal, progressCallback?: ProgressCallback): Promise<BotResponse> {
         // Check for cancellation at the start
         if (signal?.aborted) {
             throw new Error('Request cancelled');
+        }
+
+        if (responseMode === 'speed') {
+            return await this.processSpeedMode(message, conversationHistory, signal);
         }
 
         // Handle simple greetings
@@ -471,7 +476,8 @@ Remember: You're trained on California law AND you have access to real-time sear
             return {
                 text: "Hello! I am the California Law Chatbot. How can I help you with your legal research today?",
                 sources: [],
-                sourceMode
+                sourceMode,
+                responseMode
             };
         }
 
@@ -493,6 +499,48 @@ Remember: You're trained on California law AND you have access to real-time sear
             default:
                 return await this.processHybrid(expandedMessage, conversationHistory, signal, progressCallback);
         }
+    }
+
+    private async processSpeedMode(
+        message: string,
+        _conversationHistory?: Array<{ role: string, text: string }>,
+        signal?: AbortSignal
+    ): Promise<BotResponse> {
+        const response = await fetchWithRetry(
+            '/api/anthropic-chat',
+            {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    message,
+                }),
+                signal,
+            },
+            1,
+            500
+        );
+
+        if (signal?.aborted) {
+            throw new Error('Request cancelled');
+        }
+
+        if (!response.ok) {
+            if (response.status === 499) {
+                throw new Error('Request cancelled');
+            }
+            throw new Error(`API error: ${response.status}`);
+        }
+
+        const data = await response.json();
+        return {
+            text: data.text || '',
+            sources: [],
+            sourceMode: 'ai-only',
+            responseMode: 'speed',
+            verificationStatus: 'not_needed',
+        };
     }
 
     /**
@@ -778,7 +826,7 @@ Provide a thorough legal analysis explaining how these cases relate to the query
                         throw new Error('Request cancelled');
                     }
 
-                    console.log('🤖 Sending enhanced message to Gemini 3 Pro (with fallback to 2.5 Pro)...');
+                    console.log('🤖 Sending enhanced message to Gemini 3.1 Pro (with fallback to 2.5 Pro)...');
                     const response = await this.sendToGemini(enhancedMessage, conversationHistory, signal);
 
                     // Check if request was cancelled during AI response
@@ -903,7 +951,7 @@ Provide a thorough legal analysis explaining how these cases relate to the query
                 throw new Error('Request cancelled');
             }
 
-            console.log('💬 Sending regular chat message to Gemini 3 Pro (with fallback to 2.5 Pro)...');
+            console.log('💬 Sending regular chat message to Gemini 3.1 Pro (with fallback to 2.5 Pro)...');
 
             // Enhance the prompt to request citations for legal information
             let enhancedMessage = `${message}`;

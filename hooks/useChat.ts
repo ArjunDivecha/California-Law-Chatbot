@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { ChatMessage, MessageRole, SourceMode, VerificationStatus } from '../types';
+import { ChatMessage, MessageRole, ResponseMode, SourceMode, VerificationStatus } from '../types';
 import { ChatService } from '../gemini/chatService';
 import { PracticeArea } from '../components/SourceModeSelector';
 
@@ -7,6 +7,7 @@ export const useChat = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [sourceMode, setSourceMode] = useState<SourceMode>('hybrid'); // Default to hybrid mode
+  const [responseMode, setResponseMode] = useState<ResponseMode>('accuracy');
   const [practiceArea, setPracticeArea] = useState<PracticeArea>(''); // Default to all practice areas
 
   const chatServiceRef = useRef<ChatService | null>(null);
@@ -97,6 +98,7 @@ export const useChat = () => {
       text: '',
       sources: [],
       sourceMode,
+      responseMode,
     };
 
     // Add initial empty bot message
@@ -178,6 +180,7 @@ export const useChat = () => {
                   verificationStatus: response.verificationStatus as VerificationStatus,
                   claims: response.claims,
                   sourceMode: response.sourceMode,
+                  responseMode: response.responseMode,
                   isCEBBased: response.isCEBBased,
                   cebCategory: response.cebCategory,
                 }
@@ -207,6 +210,7 @@ export const useChat = () => {
       const botResponseData = await chatServiceRef.current.sendMessage(
         text,
         conversationHistory,
+        responseMode,
         sourceMode,
         abortController.signal,
         progressCallback
@@ -233,6 +237,7 @@ export const useChat = () => {
               verificationReport: botResponseData.verificationReport,
               claims: botResponseData.claims,
               sourceMode: botResponseData.sourceMode,
+              responseMode: botResponseData.responseMode,
               isCEBBased: botResponseData.isCEBBased,
               cebCategory: botResponseData.cebCategory,
             }
@@ -267,7 +272,7 @@ export const useChat = () => {
         abortControllerRef.current = null;
       }
     }
-  }, [messages, sourceMode]); // Add sourceMode to dependencies
+  }, [messages, responseMode, sourceMode]); // Add modes to dependencies
 
   return {
     messages,
@@ -275,6 +280,8 @@ export const useChat = () => {
     isLoading,
     sourceMode,
     setSourceMode,
+    responseMode,
+    setResponseMode,
     practiceArea,
     setPracticeArea
   };

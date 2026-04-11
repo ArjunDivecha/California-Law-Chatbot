@@ -4,6 +4,7 @@ export enum MessageRole {
 }
 
 export type SourceMode = 'ceb-only' | 'ai-only' | 'hybrid';
+export type ResponseMode = 'speed' | 'accuracy';
 
 export interface Source {
   title: string;
@@ -52,6 +53,7 @@ export interface ChatMessage {
   isCEBBased?: boolean; // Flag for CEB-based responses (bypasses verification)
   cebCategory?: string; // Which CEB vertical was used
   sourceMode?: SourceMode; // Which mode was used for this message
+  responseMode?: ResponseMode; // Whether the answer used the fast direct path or full accuracy flow
 }
 
 // =============================================================================
