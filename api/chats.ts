@@ -70,6 +70,10 @@ interface ChatMeta {
 function metaKey(chatId: string) { return `chat:${chatId}:meta`; }
 function userKey(userId: string) { return `user:${userId}:chats`; }
 function blobPath(userId: string, chatId: string) { return `chats/${userId}/${chatId}.json`; }
+function isBlobAlreadyExistsError(error: unknown): boolean {
+  const message = String((error as any)?.message ?? error ?? '').toLowerCase();
+  return message.includes('already exists');
+}
 
 async function getMeta(kv: Redis, chatId: string): Promise<ChatMeta | null> {
   const raw = await kv.get<string>(metaKey(chatId));
@@ -133,18 +137,40 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (!meta || meta.userId !== userId) return res.status(404).json({ error: 'Not found' });
 
       let messages: ChatMessage[] = [];
+      const debug: Record<string, unknown> = {
+        hasBlobUrl: !!meta.blobUrl,
+        blobUrl: meta.blobUrl ?? null,
+      };
       try {
         const blobUrl = meta.blobUrl ?? blobPath(userId, chatId);
         const blob = await head(blobUrl);
-        if (blob) {
+        debug.headReturned = !!blob;
+        debug.hasDownloadUrl = !!blob?.downloadUrl;
+        if (blob?.downloadUrl) {
           const r = await fetch(blob.downloadUrl);
-          if (r.ok) messages = await r.json();
+          debug.fetchStatus = r.status;
+          if (r.ok) {
+            const body = await r.text();
+            debug.bodyLength = body.length;
+            try {
+              const parsed = JSON.parse(body);
+              if (Array.isArray(parsed)) {
+                messages = parsed;
+                debug.messagesLength = messages.length;
+              } else {
+                debug.parseWarning = 'not-an-array';
+              }
+            } catch (e: any) {
+              debug.jsonParseError = e?.message ?? String(e);
+            }
+          }
         }
-      } catch (e) {
+      } catch (e: any) {
+        debug.error = e?.message ?? String(e);
         console.error('[chats] GET blob read failed:', e);
       }
-
-      return res.status(200).json({ ...meta, messages });
+      console.log(`[chats] GET id=${chatId} debug=${JSON.stringify(debug)}`);
+      return res.status(200).json({ ...meta, messages, _debug: debug });
     }
 
     // ── SAVE (upsert) ─────────────────────────────────────────────────────────
@@ -165,10 +191,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         title: title ?? 'New chat',
         createdAt: now, updatedAt: now, messageCount: 0,
       };
-
-      const blobResult = await put(blobPath(userId, chatId), JSON.stringify(messages), {
-        access: 'private', contentType: 'application/json', addRandomSuffix: false, allowOverwrite: true,
-      });
+      const path = blobPath(userId, chatId);
+      let blobResult;
+      try {
+        blobResult = await put(path, JSON.stringify(messages), {
+          access: 'private', contentType: 'application/json', addRandomSuffix: false, allowOverwrite: true,
+        });
+      } catch (error) {
+        if (!isBlobAlreadyExistsError(error)) throw error;
+        console.warn(`[chats] PUT overwrite fallback id=${chatId} path=${path} reason=${String((error as any)?.message ?? error)}`);
+        await del(path).catch(() => {});
+        blobResult = await put(path, JSON.stringify(messages), {
+          access: 'private', contentType: 'application/json', addRandomSuffix: false,
+        });
+      }
       const updated: ChatMeta = { ...base, title: title ?? base.title, updatedAt: now, messageCount: messages.length, blobUrl: blobResult.url };
       await Promise.all([
         kv.set(metaKey(chatId), JSON.stringify(updated)),

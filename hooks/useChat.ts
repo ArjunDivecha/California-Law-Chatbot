@@ -6,12 +6,55 @@ import { PracticeArea } from '../components/SourceModeSelector';
 import { useAuthFetch } from '../utils/authFetch.ts';
 
 const SAVE_DEBOUNCE_MS = 1500;
+const LOCAL_DRAFT_PREFIX = 'cal-law-chat-draft:';
 
 const WELCOME_MESSAGE: ChatMessage = {
   id: 'initial-bot-message',
   role: MessageRole.BOT,
   text: "Hello! I'm your California law research assistant. I can help you with questions about California statutes, case law, and legal research. What would you like to know?",
 };
+
+interface LocalChatDraft {
+  messages: ChatMessage[];
+  title?: string;
+  updatedAt: number;
+}
+
+function draftKey(chatId: string): string {
+  return `${LOCAL_DRAFT_PREFIX}${chatId}`;
+}
+
+function readLocalDraft(chatId: string): LocalChatDraft | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = window.localStorage.getItem(draftKey(chatId));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as LocalChatDraft;
+    if (!Array.isArray(parsed?.messages)) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function writeLocalDraft(chatId: string, messages: ChatMessage[], title?: string): void {
+  if (typeof window === 'undefined') return;
+  try {
+    const payload: LocalChatDraft = { messages, title, updatedAt: Date.now() };
+    window.localStorage.setItem(draftKey(chatId), JSON.stringify(payload));
+  } catch {
+    // Ignore localStorage quota/privacy errors; server save still handles persistence.
+  }
+}
+
+function clearLocalDraft(chatId: string): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.removeItem(draftKey(chatId));
+  } catch {
+    // Ignore storage errors.
+  }
+}
 
 export const useChat = (chatId?: string) => {
   const navigate = useNavigate();
@@ -73,11 +116,21 @@ export const useChat = (chatId?: string) => {
       })
       .then(data => {
         if (cancelled) return;
+        console.log('[useChat] GET', { chatId, messagesLen: data.messages?.length ?? 0, _debug: data._debug });
         const loaded: ChatMessage[] = data.messages ?? [];
-        setMessages(loaded.length > 0 ? loaded : [WELCOME_MESSAGE]);
+        const localDraft = readLocalDraft(chatId);
+        const remoteUpdatedAt = typeof data.updatedAt === 'number' ? data.updatedAt : 0;
+        const shouldPreferLocalDraft =
+          !!localDraft?.messages?.length &&
+          (localDraft.updatedAt > remoteUpdatedAt || localDraft.messages.length > loaded.length);
+        setMessages(shouldPreferLocalDraft
+          ? localDraft.messages
+          : (loaded.length > 0 ? loaded : [WELCOME_MESSAGE]));
       })
       .catch(() => {
-        if (!cancelled) setMessages([WELCOME_MESSAGE]);
+        if (cancelled) return;
+        const localDraft = readLocalDraft(chatId);
+        setMessages(localDraft?.messages?.length ? localDraft.messages : [WELCOME_MESSAGE]);
       })
       .finally(() => {
         if (!cancelled) setChatLoading(false);
@@ -85,6 +138,14 @@ export const useChat = (chatId?: string) => {
 
     return () => { cancelled = true; };
   }, [chatId]);
+
+  // Local safety net: mirror the latest chat state so text survives transient save failures.
+  useEffect(() => {
+    const id = currentChatIdRef.current;
+    if (!id) return;
+    if (messages.length === 1 && messages[0].id === WELCOME_MESSAGE.id) return;
+    writeLocalDraft(id, messages);
+  }, [messages, chatId]);
 
   // -------------------------------------------------------------------------
   // Persist messages to backend (debounced)
@@ -96,6 +157,7 @@ export const useChat = (chatId?: string) => {
     saveTimerRef.current = setTimeout(async () => {
       const id = currentChatIdRef.current;
       if (!id) return;
+      writeLocalDraft(id, updatedMessages, title);
       try {
         const res = await authFetch(`/api/chats?id=${id}`, {
           method: 'PUT',
@@ -105,7 +167,9 @@ export const useChat = (chatId?: string) => {
         if (!res.ok) {
           const body = await res.text().catch(() => '');
           console.error('[scheduleSave] PUT failed:', res.status, body);
+          return;
         }
+        clearLocalDraft(id);
       } catch (err) {
         console.error('[scheduleSave] PUT error:', err);
       }
