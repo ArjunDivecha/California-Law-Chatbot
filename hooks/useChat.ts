@@ -66,7 +66,7 @@ export const useChat = (chatId?: string) => {
     let cancelled = false;
     setChatLoading(true);
 
-    authFetch(`/api/chats/${chatId}`)
+    authFetch(`/api/chats?id=${chatId}`)
       .then(res => {
         if (!res.ok) throw new Error(`${res.status}`);
         return res.json();
@@ -97,7 +97,7 @@ export const useChat = (chatId?: string) => {
       const id = currentChatIdRef.current;
       if (!id) return;
       try {
-        await authFetch(`/api/chats/${id}`, {
+        await authFetch(`/api/chats?id=${id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ messages: updatedMessages, title }),

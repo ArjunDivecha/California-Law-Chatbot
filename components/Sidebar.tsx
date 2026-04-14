@@ -36,7 +36,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
   // -------------------------------------------------------------------------
   const fetchChats = useCallback(async () => {
     try {
-      const res = await authFetch('/api/chats');
+      const res = await authFetch('/api/chats');  // list
       if (!res.ok) return;
       const data = await res.json();
       setChats(data.chats ?? []);
@@ -69,7 +69,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
   const handleDelete = async (chatId: string) => {
     if (!window.confirm('Delete this chat? This cannot be undone.')) return;
     try {
-      await authFetch(`/api/chats/${chatId}`, { method: 'DELETE' });
+      await authFetch(`/api/chats?id=${chatId}`, { method: 'DELETE' });
       setChats(prev => prev.filter(c => c.id !== chatId));
       if (activeChatId === chatId) navigate('/');
     } catch {
@@ -88,7 +88,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
     const title = renameValue.trim();
     if (!title) { setRenamingId(null); return; }
     try {
-      const res = await authFetch(`/api/chats/${chatId}`, {
+      const res = await authFetch(`/api/chats?id=${chatId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title }),

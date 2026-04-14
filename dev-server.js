@@ -89,14 +89,9 @@ app.all('/api/serper-scholar', async (req, res) => {
   await handler(req, res);
 });
 
-// Chat history routes
+// Chat history routes (single flat file, uses ?id= query param)
 app.all('/api/chats', async (req, res) => {
-  const handler = await loadHandler('./api/chats/index.ts');
-  await handler(req, res);
-});
-
-app.all('/api/chats/:chatId', async (req, res) => {
-  const handler = await loadHandler('./api/chats/[chatId].ts');
+  const handler = await loadHandler('./api/chats.ts');
   await handler(req, res);
 });
 
