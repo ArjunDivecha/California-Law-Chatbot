@@ -119,6 +119,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         kv.set(metaKey(id), JSON.stringify(meta)),
         kv.zadd(userKey(userId), { score: now, member: id }),
       ]);
+      const verify = await kv.get(metaKey(id));
+      console.log(`[chats] POST id=${id} userId=${userId} verifyStored=${verify ? 'YES' : 'NO'}`);
       return res.status(201).json(meta);
     }
 
@@ -145,28 +147,34 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(200).json({ ...meta, messages });
     }
 
-    // ── SAVE ──────────────────────────────────────────────────────────────────
+    // ── SAVE (upsert) ─────────────────────────────────────────────────────────
     if (req.method === 'PUT') {
       const { messages, title } = req.body ?? {};
       console.log(`[chats] PUT id=${chatId} msgCount=${Array.isArray(messages) ? messages.length : 'not-array'} title=${title}`);
       if (!Array.isArray(messages)) return res.status(400).json({ error: 'messages array required' });
 
-      const meta = await getMeta(kv, chatId);
-      if (!meta || meta.userId !== userId) {
-        return res.status(403).json({ error: 'Forbidden', debug: { chatId, requestUserId: userId, metaUserId: meta?.userId ?? 'META_NULL' } });
+      const existing = await getMeta(kv, chatId);
+      // Ownership guard only applies if meta already exists; missing meta = auto-create
+      if (existing && existing.userId !== userId) {
+        return res.status(403).json({ error: 'Forbidden' });
       }
 
       const now = Date.now();
+      const base: ChatMeta = existing ?? {
+        id: chatId, userId,
+        title: title ?? 'New chat',
+        createdAt: now, updatedAt: now, messageCount: 0,
+      };
 
       const blobResult = await put(blobPath(userId, chatId), JSON.stringify(messages), {
         access: 'private', contentType: 'application/json', addRandomSuffix: false,
       });
-      const updated: ChatMeta = { ...meta, title: title ?? meta.title, updatedAt: now, messageCount: messages.length, blobUrl: blobResult.url };
+      const updated: ChatMeta = { ...base, title: title ?? base.title, updatedAt: now, messageCount: messages.length, blobUrl: blobResult.url };
       await Promise.all([
         kv.set(metaKey(chatId), JSON.stringify(updated)),
         kv.zadd(userKey(userId), { score: now, member: chatId }),
       ]);
-      console.log(`[chats] PUT saved ok id=${chatId} msgCount=${messages.length}`);
+      console.log(`[chats] PUT saved ok id=${chatId} msgCount=${messages.length} upsert=${!existing}`);
       return res.status(200).json(updated);
     }
 
