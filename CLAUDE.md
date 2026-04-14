@@ -4,9 +4,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-California Law Chatbot is a legal research assistant powered by a two-pass AI verification system: Google Gemini 3 Pro (generator, via OpenRouter) + Anthropic Claude Sonnet 4.5 (verifier, via OpenRouter). Includes a CEB (Continuing Education of the Bar) RAG system with 77,406 vector embeddings across 5 legal verticals.
+California Law Chatbot is a legal research assistant powered by a two-pass AI verification system: Google Gemini (generator, via OpenRouter) + Anthropic Claude Sonnet 4.5 (verifier, via OpenRouter). Includes a CEB (Continuing Education of the Bar) RAG system with 77,406 vector embeddings across 5 legal verticals.
 
 **Tech Stack**: React 19, TypeScript, Vite, Vercel serverless functions, Upstash Vector, OpenAI embeddings (native API), OpenRouter (AI model routing)
+
+> **In-progress migration**: `utils/googleGenAI.ts` (untracked) and local branches are migrating the generator + verifier from OpenRouter to Google GenAI directly. Not yet merged to main.
 
 ## Development Commands
 
@@ -66,7 +68,7 @@ User Query → ChatService.sendMessage()
     ↓
 [Legislative?] → /api/openstates-search.ts + /api/legiscan-search.ts
     ↓
-[Generate] → /api/gemini-chat.ts → OpenRouter → Gemini 3 Pro (primary)
+[Generate] → /api/gemini-chat.ts → OpenRouter → Gemini 3.1 Pro (primary)
     ↓                                    ↓
 [Fallback if empty] ← Gemini 2.5 Pro (via OpenRouter)
     ↓
@@ -95,7 +97,7 @@ Mode selection: `components/SourceModeSelector.tsx` → persists to localStorage
 |------|------|
 | `gemini/chatService.ts` | Main orchestrator: query detection, source coordination, verification pipeline |
 | `gemini/cebIntegration.ts` | CEB category routing and context formatting |
-| `services/verifierService.ts` | Claim extraction, Claude verification, report parsing |
+| `services/verifierService.ts` | Claim extraction, Gemini verification, report parsing |
 | `services/confidenceGating.ts` | Post-verification quality checks |
 | `services/guardrailsService.ts` | Input validation and safety checks |
 
@@ -106,7 +108,7 @@ All are Vercel serverless functions (1024MB, 60s timeout, CORS enabled):
 | Endpoint | Purpose |
 |----------|---------|
 | `ceb-search.ts` | Upstash Vector search with statutory pre-filter & LGBT query expansion. Uses native OpenAI API for embeddings. |
-| `gemini-chat.ts` | Stream Gemini responses via OpenRouter (Gemini 3 Pro primary, Gemini 2.5 Pro fallback) |
+| `gemini-chat.ts` | Stream Gemini responses via OpenRouter (Gemini 3.1 Pro primary, Gemini 2.5 Pro fallback) |
 | `claude-chat.ts` | Claude verification via OpenRouter (Claude Sonnet 4.5) |
 | `courtlistener-search.ts` | California case law search |
 | `openstates-search.ts` | California bills via OpenStates API |
@@ -130,7 +132,7 @@ CEB-based responses bypass verification and display an amber "CEB Verified" badg
 # Required: AI Models (via OpenRouter)
 OPENROUTER_API_KEY=sk-or-v1-xxx       # Unified API key for all AI models
   # Models used:
-  # - google/gemini-3-pro-preview (primary generator)
+  # - google/gemini-3.1-pro (primary generator)
   # - google/gemini-2.5-pro (fallback generator)
   # - anthropic/claude-sonnet-4.5 (verifier)
   # - anthropic/claude-haiku-4.5 (research agent)
