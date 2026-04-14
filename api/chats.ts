@@ -12,7 +12,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { verifyToken } from '@clerk/backend';
 import { Redis } from '@upstash/redis';
-import { put, del, head } from '@vercel/blob';
+import { put, del, get } from '@vercel/blob';
 import { randomUUID } from 'crypto';
 import type { ChatMessage } from '../types';
 
@@ -73,6 +73,15 @@ function blobPath(userId: string, chatId: string) { return `chats/${userId}/${ch
 function isBlobAlreadyExistsError(error: unknown): boolean {
   const message = String((error as any)?.message ?? error ?? '').toLowerCase();
   return message.includes('already exists');
+}
+
+function parseMessagesJson(input: string): ChatMessage[] | null {
+  try {
+    const parsed = JSON.parse(input);
+    return Array.isArray(parsed) ? parsed as ChatMessage[] : null;
+  } catch {
+    return null;
+  }
 }
 
 async function getMeta(kv: Redis, chatId: string): Promise<ChatMeta | null> {
@@ -137,40 +146,41 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (!meta || meta.userId !== userId) return res.status(404).json({ error: 'Not found' });
 
       let messages: ChatMessage[] = [];
-      const debug: Record<string, unknown> = {
-        hasBlobUrl: !!meta.blobUrl,
-        blobUrl: meta.blobUrl ?? null,
-      };
+      const candidates = [blobPath(userId, chatId), meta.blobUrl].filter(
+        (value, index, arr): value is string => !!value && arr.indexOf(value) === index
+      );
+      const attempts: Array<Record<string, unknown>> = [];
       try {
-        const blobUrl = meta.blobUrl ?? blobPath(userId, chatId);
-        const blob = await head(blobUrl);
-        debug.headReturned = !!blob;
-        debug.hasDownloadUrl = !!blob?.downloadUrl;
-        if (blob?.downloadUrl) {
-          const r = await fetch(blob.downloadUrl);
-          debug.fetchStatus = r.status;
-          if (r.ok) {
-            const body = await r.text();
-            debug.bodyLength = body.length;
-            try {
-              const parsed = JSON.parse(body);
-              if (Array.isArray(parsed)) {
-                messages = parsed;
-                debug.messagesLength = messages.length;
-              } else {
-                debug.parseWarning = 'not-an-array';
-              }
-            } catch (e: any) {
-              debug.jsonParseError = e?.message ?? String(e);
+        for (const candidate of candidates) {
+          const attempt: Record<string, unknown> = { candidate };
+          try {
+            const result = await get(candidate, { access: 'private', useCache: false });
+            attempt.resultNull = !result;
+            attempt.statusCode = result?.statusCode ?? null;
+            attempt.hasStream = !!result?.stream;
+            if (!result || result.statusCode !== 200 || !result.stream) {
+              attempts.push(attempt);
+              continue;
             }
+            const body = await new Response(result.stream).text();
+            attempt.bodyLength = body.length;
+            const parsed = parseMessagesJson(body);
+            attempt.parsedLen = parsed?.length ?? null;
+            if (parsed) {
+              messages = parsed;
+              attempts.push(attempt);
+              break;
+            }
+          } catch (inner: any) {
+            attempt.error = inner?.message ?? String(inner);
           }
+          attempts.push(attempt);
         }
       } catch (e: any) {
-        debug.error = e?.message ?? String(e);
         console.error('[chats] GET blob read failed:', e);
       }
-      console.log(`[chats] GET id=${chatId} debug=${JSON.stringify(debug)}`);
-      return res.status(200).json({ ...meta, messages, _debug: debug });
+      console.log(`[chats] GET id=${chatId} metaBlobUrl=${meta.blobUrl ?? 'none'} attempts=${JSON.stringify(attempts)}`);
+      return res.status(200).json({ ...meta, messages, _debug: { hasBlobUrl: !!meta.blobUrl, attempts } });
     }
 
     // ── SAVE (upsert) ─────────────────────────────────────────────────────────
