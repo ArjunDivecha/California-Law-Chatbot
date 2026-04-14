@@ -12,7 +12,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { verifyToken } from '@clerk/backend';
 import { Redis } from '@upstash/redis';
-import { put, del, head, getDownloadUrl } from '@vercel/blob';
+import { put, del, head } from '@vercel/blob';
 import { randomUUID } from 'crypto';
 import type { ChatMessage } from '../types';
 
@@ -133,9 +133,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       try {
         const blob = await head(blobPath(userId, chatId));
         if (blob) {
-          const downloadUrl = getDownloadUrl(blob.url);
-          const r = await fetch(downloadUrl);
-          messages = await r.json();
+          const r = await fetch(blob.downloadUrl);
+          if (r.ok) messages = await r.json();
         }
       } catch { /* no messages yet */ }
 
