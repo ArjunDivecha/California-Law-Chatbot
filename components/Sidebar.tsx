@@ -57,12 +57,20 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
   const handleNewChat = async () => {
     try {
       const res = await authFetch('/api/chats', { method: 'POST' });
-      if (!res.ok) return;
+      if (!res.ok) {
+        const body = await res.text().catch(() => '');
+        console.error('[Sidebar] New chat failed:', res.status, body);
+        return;
+      }
       const meta: ChatMeta = await res.json();
+      if (!meta.id) {
+        console.error('[Sidebar] New chat response missing id:', meta);
+        return;
+      }
       setChats(prev => [meta, ...prev]);
       navigate(`/c/${meta.id}`);
-    } catch {
-      // ignore
+    } catch (err) {
+      console.error('[Sidebar] New chat error:', err);
     }
   };
 

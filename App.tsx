@@ -95,21 +95,26 @@ const NewChatRedirect: React.FC = () => {
   useEffect(() => {
     // Try to load the user's most recent chat; if none, create one
     authFetch('/api/chats?limit=1')
-      .then(r => r.json())
-      .then(data => {
+      .then(async r => {
+        if (!r.ok) throw new Error(`List failed: ${r.status}`);
+        return r.json();
+      })
+      .then(async data => {
         if (data.chats?.length > 0) {
           navigate(`/c/${data.chats[0].id}`, { replace: true });
         } else {
-          return authFetch('/api/chats', { method: 'POST' })
-            .then(r => r.json())
-            .then(meta => navigate(`/c/${meta.id}`, { replace: true }));
+          const r2 = await authFetch('/api/chats', { method: 'POST' });
+          if (!r2.ok) throw new Error(`Create failed: ${r2.status}`);
+          const meta = await r2.json();
+          if (!meta.id) throw new Error('No id in response');
+          navigate(`/c/${meta.id}`, { replace: true });
         }
       })
-      .catch(() => {
-        // If auth/network fails, show a blank chat without a persistent ID
-        navigate('/c/new', { replace: true });
+      .catch((err) => {
+        console.error('[NewChatRedirect]', err);
+        // Stay on / and show loading — don't navigate to /c/undefined
       });
-  }, [navigate]);
+  }, [navigate, authFetch]);
 
   return (
     <div className="flex items-center justify-center h-screen" style={{ backgroundColor: '#FAFAF8' }}>
