@@ -97,14 +97,20 @@ export const useChat = (chatId?: string) => {
       const id = currentChatIdRef.current;
       if (!id) return;
       try {
-        await authFetch(`/api/chats?id=${id}`, {
+        const res = await authFetch(`/api/chats?id=${id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ messages: updatedMessages, title }),
         });
-      } catch { /* ignore — next save will retry */ }
+        if (!res.ok) {
+          const body = await res.text().catch(() => '');
+          console.error('[scheduleSave] PUT failed:', res.status, body);
+        }
+      } catch (err) {
+        console.error('[scheduleSave] PUT error:', err);
+      }
     }, SAVE_DEBOUNCE_MS);
-  }, []);
+  }, [authFetch]);
 
   // -------------------------------------------------------------------------
   // Send a message
@@ -237,13 +243,14 @@ export const useChat = (chatId?: string) => {
                   }
                 : msg
             );
-            // Determine title: use first user message (excluding welcome)
+            // Determine title from first user message
             const userMsgs = updated.filter(m => m.role === MessageRole.USER);
             const title =
               userMsgs.length === 1
                 ? userMsgs[0].text.slice(0, 60) + (userMsgs[0].text.length > 60 ? '…' : '')
                 : undefined;
-            scheduleSave(updated, title);
+            // Schedule save outside the updater via a microtask
+            setTimeout(() => scheduleSave(updated, title), 0);
             return updated;
           });
         },
@@ -263,24 +270,26 @@ export const useChat = (chatId?: string) => {
         return;
       }
 
+      const finalMessages = (prev: ChatMessage[]) => prev.map(msg =>
+        msg.id === botMessageId
+          ? {
+              ...msg,
+              text: msg.text || botResponseData.text,
+              sources: botResponseData.sources,
+              verificationStatus: botResponseData.verificationStatus,
+              verificationReport: botResponseData.verificationReport,
+              claims: botResponseData.claims,
+              sourceMode: botResponseData.sourceMode,
+              responseMode: botResponseData.responseMode,
+              isCEBBased: botResponseData.isCEBBased,
+              cebCategory: botResponseData.cebCategory,
+            }
+          : msg
+      );
+      // Get updated messages outside state updater, then save
       setMessages(prev => {
-        const updated = prev.map(msg =>
-          msg.id === botMessageId
-            ? {
-                ...msg,
-                text: msg.text || botResponseData.text,
-                sources: botResponseData.sources,
-                verificationStatus: botResponseData.verificationStatus,
-                verificationReport: botResponseData.verificationReport,
-                claims: botResponseData.claims,
-                sourceMode: botResponseData.sourceMode,
-                responseMode: botResponseData.responseMode,
-                isCEBBased: botResponseData.isCEBBased,
-                cebCategory: botResponseData.cebCategory,
-              }
-            : msg
-        );
-        scheduleSave(updated);
+        const updated = finalMessages(prev);
+        setTimeout(() => scheduleSave(updated), 0);
         return updated;
       });
     } catch (error: any) {

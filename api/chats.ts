@@ -144,6 +144,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // ── SAVE ──────────────────────────────────────────────────────────────────
     if (req.method === 'PUT') {
       const { messages, title } = req.body ?? {};
+      console.log(`[chats] PUT id=${chatId} msgCount=${Array.isArray(messages) ? messages.length : 'not-array'} title=${title}`);
       if (!Array.isArray(messages)) return res.status(400).json({ error: 'messages array required' });
 
       const meta = await getMeta(kv, chatId);
@@ -159,6 +160,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         kv.set(metaKey(chatId), JSON.stringify(updated)),
         kv.zadd(userKey(userId), { score: now, member: chatId }),
       ]);
+      console.log(`[chats] PUT saved ok id=${chatId} msgCount=${messages.length}`);
       return res.status(200).json(updated);
     }
 
