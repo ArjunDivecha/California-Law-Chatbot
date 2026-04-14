@@ -64,6 +64,7 @@ function redis() {
 interface ChatMeta {
   id: string; userId: string; title: string;
   createdAt: number; updatedAt: number; messageCount: number;
+  blobUrl?: string;
 }
 
 function metaKey(chatId: string) { return `chat:${chatId}:meta`; }
@@ -131,12 +132,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       let messages: ChatMessage[] = [];
       try {
-        const blob = await head(blobPath(userId, chatId));
+        const blobUrl = meta.blobUrl ?? blobPath(userId, chatId);
+        const blob = await head(blobUrl);
         if (blob) {
           const r = await fetch(blob.downloadUrl);
           if (r.ok) messages = await r.json();
         }
-      } catch { /* no messages yet */ }
+      } catch (e) {
+        console.error('[chats] GET blob read failed:', e);
+      }
 
       return res.status(200).json({ ...meta, messages });
     }
@@ -153,11 +157,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
 
       const now = Date.now();
-      const updated: ChatMeta = { ...meta, title: title ?? meta.title, updatedAt: now, messageCount: messages.length };
 
-      await put(blobPath(userId, chatId), JSON.stringify(messages), {
+      const blobResult = await put(blobPath(userId, chatId), JSON.stringify(messages), {
         access: 'private', contentType: 'application/json', addRandomSuffix: false,
       });
+      const updated: ChatMeta = { ...meta, title: title ?? meta.title, updatedAt: now, messageCount: messages.length, blobUrl: blobResult.url };
       await Promise.all([
         kv.set(metaKey(chatId), JSON.stringify(updated)),
         kv.zadd(userKey(userId), { score: now, member: chatId }),
