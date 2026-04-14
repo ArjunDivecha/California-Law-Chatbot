@@ -10,7 +10,8 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 
-dotenv.config();
+dotenv.config(); // loads .env
+dotenv.config({ path: '.env.local', override: true }); // loads .env.local (overrides .env)
 
 const app = express();
 app.use(cors());
@@ -85,6 +86,17 @@ app.all('/api/export-document', async (req, res) => {
 
 app.all('/api/serper-scholar', async (req, res) => {
   const handler = await loadHandler('./api/serper-scholar.ts');
+  await handler(req, res);
+});
+
+// Chat history routes
+app.all('/api/chats', async (req, res) => {
+  const handler = await loadHandler('./api/chats/index.ts');
+  await handler(req, res);
+});
+
+app.all('/api/chats/:chatId', async (req, res) => {
+  const handler = await loadHandler('./api/chats/[chatId].ts');
   await handler(req, res);
 });
 
