@@ -74,6 +74,9 @@ export const useChat = (chatId?: string) => {
   // Track current chatId in a ref so closures always see the latest value
   const currentChatIdRef = useRef<string | undefined>(chatId);
   useEffect(() => { currentChatIdRef.current = chatId; }, [chatId]);
+  // Track which chatId the current `messages` state actually belongs to.
+  // Prevents the local-draft safety-net from writing stale messages under a new chatId during navigation.
+  const messagesForChatIdRef = useRef<string | undefined>(undefined);
 
   // -------------------------------------------------------------------------
   // Initialise ChatService once
@@ -102,9 +105,20 @@ export const useChat = (chatId?: string) => {
   // -------------------------------------------------------------------------
   useEffect(() => {
     if (!chatId) {
+      messagesForChatIdRef.current = undefined;
       setMessages([WELCOME_MESSAGE]);
       return;
     }
+
+    // If sendMessage just POST-created this chat and already set ownership, skip the reset/reload —
+    // the messages state is already correct (user message + bot response in progress).
+    if (messagesForChatIdRef.current === chatId) {
+      return;
+    }
+
+    // Navigating to a different chat: invalidate ownership, reset display, then load from server.
+    messagesForChatIdRef.current = undefined;
+    setMessages([WELCOME_MESSAGE]);
 
     let cancelled = false;
     setChatLoading(true);
@@ -126,11 +140,13 @@ export const useChat = (chatId?: string) => {
         setMessages(shouldPreferLocalDraft
           ? localDraft.messages
           : (loaded.length > 0 ? loaded : [WELCOME_MESSAGE]));
+        messagesForChatIdRef.current = chatId;
       })
       .catch(() => {
         if (cancelled) return;
         const localDraft = readLocalDraft(chatId);
         setMessages(localDraft?.messages?.length ? localDraft.messages : [WELCOME_MESSAGE]);
+        messagesForChatIdRef.current = chatId;
       })
       .finally(() => {
         if (!cancelled) setChatLoading(false);
@@ -143,6 +159,7 @@ export const useChat = (chatId?: string) => {
   useEffect(() => {
     const id = currentChatIdRef.current;
     if (!id) return;
+    if (messagesForChatIdRef.current !== id) return;  // messages haven't been loaded for this chat yet
     if (messages.length === 1 && messages[0].id === WELCOME_MESSAGE.id) return;
     writeLocalDraft(id, messages);
   }, [messages, chatId]);
@@ -201,6 +218,8 @@ export const useChat = (chatId?: string) => {
           const meta = await res.json();
           activeChatId = meta.id;
           currentChatIdRef.current = meta.id;
+          // Claim ownership: messages we're about to append belong to this new chatId.
+          messagesForChatIdRef.current = meta.id;
           // Navigate to the new chat URL (replaces current history entry so
           // back button doesn't loop)
           navigate(`/c/${meta.id}`, { replace: true });
