@@ -148,7 +148,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (!Array.isArray(messages)) return res.status(400).json({ error: 'messages array required' });
 
       const meta = await getMeta(kv, chatId);
-      if (!meta || meta.userId !== userId) return res.status(403).json({ error: 'Forbidden' });
+      if (!meta || meta.userId !== userId) {
+        return res.status(403).json({ error: 'Forbidden', debug: { chatId, requestUserId: userId, metaUserId: meta?.userId ?? 'META_NULL' } });
+      }
 
       const now = Date.now();
       const updated: ChatMeta = { ...meta, title: title ?? meta.title, updatedAt: now, messageCount: messages.length };
