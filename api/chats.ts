@@ -167,7 +167,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       };
 
       const blobResult = await put(blobPath(userId, chatId), JSON.stringify(messages), {
-        access: 'private', contentType: 'application/json', addRandomSuffix: false,
+        access: 'private', contentType: 'application/json', addRandomSuffix: false, allowOverwrite: true,
       });
       const updated: ChatMeta = { ...base, title: title ?? base.title, updatedAt: now, messageCount: messages.length, blobUrl: blobResult.url };
       await Promise.all([
