@@ -10,7 +10,7 @@
  */
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { createClerkClient } from '@clerk/backend';
+import { verifyToken } from '@clerk/backend';
 import { Redis } from '@upstash/redis';
 import { put, del, head } from '@vercel/blob';
 import { randomUUID } from 'crypto';
@@ -43,8 +43,7 @@ async function getUserId(req: VercelRequest): Promise<string> {
   if (!token) throw Object.assign(new Error('No session token'), { status: 401 });
 
   try {
-    const clerk = createClerkClient({ secretKey });
-    const payload = await clerk.verifyToken(token);
+    const payload = await verifyToken(token, { secretKey });
     if (!payload.sub) throw new Error('No userId in token');
     return payload.sub;
   } catch (err: any) {
