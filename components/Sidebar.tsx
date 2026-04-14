@@ -6,6 +6,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { UserButton } from '@clerk/clerk-react';
+import { useAuthFetch } from '../utils/authFetch.ts';
 
 interface ChatMeta {
   id: string;
@@ -22,6 +23,7 @@ interface SidebarProps {
 export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
   const navigate = useNavigate();
   const { chatId: activeChatId } = useParams<{ chatId: string }>();
+  const authFetch = useAuthFetch();
 
   const [chats, setChats] = useState<ChatMeta[]>([]);
   const [loading, setLoading] = useState(true);
@@ -34,7 +36,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
   // -------------------------------------------------------------------------
   const fetchChats = useCallback(async () => {
     try {
-      const res = await fetch('/api/chats');
+      const res = await authFetch('/api/chats');
       if (!res.ok) return;
       const data = await res.json();
       setChats(data.chats ?? []);
@@ -54,7 +56,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
   // -------------------------------------------------------------------------
   const handleNewChat = async () => {
     try {
-      const res = await fetch('/api/chats', { method: 'POST' });
+      const res = await authFetch('/api/chats', { method: 'POST' });
       if (!res.ok) return;
       const meta: ChatMeta = await res.json();
       setChats(prev => [meta, ...prev]);
@@ -67,7 +69,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
   const handleDelete = async (chatId: string) => {
     if (!window.confirm('Delete this chat? This cannot be undone.')) return;
     try {
-      await fetch(`/api/chats/${chatId}`, { method: 'DELETE' });
+      await authFetch(`/api/chats/${chatId}`, { method: 'DELETE' });
       setChats(prev => prev.filter(c => c.id !== chatId));
       if (activeChatId === chatId) navigate('/');
     } catch {
@@ -86,7 +88,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
     const title = renameValue.trim();
     if (!title) { setRenamingId(null); return; }
     try {
-      const res = await fetch(`/api/chats/${chatId}`, {
+      const res = await authFetch(`/api/chats/${chatId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title }),

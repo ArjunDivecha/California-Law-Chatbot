@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ChatMessage, MessageRole, ResponseMode, SourceMode, VerificationStatus } from '../types';
 import { ChatService } from '../gemini/chatService';
 import { PracticeArea } from '../components/SourceModeSelector';
+import { useAuthFetch } from '../utils/authFetch.ts';
 
 const SAVE_DEBOUNCE_MS = 1500;
 
@@ -14,6 +15,7 @@ const WELCOME_MESSAGE: ChatMessage = {
 
 export const useChat = (chatId?: string) => {
   const navigate = useNavigate();
+  const authFetch = useAuthFetch();
 
   const [messages, setMessages] = useState<ChatMessage[]>([WELCOME_MESSAGE]);
   const [isLoading, setIsLoading] = useState(false);
@@ -64,7 +66,7 @@ export const useChat = (chatId?: string) => {
     let cancelled = false;
     setChatLoading(true);
 
-    fetch(`/api/chats/${chatId}`)
+    authFetch(`/api/chats/${chatId}`)
       .then(res => {
         if (!res.ok) throw new Error(`${res.status}`);
         return res.json();
@@ -95,7 +97,7 @@ export const useChat = (chatId?: string) => {
       const id = currentChatIdRef.current;
       if (!id) return;
       try {
-        await fetch(`/api/chats/${id}`, {
+        await authFetch(`/api/chats/${id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ messages: updatedMessages, title }),
@@ -120,7 +122,7 @@ export const useChat = (chatId?: string) => {
     if (!activeChatId) {
       try {
         const title = text.slice(0, 60) + (text.length > 60 ? '…' : '');
-        const res = await fetch('/api/chats', {
+        const res = await authFetch('/api/chats', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ title }),

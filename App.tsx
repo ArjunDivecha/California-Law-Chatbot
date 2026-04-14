@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, Navigate, useParams, useNavigate } from 'react-router-dom';
 import { SignedIn, SignedOut, RedirectToSignIn } from '@clerk/clerk-react';
+import { useAuthFetch } from './utils/authFetch.ts';
 
 import { useChat } from './hooks/useChat';
 import ChatWindow from './components/ChatWindow';
@@ -89,16 +90,17 @@ const ChatPage: React.FC<{ sidebarOpen: boolean }> = ({ sidebarOpen }) => {
 // ---------------------------------------------------------------------------
 const NewChatRedirect: React.FC = () => {
   const navigate = useNavigate();
+  const authFetch = useAuthFetch();
 
   useEffect(() => {
     // Try to load the user's most recent chat; if none, create one
-    fetch('/api/chats?limit=1')
+    authFetch('/api/chats?limit=1')
       .then(r => r.json())
       .then(data => {
         if (data.chats?.length > 0) {
           navigate(`/c/${data.chats[0].id}`, { replace: true });
         } else {
-          return fetch('/api/chats', { method: 'POST' })
+          return authFetch('/api/chats', { method: 'POST' })
             .then(r => r.json())
             .then(meta => navigate(`/c/${meta.id}`, { replace: true }));
         }

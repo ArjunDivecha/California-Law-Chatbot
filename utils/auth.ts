@@ -1,9 +1,9 @@
 /**
  * Clerk authentication helper for Vercel serverless functions.
  *
- * Extracts the authenticated userId from an incoming request using the
- * Clerk backend SDK. Throws structured HTTP errors on missing/invalid sessions
- * so API handlers can call this once and proceed.
+ * Extracts the Bearer token from the Authorization header and verifies
+ * it using Clerk's verifyToken — works with Node.js VercelRequest objects
+ * without needing a Web API Request.
  */
 
 import { createClerkClient } from '@clerk/backend';
@@ -28,35 +28,28 @@ export async function getUserId(req: VercelRequest): Promise<string> {
     throw new AuthError('CLERK_SECRET_KEY is not configured', 500);
   }
 
-  const clerk = createClerkClient({ secretKey });
+  // Extract token from Authorization header or __session cookie
+  let token: string | undefined;
 
-  // Pull the session token from Authorization header or __session cookie
   const authHeader = req.headers.authorization;
-  const cookieHeader = req.headers.cookie ?? '';
-
-  let sessionToken: string | undefined;
-
   if (authHeader?.startsWith('Bearer ')) {
-    sessionToken = authHeader.slice(7);
+    token = authHeader.slice(7);
   } else {
-    // Parse __session from cookie string
+    const cookieHeader = req.headers.cookie ?? '';
     const match = cookieHeader.match(/(?:^|;\s*)__session=([^;]+)/);
-    sessionToken = match ? match[1] : undefined;
+    token = match ? decodeURIComponent(match[1]) : undefined;
   }
 
-  if (!sessionToken) {
+  if (!token) {
     throw new AuthError('No session token provided', 401);
   }
 
   try {
-    const requestState = await clerk.authenticateRequest(req as any, {
-      jwtKey: process.env.CLERK_JWT_KEY,
-      authorizedParties: process.env.CLERK_AUTHORIZED_PARTIES?.split(','),
-    });
-
-    const userId = requestState.toAuth()?.userId;
+    const clerk = createClerkClient({ secretKey });
+    const payload = await clerk.verifyToken(token);
+    const userId = payload.sub;
     if (!userId) {
-      throw new AuthError('Invalid or expired session', 401);
+      throw new AuthError('Invalid session token', 401);
     }
     return userId;
   } catch (err) {
