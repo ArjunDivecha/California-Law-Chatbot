@@ -174,22 +174,30 @@ export const useChat = (chatId?: string) => {
 
     saveTimerRef.current = setTimeout(async () => {
       const id = currentChatIdRef.current;
-      if (!id) return;
+      console.log('[scheduleSave] timer fired', { id, msgCount: updatedMessages.length });
+      if (!id) { console.warn('[scheduleSave] timer fired but no id'); return; }
       writeLocalDraft(id, updatedMessages, title);
       try {
+        console.log('[scheduleSave] calling authFetch PUT...');
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => { controller.abort(); console.error('[scheduleSave] authFetch timed out after 15s'); }, 15000);
         const res = await authFetch(`/api/chats?id=${id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ messages: updatedMessages, title }),
+          signal: controller.signal,
         });
+        clearTimeout(timeoutId);
+        console.log('[scheduleSave] PUT response', res.status);
         if (!res.ok) {
           const body = await res.text().catch(() => '');
           console.error('[scheduleSave] PUT failed:', res.status, body);
           return;
         }
         clearLocalDraft(id);
-      } catch (err) {
-        console.error('[scheduleSave] PUT error:', err);
+        console.log('[scheduleSave] PUT ok, local draft cleared');
+      } catch (err: any) {
+        console.error('[scheduleSave] PUT error:', err?.message ?? err);
       }
     }, SAVE_DEBOUNCE_MS);
   }, [authFetch]);
