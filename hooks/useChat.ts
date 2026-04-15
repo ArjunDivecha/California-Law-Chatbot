@@ -168,7 +168,8 @@ export const useChat = (chatId?: string) => {
   // Persist messages to backend (debounced)
   // -------------------------------------------------------------------------
   const scheduleSave = useCallback((updatedMessages: ChatMessage[], title?: string) => {
-    if (!currentChatIdRef.current) return;
+    console.log('[scheduleSave] called', { id: currentChatIdRef.current, msgCount: updatedMessages.length });
+    if (!currentChatIdRef.current) { console.warn('[scheduleSave] no chatId, skipping'); return; }
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
 
     saveTimerRef.current = setTimeout(async () => {
@@ -315,6 +316,7 @@ export const useChat = (chatId?: string) => {
           );
         },
         onVerificationComplete: (response: any) => {
+          console.log('[onVerificationComplete] fired', { chatId: currentChatIdRef.current });
           setMessages(prev => {
             const updated = prev.map(msg =>
               msg.id === botMessageId
