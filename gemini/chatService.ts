@@ -20,6 +20,8 @@ export interface BotResponse {
 
 // Callback for optimistic UI updates during verification
 export interface ProgressCallback {
+    // Called for each streamed token (speed mode only)
+    onToken?: (token: string) => void;
     // Called when initial response is ready (before verification)
     onInitialResponse?: (response: BotResponse) => void;
     // Called when verification completes
@@ -468,7 +470,7 @@ Remember: You're trained on California law AND you have access to real-time sear
         }
 
         if (responseMode === 'speed') {
-            return await this.processSpeedMode(message, conversationHistory, signal);
+            return await this.processSpeedMode(message, conversationHistory, signal, progressCallback);
         }
 
         // Handle simple greetings
@@ -504,44 +506,62 @@ Remember: You're trained on California law AND you have access to real-time sear
     private async processSpeedMode(
         message: string,
         conversationHistory?: Array<{ role: string, text: string }>,
-        signal?: AbortSignal
+        signal?: AbortSignal,
+        progressCallback?: ProgressCallback
     ): Promise<BotResponse> {
         const response = await fetchWithRetry(
             '/api/anthropic-chat',
             {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    message,
-                    conversationHistory,
-                }),
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message, conversationHistory }),
                 signal,
             },
             1,
             500
         );
 
-        if (signal?.aborted) {
-            throw new Error('Request cancelled');
-        }
-
+        if (signal?.aborted) throw new Error('Request cancelled');
         if (!response.ok) {
-            if (response.status === 499) {
-                throw new Error('Request cancelled');
-            }
+            if (response.status === 499) throw new Error('Request cancelled');
             throw new Error(`API error: ${response.status}`);
         }
 
-        const data = await response.json();
-        return {
-            text: data.text || '',
-            sources: [],
-            sourceMode: 'ai-only',
-            responseMode: 'speed',
-            verificationStatus: 'not_needed',
-        };
+        // Stream SSE tokens into progressCallback.onToken
+        const reader = response.body?.getReader();
+        if (!reader) {
+            const data = await response.json();
+            return { text: data.text || '', sources: [], sourceMode: 'ai-only', responseMode: 'speed', verificationStatus: 'not_needed' };
+        }
+
+        const decoder = new TextDecoder();
+        let fullText = '';
+        let buffer = '';
+
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            if (signal?.aborted) throw new Error('Request cancelled');
+
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop() ?? '';
+
+            for (const line of lines) {
+                if (!line.startsWith('data: ')) continue;
+                const raw = line.slice(6).trim();
+                if (raw === '[DONE]') continue;
+                try {
+                    const parsed = JSON.parse(raw);
+                    if (parsed.token) {
+                        fullText += parsed.token;
+                        progressCallback?.onToken?.(parsed.token);
+                    }
+                } catch { /* ignore malformed chunks */ }
+            }
+        }
+
+        return { text: fullText, sources: [], sourceMode: 'ai-only', responseMode: 'speed', verificationStatus: 'not_needed' };
     }
 
     /**

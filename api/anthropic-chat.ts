@@ -2,11 +2,10 @@ import Anthropic from '@anthropic-ai/sdk';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 const ANTHROPIC_MODEL = 'claude-sonnet-4-6';
-const ANTHROPIC_TIMEOUT_MS = 60000; // 60s — web search adds latency
 
 const SYSTEM_PROMPT = `You are a California law research assistant for femme & femme LLP. \
 Answer questions about California statutes, case law, regulations, and legal procedures. \
-Use web search to find current, accurate legal information. \
+Use web search to find current, accurate legal information when needed. \
 Always cite your sources. Clarify when information may vary by jurisdiction or circumstance. \
 Do not provide legal advice — provide legal information and research only.`;
 
@@ -32,10 +31,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), ANTHROPIC_TIMEOUT_MS);
 
-  // Build message list: prior history + current user message
   const history: Array<{ role: string; text: string }> = Array.isArray(conversationHistory)
     ? conversationHistory
     : [];
@@ -50,47 +46,46 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     { role: 'user', content: message },
   ];
 
+  // SSE headers — stream tokens to the client as they arrive
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Transfer-Encoding', 'chunked');
+  res.setHeader('X-Accel-Buffering', 'no');
+
   try {
-    const response = await anthropic.messages.create(
-      {
-        model: ANTHROPIC_MODEL,
-        max_tokens: 8192,
-        system: SYSTEM_PROMPT,
-        messages,
-        tools: [
-          {
-            type: 'web_search_20250305',
-            name: 'web_search',
-          } as any,
-        ],
-      },
-      { signal: controller.signal }
-    );
-
-    const text = response.content
-      .filter(block => block.type === 'text')
-      .map(block => (block as Anthropic.Messages.TextBlock).text)
-      .join('');
-
-    const webSearches = (response.usage as any)?.server_tool_use?.web_search_requests ?? 0;
-
-    res.status(200).json({
-      text,
+    const stream = await anthropic.messages.stream({
       model: ANTHROPIC_MODEL,
-      provider: 'anthropic',
-      webSearches,
+      max_tokens: 4096,
+      system: SYSTEM_PROMPT,
+      messages,
+      tools: [
+        {
+          type: 'web_search_20250305',
+          name: 'web_search',
+          max_uses: 3,
+        } as any,
+      ],
     });
+
+    for await (const event of stream) {
+      if (
+        event.type === 'content_block_delta' &&
+        event.delta.type === 'text_delta' &&
+        event.delta.text
+      ) {
+        res.write(`data: ${JSON.stringify({ token: event.delta.text })}\n\n`);
+      }
+    }
+
+    res.write('data: [DONE]\n\n');
+    res.end();
   } catch (err: any) {
-    console.error('Anthropic direct API error:', err);
-    const status = typeof err?.status === 'number' ? err.status : 500;
-    const messageText = controller.signal.aborted
-      ? 'Request timed out. Please try again.'
-      : err?.message || 'Anthropic request failed.';
-    res.status(status >= 400 && status < 600 ? status : 500).json({
-      error: 'Internal Server Error',
-      message: messageText,
-    });
-  } finally {
-    clearTimeout(timeoutId);
+    console.error('Anthropic stream error:', err);
+    // If headers not yet sent, send a JSON error; otherwise close the stream
+    if (!res.headersSent) {
+      res.status(500).json({ error: 'Internal Server Error', message: err?.message || 'Stream failed.' });
+    } else {
+      res.write(`data: ${JSON.stringify({ error: err?.message || 'Stream failed.' })}\n\n`);
+      res.end();
+    }
   }
 }

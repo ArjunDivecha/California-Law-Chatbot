@@ -268,8 +268,10 @@ export const useChat = (chatId?: string) => {
       const lastUpdateRef = { current: Date.now() };
       const accumulatedTextRef = { current: '' };
 
-      const streamCallbacks = {
+      const progressCallback = {
         onToken: (token: string) => {
+          // Speed mode streaming — show tokens as they arrive
+          setIsLoading(false);
           accumulatedTextRef.current += token;
           const now = Date.now();
           if (now - lastUpdateRef.current > 50) {
@@ -284,29 +286,6 @@ export const useChat = (chatId?: string) => {
             lastUpdateRef.current = now;
           }
         },
-        onComplete: (fullText: string) => {
-          setMessages(prev =>
-            prev.map(msg =>
-              msg.id === botMessageId ? { ...msg, text: fullText } : msg
-            )
-          );
-        },
-        onMetadata: (_metadata: any) => { /* no-op */ },
-        onError: (error: Error) => {
-          console.error('Streaming error:', error);
-          if (accumulatedTextRef.current) {
-            setMessages(prev =>
-              prev.map(msg =>
-                msg.id === botMessageId
-                  ? { ...msg, text: msg.text + accumulatedTextRef.current }
-                  : msg
-              )
-            );
-          }
-        },
-      };
-
-      const progressCallback = {
         onInitialResponse: (response: any) => {
           setIsLoading(false);
           setMessages(prev =>
