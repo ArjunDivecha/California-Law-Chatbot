@@ -503,7 +503,7 @@ Remember: You're trained on California law AND you have access to real-time sear
 
     private async processSpeedMode(
         message: string,
-        _conversationHistory?: Array<{ role: string, text: string }>,
+        conversationHistory?: Array<{ role: string, text: string }>,
         signal?: AbortSignal
     ): Promise<BotResponse> {
         const response = await fetchWithRetry(
@@ -515,6 +515,7 @@ Remember: You're trained on California law AND you have access to real-time sear
                 },
                 body: JSON.stringify({
                     message,
+                    conversationHistory,
                 }),
                 signal,
             },

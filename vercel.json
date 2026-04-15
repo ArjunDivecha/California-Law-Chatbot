@@ -9,6 +9,10 @@
       "memory": 1024,
       "maxDuration": 300
     },
+    "api/anthropic-chat.ts": {
+      "memory": 1024,
+      "maxDuration": 120
+    },
     "api/**/*.ts": {
       "memory": 1024,
       "maxDuration": 60
