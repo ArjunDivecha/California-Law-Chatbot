@@ -51,6 +51,16 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
     fetchChats();
   }, [fetchChats, activeChatId]); // Refresh whenever active chat changes (new save)
 
+  // Update title in-place when useChat reports a successful save
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const { id, title } = (e as CustomEvent<{ id: string; title: string }>).detail;
+      setChats(prev => prev.map(c => c.id === id ? { ...c, title } : c));
+    };
+    window.addEventListener('chat-saved', handler);
+    return () => window.removeEventListener('chat-saved', handler);
+  }, []);
+
   // -------------------------------------------------------------------------
   // Actions
   // -------------------------------------------------------------------------

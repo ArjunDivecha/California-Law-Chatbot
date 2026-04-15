@@ -196,6 +196,10 @@ export const useChat = (chatId?: string) => {
         }
         clearLocalDraft(id);
         console.log('[scheduleSave] PUT ok, local draft cleared');
+        // Notify sidebar so it can update the title in-place without a full re-fetch
+        if (title) {
+          window.dispatchEvent(new CustomEvent('chat-saved', { detail: { id, title } }));
+        }
       } catch (err: any) {
         console.error('[scheduleSave] PUT error:', err?.message ?? err);
       }
