@@ -221,6 +221,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         kv.zadd(userKey(userId), { score: now, member: chatId }),
       ]);
       console.log(`[chats] PUT saved ok id=${chatId} msgCount=${messages.length} upsert=${!existing}`);
+
+      // ── Prune oldest chats if user exceeds cap ─────────────────────────────
+      const MAX_CHATS = 100;
+      const total = await kv.zcard(userKey(userId));
+      if (total > MAX_CHATS) {
+        const excess = total - MAX_CHATS;
+        const oldest = await kv.zrange(userKey(userId), 0, excess - 1) as string[];
+        if (oldest.length > 0) {
+          await Promise.all([
+            kv.zrem(userKey(userId), ...oldest),
+            ...oldest.map(id => kv.del(metaKey(id))),
+            ...oldest.map(id => del(blobPath(userId, id)).catch(() => {})),
+          ]);
+          console.log(`[chats] pruned ${oldest.length} old chats for user ${userId}`);
+        }
+      }
+
       return res.status(200).json(updated);
     }
 
