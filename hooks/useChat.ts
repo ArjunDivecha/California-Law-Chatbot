@@ -337,11 +337,10 @@ export const useChat = (chatId?: string) => {
                 : msg
             );
             // Determine title from first user message
-            const userMsgs = updated.filter(m => m.role === MessageRole.USER);
-            const title =
-              userMsgs.length === 1
-                ? userMsgs[0].text.slice(0, 60) + (userMsgs[0].text.length > 60 ? '…' : '')
-                : undefined;
+            const firstUser = updated.find(m => m.role === MessageRole.USER);
+            const title = firstUser
+              ? firstUser.text.slice(0, 60) + (firstUser.text.length > 60 ? '…' : '')
+              : undefined;
             // Schedule save outside the updater via a microtask
             setTimeout(() => scheduleSave(updated, title), 0);
             return updated;
@@ -382,7 +381,11 @@ export const useChat = (chatId?: string) => {
       // Get updated messages outside state updater, then save
       setMessages(prev => {
         const updated = finalMessages(prev);
-        setTimeout(() => scheduleSave(updated), 0);
+        const firstUser = updated.find(m => m.role === MessageRole.USER);
+        const title = firstUser
+          ? firstUser.text.slice(0, 60) + (firstUser.text.length > 60 ? '…' : '')
+          : undefined;
+        setTimeout(() => scheduleSave(updated, title), 0);
         return updated;
       });
     } catch (error: any) {
@@ -400,8 +403,12 @@ export const useChat = (chatId?: string) => {
               }
             : msg
         );
+        const firstUser = updated.find(m => m.role === MessageRole.USER);
+        const title = firstUser
+          ? firstUser.text.slice(0, 60) + (firstUser.text.length > 60 ? '…' : '')
+          : undefined;
         // Save even on error so the user message is persisted
-        setTimeout(() => scheduleSave(updated), 0);
+        setTimeout(() => scheduleSave(updated, title), 0);
         return updated;
       });
     } finally {
