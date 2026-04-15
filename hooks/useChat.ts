@@ -391,16 +391,19 @@ export const useChat = (chatId?: string) => {
         return;
       }
       console.error('Failed to get bot response:', error);
-      setMessages(prev =>
-        prev.map(msg =>
+      setMessages(prev => {
+        const updated = prev.map(msg =>
           msg.id === botMessageId
             ? {
                 ...msg,
                 text: "I'm sorry, but I'm having trouble connecting to my knowledge base right now. Please try again in a moment.",
               }
             : msg
-        )
-      );
+        );
+        // Save even on error so the user message is persisted
+        setTimeout(() => scheduleSave(updated), 0);
+        return updated;
+      });
     } finally {
       if (!abortController.signal.aborted) {
         setIsLoading(false);

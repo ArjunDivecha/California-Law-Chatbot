@@ -5,6 +5,10 @@
       "memory": 2048,
       "maxDuration": 300
     },
+    "api/gemini-chat.ts": {
+      "memory": 1024,
+      "maxDuration": 300
+    },
     "api/**/*.ts": {
       "memory": 1024,
       "maxDuration": 60
