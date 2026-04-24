@@ -43,6 +43,7 @@
     "cors": "^2.8.6",
     "esbuild": "^0.25.0",
     "express": "^5.2.1",
+    "fake-indexeddb": "^6.2.5",
     "typescript": "~5.8.2",
     "vite": "^6.2.0"
   },

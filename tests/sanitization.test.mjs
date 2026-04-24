@@ -9,10 +9,12 @@
  */
 
 import { strict as assert } from 'node:assert';
+import 'fake-indexeddb/auto';
 
 let passed = 0;
 let failed = 0;
 const failures = [];
+let storeSeq = 0;
 
 async function test(name, fn) {
   try {
@@ -349,6 +351,146 @@ await test('runPatterns: total match count grows with allowlist entries', () => 
   const text = 'SSN 123-45-6789 and another 987-65-4321. Email test@example.com.';
   const all = runPatterns(text);
   assert.ok(all.length >= 3, 'at least 3 matches across patterns');
+});
+
+// ---------------------------------------------------------------------------
+// Encrypted persistent store (Day 2)
+// ---------------------------------------------------------------------------
+const storeMod = await import('../api/_shared/sanitization/store.ts');
+const { SanitizationStore, WrongPassphraseError } = storeMod;
+
+function freshStoreName() {
+  storeSeq += 1;
+  return `cla-sanitization-test-${storeSeq}-${Date.now()}`;
+}
+
+await test('store.init: first-time create derives a key and can assign tokens', async () => {
+  const s = new SanitizationStore();
+  await s.init('hunter2!Strong', { dbName: freshStoreName() });
+  const t = await s.assignToken('Maria Esperanza', 'name');
+  assert.equal(t.value, 'CLIENT_001', 'first name token is CLIENT_001');
+  assert.equal(t.category, 'name');
+  s.close();
+});
+
+await test('store: same raw + category returns the same token across assigns', async () => {
+  const s = new SanitizationStore();
+  await s.init('pw', { dbName: freshStoreName() });
+  const t1 = await s.assignToken('Maria Esperanza', 'name');
+  const t2 = await s.assignToken('Maria Esperanza', 'name');
+  assert.equal(t1.value, t2.value, 'stable token across calls');
+});
+
+await test('store: different entities get different tokens and counters advance', async () => {
+  const s = new SanitizationStore();
+  await s.init('pw', { dbName: freshStoreName() });
+  const t1 = await s.assignToken('Maria Esperanza', 'name');
+  const t2 = await s.assignToken('Daniel Esperanza', 'name');
+  const a1 = await s.assignToken('2155 Vallejo Street', 'street_address');
+  assert.equal(t1.value, 'CLIENT_001');
+  assert.equal(t2.value, 'CLIENT_002');
+  assert.equal(a1.value, 'ADDRESS_001', 'different category starts its own counter');
+});
+
+await test('store: case-insensitive entity matching reuses tokens', async () => {
+  const s = new SanitizationStore();
+  await s.init('pw', { dbName: freshStoreName() });
+  const t1 = await s.assignToken('Maria Esperanza', 'name');
+  const t2 = await s.assignToken('maria esperanza', 'name');
+  assert.equal(t1.value, t2.value, 'same entity regardless of case');
+});
+
+await test('store: persists across close/reopen, counters continue', async () => {
+  const dbName = freshStoreName();
+  const s1 = new SanitizationStore();
+  await s1.init('pw', { dbName });
+  await s1.assignToken('Maria Esperanza', 'name');
+  s1.close();
+
+  const s2 = new SanitizationStore();
+  await s2.init('pw', { dbName });
+  const lookup = await s2.lookupToken('Maria Esperanza', 'name');
+  assert.ok(lookup, 'token persisted');
+  assert.equal(lookup.value, 'CLIENT_001');
+
+  const newEntity = await s2.assignToken('Daniel Esperanza', 'name');
+  assert.equal(newEntity.value, 'CLIENT_002', 'counter resumed from persisted value');
+});
+
+await test('store: wrong passphrase on reopen throws WrongPassphraseError', async () => {
+  const dbName = freshStoreName();
+  const s1 = new SanitizationStore();
+  await s1.init('correct horse', { dbName });
+  await s1.assignToken('Maria Esperanza', 'name');
+  s1.close();
+
+  const s2 = new SanitizationStore();
+  let threw = false;
+  try {
+    await s2.init('wrong passphrase', { dbName });
+  } catch (err) {
+    threw = err instanceof WrongPassphraseError;
+  }
+  assert.ok(threw, 'expected WrongPassphraseError');
+});
+
+await test('store.rehydrateMap returns token→raw for every stored entity', async () => {
+  const s = new SanitizationStore();
+  await s.init('pw', { dbName: freshStoreName() });
+  await s.assignToken('Maria Esperanza', 'name');
+  await s.assignToken('Daniel Esperanza', 'name');
+  await s.assignToken('2155 Vallejo Street', 'street_address');
+  const map = await s.rehydrateMap();
+  assert.equal(map.get('CLIENT_001'), 'Maria Esperanza');
+  assert.equal(map.get('CLIENT_002'), 'Daniel Esperanza');
+  assert.equal(map.get('ADDRESS_001'), '2155 Vallejo Street');
+  assert.equal(map.size, 3);
+});
+
+await test('store.forgetEntity removes the record from rehydration', async () => {
+  const s = new SanitizationStore();
+  await s.init('pw', { dbName: freshStoreName() });
+  await s.assignToken('Maria Esperanza', 'name');
+  await s.assignToken('Daniel Esperanza', 'name');
+  await s.forgetEntity('CLIENT_001');
+  const map = await s.rehydrateMap();
+  assert.equal(map.has('CLIENT_001'), false);
+  assert.equal(map.has('CLIENT_002'), true);
+});
+
+await test('store export + import round-trips entities under the same passphrase', async () => {
+  const passphrase = 'shared passphrase 42';
+  const originalName = freshStoreName();
+  const s1 = new SanitizationStore();
+  await s1.init(passphrase, { dbName: originalName });
+  await s1.assignToken('Maria Esperanza', 'name');
+  await s1.assignToken('2155 Vallejo Street', 'street_address');
+  const blob = await s1.exportEncrypted();
+  s1.close();
+
+  const newName = freshStoreName();
+  const s2 = new SanitizationStore();
+  await s2.importEncrypted(blob, passphrase, { dbName: newName });
+  const map = await s2.rehydrateMap();
+  assert.equal(map.get('CLIENT_001'), 'Maria Esperanza');
+  assert.equal(map.get('ADDRESS_001'), '2155 Vallejo Street');
+});
+
+await test('store import with wrong passphrase throws', async () => {
+  const s1 = new SanitizationStore();
+  await s1.init('right', { dbName: freshStoreName() });
+  await s1.assignToken('Maria Esperanza', 'name');
+  const blob = await s1.exportEncrypted();
+  s1.close();
+
+  const s2 = new SanitizationStore();
+  let threw = false;
+  try {
+    await s2.importEncrypted(blob, 'wrong', { dbName: freshStoreName() });
+  } catch (err) {
+    threw = err instanceof WrongPassphraseError;
+  }
+  assert.ok(threw, 'expected WrongPassphraseError on import with wrong passphrase');
 });
 
 // ---------------------------------------------------------------------------
