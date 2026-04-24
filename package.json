@@ -7,7 +7,8 @@
     "dev": "vite",
     "dev:api": "node dev-server.js",
     "dev:full": "node dev-server.js & sleep 2 && vite",
-    "build": "vite build",
+    "build:shared": "esbuild api/_shared/*.ts --outdir=api/_shared --format=esm --platform=node --target=node20 --log-level=warning",
+    "build": "npm run build:shared && vite build",
     "preview": "vite preview",
     "test:verification": "node test-verification-system.js",
     "test:openrouter": "node test-comprehensive.js",
@@ -39,6 +40,7 @@
     "@vercel/node": "^5.5.28",
     "@vitejs/plugin-react": "^5.0.0",
     "cors": "^2.8.6",
+    "esbuild": "^0.25.0",
     "express": "^5.2.1",
     "typescript": "~5.8.2",
     "vite": "^6.2.0"
