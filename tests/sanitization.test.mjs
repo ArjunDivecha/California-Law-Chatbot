@@ -1371,6 +1371,106 @@ await test('No passphrase modal exists — sanitization auto-unlocks with a devi
 });
 
 // ---------------------------------------------------------------------------
+// Confidentiality attestation (Day 8) — storage helpers
+// ---------------------------------------------------------------------------
+
+// Polyfill localStorage for Node.
+if (typeof globalThis.localStorage === 'undefined') {
+  const store = new Map();
+  globalThis.localStorage = {
+    getItem: (k) => (store.has(k) ? store.get(k) : null),
+    setItem: (k, v) => store.set(k, String(v)),
+    removeItem: (k) => store.delete(k),
+    clear: () => store.clear(),
+    get length() { return store.size; },
+    key: (i) => Array.from(store.keys())[i] ?? null,
+  };
+  globalThis.window = globalThis.window ?? { localStorage: globalThis.localStorage };
+  globalThis.window.localStorage = globalThis.localStorage;
+}
+
+const attestationMod = await import('../hooks/useAttestation.ts');
+const { _internals, ATTESTATION_VERSION } = attestationMod;
+
+await test('attestation: storageKey is scoped by version and user id', () => {
+  const k1 = _internals.storageKey('user_abc');
+  const k2 = _internals.storageKey('user_xyz');
+  assert.notEqual(k1, k2, 'different users get different keys');
+  assert.ok(k1.includes(`v${ATTESTATION_VERSION}`), 'key includes version marker');
+  assert.ok(k1.includes('user_abc'), 'key includes user id');
+});
+
+await test('attestation: read returns null when nothing is stored', () => {
+  globalThis.localStorage.clear();
+  const rec = _internals.readAttestation('user_fresh');
+  assert.equal(rec, null);
+});
+
+await test('attestation: write + read round-trip preserves version and timestamp', () => {
+  globalThis.localStorage.clear();
+  const now = new Date().toISOString();
+  _internals.writeAttestation('user_a', { version: ATTESTATION_VERSION, acknowledgedAt: now });
+  const rec = _internals.readAttestation('user_a');
+  assert.ok(rec, 'record returned');
+  assert.equal(rec.version, ATTESTATION_VERSION);
+  assert.equal(rec.acknowledgedAt, now);
+});
+
+await test('attestation: read ignores records with a stale version', () => {
+  globalThis.localStorage.clear();
+  const key = _internals.storageKey('user_old');
+  globalThis.localStorage.setItem(
+    key,
+    JSON.stringify({ version: ATTESTATION_VERSION - 1, acknowledgedAt: '2025-01-01T00:00:00Z' })
+  );
+  // The current-version storage key won't match, so read returns null.
+  const rec = _internals.readAttestation('user_old');
+  assert.equal(rec, null, 'older-version entry is invisible to the current version');
+});
+
+await test('attestation: malformed JSON does not throw', () => {
+  globalThis.localStorage.clear();
+  globalThis.localStorage.setItem(_internals.storageKey('user_bad'), 'not-json');
+  const rec = _internals.readAttestation('user_bad');
+  assert.equal(rec, null);
+});
+
+await test('attestation: different users do not share state', () => {
+  globalThis.localStorage.clear();
+  _internals.writeAttestation('user_a', {
+    version: ATTESTATION_VERSION,
+    acknowledgedAt: '2026-04-24T00:00:00Z',
+  });
+  assert.ok(_internals.readAttestation('user_a'), 'user_a attested');
+  assert.equal(_internals.readAttestation('user_b'), null, 'user_b still unattested');
+});
+
+// ---------------------------------------------------------------------------
+// Wiring grep
+// ---------------------------------------------------------------------------
+
+await test('App.tsx mounts the attestation modal inside SignedIn', () => {
+  const text = readFileSync(joinPath(repoRoot, 'App.tsx'), 'utf8');
+  assert.ok(/ConfidentialityAttestation/.test(text), 'imports/uses the component');
+  // Quick structural check: ConfidentialityAttestation appears between
+  // the SignedIn open and close tags.
+  const signedInIdx = text.indexOf('<SignedIn>');
+  const signedOutIdx = text.indexOf('<SignedOut>');
+  assert.ok(signedInIdx > -1 && signedOutIdx > signedInIdx, 'SignedIn/SignedOut ordering intact');
+  const between = text.slice(signedInIdx, signedOutIdx);
+  assert.ok(/<ConfidentialityAttestation\s*\/?>/.test(between), 'modal mounted inside SignedIn');
+});
+
+await test('ConfidentialityAttestation covers the four narrative points', () => {
+  const text = readFileSync(joinPath(repoRoot, 'components/ConfidentialityAttestation.tsx'), 'utf8');
+  assert.ok(/What the tool does/.test(text), 'point 1 present');
+  assert.ok(/trust boundary/i.test(text), 'point 2 present');
+  assert.ok(/What it doesn't do|Rule of Professional Conduct 1\.6/.test(text), 'point 3 present');
+  assert.ok(/No recovery/.test(text), 'point 4 present');
+  assert.ok(/FFLP-TODO/.test(text), 'wording is flagged for F&F compliance review');
+});
+
+// ---------------------------------------------------------------------------
 // Summary
 // ---------------------------------------------------------------------------
 console.log('\n' + '='.repeat(60));

@@ -13,6 +13,7 @@ import { ResponseModeToggle } from './components/ResponseModeToggle';
 import { DraftingMode } from './components/drafting/DraftingMode';
 import SignInPage from './components/SignInPage';
 import { SanitizerProvider, useSanitizer } from './hooks/useSanitizer';
+import { ConfidentialityAttestation } from './components/ConfidentialityAttestation';
 import { ShieldCheck, ShieldAlert, RotateCcw } from 'lucide-react';
 import type { AppMode } from './types';
 
@@ -198,6 +199,7 @@ const App: React.FC = () => {
             element={
               <>
                 <SignedIn>
+                  <ConfidentialityAttestation />
                   <Sidebar isOpen={sidebarOpen} onToggle={() => setSidebarOpen(o => !o)} />
                   <Routes>
                     <Route path="/" element={<NewChatRedirect />} />
