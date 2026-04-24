@@ -19,6 +19,7 @@ import {
   assertNoPromptCacheMetadata,
   resolveBedrockModel,
 } from './_shared/bedrockModels.js';
+import { rejectWithBackstop, scanRequest } from './_shared/sanitization/guard.js';
 
 const VERIFIER_TIMEOUT_MS = Number(process.env.BEDROCK_VERIFIER_TIMEOUT_MS || 60000);
 
@@ -49,6 +50,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       res.status(400).json({ error: 'Missing or invalid message parameter' });
       return;
     }
+
+    const backstop = scanRequest(message, conversationHistory);
+    if (rejectWithBackstop(res, backstop)) return;
 
     if (!hasBedrockProviderCredentials()) {
       console.error('Anthropic Bedrock credentials are not set in environment variables');

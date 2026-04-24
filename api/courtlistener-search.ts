@@ -11,6 +11,8 @@
  * - `content` + `sources` for the main chat UI (existing behavior)
  * - `results` (simplified) for internal agents/orchestrators that need structured fields
  */
+import { rejectWithBackstop, scanForRawPII } from './_shared/sanitization/guard.js';
+
 export default async function handler(req: any, res: any) {
   try {
     if (req.method !== 'GET') {
@@ -21,6 +23,9 @@ export default async function handler(req: any, res: any) {
     if (!q) {
       return res.status(400).json({ error: 'Missing q parameter' });
     }
+
+    const backstop = scanForRawPII(q);
+    if (rejectWithBackstop(res, backstop)) return;
 
     const limitRaw = parseInt(req.query?.limit as string);
     const limit = Number.isFinite(limitRaw) ? limitRaw : 3; // Default 3, max 50

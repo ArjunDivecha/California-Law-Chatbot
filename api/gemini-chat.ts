@@ -21,6 +21,7 @@ import {
   assertNoPromptCacheMetadata,
   resolveBedrockModel,
 } from './_shared/bedrockModels.js';
+import { rejectWithBackstop, scanRequest } from './_shared/sanitization/guard.js';
 
 const PRIMARY_TIMEOUT_MS = Number(process.env.BEDROCK_PRIMARY_TIMEOUT_MS || 60000);
 const FALLBACK_TIMEOUT_MS = Number(process.env.BEDROCK_FALLBACK_TIMEOUT_MS || 45000);
@@ -57,6 +58,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       res.status(400).json({ error: 'Missing or invalid message parameter' });
       return;
     }
+
+    // Sanitization backstop — last line of defense if the client-side
+    // tokenizer misses raw PII. Runs deterministic patterns only.
+    const backstop = scanRequest(message, conversationHistory);
+    if (rejectWithBackstop(res, backstop)) return;
 
     if (!hasBedrockProviderCredentials()) {
       console.error('Anthropic Bedrock credentials are not set in environment variables');

@@ -16,6 +16,7 @@
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { planLegislativeQueries } from './_shared/researchPlanner.js';
+import { rejectWithBackstop, scanForRawPII } from './_shared/sanitization/guard.js';
 
 export const config = {
   maxDuration: 30,
@@ -82,6 +83,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     res.status(400).json({ error: 'Missing question' });
     return;
   }
+
+  const backstop = scanForRawPII(question);
+  if (rejectWithBackstop(res, backstop)) return;
 
   const openStatesKey = process.env.OPENSTATES_API_KEY;
   const legiScanKey = process.env.LEGISCAN_API_KEY;

@@ -621,6 +621,152 @@ await test('tokenize: a pure public-legal prompt produces no tokens', async () =
 });
 
 // ---------------------------------------------------------------------------
+// Server backstop (Day 4)
+// ---------------------------------------------------------------------------
+const guard = await import('../api/_shared/sanitization/guard.ts');
+const { scanForRawPII, scanConversationHistory, scanRequest, rejectWithBackstop } = guard;
+
+await test('backstop: clean text accepts', () => {
+  const r = scanForRawPII('Explain Family Code § 1615 in plain English.');
+  assert.equal(r.ok, true);
+});
+
+await test('backstop: rejects raw SSN with ssn category', () => {
+  const r = scanForRawPII('Client SSN is 123-45-6789.');
+  assert.equal(r.ok, false);
+  assert.deepEqual(r.categories, ['ssn']);
+});
+
+await test('backstop: rejects phone + street address + date simultaneously', () => {
+  const r = scanForRawPII('Reach them at 415-555-0123 or 2155 Vallejo Street; DOB 3/14/1953.');
+  assert.equal(r.ok, false);
+  assert.ok(r.categories.includes('phone'));
+  assert.ok(r.categories.includes('street_address'));
+  assert.ok(r.categories.includes('date'));
+});
+
+await test('backstop: accepts already-tokenized text', () => {
+  const r = scanForRawPII('CLIENT_001 transferred ADDRESS_002 on DATE_003.');
+  assert.equal(r.ok, true);
+});
+
+await test('backstop: conversation-history scan catches PII in prior turns', () => {
+  const r = scanConversationHistory([
+    { role: 'user', text: 'Clean follow-up question.' },
+    { role: 'user', text: 'Original: 123-45-6789 was the SSN.' },
+  ]);
+  assert.equal(r.ok, false);
+  assert.ok(r.categories.includes('ssn'));
+});
+
+await test('backstop: scanRequest merges primary + history categories', () => {
+  const r = scanRequest('email: jane@example.com', [
+    { role: 'user', text: 'earlier: 123-45-6789' },
+  ]);
+  assert.equal(r.ok, false);
+  assert.ok(r.categories.includes('email'));
+  assert.ok(r.categories.includes('ssn'));
+});
+
+await test('backstop: error message never echoes matched text', () => {
+  const r = scanForRawPII('SSN 123-45-6789 is on file.');
+  assert.equal(r.ok, false);
+  assert.ok(!r.message.includes('123-45-6789'), 'raw PII absent from error message');
+});
+
+await test('backstop: non-string/empty inputs return ok', () => {
+  assert.equal(scanForRawPII('').ok, true);
+  assert.equal(scanForRawPII(undefined).ok, true);
+  assert.equal(scanForRawPII(42).ok, true);
+  assert.equal(scanConversationHistory('not an array').ok, true);
+});
+
+await test('backstop: rejectWithBackstop sends 400 with categories, returns true', () => {
+  const sent = {};
+  const res = {
+    status(code) {
+      sent.code = code;
+      return {
+        json(body) {
+          sent.body = body;
+        },
+      };
+    },
+  };
+  const result = scanForRawPII('ssn 123-45-6789');
+  const sendOutcome = rejectWithBackstop(res, result);
+  assert.equal(sendOutcome, true);
+  assert.equal(sent.code, 400);
+  assert.equal(sent.body.error, 'backstop_triggered');
+  assert.ok(sent.body.categories.includes('ssn'));
+});
+
+await test('backstop: rejectWithBackstop returns false on accepts without sending', () => {
+  let called = false;
+  const res = {
+    status() {
+      called = true;
+      return { json() { called = true; } };
+    },
+  };
+  const sent = rejectWithBackstop(res, { ok: true });
+  assert.equal(sent, false);
+  assert.equal(called, false);
+});
+
+// ---------------------------------------------------------------------------
+// Route-wiring grep tests — every protected route must call the backstop
+// ---------------------------------------------------------------------------
+import { readFileSync } from 'node:fs';
+import { dirname as dirnameFn, join as joinPath } from 'node:path';
+import { fileURLToPath as pathFromFile } from 'node:url';
+
+const testsDir = dirnameFn(pathFromFile(import.meta.url));
+const repoRoot = joinPath(testsDir, '..');
+
+function routeCallsBackstop(file) {
+  const text = readFileSync(joinPath(repoRoot, file), 'utf8');
+  const importsGuard = /from ['"][^'"]*sanitization\/guard[^'"]*['"]/.test(text);
+  const callsScan = /scan(ForRawPII|Request|ConversationHistory)\s*\(/.test(text);
+  const callsReject = /rejectWithBackstop\s*\(/.test(text);
+  return importsGuard && callsScan && callsReject;
+}
+
+await test('gemini-chat route is wired to the backstop', () => {
+  assert.ok(routeCallsBackstop('api/gemini-chat.ts'));
+});
+
+await test('claude-chat route is wired to the backstop', () => {
+  assert.ok(routeCallsBackstop('api/claude-chat.ts'));
+});
+
+await test('ceb-search route is wired to the backstop', () => {
+  assert.ok(routeCallsBackstop('api/ceb-search.ts'));
+});
+
+await test('legislative-fanout route is wired to the backstop', () => {
+  assert.ok(routeCallsBackstop('api/legislative-fanout.ts'));
+});
+
+await test('courtlistener-search route is wired to the backstop', () => {
+  assert.ok(routeCallsBackstop('api/courtlistener-search.ts'));
+});
+
+await test('public-legal-context route is wired to the backstop', () => {
+  assert.ok(routeCallsBackstop('api/public-legal-context.ts'));
+});
+
+await test('anthropic-chat (Speed) is intentionally NOT wired to the backstop', () => {
+  // Speed is the non-client passthrough; it must not hard-reject PII-shaped
+  // content because attorneys may run hypotheticals there.
+  const text = readFileSync(joinPath(repoRoot, 'api/anthropic-chat.ts'), 'utf8');
+  assert.ok(
+    !/scan(ForRawPII|Request|ConversationHistory)\s*\(/.test(text),
+    'Speed route must not call the backstop'
+  );
+});
+
+// ---------------------------------------------------------------------------
 // Summary
 // ---------------------------------------------------------------------------
 console.log('\n' + '='.repeat(60));

@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { buildPublicLegalContext } from './_shared/publicLegalContext.js';
+import { rejectWithBackstop, scanForRawPII } from './_shared/sanitization/guard.js';
 
 export const config = {
   maxDuration: 20,
@@ -30,6 +31,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     res.status(400).json({ error: 'Missing query parameter' });
     return;
   }
+
+  const backstop = scanForRawPII(query);
+  if (rejectWithBackstop(res, backstop)) return;
 
   try {
     const result = await buildPublicLegalContext(query);

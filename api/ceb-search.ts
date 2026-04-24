@@ -17,6 +17,7 @@
  */
 
 import { Index } from '@upstash/vector';
+import { rejectWithBackstop, scanForRawPII } from './_shared/sanitization/guard.js';
 
 // ============================================================================
 // STATUTORY CITATION DETECTION (inline to avoid import issues in Vercel)
@@ -305,6 +306,9 @@ export default async function handler(req: any, res: any) {
       res.status(400).json({ error: 'Missing or invalid query parameter' });
       return;
     }
+
+    const backstop = scanForRawPII(query);
+    if (rejectWithBackstop(res, backstop)) return;
 
     // Check for Upstash credentials
     const upstashUrl = process.env.UPSTASH_VECTOR_REST_URL;
