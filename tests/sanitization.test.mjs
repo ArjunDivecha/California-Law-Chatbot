@@ -1268,6 +1268,93 @@ await test('hooks/useChat.ts runs presavePiiScan before the PUT round-trip', () 
 });
 
 // ---------------------------------------------------------------------------
+// Real sanitizer (Day 7)
+// ---------------------------------------------------------------------------
+const { RealChatSanitizer } = await import('../services/sanitization/realSanitizer.ts');
+
+async function freshRealSanitizer(passphrase = 'strong-passphrase-1234') {
+  const store = new SanitizationStore();
+  await store.init(passphrase, { dbName: freshStoreName() });
+  const map = await store.rehydrateMap();
+  return { store, real: new RealChatSanitizer(store, map) };
+}
+
+await test('RealChatSanitizer: tokenizeMessage replaces raw names and caches tokens', async () => {
+  const { real } = await freshRealSanitizer();
+  const sanitized = await real.tokenizeMessage('Our client Maria Esperanza transferred her home.');
+  assert.ok(/CLIENT_00\d/.test(sanitized), 'token replaces raw name');
+  assert.ok(!sanitized.includes('Maria Esperanza'), 'raw name absent from sanitized');
+  // Cache should now contain the mapping for rehydrate.
+  const snap = real.snapshotMap();
+  assert.ok([...snap.values()].includes('Maria Esperanza'), 'map includes raw name');
+});
+
+await test('RealChatSanitizer: rehydrateMessage is synchronous and uses cached map', async () => {
+  const { real } = await freshRealSanitizer();
+  await real.tokenizeMessage('Client Maria Esperanza at 2155 Vallejo Street.');
+  const snap = real.snapshotMap();
+  const token = [...snap.entries()].find(([, raw]) => raw === 'Maria Esperanza')?.[0];
+  assert.ok(token, 'maria token present in cache');
+  // Feed a tokenized response back through rehydrate.
+  const out = real.rehydrateMessage(`Follow up with ${token} tomorrow.`);
+  assert.ok(out.includes('Maria Esperanza'), 'rehydrate substitutes real name');
+});
+
+await test('RealChatSanitizer: deriveSafeTitle tokenizes first, then slices', async () => {
+  const { real } = await freshRealSanitizer();
+  const raw =
+    'Our client Maria Esperanza has questions about her trust and whether the transfer needs to be recorded.';
+  const title = await real.deriveSafeTitle(raw, 60);
+  assert.ok(title.length <= 61, 'within slice budget');
+  assert.ok(!title.includes('Maria Esperanza'), 'no raw name in title');
+  assert.ok(/CLIENT_00\d/.test(title), 'token present in title');
+});
+
+await test('RealChatSanitizer: forgetEntity removes from store and cache', async () => {
+  const { real } = await freshRealSanitizer();
+  await real.tokenizeMessage('Client Maria Esperanza arrived.');
+  const snap = real.snapshotMap();
+  const token = [...snap.entries()].find(([, raw]) => raw === 'Maria Esperanza')?.[0];
+  assert.ok(token, 'maria token present');
+  await real.forgetEntity(token);
+  assert.ok(!real.snapshotMap().has(token), 'token gone from in-memory cache');
+});
+
+await test('RealChatSanitizer: empty or non-string input is a no-op', async () => {
+  const { real } = await freshRealSanitizer();
+  assert.equal(await real.tokenizeMessage(''), '');
+  assert.equal(real.rehydrateMessage(''), '');
+});
+
+await test('RealChatSanitizer: integrates with setChatSanitizer — chat adapter round-trip', async () => {
+  const { real } = await freshRealSanitizer();
+  setChatSanitizer(real);
+  try {
+    // tokenizeMessagesForSave goes through the active sanitizer.
+    const tokenized = await tokenizeMessagesForSave([
+      { id: '1', role: 'user', text: 'Our client Maria Esperanza called.' },
+    ]);
+    assert.ok(/CLIENT_00\d/.test(tokenized[0].text), 'adapter tokenizes via real sanitizer');
+    const rehydrated = rehydrateMessagesForDisplay(tokenized);
+    assert.equal(rehydrated[0].text, 'Our client Maria Esperanza called.', 'round-trip');
+  } finally {
+    setChatSanitizer(null);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Wiring grep tests — App.tsx installs the provider + banner
+// ---------------------------------------------------------------------------
+
+await test('App.tsx wraps children in SanitizerProvider', () => {
+  const text = readFileSync(joinPath(repoRoot, 'App.tsx'), 'utf8');
+  assert.ok(/SanitizerProvider/.test(text), 'imports/uses SanitizerProvider');
+  assert.ok(/<SanitizerProvider>/.test(text) || /<SanitizerProvider\s/.test(text), 'renders it');
+  assert.ok(/SanitizationBanner/.test(text), 'renders banner');
+  assert.ok(/SanitizationUnlock/.test(text), 'renders unlock modal');
+});
+
+// ---------------------------------------------------------------------------
 // Summary
 // ---------------------------------------------------------------------------
 console.log('\n' + '='.repeat(60));

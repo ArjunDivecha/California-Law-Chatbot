@@ -12,7 +12,53 @@ import { ModeSelector } from './components/ModeSelector';
 import { ResponseModeToggle } from './components/ResponseModeToggle';
 import { DraftingMode } from './components/drafting/DraftingMode';
 import SignInPage from './components/SignInPage';
+import { SanitizerProvider, useSanitizer } from './hooks/useSanitizer';
+import { SanitizationUnlock } from './components/SanitizationUnlock';
+import { Lock, Unlock } from 'lucide-react';
 import type { AppMode } from './types';
+
+// ---------------------------------------------------------------------------
+// SanitizationBanner — clickable status indicator shown at the top of the
+// chat header. Pre-unlock: prompts the attorney to create/unlock. Post-
+// unlock: confirms the sanitizer is active.
+// ---------------------------------------------------------------------------
+const SanitizationBanner: React.FC = () => {
+  const { unlocked, hasExistingStore, lock, tokenCount } = useSanitizer();
+  const [modalOpen, setModalOpen] = useState(false);
+
+  if (unlocked) {
+    return (
+      <button
+        type="button"
+        onClick={lock}
+        title={`Sanitization active — ${tokenCount} tokens in local map. Click to lock.`}
+        className="inline-flex items-center gap-1.5 rounded bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-800 hover:bg-emerald-100"
+      >
+        <Unlock size={12} />
+        Sanitization active
+      </button>
+    );
+  }
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setModalOpen(true)}
+        className="inline-flex items-center gap-1.5 rounded bg-amber-50 px-2 py-1 text-xs font-medium text-amber-900 hover:bg-amber-100"
+      >
+        <Lock size={12} />
+        {hasExistingStore ? 'Unlock sanitization' : 'Enable sanitization'}
+      </button>
+      {modalOpen && (
+        <SanitizationUnlock
+          onUnlocked={() => setModalOpen(false)}
+          onDismiss={() => setModalOpen(false)}
+        />
+      )}
+    </>
+  );
+};
 
 // ---------------------------------------------------------------------------
 // ChatPage — loaded at /c/:chatId
@@ -58,6 +104,7 @@ const ChatPage: React.FC<{ sidebarOpen: boolean }> = ({ sidebarOpen }) => {
           </div>
 
           <div className="flex items-center gap-2">
+            <SanitizationBanner />
             {appMode === 'research' && (
               <ResponseModeToggle mode={responseMode} onModeChange={setResponseMode} disabled={isLoading} />
             )}
@@ -131,31 +178,33 @@ const App: React.FC = () => {
 
   return (
     <ErrorBoundary>
-      <Routes>
-        {/* Sign-in (public) */}
-        <Route path="/sign-in/*" element={<SignInPage />} />
-        <Route path="/sign-up/*" element={<SignInPage />} />
+      <SanitizerProvider>
+        <Routes>
+          {/* Sign-in (public) */}
+          <Route path="/sign-in/*" element={<SignInPage />} />
+          <Route path="/sign-up/*" element={<SignInPage />} />
 
-        {/* Protected routes */}
-        <Route
-          path="/*"
-          element={
-            <>
-              <SignedIn>
-                <Sidebar isOpen={sidebarOpen} onToggle={() => setSidebarOpen(o => !o)} />
-                <Routes>
-                  <Route path="/" element={<NewChatRedirect />} />
-                  <Route path="/c/:chatId" element={<ChatPage sidebarOpen={sidebarOpen} />} />
-                  <Route path="*" element={<Navigate to="/" replace />} />
-                </Routes>
-              </SignedIn>
-              <SignedOut>
-                <RedirectToSignIn />
-              </SignedOut>
-            </>
-          }
-        />
-      </Routes>
+          {/* Protected routes */}
+          <Route
+            path="/*"
+            element={
+              <>
+                <SignedIn>
+                  <Sidebar isOpen={sidebarOpen} onToggle={() => setSidebarOpen(o => !o)} />
+                  <Routes>
+                    <Route path="/" element={<NewChatRedirect />} />
+                    <Route path="/c/:chatId" element={<ChatPage sidebarOpen={sidebarOpen} />} />
+                    <Route path="*" element={<Navigate to="/" replace />} />
+                  </Routes>
+                </SignedIn>
+                <SignedOut>
+                  <RedirectToSignIn />
+                </SignedOut>
+              </>
+            }
+          />
+        </Routes>
+      </SanitizerProvider>
     </ErrorBoundary>
   );
 };
