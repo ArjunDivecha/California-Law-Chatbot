@@ -1061,6 +1061,124 @@ await test('No route log statement writes a raw prompt body to console', () => {
 });
 
 // ---------------------------------------------------------------------------
+// Preview session (Day 6)
+// ---------------------------------------------------------------------------
+const previewMod = await import('../services/sanitization/previewSession.ts');
+const {
+  computePreview,
+  emptyPreviewSession,
+  suppressToken,
+  addManualToken,
+  renameToken,
+} = previewMod;
+
+await test('previewSession: empty input returns empty preview', () => {
+  const { segments, tokens, sanitized } = computePreview('', emptyPreviewSession());
+  assert.deepEqual(segments, []);
+  assert.deepEqual(tokens, []);
+  assert.equal(sanitized, '');
+});
+
+await test('previewSession: detected spans produce tokens and interleaved segments', () => {
+  const text = 'Our client Maria Esperanza transferred her home in 2021.';
+  const { segments, tokens, sanitized } = computePreview(text, emptyPreviewSession());
+  assert.ok(tokens.length >= 1, 'at least one token');
+  const clientTok = tokens.find((t) => t.raw === 'Maria Esperanza');
+  assert.ok(clientTok, 'Maria Esperanza tokenized');
+  assert.ok(/CLIENT_00\d/.test(clientTok.value), 'CLIENT prefix');
+  // Sanitized text should contain the token and NOT the raw name.
+  assert.ok(sanitized.includes(clientTok.value), 'sanitized contains token');
+  assert.ok(!sanitized.includes('Maria Esperanza'), 'sanitized omits raw name');
+  // Segments should flatten to original when concatenated, replacing tokens with raw.
+  const flat = segments.map((s) => (s.token ? s.token.raw : s.text)).join('');
+  assert.equal(flat, text, 'segments round-trip back to original');
+});
+
+await test('previewSession: repeated mentions share the same token within a session', () => {
+  const text = 'Maria Esperanza came in Monday. Maria Esperanza followed up Tuesday.';
+  const { tokens } = computePreview(text, emptyPreviewSession());
+  const mariaTokens = tokens.filter((t) => t.raw === 'Maria Esperanza');
+  // Tokens map has unique entries — one CLIENT for "Maria Esperanza".
+  assert.equal(mariaTokens.length, 1, 'one unique token for the repeated name');
+});
+
+await test('previewSession: public-legal entities (statutes, cases) are not tokenized', () => {
+  const text =
+    'Under Family Code § 1615, the outcome in People v. Smith (2020) 50 Cal.App.5th 123 controls.';
+  const { tokens, sanitized } = computePreview(text, emptyPreviewSession());
+  assert.equal(tokens.length, 0, 'no tokens on a public-only prompt');
+  assert.equal(sanitized, text, 'sanitized unchanged');
+});
+
+await test('previewSession: suppressToken removes the highlight and keeps raw text', () => {
+  const text = 'Maria Esperanza arrived at 2155 Vallejo Street.';
+  const s0 = emptyPreviewSession();
+  const before = computePreview(text, s0);
+  const s1 = suppressToken(s0, 'Maria Esperanza', 'name');
+  const after = computePreview(text, s1);
+  assert.ok(!after.tokens.some((t) => t.raw === 'Maria Esperanza'), 'name no longer tokenized');
+  assert.ok(after.sanitized.includes('Maria Esperanza'), 'raw name re-appears in sanitized');
+  // Address should still be tokenized (pattern captures the trailing period).
+  assert.ok(
+    after.tokens.some((t) => /2155 Vallejo Street/.test(t.raw)),
+    'address still tokenized after unrelated suppression'
+  );
+  assert.notEqual(before.sanitized, after.sanitized, 'sanitized differs after suppression');
+});
+
+await test('previewSession: addManualToken tokenizes a user-selected span', () => {
+  // Single-word first names aren't caught by the bigram scanner on their own —
+  // the attorney can highlight and click "redact this".
+  const text = 'the client came in and spoke with Marta about the matter.';
+  const idx = text.indexOf('Marta');
+  const s0 = emptyPreviewSession();
+  const before = computePreview(text, s0);
+  assert.ok(!before.tokens.some((t) => t.raw === 'Marta'), 'not detected by default');
+
+  const s1 = addManualToken(s0, idx, idx + 'Marta'.length, 'Marta', 'name');
+  const after = computePreview(text, s1);
+  assert.ok(after.tokens.some((t) => t.raw === 'Marta'), 'manually added');
+});
+
+await test('previewSession: renameToken changes the pseudonym', () => {
+  const text = 'Maria Esperanza transferred the home.';
+  const s0 = emptyPreviewSession();
+  const before = computePreview(text, s0);
+  const original = before.tokens[0].value;
+  const s1 = renameToken(s0, original, 'ELDER');
+  const after = computePreview(text, s1);
+  assert.ok(after.sanitized.includes('ELDER'), 'sanitized uses new pseudonym');
+  assert.ok(!after.sanitized.includes(original), 'original pseudonym gone');
+});
+
+await test('previewSession: manual tokenization wins over allowlist for deliberate redaction', () => {
+  // Attorney's client is ALSO a public-case party name — attorney explicitly
+  // marks it confidential despite the allowlist.
+  const text = 'Our client, John Smith, is unrelated to Smith v. Jones litigation.';
+  const idx = text.indexOf('John Smith');
+  const s0 = addManualToken(
+    emptyPreviewSession(),
+    idx,
+    idx + 'John Smith'.length,
+    'John Smith',
+    'name'
+  );
+  const { tokens, sanitized } = computePreview(text, s0);
+  assert.ok(tokens.some((t) => t.raw === 'John Smith'), 'manual token honored');
+  assert.ok(!sanitized.includes('John Smith'), 'client name tokenized');
+});
+
+await test('previewSession: category counts are aggregated', () => {
+  const text =
+    'Client Maria Esperanza, phone 415-555-0123, at 2155 Vallejo Street. SSN 123-45-6789.';
+  const { categoryCounts } = computePreview(text, emptyPreviewSession());
+  assert.equal(categoryCounts.name, 1);
+  assert.equal(categoryCounts.phone, 1);
+  assert.equal(categoryCounts.street_address, 1);
+  assert.equal(categoryCounts.ssn, 1);
+});
+
+// ---------------------------------------------------------------------------
 // Summary
 // ---------------------------------------------------------------------------
 console.log('\n' + '='.repeat(60));

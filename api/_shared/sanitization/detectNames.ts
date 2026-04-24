@@ -138,13 +138,15 @@ function scanAddressCue(text: string): NameSpan[] {
  * names, etc.) before tokenizing.
  */
 function scanCapitalizedBigram(text: string): NameSpan[] {
-  const re = new RegExp(`(?<!^)(?<![.!?]\\s)\\b(${NAME_WORD}\\s+${NAME_WORD}(?:\\s+${NAME_WORD})?)\\b`, 'g');
+  // Bigram names at sentence start ("Maria Esperanza arrived...") must be
+  // caught — those are exactly the ones that matter. We rely on the
+  // COMMON_NON_NAME_STARTS filter below to suppress "The X", "Section Y",
+  // etc. rather than a position-based exclusion.
+  const re = new RegExp(`\\b(${NAME_WORD}\\s+${NAME_WORD}(?:\\s+${NAME_WORD})?)\\b`, 'g');
   const out: NameSpan[] = [];
   let m: RegExpExecArray | null;
   while ((m = re.exec(text)) !== null) {
     const raw = m[1];
-    // Filter common non-name pairs of capitalized words ("New York",
-    // "Los Angeles", etc.) via a small stopword list on the first word.
     const firstWord = raw.split(/\s+/)[0];
     if (COMMON_NON_NAME_STARTS.has(firstWord)) continue;
     out.push({
