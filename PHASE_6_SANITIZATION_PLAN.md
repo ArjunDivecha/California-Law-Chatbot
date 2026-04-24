@@ -31,7 +31,7 @@ This is Option B from the design discussion. Option C (full AWS migration to eli
 | Chat persistence | Tokenized content saved to Blob; rehydration happens only in the attorney's browser on reopen. |
 | Server backstop | Re-scans every `/api/*` request; rejects with 400 on any deterministic PII match. |
 | Audit log | HMAC of sanitized prompt + metadata only. Raw prompts and token maps never written anywhere. |
-| Passphrase recovery | **Decision pending — §12.** |
+| Passphrase recovery | **No recovery.** If the attorney forgets, the store is permanently unreadable and prior chats become un-rehydrate-able on that device. |
 
 ---
 
