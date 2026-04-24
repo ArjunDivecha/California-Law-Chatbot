@@ -15,6 +15,8 @@ import { Redis } from '@upstash/redis';
 import { put, del, get } from '@vercel/blob';
 import { randomUUID } from 'crypto';
 import type { ChatMessage } from '../types';
+import { scanForRawPII } from './_shared/sanitization/guard.js';
+import { buildAuditRecord, writeAuditRecord } from './_shared/auditLog.js';
 
 // ─── CORS ───────────────────────────────────────────────────────────────────
 
@@ -90,6 +92,34 @@ async function getMeta(kv: Redis, chatId: string): Promise<ChatMeta | null> {
   return JSON.parse(typeof raw === 'string' ? raw : JSON.stringify(raw)) as ChatMeta;
 }
 
+/**
+ * Pre-save PII scan — server-side enforcement that the tokenized chat
+ * payload is free of deterministic raw-PII patterns. Catches the case
+ * where the client-side tokenizer has a bug or isn't yet unlocked.
+ *
+ * Returns the union of triggered categories across every scanned field,
+ * or null if clean.
+ */
+function scanChatPayload(args: {
+  title?: unknown;
+  messages?: unknown;
+}): string[] | null {
+  const hits = new Set<string>();
+  if (typeof args.title === 'string') {
+    const r = scanForRawPII(args.title);
+    if (!r.ok) for (const c of r.categories) hits.add(c);
+  }
+  if (Array.isArray(args.messages)) {
+    for (const m of args.messages as Array<{ text?: unknown }>) {
+      const text = m?.text;
+      if (typeof text !== 'string') continue;
+      const r = scanForRawPII(text);
+      if (!r.ok) for (const c of r.categories) hits.add(c);
+    }
+  }
+  return hits.size === 0 ? null : Array.from(hits).sort();
+}
+
 // ─── HANDLER ─────────────────────────────────────────────────────────────────
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -121,6 +151,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // ── CREATE ────────────────────────────────────────────────────────────────
     if (req.method === 'POST' && !chatId) {
+      const piiCats = scanChatPayload({ title: req.body?.title });
+      if (piiCats) {
+        writeAuditRecord(
+          buildAuditRecord({
+            route: 'chats:create',
+            userId,
+            backstopTriggered: true,
+            backstopCategories: piiCats,
+            statusCode: 400,
+          })
+        );
+        return res.status(400).json({
+          error: 'backstop_triggered',
+          categories: piiCats,
+          message: `New-chat title contains content that looks like raw personal data (${piiCats.join(
+            ', '
+          )}). Sanitize before creating the chat.`,
+        });
+      }
+
       const id = randomUUID();
       const now = Date.now();
       const meta: ChatMeta = {
@@ -189,6 +239,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       console.log(`[chats] PUT id=${chatId} msgCount=${Array.isArray(messages) ? messages.length : 'not-array'} title=${title}`);
       if (!Array.isArray(messages)) return res.status(400).json({ error: 'messages array required' });
 
+      const piiCats = scanChatPayload({ title, messages });
+      if (piiCats) {
+        writeAuditRecord(
+          buildAuditRecord({
+            route: 'chats:save',
+            userId,
+            backstopTriggered: true,
+            backstopCategories: piiCats,
+            statusCode: 400,
+          })
+        );
+        return res.status(400).json({
+          error: 'backstop_triggered',
+          categories: piiCats,
+          message: `Chat payload contains content that looks like raw personal data (${piiCats.join(
+            ', '
+          )}). Re-sanitize and resubmit. Your draft is preserved locally in the browser.`,
+        });
+      }
+
       const existing = await getMeta(kv, chatId);
       // Ownership guard only applies if meta already exists; missing meta = auto-create
       if (existing && existing.userId !== userId) {
@@ -245,6 +315,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (req.method === 'PATCH') {
       const { title } = req.body ?? {};
       if (!title) return res.status(400).json({ error: 'title required' });
+
+      const piiCats = scanChatPayload({ title });
+      if (piiCats) {
+        writeAuditRecord(
+          buildAuditRecord({
+            route: 'chats:rename',
+            userId,
+            backstopTriggered: true,
+            backstopCategories: piiCats,
+            statusCode: 400,
+          })
+        );
+        return res.status(400).json({
+          error: 'backstop_triggered',
+          categories: piiCats,
+          message: `Rename title contains content that looks like raw personal data (${piiCats.join(
+            ', '
+          )}). Sanitize before saving.`,
+        });
+      }
 
       const meta = await getMeta(kv, chatId);
       if (!meta || meta.userId !== userId) return res.status(403).json({ error: 'Forbidden' });

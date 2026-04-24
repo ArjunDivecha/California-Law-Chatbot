@@ -6,6 +6,7 @@ import { PracticeArea } from '../components/SourceModeSelector';
 import { useAuthFetch } from '../utils/authFetch.ts';
 import {
   deriveTitleFromRaw,
+  presavePiiScan,
   rehydrateMessagesForDisplay,
   tokenizeMessagesForSave,
 } from '../services/sanitization/chatAdapter';
@@ -194,6 +195,21 @@ export const useChat = (chatId?: string) => {
         // the Day-7 real sanitizer, Upstash + Blob receive tokens only.
         const tokenizedMessages = await tokenizeMessagesForSave(updatedMessages);
         const tokenizedTitle = title ? await deriveTitleFromRaw(title) : undefined;
+
+        // Day 6.5 pre-save scan — fail fast before the network round-trip
+        // if the already-tokenized payload still contains raw PII
+        // (client-side tokenizer bug or not-yet-unlocked adapter).
+        const presave = presavePiiScan({ title: tokenizedTitle, messages: tokenizedMessages });
+        if (!presave.clean) {
+          console.warn(
+            `[scheduleSave] presave-pii-detected categories=${JSON.stringify(presave.categories)} dirty=${JSON.stringify(presave.dirtyIndexes)} — save aborted, local draft retained`
+          );
+          // Keep the local draft so the attorney's work isn't lost while
+          // they re-sanitize. Don't round-trip — the server backstop
+          // would reject with 400 anyway.
+          return;
+        }
+
         const res = await authFetch(`/api/chats?id=${id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },

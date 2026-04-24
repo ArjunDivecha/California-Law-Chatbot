@@ -89,11 +89,17 @@ export const STREET_ADDRESS: PIIPattern = {
     /\b\d{1,6}\s+(?:[A-Z][a-z]+\.?\s+){1,5}(?:St|Street|Ave|Avenue|Blvd|Boulevard|Rd|Road|Dr|Drive|Ln|Lane|Ct|Court|Pl|Place|Way|Pkwy|Parkway|Terr|Terrace|Cir|Circle|Hwy|Highway)\b\.?/g,
 };
 
-/** US ZIP (5-digit or ZIP+4). */
+/**
+ * US ZIP. Bare 5-digit sequences are too noisy — they collide with
+ * statute section numbers (§ 15610, § 12345). So we require either:
+ *   - a ZIP+4 form (`94115-2045`, unambiguous), or
+ *   - a 5-digit number preceded by a 2-letter state abbreviation or the
+ *     literal "ZIP".
+ */
 export const ZIP: PIIPattern = {
   category: 'zip',
   label: 'ZIP Code',
-  regex: /\b\d{5}(?:-\d{4})?\b/g,
+  regex: /\b(?:ZIP\s+\d{5}(?:-\d{4})?|[A-Z]{2}\s+\d{5}(?:-\d{4})?|\d{5}-\d{4})\b/g,
 };
 
 // ---------------------------------------------------------------------------

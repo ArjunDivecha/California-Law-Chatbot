@@ -148,16 +148,18 @@ await test('Street address: detects "number Street-Name Suffix"', () => {
   ]);
 });
 
-await test('ZIP: 5 digit and ZIP+4', () => {
+await test('ZIP: contextual 5-digit and full ZIP+4, rejects bare sections', () => {
   mustDetect(ZIP, [
     'San Francisco CA 94133 is the ZIP',
     'ZIP 94115-2045 on record',
-    'mailing 90210',
+    'address ending in 90210-1234',
   ]);
   mustNotDetect(ZIP, [
     'the year 202620',
     'phone 4155550123',
     'code 123',
+    'Welfare and Institutions Code § 15610',
+    'Section 12345 applies',
   ]);
 });
 
@@ -1176,6 +1178,93 @@ await test('previewSession: category counts are aggregated', () => {
   assert.equal(categoryCounts.phone, 1);
   assert.equal(categoryCounts.street_address, 1);
   assert.equal(categoryCounts.ssn, 1);
+});
+
+// ---------------------------------------------------------------------------
+// Pre-save PII scan (Day 6.5)
+// ---------------------------------------------------------------------------
+const { presavePiiScan } = adapter;
+
+await test('presavePiiScan: clean payload returns clean=true, empty categories', () => {
+  const r = presavePiiScan({
+    title: 'Family Code 1615 analysis',
+    messages: [{ text: 'Under Family Code § 1615, what are the elements?' }],
+  });
+  assert.equal(r.clean, true);
+  assert.deepEqual(r.categories, []);
+});
+
+await test('presavePiiScan: dirty title flags title with dirtyIndexes=[-1]', () => {
+  const r = presavePiiScan({
+    title: 'Chat about 123-45-6789',
+    messages: [{ text: 'clean text' }],
+  });
+  assert.equal(r.clean, false);
+  assert.ok(r.categories.includes('ssn'));
+  assert.ok(r.dirtyIndexes.includes(-1));
+});
+
+await test('presavePiiScan: dirty message at index reports its position', () => {
+  const r = presavePiiScan({
+    title: 'ok',
+    messages: [
+      { text: 'clean message' },
+      { text: 'follow up: 415-555-0123 please' },
+      { text: 'another clean message' },
+    ],
+  });
+  assert.equal(r.clean, false);
+  assert.ok(r.categories.includes('phone'));
+  assert.ok(r.dirtyIndexes.includes(1));
+  assert.ok(!r.dirtyIndexes.includes(0));
+  assert.ok(!r.dirtyIndexes.includes(2));
+});
+
+await test('presavePiiScan: already-tokenized payload is clean', () => {
+  const r = presavePiiScan({
+    title: 'Elder-abuse exposure for CLIENT_001',
+    messages: [
+      { text: 'CLIENT_001 transferred ADDRESS_002 to RELATIVE_003 in DATE_001.' },
+      { text: 'What are the W&I § 15610 elements?' },
+    ],
+  });
+  assert.equal(r.clean, true);
+});
+
+await test('presavePiiScan: handles missing/undefined fields', () => {
+  assert.equal(presavePiiScan({}).clean, true);
+  assert.equal(presavePiiScan({ title: undefined }).clean, true);
+  assert.equal(presavePiiScan({ messages: undefined }).clean, true);
+  assert.equal(presavePiiScan({ messages: [{}] }).clean, true);
+});
+
+// ---------------------------------------------------------------------------
+// Server-side wiring — /api/chats must reject raw PII on POST/PUT/PATCH
+// ---------------------------------------------------------------------------
+
+await test('/api/chats imports the sanitization backstop', () => {
+  const text = readFileSync(joinPath(repoRoot, 'api/chats.ts'), 'utf8');
+  assert.ok(/from '[^']*sanitization\/guard[^']*'/.test(text), 'imports guard');
+  assert.ok(/scanForRawPII\s*\(/.test(text), 'calls scanForRawPII');
+});
+
+await test('/api/chats writes audit records on rejection', () => {
+  const text = readFileSync(joinPath(repoRoot, 'api/chats.ts'), 'utf8');
+  assert.ok(/writeAuditRecord\s*\(/.test(text), 'calls writeAuditRecord');
+  assert.ok(/route:\s*['"]chats:(create|save|rename)['"]/.test(text), 'records chat-specific routes');
+});
+
+await test('/api/chats PUT + POST + PATCH call scanChatPayload and gate on the result', () => {
+  const text = readFileSync(joinPath(repoRoot, 'api/chats.ts'), 'utf8');
+  // Three call sites = three request handlers (POST/PUT/PATCH).
+  const calls = (text.match(/scanChatPayload\s*\(/g) ?? []).length;
+  assert.ok(calls >= 3, `expected at least 3 scanChatPayload call sites, got ${calls}`);
+});
+
+await test('hooks/useChat.ts runs presavePiiScan before the PUT round-trip', () => {
+  const text = readFileSync(joinPath(repoRoot, 'hooks/useChat.ts'), 'utf8');
+  assert.ok(/presavePiiScan\s*\(/.test(text), 'calls presavePiiScan');
+  assert.ok(/presave-pii-detected/.test(text), 'logs the presave warning marker');
 });
 
 // ---------------------------------------------------------------------------

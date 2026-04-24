@@ -14,6 +14,7 @@
  */
 
 import type { ChatMessage } from '../../types';
+import { scanForRawPII } from '../../api/_shared/sanitization/guard.ts';
 
 const DEFAULT_TITLE_MAX = 60;
 
@@ -94,4 +95,57 @@ export async function deriveTitleFromRaw(
   maxLen: number = DEFAULT_TITLE_MAX
 ): Promise<string> {
   return getChatSanitizer().deriveSafeTitle(rawText, maxLen);
+}
+
+// ---------------------------------------------------------------------------
+// Pre-save PII scan (Day 6.5)
+// ---------------------------------------------------------------------------
+
+export interface PresaveScanResult {
+  clean: boolean;
+  /** Unique triggered categories, sorted. Never includes matched text. */
+  categories: string[];
+  /** Which message indexes had a hit (title = -1). */
+  dirtyIndexes: number[];
+}
+
+/**
+ * Client-side mirror of the /api/chats server backstop. Scans the
+ * already-tokenized payload for raw-PII-shaped content one more time
+ * before the HTTP round-trip. Fails fast locally so the attorney gets
+ * an immediate warning instead of waiting for a 400.
+ *
+ * Returns a structured result. Callers decide whether to block or warn.
+ */
+export function presavePiiScan(args: {
+  title?: string;
+  messages?: Array<{ text?: string }>;
+}): PresaveScanResult {
+  const cats = new Set<string>();
+  const dirty: number[] = [];
+
+  if (typeof args.title === 'string') {
+    const r = scanForRawPII(args.title);
+    if (!r.ok) {
+      for (const c of r.categories) cats.add(c);
+      dirty.push(-1);
+    }
+  }
+  if (Array.isArray(args.messages)) {
+    args.messages.forEach((m, idx) => {
+      const text = m?.text;
+      if (typeof text !== 'string') return;
+      const r = scanForRawPII(text);
+      if (!r.ok) {
+        for (const c of r.categories) cats.add(c);
+        dirty.push(idx);
+      }
+    });
+  }
+
+  return {
+    clean: cats.size === 0,
+    categories: Array.from(cats).sort(),
+    dirtyIndexes: dirty,
+  };
 }
