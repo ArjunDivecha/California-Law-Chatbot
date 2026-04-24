@@ -494,6 +494,133 @@ await test('store import with wrong passphrase throws', async () => {
 });
 
 // ---------------------------------------------------------------------------
+// Tokenize + Rehydrate (Day 3)
+// ---------------------------------------------------------------------------
+const pipeline = await import('../api/_shared/sanitization/tokenize.ts');
+const { tokenize, rehydrate, findUnknownTokens } = pipeline;
+
+async function freshStore(passphrase = 'pw') {
+  const s = new SanitizationStore();
+  await s.init(passphrase, { dbName: freshStoreName() });
+  return s;
+}
+
+await test('tokenize: basic entity → sanitized text + populated map', async () => {
+  const s = await freshStore();
+  const { sanitized, tokenMap, tokenCategoryCounts } = await tokenize(
+    'Our client Maria Esperanza transferred her home to her son Daniel Esperanza.',
+    s
+  );
+  assert.ok(/CLIENT_00\d/.test(sanitized), 'sanitized contains a CLIENT token');
+  assert.ok(!sanitized.includes('Maria Esperanza'), 'real name absent from sanitized');
+  assert.ok(!sanitized.includes('Daniel Esperanza'), 'second name absent');
+  assert.equal(tokenMap.size, 2, 'two distinct names in map');
+  assert.equal(tokenCategoryCounts.name, 2);
+});
+
+await test('tokenize: stable across repeated calls on the same store', async () => {
+  const s = await freshStore();
+  const a = await tokenize('Our client Maria Esperanza called today.', s);
+  const b = await tokenize('Follow up with Maria Esperanza tomorrow.', s);
+  // Same entity → same token across invocations.
+  const tokenA = [...a.tokenMap.keys()][0];
+  const tokenB = [...b.tokenMap.keys()][0];
+  assert.equal(tokenA, tokenB, 'stable token for the same raw entity');
+});
+
+await test('tokenize: preserves public-legal entities (allowlist) intact', async () => {
+  const s = await freshStore();
+  const { sanitized } = await tokenize(
+    'Under Family Code § 1615, the analysis in People v. Smith controls.',
+    s
+  );
+  assert.ok(/Family Code/i.test(sanitized), 'statute citation preserved');
+  assert.ok(/People v\. Smith/.test(sanitized), 'case caption preserved');
+});
+
+await test('tokenize: SSN, phone, and address all flow to tokens', async () => {
+  const s = await freshStore();
+  const { sanitized, tokenCategoryCounts } = await tokenize(
+    'SSN 123-45-6789, phone 415-555-0123, residing at 2155 Vallejo Street.',
+    s
+  );
+  assert.ok(!sanitized.includes('123-45-6789'), 'SSN tokenized');
+  assert.ok(!sanitized.includes('415-555-0123'), 'phone tokenized');
+  assert.ok(!sanitized.includes('2155 Vallejo Street'), 'address tokenized');
+  assert.ok(tokenCategoryCounts.ssn >= 1);
+  assert.ok(tokenCategoryCounts.phone >= 1);
+  assert.ok(tokenCategoryCounts.street_address >= 1);
+});
+
+await test('rehydrate: exact inverse on the sanitized output', async () => {
+  const s = await freshStore();
+  const original = 'Our client Maria Esperanza, phone 415-555-0123, at 2155 Vallejo Street.';
+  const { sanitized, tokenMap } = await tokenize(original, s);
+  const back = rehydrate(sanitized, tokenMap);
+  assert.equal(back, original, 'round-trip recovers the original text');
+});
+
+await test('rehydrate: handles possessives — CLIENT_001\'s → Maria Esperanza\'s', async () => {
+  const s = await freshStore();
+  const { tokenMap } = await tokenize('Our client Maria Esperanza transferred it.', s);
+  const text = `CLIENT_001's estate is substantial. CLIENT_001 executed in 2021.`;
+  const back = rehydrate(text, tokenMap);
+  assert.ok(back.includes("Maria Esperanza's estate"), 'possessive preserved');
+  assert.ok(back.includes('Maria Esperanza executed in 2021'), 'plain substitution');
+});
+
+await test('rehydrate: leaves unknown tokens untouched (model-invented)', () => {
+  const map = new Map([['CLIENT_001', 'Maria Esperanza']]);
+  const back = rehydrate('CLIENT_001 and CLIENT_999 appeared in the answer.', map);
+  assert.ok(back.includes('Maria Esperanza'), 'known token replaced');
+  assert.ok(back.includes('CLIENT_999'), 'unknown token left alone');
+});
+
+await test('rehydrate: CLIENT_100 does not collide with CLIENT_1000', () => {
+  // If we ever exceed 999 names, the token grows (CLIENT_1000). The word-
+  // boundary regex must prevent CLIENT_100 from replacing the prefix of
+  // CLIENT_1000.
+  const map = new Map([
+    ['CLIENT_100', 'Alice'],
+    ['CLIENT_1000', 'Bob'],
+  ]);
+  const out = rehydrate('See CLIENT_100 and CLIENT_1000.', map);
+  assert.equal(out, 'See Alice and Bob.');
+});
+
+await test('findUnknownTokens flags model-invented CLIENT/SB references', () => {
+  const text = 'CLIENT_001 and CLIENT_777 and ADDRESS_003 are discussed.';
+  const map = new Map([['CLIENT_001', 'Maria Esperanza']]);
+  const unknown = findUnknownTokens(text, map);
+  assert.deepEqual(unknown.sort(), ['ADDRESS_003', 'CLIENT_777'].sort());
+});
+
+await test('tokenize → rehydrate round-trip over multi-sentence prompts', async () => {
+  const s = await freshStore();
+  const prompts = [
+    'Our client Maria Esperanza, age 73, transferred her home to her son Daniel Esperanza in 2021.',
+    'The Esperanza estate is worth about 4.8 million. Contact her at 415-555-0123.',
+    'Family Code § 1615 governs; see People v. Smith (2020) 50 Cal.App.5th 123.',
+    'My client John Smith lives at 742 Evergreen Terrace.',
+    'Send the draft to attorney@firm.com by 10/15/2025.',
+  ];
+  for (const original of prompts) {
+    const { sanitized, tokenMap } = await tokenize(original, s);
+    const back = rehydrate(sanitized, tokenMap);
+    assert.equal(back, original, `round-trip: "${original.slice(0, 50)}..."`);
+  }
+});
+
+await test('tokenize: a pure public-legal prompt produces no tokens', async () => {
+  const s = await freshStore();
+  const prompt =
+    'Explain the elements of an enforceable premarital agreement under California Family Code § 1615.';
+  const { sanitized, tokenMap } = await tokenize(prompt, s);
+  assert.equal(sanitized, prompt, 'no tokens inserted');
+  assert.equal(tokenMap.size, 0, 'empty map');
+});
+
+// ---------------------------------------------------------------------------
 // Summary
 // ---------------------------------------------------------------------------
 console.log('\n' + '='.repeat(60));
