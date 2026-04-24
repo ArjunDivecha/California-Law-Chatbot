@@ -24,6 +24,17 @@ import {
   BedrockConfigError,
   resolveBedrockModel,
 } from '../api/_shared/bedrockModels';
+import {
+  EMPTY_ENTITIES,
+  EMPTY_GAP_PLAN,
+  extractEntities,
+  extractEntitiesHeuristic,
+  identifyGaps,
+  mergeEntities,
+  type ExtractedEntities,
+  type GapPlan,
+  type RetrievalSnapshot,
+} from '../api/_shared/researchPlanner';
 
 const RESEARCH_SYSTEM_PROMPT = `You are a California legal research specialist. Your job is to organize collected source material into a concise, practical research package for legal drafting.
 
@@ -72,21 +83,42 @@ export class ResearchAgent {
     this.researchNotes = '';
     this.keyAuthorities = [];
 
+    // Phase 5 — Pass 1: planner
+    // Heuristic extraction is deterministic and always runs. Claude
+    // extraction augments it when Bedrock is reachable; fails open.
+    const heuristic = extractEntitiesHeuristic(query);
+    const llmEntities = await extractEntities(query);
+    const entities = mergeEntities(heuristic, llmEntities);
+
+    // Phase 5 — Initial retrieval (steered by extracted entities)
     await Promise.all([
-      sources.includes('ceb') ? this.runCEBSearch(query, focusAreas) : Promise.resolve(),
-      sources.includes('courtlistener') ? this.runCaseLawSearch(query) : Promise.resolve(),
-      sources.includes('statutes') ? this.runStatuteSearch(query) : Promise.resolve(),
-      sources.includes('legislative') ? this.runLegislativeSearch(query) : Promise.resolve(),
+      sources.includes('ceb') ? this.runCEBSearch(query, focusAreas, entities) : Promise.resolve(),
+      sources.includes('courtlistener') ? this.runCaseLawSearch(query, entities) : Promise.resolve(),
+      sources.includes('statutes') ? this.runStatuteSearch(query, entities) : Promise.resolve(),
+      sources.includes('legislative') ? this.runLegislativeSearch(query, entities) : Promise.resolve(),
     ]);
 
-    await this.generateResearchSummary(query, sources, focusAreas);
+    // Phase 5 — Pass 2: single refinement round based on gap analysis
+    await this.runRefinementRound(query, entities, sources);
+
+    await this.generateResearchSummary(query, sources, focusAreas, entities);
     return this.buildResearchPackage(query);
   }
 
-  private async runCEBSearch(query: string, focusAreas?: string[]): Promise<void> {
+  private async runCEBSearch(
+    query: string,
+    focusAreas?: string[],
+    entities: ExtractedEntities = EMPTY_ENTITIES
+  ): Promise<void> {
+    // Prefer Claude-extracted practice areas; fall back to heuristic mapper.
+    const categories =
+      entities.practice_areas.length > 0
+        ? Array.from(new Set(entities.practice_areas))
+        : this.inferCEBCategories(query, focusAreas);
+
     const result = await cebSearchTool({
       query,
-      categories: this.inferCEBCategories(query, focusAreas),
+      categories,
       topK: 5,
     });
 
@@ -96,9 +128,20 @@ export class ResearchAgent {
     }
   }
 
-  private async runCaseLawSearch(query: string): Promise<void> {
+  private async runCaseLawSearch(
+    query: string,
+    entities: ExtractedEntities = EMPTY_ENTITIES
+  ): Promise<void> {
+    // Augment the query with legal concepts when available so CourtListener
+    // sees the canonical term rather than whatever client-shaped phrasing
+    // survived sanitization. Falls back to the raw query if empty.
+    const augmented =
+      entities.legal_concepts.length > 0
+        ? `${query} ${entities.legal_concepts.slice(0, 3).join(' ')}`
+        : query;
+
     const result = await courtListenerSearchTool({
-      query,
+      query: augmented,
       courtFilter: 'california_all',
       maxResults: 5,
     });
@@ -106,8 +149,14 @@ export class ResearchAgent {
     this.caseLaw.push(...result);
   }
 
-  private async runStatuteSearch(query: string): Promise<void> {
-    const lookups = this.extractStatuteLookups(query);
+  private async runStatuteSearch(
+    query: string,
+    entities: ExtractedEntities = EMPTY_ENTITIES
+  ): Promise<void> {
+    const heuristicLookups = this.extractStatuteLookups(query);
+    const entityLookups = entities.statutes.map((s) => ({ code: s.code, section: s.section }));
+
+    const lookups = this.dedupeStatuteLookups([...heuristicLookups, ...entityLookups]);
     if (lookups.length === 0) {
       return;
     }
@@ -123,8 +172,18 @@ export class ResearchAgent {
     }
   }
 
-  private async runLegislativeSearch(query: string): Promise<void> {
-    const result = await legislativeSearchTool({ query });
+  private async runLegislativeSearch(
+    query: string,
+    entities: ExtractedEntities = EMPTY_ENTITIES
+  ): Promise<void> {
+    // Build a better upstream query: prefer explicit legislative terms when
+    // the planner identified any, otherwise fall back to the raw question.
+    const upstreamQuery =
+      entities.legislative_terms.length > 0
+        ? `California ${entities.legislative_terms.slice(0, 3).join(' ')} ${entities.legislative_session_year || ''}`.trim()
+        : query;
+
+    const result = await legislativeSearchTool({ query: upstreamQuery });
     if (!result?.bills?.length) return;
 
     for (const bill of result.bills) {
@@ -141,6 +200,20 @@ export class ResearchAgent {
         provider: 'openstates',
       });
     }
+  }
+
+  private dedupeStatuteLookups(
+    lookups: Array<{ code: string; section: string }>
+  ): Array<{ code: string; section: string }> {
+    const seen = new Set<string>();
+    const out: Array<{ code: string; section: string }> = [];
+    for (const l of lookups) {
+      const key = `${l.code.toLowerCase()}:${l.section}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(l);
+    }
+    return out;
   }
 
   private inferCEBCategories(query: string, focusAreas?: string[]): string[] | undefined {
@@ -186,10 +259,136 @@ export class ResearchAgent {
     return lookups;
   }
 
+  private async runRefinementRound(
+    query: string,
+    entities: ExtractedEntities,
+    sources: ResearchSourceName[]
+  ): Promise<void> {
+    // Snapshot current state for the gap-analysis prompt. Kept short so the
+    // second Claude call stays cheap.
+    const snapshot: RetrievalSnapshot = {
+      cebCount: this.cebSources.length,
+      caseCount: this.caseLaw.length,
+      statuteCount: this.statutes.length,
+      legislativeCount: this.legislativeSources.length,
+      cebExcerpts: this.cebSources.slice(0, 3).map((s) => `${s.cebCitation}: ${s.excerpt || ''}`),
+      caseHeadings: this.caseLaw.slice(0, 3).map((c) => `${c.caseName} ${c.citation}`),
+      statuteHeadings: this.statutes.slice(0, 3).map((s) => `${s.code} § ${s.section}`),
+      legislativeHeadings: this.legislativeSources.slice(0, 3).map((b) => `${b.billNumber}: ${b.title}`),
+    };
+
+    const plan = await identifyGaps(query, entities, snapshot);
+
+    // Fail-open: nothing to do if the planner returned the empty plan.
+    if (
+      plan.statute_followups.length === 0 &&
+      plan.case_followup_queries.length === 0 &&
+      plan.legislative_followup_queries.length === 0 &&
+      plan.ceb_followup_queries.length === 0
+    ) {
+      return;
+    }
+
+    const followupTasks: Array<Promise<unknown>> = [];
+
+    if (sources.includes('statutes') && plan.statute_followups.length > 0) {
+      const existing = new Set(
+        this.statutes.map((s) => `${s.code.toLowerCase()}:${s.section}`)
+      );
+      const fresh = plan.statute_followups.filter(
+        (s) => !existing.has(`${s.code.toLowerCase()}:${s.section}`)
+      );
+      for (const lookup of fresh.slice(0, 5)) {
+        followupTasks.push(
+          statuteLookupTool(lookup)
+            .then((r) => { if (r) this.statutes.push(r); })
+            .catch(() => null)
+        );
+      }
+    }
+
+    if (sources.includes('courtlistener') && plan.case_followup_queries.length > 0) {
+      const existing = new Set(this.caseLaw.map((c) => c.citation));
+      for (const followup of plan.case_followup_queries.slice(0, 3)) {
+        followupTasks.push(
+          courtListenerSearchTool({
+            query: followup,
+            courtFilter: 'california_all',
+            maxResults: 3,
+          })
+            .then((results) => {
+              for (const c of results) {
+                if (c.citation && !existing.has(c.citation)) {
+                  existing.add(c.citation);
+                  this.caseLaw.push(c);
+                }
+              }
+            })
+            .catch(() => null)
+        );
+      }
+    }
+
+    if (sources.includes('legislative') && plan.legislative_followup_queries.length > 0) {
+      const existing = new Set(this.legislativeSources.map((b) => b.billNumber));
+      for (const followup of plan.legislative_followup_queries.slice(0, 3)) {
+        followupTasks.push(
+          legislativeSearchTool({ query: followup })
+            .then((r) => {
+              for (const bill of r?.bills || []) {
+                const billNumber = (bill.billNumber || '').trim();
+                if (!billNumber || existing.has(billNumber)) continue;
+                existing.add(billNumber);
+                this.legislativeSources.push({
+                  billNumber,
+                  title: bill.title || billNumber,
+                  status: bill.status || 'Unknown',
+                  lastAction: bill.lastAction || undefined,
+                  url: bill.url || '',
+                  provider: 'openstates',
+                });
+              }
+            })
+            .catch(() => null)
+        );
+      }
+    }
+
+    if (sources.includes('ceb') && plan.ceb_followup_queries.length > 0) {
+      const existing = new Set(this.cebSources.map((s) => s.cebCitation));
+      for (const followup of plan.ceb_followup_queries.slice(0, 2)) {
+        followupTasks.push(
+          cebSearchTool({
+            query: followup,
+            categories:
+              entities.practice_areas.length > 0 ? Array.from(new Set(entities.practice_areas)) : undefined,
+            topK: 3,
+          })
+            .then((r) => {
+              for (const src of r.sources) {
+                if (!existing.has(src.cebCitation)) {
+                  existing.add(src.cebCitation);
+                  this.cebSources.push(src);
+                }
+              }
+              if (r.modelLanguage) this.modelLanguage.push(...r.modelLanguage);
+            })
+            .catch(() => null)
+        );
+      }
+    }
+
+    await Promise.all(followupTasks);
+    if (plan.rationale) {
+      console.log(`🔁 Research Agent: refinement rationale — ${plan.rationale}`);
+    }
+  }
+
   private async generateResearchSummary(
     query: string,
     sources: ResearchSourceName[],
-    focusAreas?: string[]
+    focusAreas?: string[],
+    entities: ExtractedEntities = EMPTY_ENTITIES
   ): Promise<void> {
     const fallbackNotes = this.buildFallbackResearchNotes(query, sources, focusAreas);
 
@@ -213,12 +412,27 @@ export class ResearchAgent {
       return;
     }
 
+    const plannerSummary =
+      entities.statutes.length ||
+      entities.cases.length ||
+      entities.legal_concepts.length ||
+      entities.practice_areas.length ||
+      entities.legislative_terms.length
+        ? `Planner-extracted entities:
+- Statutes: ${entities.statutes.map((s) => `${s.code} §${s.section}`).join(', ') || 'none'}
+- Cases: ${entities.cases.join(', ') || 'none'}
+- Legal concepts: ${entities.legal_concepts.join(', ') || 'none'}
+- Practice areas: ${entities.practice_areas.join(', ') || 'none'}
+- Legislative terms: ${entities.legislative_terms.join(', ') || 'none'}${entities.legislative_session_year ? ` (session ${entities.legislative_session_year})` : ''}
+- Current-law query: ${entities.is_current_law_query ? 'yes' : 'no'}\n\n`
+        : '';
+
     const prompt = `Research query: ${query}
 
 Requested source types: ${sources.join(', ')}
 ${focusAreas?.length ? `Focus areas: ${focusAreas.join(', ')}` : ''}
 
-Collected CEB sources:
+${plannerSummary}Collected CEB sources:
 ${this.cebSources.slice(0, 5).map((source) => `- ${source.cebCitation}: ${(source.excerpt || '').substring(0, 220)}`).join('\n') || '- None'}
 
 Collected case law:

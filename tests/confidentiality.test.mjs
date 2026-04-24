@@ -299,6 +299,100 @@ test('confidential-prompts.json contains synthetic PII (so sanitizer tests have 
 });
 
 // ---------------------------------------------------------------------------
+// 4b. Phase 5 — research planner heuristics
+// ---------------------------------------------------------------------------
+const planner = await import('../api/_shared/researchPlanner.ts');
+const { extractEntitiesHeuristic, mergeEntities, EMPTY_ENTITIES } = planner;
+
+test('planner heuristic extracts Family Code statute lookups', () => {
+  const e = extractEntitiesHeuristic(
+    'What are the elements of an enforceable premarital agreement under California Family Code § 1615?'
+  );
+  assertEqual(e.statutes.length, 1, 'one statute lookup');
+  assertEqual(e.statutes[0].code, 'Family Code', 'code');
+  assertEqual(e.statutes[0].section, '1615', 'section');
+  assertTrue(e.practice_areas.includes('family_law'), 'family_law practice area');
+});
+
+test('planner heuristic flags current-law queries + session year', () => {
+  const e = extractEntitiesHeuristic('what new laws have been passed in 2026 in CA');
+  assertEqual(e.is_current_law_query, true, 'current-law flag');
+  assertEqual(e.legislative_session_year, '2026', 'session year');
+});
+
+test('planner heuristic extracts legislative terms from bill references', () => {
+  const e = extractEntitiesHeuristic(
+    'what California bills about electric bicycles were active in 2025-2026'
+  );
+  assertTrue(e.legislative_terms.some((t) => /bills?/i.test(t)), 'legislative term present');
+  assertEqual(e.is_current_law_query, true, 'current-law flag');
+});
+
+test('planner heuristic infers trusts_estates practice area from probate language', () => {
+  const e = extractEntitiesHeuristic(
+    'Explain Probate Code § 859 double damages for trustee self-dealing.'
+  );
+  assertTrue(e.practice_areas.includes('trusts_estates'), 'trusts_estates area');
+  assertEqual(e.statutes[0].code, 'Probate Code', 'probate code');
+  assertEqual(e.statutes[0].section, '859', 'section 859');
+});
+
+test('planner mergeEntities dedupes and preserves heuristic hits', () => {
+  const h = extractEntitiesHeuristic('Family Code § 1615 and Civil Code § 1668');
+  const l = {
+    ...EMPTY_ENTITIES,
+    statutes: [
+      { code: 'Family Code', section: '1615' }, // dup
+      { code: 'Probate Code', section: '859' }, // new
+    ],
+    practice_areas: ['trusts_estates'],
+    is_current_law_query: false,
+  };
+  const merged = mergeEntities(h, l);
+  assertEqual(merged.statutes.length, 3, 'family+civil+probate');
+  assertTrue(
+    merged.practice_areas.includes('family_law') && merged.practice_areas.includes('trusts_estates'),
+    'both practice areas'
+  );
+});
+
+test('gold-recall-prompts.json contains 10 well-formed entries', () => {
+  const data = loadFixture('gold-recall-prompts.json');
+  assertEqual(data.prompts.length, 10, 'ten prompts');
+  for (const p of data.prompts) {
+    assertTrue(typeof p.id === 'string' && p.id.startsWith('gold-'), `id ${p.id}`);
+    assertTrue(typeof p.text === 'string' && p.text.length > 10, `text ${p.id}`);
+  }
+});
+
+test('heuristic extraction satisfies every fixture expectation', () => {
+  const data = loadFixture('gold-recall-prompts.json');
+  for (const p of data.prompts) {
+    const e = extractEntitiesHeuristic(p.text);
+    const exp = p.expectedHeuristic || {};
+    if (typeof exp.statuteCount === 'number') {
+      assertTrue(e.statutes.length >= exp.statuteCount, `${p.id} statuteCount ≥ ${exp.statuteCount}`);
+    }
+    if (exp.practiceAreasInclude) {
+      assertTrue(
+        e.practice_areas.includes(exp.practiceAreasInclude),
+        `${p.id} practice area ${exp.practiceAreasInclude}`
+      );
+    }
+    if (exp.isCurrentLawQuery === true) {
+      assertTrue(e.is_current_law_query, `${p.id} is current-law`);
+    }
+    if (exp.legislativeSessionYear) {
+      assertEqual(
+        e.legislative_session_year,
+        exp.legislativeSessionYear,
+        `${p.id} session year`
+      );
+    }
+  }
+});
+
+// ---------------------------------------------------------------------------
 // 5. Source-code grep checks for forbidden patterns on Bedrock paths
 // ---------------------------------------------------------------------------
 test('No production Bedrock call site falls back to a GEMINI_* model env var', () => {

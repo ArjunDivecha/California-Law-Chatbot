@@ -1,0 +1,81 @@
+{
+  "description": "Gold-set fixture for Phase 5 recall validation. Ten sanitized public-legal prompts that exercise the different retrieval surfaces (statute lookup, case law, legislation, CEB, current-law).",
+  "prompts": [
+    {
+      "id": "gold-1",
+      "text": "What are the elements of an enforceable premarital agreement under California Family Code § 1615?",
+      "expectedHeuristic": {
+        "statuteCount": 1,
+        "practiceAreasInclude": "family_law"
+      }
+    },
+    {
+      "id": "gold-2",
+      "text": "Explain Probate Code § 859 double damages in the context of trustee self-dealing.",
+      "expectedHeuristic": {
+        "statuteCount": 1,
+        "practiceAreasInclude": "trusts_estates"
+      }
+    },
+    {
+      "id": "gold-3",
+      "text": "How does CCP § 2030.300 govern motions to compel supplemental interrogatory responses in civil litigation?",
+      "expectedHeuristic": {
+        "practiceAreasInclude": "business_litigation"
+      }
+    },
+    {
+      "id": "gold-4",
+      "text": "What duties does Corporations Code § 309 impose on California directors of a general stock corporation?",
+      "expectedHeuristic": {
+        "statuteCount": 1,
+        "practiceAreasInclude": "business_entities"
+      }
+    },
+    {
+      "id": "gold-5",
+      "text": "Summarize the undue-influence factors under Welfare and Institutions Code § 15610.70.",
+      "expectedHeuristic": {
+        "statuteCount": 1
+      }
+    },
+    {
+      "id": "gold-6",
+      "text": "what new laws have been passed in 2026 in CA",
+      "expectedHeuristic": {
+        "isCurrentLawQuery": true,
+        "legislativeSessionYear": "2026"
+      }
+    },
+    {
+      "id": "gold-7",
+      "text": "what California bills about electric bicycles were active in 2025-2026",
+      "expectedHeuristic": {
+        "isCurrentLawQuery": true,
+        "legislativeSessionYear": "2025"
+      }
+    },
+    {
+      "id": "gold-8",
+      "text": "has California changed its lemon law procedures recently",
+      "expectedHeuristic": {
+        "isCurrentLawQuery": true
+      }
+    },
+    {
+      "id": "gold-9",
+      "text": "Outline the fiduciary duty rules that apply to LLC managers under California Corporations Code § 17704.09.",
+      "expectedHeuristic": {
+        "statuteCount": 1,
+        "practiceAreasInclude": "business_entities"
+      }
+    },
+    {
+      "id": "gold-10",
+      "text": "What are the disclosure obligations for purchase and sale contracts for residential real estate in California?",
+      "expectedHeuristic": {
+        "practiceAreasInclude": "business_transactions"
+      }
+    }
+  ]
+}
