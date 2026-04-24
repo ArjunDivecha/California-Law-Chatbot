@@ -14,13 +14,13 @@ import {
   getErrorDetails,
   hasBedrockProviderCredentials,
   isRetryableProviderError,
-} from './_shared/anthropicBedrock';
-import { ACCURACY_ALLOWED, enforceFlow, rejectFlow } from './_shared/flowPolicy';
+} from './_shared/anthropicBedrock.js';
+import { ACCURACY_ALLOWED, enforceFlow, rejectFlow } from './_shared/flowPolicy.js';
 import {
   BedrockConfigError,
   assertNoPromptCacheMetadata,
   resolveBedrockModel,
-} from './_shared/bedrockModels';
+} from './_shared/bedrockModels.js';
 
 const PRIMARY_TIMEOUT_MS = Number(process.env.BEDROCK_PRIMARY_TIMEOUT_MS || 60000);
 const FALLBACK_TIMEOUT_MS = Number(process.env.BEDROCK_FALLBACK_TIMEOUT_MS || 45000);

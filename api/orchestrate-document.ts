@@ -21,8 +21,8 @@ import {
   getErrorDetails,
   hasBedrockProviderCredentials,
   isRetryableProviderError,
-} from './_shared/anthropicBedrock';
-import { resolveBedrockModel } from './_shared/bedrockModels';
+} from './_shared/anthropicBedrock.js';
+import { resolveBedrockModel } from './_shared/bedrockModels.js';
 
 // Vercel function config
 export const config = {
