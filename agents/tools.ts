@@ -29,7 +29,8 @@ export interface CEBSearchResult {
     source: string;
     citation: string;
     text: string;
-    contentType: string;
+    contentType: 'sample_clause' | 'checklist' | 'practice_tip' | 'form_language';
+    usage: string;
   }>;
 }
 
@@ -67,6 +68,7 @@ export async function cebSearchTool(params: CEBSearchParams): Promise<CEBSearchR
         citation: s.cebCitation,
         text: s.excerpt || '',
         contentType: identifyContentType(s.excerpt || ''),
+        usage: 'Potential model language or practice guidance excerpt from CEB.',
       }));
 
     return {
@@ -79,7 +81,7 @@ export async function cebSearchTool(params: CEBSearchParams): Promise<CEBSearchR
   }
 }
 
-function identifyContentType(text: string): string {
+function identifyContentType(text: string): 'sample_clause' | 'checklist' | 'practice_tip' | 'form_language' {
   const lowerText = text.toLowerCase();
   if (lowerText.includes('checklist')) return 'checklist';
   if (lowerText.includes('sample') || lowerText.includes('form')) return 'sample_clause';

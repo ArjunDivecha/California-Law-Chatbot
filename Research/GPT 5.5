@@ -1,0 +1,94 @@
+As of **April 23, 2026**, I did **not** find an open, production-grade pretrained model that already solves legal-domain PII detection *and* reliably preserves public legal entities such as cases, statutes, courts, judges acting publicly, and scholarship. The closest open starting point is [OpenAI Privacy Filter](https://huggingface.co/openai/privacy-filter): Apache-2.0, local, small enough to run in a trust boundary, and already trained partly on synthetic legal/professional examples. What is missing is the legal policy layer: it emits binary PII spans, not “redact client address” versus “preserve case citation.”
+
+You can fine-tune without starting from zero, but not without doing *any* annotation if you want California/legal-production quality. The best legal anonymization dataset is [TAB](https://huggingface.co/datasets/ildpil/text-anonymization-benchmark), MIT-licensed, based on ECHR cases, and annotated with mask/no-mask decisions. The best chatbot-query PII dataset is [SPY](https://huggingface.co/datasets/mks-logic/SPY), CC-BY-4.0, synthetic legal/medical user queries. Neither is California-specific or rich in U.S. public legal-entity preservation.
+
+The gap your project would fill is clear: a U.S./California legal sanitizer that jointly labels **private client-confidential facts to redact** and **public legal authorities/entities to preserve**, with measured precision/recall on realistic legal-research prompts. This looks underexplored mostly because confidential legal data is hard to share, public case law is already public, and legal NER/citation extraction has evolved separately from privacy redaction.
+
+**A. Pretrained Models**
+
+1. **OpenAI Privacy Filter — OpenAI**  
+Source: [HF model](https://huggingface.co/openai/privacy-filter), [GitHub](https://github.com/openai/privacy-filter), [model card PDF](https://cdn.openai.com/pdf/c66281ed-b638-456a-8ce1-97e9f5264a90/OpenAI-Privacy-Filter-Model-Card.pdf). License: Apache-2.0. Architecture: 1.5B MoE, 2 experts/1 active, about 0.6B active params; BIO token labeling. Training: about 30M synthetic examples across finance, healthcare, education, travel, government, real estate, legal, professional services, etc. Categories: binary `PII`/non-PII only. Public-v-private legal distinction: no explicit case/statute/court preservation classes. Benchmarks: strong internal/generic PII results; on SPY, zero-shot F1 about 0.04, fine-tuned about 0.46, synthetic-augmented about 0.66. Limits: misses some PII, no entity taxonomy, needs policy wrapper. Updated: HF/GitHub April 2026.
+
+2. **CAPID Llama-3.1-8B LoRA — Ponomarenko et al.**  
+Source: [HF model](https://huggingface.co/ponoma16/capid-llama8b-lora), [GitHub](https://github.com/MariaPonomarenko38/CAPID), [EACL SRW 2026 paper](https://aclanthology.org/2026.eacl-srw.23/). License: not declared clearly; treat as unresolved. Architecture: LoRA fine-tune of Llama-3.1-8B, 4-bit training. Training: 2,307 synthetic/reddit-style QA samples. Categories: health, location, sexual orientation, occupation, age, belief, relationship, name, education, appearance, code, organization, finance, datetime, demographic, with contextual relevance. Public-v-private legal distinction: no legal entity preservation, but the relevance idea maps well to “needed for answer vs redact.” Benchmarks: paper reports accuracy improvements over baselines, roughly 0.68 to 0.79. Limits: small research release, nonlegal, unclear license. Updated: HF Dec. 2025; repo pushed Apr. 2026.
+
+3. **OpenNyAI / InLegalNER Transformer — OpenNyAI / EkStep**  
+Source: [HF model](https://huggingface.co/opennyaiorg/en_legal_ner_trf), [GitHub](https://github.com/Legal-NLP-EkStep/legal_NER), [paper](https://aclanthology.org/2022.nllp-1.15/). License: conflicting public metadata; HF says Apache-2.0 in frontmatter but model card table says MIT; GitHub says Apache-2.0. Architecture: spaCy transformer NER. Training: Indian court judgments. Categories: `LAWYER`, `COURT`, `JUDGE`, `PETITIONER`, `RESPONDENT`, `CASE_NUMBER`, `GPE`, `DATE`, `ORG`, `STATUTE`, `WITNESS`, `PRECEDENT`, `PROVISION`, `OTHER_PERSON`. Public-v-private distinction: strong public legal entity labels, but not a PII redactor. Benchmarks: F1 about 91.1. Limits: India-specific; dataset restricted on HF. Updated: model May 2024; repo active in 2026.
+
+4. **Blackstone — ICLR&D**  
+Source: [GitHub](https://github.com/ICLRandD/Blackstone). License: Apache-2.0. Architecture: spaCy legal NLP model. Training: proprietary ICLR legal archive. Categories: `CASENAME`, `CITATION`, `INSTRUMENT`, `PROVISION`, `COURT`, `JUDGE`. Public-v-private distinction: useful preservation model for public legal entities; not a PII detector. Benchmarks: README reports about 70% F1. Limits: England/Wales focus, experimental, training data closed. Updated: pushed July 2024; repo metadata active 2026.
+
+5. **German Legal Entity Recognition / bert-german-ler — Leitner/Rehm/Moreno-Schneider**  
+Source: [HF model](https://huggingface.co/elenanereiss/bert-german-ler), [paper](https://arxiv.org/abs/2003.13016). License: CC-BY-4.0. Architecture: BERT German cased. Training: German legal documents. Categories include person, judge, lawyer, street, company, institution, court, law, ordinance, legal norm, regulation, contract, court decision, legal literature. Public-v-private distinction: separates public legal concepts from personal/location entities, but no redaction policy. Benchmarks: test F1 about 0.955. Limits: German/civil-law; not California. Updated: model card current on HF.
+
+6. **NVIDIA GLiNER-PII / Gretel GLiNER BI — generic PII near-misses**  
+Sources: [NVIDIA model](https://huggingface.co/nvidia/gliner-PII), [NVIDIA article](https://huggingface.co/blog/nvidia/nemotron-pii), [Gretel model](https://huggingface.co/gretelai/gretel-gliner-bi-large-v1.0). Licenses: NVIDIA marked “other”; Gretel Apache-2.0. Architecture: GLiNER token classifiers. Categories: roughly 50+ PII/business/PHI entities. Public-v-private legal distinction: no. Benchmarks: NVIDIA reports about 96.96 F1 on its synthetic benchmark. Limits: generic PII, not legal-preservation aware. Updated: NVIDIA Dec. 2025; Gretel Oct. 2024.
+
+**B. Public Legal PII / Entity Datasets**
+
+1. **Text Anonymization Benchmark (TAB) — Norwegian Computing Center et al.**  
+Source: [HF](https://huggingface.co/datasets/ildpil/text-anonymization-benchmark), [GitHub](https://github.com/NorskRegnesentral/text-anonymization-benchmark), [paper](https://aclanthology.org/2022.cl-4.19/). License: MIT. Size/type: 1,268 English ECHR cases. Jurisdiction: European Court of Human Rights. Schema: entity type, identifier type (`DIRECT`, `QUASI`, `NO_MASK`), confidential attributes, coreference. Public-v-private: yes, the closest open schema because it includes masking decisions. Quality: manually annotated with quality metadata. Use: core benchmark for anonymization. Issue: not U.S./California; ECHR style differs from California legal chat. Updated: HF Apr. 2025; repo pushed Jan. 2026.
+
+2. **SPY: Synthetic PII from Your Discourse — Savkin, Ionov, Konovalov**  
+Source: [HF](https://huggingface.co/datasets/mks-logic/SPY), [GitHub](https://github.com/LogicZMaksimka/SPY_Dataset), [NAACL SRW 2025 paper](https://aclanthology.org/2025.naacl-srw.23/). License: HF CC-BY-4.0; GitHub lacks clear license file. Size/type: 3,050 synthetic legal/medical user inquiries. Schema: `AGE`, `CODE`, `CONTACT`, `DATE`, `DEMOGRAPHIC`, `EDUCATION`, `FINANCE`, `HEALTH`, `LOCATION`, `NAME`, `OCCUPATION`, `ORGANIZATION`, `RELATIONSHIP`, `SEXUAL_ORIENTATION`. Public-v-private: partially; it is about PII in advice-seeking queries, not preserving case/statute/court entities. Quality: LLM-generated, regex/Faker-based refinement. Use: Privacy Filter and DeBERTa comparisons; DeBERTa weighted F1 about 0.793. Updated: HF Apr. 2025; repo pushed May 2025.
+
+3. **InLegalNER — OpenNyAI / EkStep**  
+Source: [model/dataset org](https://huggingface.co/opennyaiorg/en_legal_ner_trf), [paper](https://aclanthology.org/2022.nllp-1.15/). License: dataset access restricted; model metadata conflicting. Size/type: Indian court judgments, 46,545 legal entity mentions reported. Schema: courts, judges, parties, lawyers, statutes, precedents, provisions, case numbers, persons. Public-v-private: good public legal taxonomy; no redact/preserve policy. Issue: restricted dataset and India-specific.
+
+4. **German LER — Leitner/Rehm/Moreno-Schneider**  
+Source: [HF model](https://huggingface.co/elenanereiss/bert-german-ler), [paper](https://arxiv.org/abs/2003.13016). License: CC-BY-4.0. Size/type: German legal documents with 19 entity classes. Public-v-private: useful separation of courts/laws/decisions/literature from people/streets, but no privacy masking labels. Issue: non-U.S., German.
+
+5. **LeNER-Br — Brazilian legal NER**  
+Source: [HF dataset](https://huggingface.co/datasets/peluz/lener_br), [project page](https://cic.unb.br/~teodecampos/LeNER-Br/). License: unclear on HF. Size/type: 70 Brazilian legal documents; HF rows roughly 7,828 train, 1,177 validation, 1,390 test. Schema: organization, person, time, location, legislation, jurisprudence. Public-v-private: legal/public labels, no PII masking. Issue: Portuguese/Brazilian law.
+
+6. **CUAD — The Atticus Project**  
+Source: [project](https://www.atticusprojectai.org/cuad), [HF](https://huggingface.co/datasets/theatticusproject/cuad), [paper](https://arxiv.org/abs/2103.06268). License: CC-BY-4.0. Size/type: 510 contracts, 13,000+ labels, 41 clause categories. Public-v-private: no; contract clause extraction, not PII. Use: good legal annotation-quality reference. Issue: contracts, not legal research/chat.
+
+7. **LexGLUE / LegalBench / Pile of Law / CAP / CourtListener / Multi-LexSum**  
+Sources: [LexGLUE](https://huggingface.co/datasets/coastalcph/lex_glue), [LegalBench](https://huggingface.co/datasets/nguha/legalbench), [Pile of Law](https://huggingface.co/datasets/pile-of-law/pile-of-law), [CAP HF mirror](https://huggingface.co/datasets/free-law/Caselaw_Access_Project), [CourtListener bulk data](https://www.courtlistener.com/help/api/bulk-data/), [Multi-LexSum](https://huggingface.co/datasets/allenai/multi_lexsum). Licenses vary: LexGLUE/LegalBench generally CC-BY-4.0 with task-level caveats; Pile of Law CC-BY-NC-SA-4.0; CAP mirror CC0-1.0; Multi-LexSum ODC-BY. Public-v-private: no PII annotations. Use: excellent legal corpora/benchmarks for evaluation text and public legal entity exposure, not sanitizer training labels.
+
+I found no public California-specific legal PII dataset with a preserve/redact schema.
+
+**C. Academic Work**
+
+- [TAB, Pilán et al., 2022, Computational Linguistics](https://aclanthology.org/2022.cl-4.19/): establishes the best legal anonymization benchmark I found. Its mask/no-mask and confidential-attribute design is directly relevant to your policy layer.
+- [SPY, Savkin/Ionov/Konovalov, 2025, NAACL SRW](https://aclanthology.org/2025.naacl-srw.23/): creates synthetic legal/medical PII queries and shows generic NER is not enough for PII. Strong warm-start for chatbot inputs, weaker for public legal authorities.
+- [CAPID, Ponomarenko et al., 2026, EACL SRW](https://aclanthology.org/2026.eacl-srw.23/): introduces relevance-aware PII redaction before third-party QA. Conceptually close to preserving legally relevant facts, though not legal-specific.
+- [Named Entity Recognition in Indian Court Judgments, Kalamkar et al., 2022, NLLP](https://aclanthology.org/2022.nllp-1.15/): provides a practical legal-entity taxonomy with courts, judges, statutes, precedents, parties, and lawyers. Useful as a preservation taxonomy, not PII.
+- [A Dataset of German Legal Documents for NER, Leitner/Rehm/Moreno-Schneider, 2020](https://arxiv.org/abs/2003.13016): fine-grained legal NER including courts, laws, legal literature, and decisions. Strong public-entity model; jurisdiction mismatch.
+- [eyecite, Cushman/Dahl/Lissner, 2021, JOSS](https://doi.org/10.21105/joss.03617): deterministic legal citation extraction and resolution. This is the best preservation pre-pass for case citations.
+- [LEGAL-BERT, Chalkidis et al., 2020](https://aclanthology.org/2020.findings-emnlp.261/): legal-domain encoders that can support downstream NER/PII fine-tuning. Not a sanitizer itself.
+- [CUAD, Hendrycks et al., 2021](https://arxiv.org/abs/2103.06268): expert contract annotation benchmark. Not PII, but useful evidence on legal annotation design.
+- [Pile of Law, Henderson et al., 2022](https://arxiv.org/abs/2207.00220): large open legal corpus and filtering work. Useful for text coverage, not labels.
+- [LegalBench, Guha et al., 2023](https://arxiv.org/abs/2308.11462): legal reasoning benchmark. Useful for downstream utility tests after sanitization, not PII.
+
+**D. Commercial / Vendor Offerings**
+
+- **Private AI / Limina**: [site](https://www.private-ai.com/), [docs](https://docs.private-ai.com/), [examples](https://github.com/privateai/deid-examples). Pricing: contact/demo. Deployment: SaaS or container/VPC/on-prem style. API: yes. Legal public-v-private: not publicly documented. Good generic PII/PHI/PCI option; ask for legal false-positive testing.
+- **Microsoft Presidio**: [GitHub](https://github.com/microsoft/presidio), [entities](https://microsoft.github.io/presidio/supported_entities/). License: MIT. Deployment: local, Docker, service, Kubernetes. API: yes. Legal distinction: no built-in legal policy, but supports custom recognizers/allowlists. Strong framework wrapper around your own legal rules.
+- **Amazon Comprehend PII / Custom Entity Recognition**: [PII docs](https://docs.aws.amazon.com/comprehend/latest/dg/how-pii.html), [custom entities](https://docs.aws.amazon.com/comprehend/latest/dg/custom-entity-recognition.html). Pricing: usage-based AWS. Deployment: managed AWS. API: yes. Legal distinction: no. Useful baseline, but sending raw text to AWS may defeat your pre-Bedrock local-sanitization goal unless used inside the trust boundary.
+- **Google Cloud Sensitive Data Protection / DLP**: [infoTypes](https://cloud.google.com/sensitive-data-protection/docs/infotypes-reference). Pricing: usage-based. Deployment: managed cloud. API: yes. Legal distinction: no, though custom dictionaries/regex can preserve citations.
+- **Azure AI Language PII**: [entity categories](https://learn.microsoft.com/en-us/azure/ai-services/language-service/personally-identifiable-information/concepts/entity-categories). Pricing: usage-based. Deployment: managed Azure. API: yes. Legal distinction: no.
+- **Tonic Textual**: [product](https://www.tonic.ai/products/textual), [docs](https://docs.tonic.ai/textual). Pricing: trial/demo/contact. Deployment: SaaS and self-hosted options documented. API: yes. Legal distinction: no public legal-specific policy.
+- **John Snow Labs Legal NLP**: [product](https://www.johnsnowlabs.com/legal-nlp/). Pricing: commercial/contact. Deployment: enterprise, including AWS/Azure. API/model suite: yes, commercial. Legal distinction: public docs mention legal de-identification and legal NER, making it the closest commercial legal-specific lead, but public docs do not disclose enough benchmark/entity-policy detail.
+- **Lexis+ / Protégé, Thomson Reuters CoCounsel, Harvey, Everlaw, Skyflow, BigID**: public materials emphasize security, no-training commitments, vaults, governance, or eDiscovery workflows. I did not find public model cards or API specs proving legal public-vs-private sanitizer behavior. Everlaw support pages were blocked behind Cloudflare/sign-in in this pass.
+
+**E. Citation Extraction Libraries**
+
+- **Eyecite — Free Law Project**: [GitHub](https://github.com/freelawproject/eyecite), [docs](https://freelawproject.github.io/eyecite/). License: BSD-2-Clause. Handles full case citations, short citations, reference citations, statutes, law journals, supra, and id. California: good case-reporter coverage via reporters-db. Updated: repo active Apr. 2026; pushed Oct. 2025.
+- **reporters-db — Free Law Project**: [GitHub](https://github.com/freelawproject/reporters-db). License: BSD-2-Clause. Database of U.S. and other reporters; includes California reporters such as `Cal.`, `Cal. App.`, `Cal. Rptr.`, `Cal. LEXIS`, `Ops.Cal.Atty.Gen.`, and related variants. Updated: pushed Apr. 2026.
+- **CiteURL — Raindrum**: [GitHub](https://github.com/raindrum/citeurl), [docs/app](https://www.citation.link/). License: MIT. Handles Bluebook-style citations to 130+ U.S. legal sources, including many state/federal opinions, U.S. Code/CFR, constitutions, and most state codes. California: likely useful for state cases/statutes, but test against California Style Manual examples. Updated: Jan. 2026.
+- **Blackstone citation/legal NER**: [GitHub](https://github.com/ICLRandD/Blackstone). License: Apache-2.0. Handles UK-style case names, citations, instruments, provisions, courts, judges. California: no specific coverage.
+- **legal-citation-parser / CanLII-style parsers**: [GitHub](https://github.com/646e62/legal-citation-parser). License: GPL-3.0. Focuses Canadian neutral/SCR/CanLII citations. California: no.
+
+I found no official open Lexis/Westlaw citation grammar and no official open Bluebook or California Style Manual parser. The practical U.S./California stack is Eyecite + reporters-db + custom California statute/rule patterns.
+
+**Recommended Actions**
+
+1. Least effort: run OpenAI Privacy Filter locally, then preserve spans found by Eyecite/reporters-db/CiteURL before redaction.  
+2. Highest quality: annotate 500-1,500 California-style chatbot inputs with `REDACT_PRIVATE`, `PRESERVE_PUBLIC_LEGAL`, and `REVIEW` labels, then fine-tune Privacy Filter or a GLiNER-style classifier.  
+3. Single best model to start from: OpenAI Privacy Filter, because Apache-2.0, local, small active footprint, and already aligned to PII.  
+4. Single best dataset to start from: TAB for legal documents; SPY if your dominant input is user chatbot questions.  
+5. Add preservation labels from Eyecite, OpenNyAI/InLegalNER, Blackstone, and reporters-db rather than expecting a PII model to learn them alone.  
+6. For commercial shortcuts, evaluate John Snow Labs Legal NLP, Private AI/Limina, and Tonic Textual against your own California legal prompt suite.  
+7. The gaps to fill are California/US client PII examples, case-party versus public-case-name disambiguation, judge/public-official preservation policy, statute/citation allowlisting, and measured false-redaction/false-leakage benchmarks.

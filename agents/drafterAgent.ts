@@ -2,7 +2,7 @@
  * Drafter Agent
  * 
  * Writes specific document sections using provided research context.
- * Uses Gemini 2.5 Pro for high-quality long-form legal writing.
+ * Uses Anthropic on AWS Bedrock for high-quality legal writing.
  */
 
 import type { 
@@ -12,6 +12,7 @@ import type {
   DocumentTemplate,
 } from '../types';
 import { applyVariablesToTemplate, countWords, extractCitations } from './tools';
+import { generateText } from '../utils/anthropicBedrock.ts';
 
 // =============================================================================
 // CONFIGURATION
@@ -47,14 +48,8 @@ Return ONLY the section content in clean markdown format. Do not include the sec
 // =============================================================================
 
 export class DrafterAgent {
-  private apiKey: string;
-
   constructor() {
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-      throw new Error('GEMINI_API_KEY is required for DrafterAgent');
-    }
-    this.apiKey = apiKey;
+    // Bedrock credentials are resolved lazily by the shared provider helper.
   }
 
   /**
@@ -86,8 +81,8 @@ export class DrafterAgent {
     // Build the prompt for generated sections
     const prompt = this.buildPrompt(section, researchPackage, variables, previousSections, userInstructions);
 
-    // Call Gemini API
-    const content = await this.callGemini(prompt);
+    // Call Bedrock Claude API
+    const content = await this.callDrafterModel(prompt);
 
     return {
       sectionId: section.id,
@@ -152,7 +147,7 @@ export class DrafterAgent {
       adjacentSections
     );
 
-    const content = await this.callGemini(prompt);
+    const content = await this.callDrafterModel(prompt);
 
     return {
       ...section,
@@ -317,54 +312,22 @@ export class DrafterAgent {
   }
 
   /**
-   * Call the Gemini API
+   * Call the Bedrock drafter model
    */
-  private async callGemini(prompt: string): Promise<string> {
-    const openRouterKey = process.env.OPENROUTER_API_KEY;
-    if (!openRouterKey) {
-      throw new Error('OPENROUTER_API_KEY not configured');
-    }
-
-    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openRouterKey}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': 'https://california-law-chatbot.vercel.app',
-        'X-Title': 'California Law Chatbot'
-      },
-      body: JSON.stringify({
-        model: 'google/gemini-2.5-pro',
-        messages: [
-          { role: 'system', content: DRAFTER_SYSTEM_PROMPT },
-          { role: 'user', content: prompt },
-        ],
-        temperature: 0.7,
-        max_tokens: 4096,
-        top_p: 0.95,
-      }),
+  private async callDrafterModel(prompt: string): Promise<string> {
+    const response = await generateText({
+      model:
+        process.env.BEDROCK_DRAFTER_MODEL ||
+        process.env.GEMINI_DRAFTER_MODEL ||
+        'us.anthropic.claude-sonnet-4-6',
+      messages: [{ role: 'user', content: prompt }],
+      systemInstruction: DRAFTER_SYSTEM_PROMPT,
+      temperature: 0.7,
+      topP: 0.95,
+      maxOutputTokens: 4096,
     });
 
-    if (!response.ok) {
-      const error = await response.text();
-      console.error('Gemini API error:', error);
-      throw new Error(`Gemini API error: ${response.status}`);
-    }
-
-    const data = await response.json();
-    
-    // Extract text from response
-    const content = data.choices?.[0]?.message?.content;
-    const text = typeof content === 'string'
-      ? content
-      : Array.isArray(content)
-        ? content.map((part: any) => typeof part?.text === 'string' ? part.text : '').join('')
-        : '';
-    if (!text) {
-      throw new Error('No content in Gemini response');
-    }
-
-    return text.trim();
+    return response.text;
   }
 }
 

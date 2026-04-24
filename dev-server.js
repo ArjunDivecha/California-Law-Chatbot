@@ -10,8 +10,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 
-dotenv.config(); // loads .env
-dotenv.config({ path: '.env.local', override: true }); // loads .env.local (overrides .env)
+dotenv.config(); // loads the single local .env source
 
 const app = express();
 app.use(cors());
@@ -46,6 +45,11 @@ app.all('/api/ceb-search', async (req, res) => {
 
 app.all('/api/config', async (req, res) => {
   const handler = await loadHandler('./api/config.ts');
+  await handler(req, res);
+});
+
+app.all('/api/debug', async (req, res) => {
+  const handler = await loadHandler('./api/debug.ts');
   await handler(req, res);
 });
 
@@ -89,6 +93,11 @@ app.all('/api/serper-scholar', async (req, res) => {
   await handler(req, res);
 });
 
+app.all('/api/public-legal-context', async (req, res) => {
+  const handler = await loadHandler('./api/public-legal-context.ts');
+  await handler(req, res);
+});
+
 // Chat history routes (single flat file, uses ?id= query param)
 app.all('/api/chats', async (req, res) => {
   const handler = await loadHandler('./api/chats.ts');
@@ -104,13 +113,18 @@ app.listen(PORT, () => {
   console.log('='.repeat(60));
   console.log('');
   console.log('Environment variables loaded:');
-  console.log('  GOOGLE_GENAI_USE_VERTEXAI:', process.env.GOOGLE_GENAI_USE_VERTEXAI ? '✅ Set' : 'ℹ️ Not set');
-  console.log('  VERTEX_API_KEY:', process.env.VERTEX_API_KEY ? '✅ Set' : '❌ Missing');
-  console.log('  GOOGLE_API_KEY:', process.env.GOOGLE_API_KEY ? '✅ Set' : 'ℹ️ Not set');
-  console.log('  GEMINI_API_KEY:', process.env.GEMINI_API_KEY ? '✅ Set' : 'ℹ️ Not set');
-  console.log('  ANTHROPIC_API_KEY:', process.env.ANTHROPIC_API_KEY ? '✅ Set' : '❌ Missing');
+  console.log('  BEDROCK_AWS_REGION:', process.env.BEDROCK_AWS_REGION ? '✅ Set' : 'ℹ️ Not set');
+  console.log('  AWS_REGION:', process.env.AWS_REGION ? '✅ Set' : 'ℹ️ Not set');
+  console.log('  AWS_ACCESS_KEY_ID:', process.env.AWS_ACCESS_KEY_ID ? '✅ Set' : '❌ Missing');
+  console.log('  AWS_SECRET_ACCESS_KEY:', process.env.AWS_SECRET_ACCESS_KEY ? '✅ Set' : '❌ Missing');
+  console.log('  AWS_SESSION_TOKEN:', process.env.AWS_SESSION_TOKEN ? '✅ Set' : 'ℹ️ Not set');
+  console.log('  AWS_BEARER_TOKEN_BEDROCK:', process.env.AWS_BEARER_TOKEN_BEDROCK ? '✅ Set' : 'ℹ️ Not set');
+  console.log('  BEDROCK_API_KEY:', process.env.BEDROCK_API_KEY ? '✅ Set' : 'ℹ️ Not set');
   console.log('  UPSTASH_VECTOR_REST_URL:', process.env.UPSTASH_VECTOR_REST_URL ? '✅ Set' : '❌ Missing');
   console.log('  COURTLISTENER_API_KEY:', process.env.COURTLISTENER_API_KEY ? '✅ Set' : '❌ Missing');
+  console.log('  EXA_API_KEY:', process.env.EXA_API_KEY ? '✅ Set' : 'ℹ️ Not set');
+  console.log('  SERPER_API_KEY:', process.env.SERPER_API_KEY ? '✅ Set' : 'ℹ️ Not set');
+  console.log('  OPENAI_API_KEY:', process.env.OPENAI_API_KEY ? '✅ Set' : '❌ Missing');
   console.log('');
   console.log('Now run "npm run dev" in another terminal.');
   console.log('='.repeat(60));

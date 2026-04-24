@@ -2,7 +2,7 @@
  * Citation Agent
  * 
  * Verifies, formats, and links all legal citations in the document.
- * Uses Claude Haiku for fast citation processing.
+ * Uses deterministic verification helpers for citation processing.
  */
 
 import type {

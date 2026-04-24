@@ -192,7 +192,7 @@ function expandQuery(query: string): string {
 
   if (addedTerms.length > 0) {
     expandedQuery = `${query} (related: ${addedTerms.join(', ')})`;
-    console.log(`🔍 Query expanded: "${query}" → "${expandedQuery}"`);
+    console.log(`🔍 Query expanded for CEB search (${query.length} chars → ${expandedQuery.length} chars)`);
   }
 
   return expandedQuery;
@@ -341,7 +341,7 @@ export default async function handler(req: any, res: any) {
           console.log(`📜 Statutory pre-filter: Found ${citations.length} citation(s)`);
           const searchTerms = citationToSearchTerms(citations);
           queryBoost = searchTerms.join('; ');
-          console.log(`📜 Query boost terms: "${queryBoost}"`);
+          console.log(`📜 Query boost terms generated (${queryBoost.length} chars)`);
         }
       }
     } catch (err) {
@@ -579,4 +579,3 @@ function formatCEBContext(sources: CEBSearchResponse['sources']): string {
 
   return formatted;
 }
-

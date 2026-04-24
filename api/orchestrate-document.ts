@@ -4,10 +4,10 @@
  * POST /api/orchestrate-document - Generate a legal document using multi-agent system
  * 
  * Pipeline:
- * 1. Research Agent (Claude Haiku) - Gathers CEB, case law, statutes
- * 2. Drafter Agent (Gemini 2.5 Pro) - Writes sections with research context
+ * 1. Research Agent - Gathers CEB, case law, statutes
+ * 2. Drafter Agent (Anthropic Bedrock) - Writes sections with research context
  * 3. Citation Agent - Extracts, verifies, formats citations
- * 4. Verifier Agent (Claude Sonnet) - Quality review and approval
+ * 4. Verifier Agent (Anthropic Bedrock) - Quality review and approval
  * 
  * Uses Server-Sent Events (SSE) for streaming progress updates.
  * 
@@ -16,6 +16,12 @@
  */
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import {
+  generateText,
+  getErrorDetails,
+  hasBedrockProviderCredentials,
+  isRetryableProviderError,
+} from '../utils/anthropicBedrock.ts';
 
 // Vercel function config
 export const config = {
@@ -267,7 +273,7 @@ async function runResearchPhase(
   practiceAreas: string[],
   sendEvent: (type: string, data: unknown) => void
 ): Promise<ResearchPackage> {
-  console.log('🔍 Research Agent: Starting research for:', query);
+  console.log(`🔍 Research Agent: Starting research (${query.length} query chars)`);
   sendEvent('progress', { phase: 'researching', message: 'Gathering legal authorities...', percentComplete: 10 });
 
   const cebSources: CEBSource[] = [];
@@ -428,7 +434,7 @@ async function runResearchPhase(
 }
 
 // =============================================================================
-// DRAFTER AGENT (Uses Gemini 2.5 Pro with Research Context)
+// DRAFTER AGENT (Uses Anthropic Bedrock with Research Context)
 // =============================================================================
 
 const DRAFTER_SYSTEM_PROMPT = `You are a skilled legal writer drafting sections of California legal documents. You write in formal legal style appropriate for court filings and professional correspondence.
@@ -504,17 +510,17 @@ function formatResearchContext(research: ResearchPackage): string {
   return context;
 }
 
-async function callGemini(prompt: string, maxWords?: number, retryCount: number = 0): Promise<string> {
-  const apiKey = process.env.OPENROUTER_API_KEY;
-  if (!apiKey) throw new Error('OPENROUTER_API_KEY not configured');
+async function callDrafterModel(prompt: string, maxWords?: number, retryCount: number = 0): Promise<string> {
+  if (!hasBedrockProviderCredentials()) {
+    throw new Error('Anthropic Bedrock credentials not configured');
+  }
 
-  console.log(`   🤖 Calling Gemini 2.5 Flash via OpenRouter...${retryCount > 0 ? ` (retry ${retryCount})` : ''}`);
+  console.log(`   🤖 Calling Anthropic Bedrock...${retryCount > 0 ? ` (retry ${retryCount})` : ''}`);
   const startTime = Date.now();
   
   // Calculate maxOutputTokens based on word count requirement
   // Rough estimate: 1 token ≈ 0.75 words
-  // Gemini 2.5 Flash supports up to 65,535 output tokens
-  // We need EXTRA margin because the model often EXCEEDS the target word count (2-3x)
+  // Claude on Bedrock can still over-generate on long drafting sections, so keep margin.
   // For 2500 words: actual output may be 5000+ words = 6667+ tokens
   let maxOutputTokens = 16384; // Higher default for comprehensive legal content
   if (maxWords) {
@@ -531,78 +537,41 @@ async function callGemini(prompt: string, maxWords?: number, retryCount: number 
   }, 60000); // 60 second timeout
   
   try {
-    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': 'https://california-law-chatbot.vercel.app',
-        'X-Title': 'California Law Chatbot'
-      },
-      body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
-        messages: [
-          { role: 'system', content: DRAFTER_SYSTEM_PROMPT },
-          { role: 'user', content: prompt },
-        ],
-        temperature: 0.7,
-        max_tokens: maxOutputTokens,
-        top_p: 0.95,
-      }),
-      signal: controller.signal,
-    }).finally(() => clearTimeout(timeout));
+    const response = await generateText({
+      model:
+        process.env.BEDROCK_DRAFTER_MODEL ||
+        process.env.GEMINI_DRAFTER_MODEL ||
+        'us.anthropic.claude-sonnet-4-6',
+      messages: [{ role: 'user', content: prompt }],
+      systemInstruction: DRAFTER_SYSTEM_PROMPT,
+      temperature: 0.7,
+      topP: 0.95,
+      maxOutputTokens,
+      abortSignal: controller.signal,
+    });
 
-    if (!response.ok) {
-      const error = await response.text();
-      console.log(`   ❌ Gemini error after ${Date.now() - startTime}ms: ${response.status}`);
-      throw new Error(`Gemini API error: ${response.status} - ${error}`);
-    }
-
-    const data = await response.json();
-    const choice = data.choices?.[0];
-    const finishReason = choice?.finish_reason;
-    
-    console.log(`   ✓ Gemini responded in ${Date.now() - startTime}ms (finishReason: ${finishReason})`);
-    
-    const content = choice?.message?.content;
-    const text = typeof content === 'string'
-      ? content
-      : Array.isArray(content)
-        ? content.map((part: any) => typeof part?.text === 'string' ? part.text : '').join('')
-        : '';
-    if (!text) {
-      console.log('   ❌ No content in Gemini response:', JSON.stringify(data).substring(0, 200));
-      throw new Error('No content in Gemini response');
-    }
-    
-    // Check if response was truncated
-    if (finishReason === 'length') {
-      console.warn(`   ⚠️ Response truncated due to token limit (max_tokens: ${maxOutputTokens})`);
-      // For now, return what we have - user can edit if needed
-    }
-    
-    return text.trim();
+    console.log(`   ✓ Bedrock responded in ${Date.now() - startTime}ms`);
+    return response.text;
   } catch (error: any) {
     clearTimeout(timeout);
     
     // Retry logic for transient errors (max 2 retries)
     const isRetryable = 
       error.name === 'AbortError' ||
-      error.message?.includes('timeout') ||
       error.message?.includes('ECONNRESET') ||
       error.message?.includes('ETIMEDOUT') ||
-      (error.status >= 500 && error.status < 600);
+      isRetryableProviderError(error);
     
       if (isRetryable && retryCount < 2) {
       const delay = Math.min(1000 * Math.pow(2, retryCount), 5000); // Exponential backoff, max 5s
-      console.log(`   ⚠️ Gemini error (retryable), retrying in ${delay}ms...`);
+      console.log(`   ⚠️ Bedrock error (retryable), retrying in ${delay}ms...`);
       await new Promise(resolve => setTimeout(resolve, delay));
-      return callGemini(prompt, maxWords, retryCount + 1);
+      return callDrafterModel(prompt, maxWords, retryCount + 1);
     }
     
     if (error.name === 'AbortError' || error.message?.includes('aborted')) {
-      console.log(`   ❌ Gemini timeout after ${Date.now() - startTime}ms`);
-      throw new Error('Gemini API request timed out after 60 seconds');
+      console.log(`   ❌ Bedrock timeout after ${Date.now() - startTime}ms`);
+      throw new Error('Anthropic Bedrock request timed out after 60 seconds');
     }
     throw error;
   }
@@ -642,7 +611,7 @@ async function runDraftingPhase(
       // Template section - apply variables only
       content = applyVariables(section.content, variables);
     } else {
-      // Generated section - call Gemini with full research context
+      // Generated section - call Bedrock Claude with full research context
       let prompt = `TASK: Write the "${section.name}" section for a California ${template.name}.\n\n`;
       
       prompt += `USER REQUEST:\n${userInstructions}\n\n`;
@@ -684,8 +653,8 @@ async function runDraftingPhase(
       prompt += `\nNow write the "${section.name}" section. Remember to cite California authorities.\n\n`;
       prompt += `REMINDER: Write a COMPLETE, FULLY DEVELOPED section. ${section.maxLengthWords ? `Target approximately ${section.maxLengthWords} words. ` : ''}Do not write bullet points or summaries - write full prose with detailed analysis. IMPORTANT: Ensure you end with a complete sentence.`;
 
-      console.log(`   🤖 Starting Gemini call for ${section.name} (target: ${section.maxLengthWords || 'default'} words)...`);
-      content = await callGemini(prompt, section.maxLengthWords);
+      console.log(`   🤖 Starting Bedrock call for ${section.name} (target: ${section.maxLengthWords || 'default'} words)...`);
+      content = await callDrafterModel(prompt, section.maxLengthWords);
       const wordCount = countWords(content);
       
       // Check if we got too little content
@@ -843,7 +812,7 @@ async function runCitationPhase(
 }
 
 // =============================================================================
-// VERIFIER AGENT (Uses Claude Sonnet for Quality Review)
+// VERIFIER AGENT (Uses Anthropic Bedrock for Quality Review)
 // =============================================================================
 
 const VERIFIER_SYSTEM_PROMPT = `You are a senior associate performing final review of a legal document before it goes to a partner. Your job is to catch any errors, inconsistencies, or issues.
@@ -889,10 +858,8 @@ async function runVerificationPhase(
   console.log('🔍 Verifier Agent: Starting verification');
   sendEvent('progress', { phase: 'final_verification', message: 'Performing final verification...', percentComplete: 88 });
 
-  const openrouterKey = process.env.OPENROUTER_API_KEY;
-  
-  if (!openrouterKey) {
-    console.warn('⚠️ OPENROUTER_API_KEY not set - using basic verification');
+  if (!hasBedrockProviderCredentials()) {
+    console.warn('⚠️ Anthropic Bedrock credentials not set - using basic verification');
     return createBasicVerificationReport(sections);
   }
 
@@ -942,38 +909,22 @@ async function runVerificationPhase(
 \`\`\`
 Provide ONLY the JSON response.`;
 
-    // Call Claude Sonnet via OpenRouter with timeout (45 seconds)
     const verifierController = new AbortController();
     const verifierTimeout = setTimeout(() => verifierController.abort(), 45000);
-    
-    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openrouterKey}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': 'https://california-law-chatbot.vercel.app',
-        'X-Title': 'California Law Chatbot'
-      },
-      body: JSON.stringify({
-        model: 'anthropic/claude-sonnet-4.5',
-        max_tokens: 4096,
-        messages: [
-          { role: 'system', content: VERIFIER_SYSTEM_PROMPT },
-          { role: 'user', content: prompt }
-        ],
-        temperature: 0.2
-      }),
-      signal: verifierController.signal,
+
+    const response = await generateText({
+      model:
+        process.env.BEDROCK_VERIFIER_MODEL ||
+        process.env.GEMINI_VERIFIER_MODEL ||
+        'us.anthropic.claude-sonnet-4-6',
+      messages: [{ role: 'user', content: prompt }],
+      systemInstruction: VERIFIER_SYSTEM_PROMPT,
+      temperature: 0.2,
+      maxOutputTokens: 4096,
+      abortSignal: verifierController.signal,
     }).finally(() => clearTimeout(verifierTimeout));
 
-    if (!response.ok) {
-      const error = await response.text();
-      console.error('OpenRouter Claude API error:', error);
-      return createBasicVerificationReport(sections);
-    }
-
-    const data = await response.json();
-    const responseText = data.choices?.[0]?.message?.content || '';
+    const responseText = response.text;
 
     // Parse JSON from response
     const jsonMatch = responseText.match(/```json\s*([\s\S]*?)\s*```/) || responseText.match(/\{[\s\S]*\}/);
@@ -1004,7 +955,8 @@ Provide ONLY the JSON response.`;
       recommendations: parsed.recommendations || [],
     };
   } catch (error: any) {
-    console.error('Verifier error:', error);
+    const { message } = getErrorDetails(error);
+    console.error('Verifier error:', message);
     if (error.name === 'AbortError' || error.message?.includes('aborted')) {
       console.warn('⚠️ Verification timed out - using basic verification report');
     }

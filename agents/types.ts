@@ -31,7 +31,14 @@ export type AgentRole =
 export type AgentModel =
   | 'claude-sonnet-4-5-20250514'
   | 'claude-haiku-4-5-20250514'
-  | 'gemini-2.5-pro';
+  | 'gemini-2.5-pro'
+  | 'us.anthropic.claude-sonnet-4-6'
+  | 'us.anthropic.claude-opus-4-6-v1'
+  | 'us.anthropic.claude-haiku-4-5-20251001-v1:0'
+  | 'global.anthropic.claude-sonnet-4-5-20250929-v1:0'
+  | 'global.anthropic.claude-haiku-4-5-20251001-v1:0'
+  | 'anthropic.claude-sonnet-4-5-20250929-v1:0'
+  | 'anthropic.claude-haiku-4-5-20251001-v1:0';
 
 export interface AgentConfig {
   role: AgentRole;

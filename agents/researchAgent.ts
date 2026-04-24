@@ -1,8 +1,8 @@
 /**
  * Research Agent
- * 
+ *
  * Gathers relevant legal authorities from CEB, CourtListener, and statutory sources.
- * Uses Claude Haiku 4.5 via OpenRouter for fast, cost-effective research operations.
+ * Uses Anthropic on AWS Bedrock to synthesize the collected research.
  */
 
 import type { ResearchPackage, CEBSource, CaseLawSource, StatuteSource } from '../types';
@@ -13,208 +13,46 @@ import {
   legislativeSearchTool,
   type CEBSearchResult,
 } from './tools';
+import { generateText, hasBedrockProviderCredentials } from '../utils/anthropicBedrock.ts';
 
-// =============================================================================
-// CONFIGURATION
-// =============================================================================
+const RESEARCH_SYSTEM_PROMPT = `You are a California legal research specialist. Your job is to organize collected source material into a concise, practical research package for legal drafting.
 
-const RESEARCH_SYSTEM_PROMPT = `You are a legal research specialist for California law. Your job is to gather comprehensive, relevant legal authorities for document drafting.
+OUTPUT REQUIREMENTS:
+- Prioritize California-specific authorities.
+- Rank the most important authorities first.
+- Keep summaries factual and source-bound.
+- Do not invent citations or holdings that are not present in the supplied material.
 
-SOURCES AVAILABLE (use the provided tools):
-- ceb_search: Search CEB Practice Guides for authoritative California legal practice guidance and model language
-- courtlistener_search: Search CourtListener for California and federal case law
-- statute_lookup: Look up specific California statutory sections
-- legislative_search: Search for California legislation and bills
+Return JSON only:
+{
+  "research_notes": "2-4 paragraph summary of the research findings and any gaps",
+  "key_authorities": [
+    {
+      "rank": 1,
+      "type": "ceb|case|statute|legislation",
+      "citation": "citation text",
+      "summary": "why this authority matters"
+    }
+  ]
+}`;
 
-RESEARCH METHODOLOGY:
-1. Identify the core legal issues in the query
-2. Search CEB first for practice guide coverage and model language
-3. Find controlling California cases (prioritize Supreme Court > Court of Appeal)
-4. Locate applicable statutes with exact section numbers
-5. Check for recent legislative changes if the topic involves recent law
-
-OUTPUT FORMAT:
-After gathering sources, provide a structured summary with:
-- Key authorities ranked by relevance
-- CEB sections with relevant excerpts
-- Case holdings summarized
-- Applicable statutory text
-- Any model language found
-
-Be thorough but focused. Quality over quantity. Prioritize California-specific authorities.`;
-
-// =============================================================================
-// TOOL DEFINITIONS FOR OPENROUTER (OpenAI format)
-// =============================================================================
-
-const researchTools = [
-  {
-    type: 'function',
-    function: {
-      name: 'ceb_search',
-      description: 'Search CEB practice guides for relevant content. Use for authoritative California legal guidance and model language.',
-      parameters: {
-        type: 'object',
-        properties: {
-          query: {
-            type: 'string',
-            description: 'Search query for CEB content',
-          },
-          categories: {
-            type: 'array',
-            items: { type: 'string' },
-            description: 'CEB categories to search: trusts_estates, family_law, business_litigation, business_entities, business_transactions',
-          },
-          top_k: {
-            type: 'number',
-            description: 'Number of results to return (default 5, max 10)',
-          },
-        },
-        required: ['query'],
-      },
-    },
-  },
-  {
-    type: 'function',
-    function: {
-      name: 'courtlistener_search',
-      description: 'Search CourtListener for California case law',
-      parameters: {
-        type: 'object',
-        properties: {
-          query: {
-            type: 'string',
-            description: 'Case law search query',
-          },
-          court_filter: {
-            type: 'string',
-            description: 'Court filter: california_all, california_supreme, california_appeals, federal_ninth, all',
-          },
-          max_results: {
-            type: 'number',
-            description: 'Maximum number of cases to return (default 5)',
-          },
-        },
-        required: ['query'],
-      },
-    },
-  },
-  {
-    type: 'function',
-    function: {
-      name: 'statute_lookup',
-      description: 'Look up a specific California statute section',
-      parameters: {
-        type: 'object',
-        properties: {
-          code: {
-            type: 'string',
-            description: 'California code name (e.g., "Code of Civil Procedure", "Family Code", "Probate Code")',
-          },
-          section: {
-            type: 'string',
-            description: 'Section number (e.g., "2030.300", "1615")',
-          },
-        },
-        required: ['code', 'section'],
-      },
-    },
-  },
-  {
-    type: 'function',
-    function: {
-      name: 'legislative_search',
-      description: 'Search for California legislation and bills',
-      parameters: {
-        type: 'object',
-        properties: {
-          query: {
-            type: 'string',
-            description: 'Legislative search query',
-          },
-          bill_number: {
-            type: 'string',
-            description: 'Specific bill number (e.g., "AB 123", "SB 456")',
-          },
-        },
-        required: ['query'],
-      },
-    },
-  },
-  {
-    type: 'function',
-    function: {
-      name: 'complete_research',
-      description: 'Signal that research is complete and provide final summary',
-      parameters: {
-        type: 'object',
-        properties: {
-          research_notes: {
-            type: 'string',
-            description: 'Summary of research findings, key issues identified, and any caveats',
-          },
-          key_authorities: {
-            type: 'array',
-            items: {
-              type: 'object',
-              properties: {
-                rank: { type: 'number' },
-                type: { type: 'string' },
-                citation: { type: 'string' },
-                summary: { type: 'string' },
-              },
-            },
-            description: 'Ranked list of key authorities',
-          },
-        },
-        required: ['research_notes'],
-      },
-    },
-  },
-];
-
-// =============================================================================
-// OPENROUTER API TYPES
-// =============================================================================
-
-interface OpenRouterMessage {
-  role: 'system' | 'user' | 'assistant' | 'tool';
-  content: string | null;
-  tool_calls?: Array<{
-    id: string;
-    type: 'function';
-    function: { name: string; arguments: string };
-  }>;
-  tool_call_id?: string;
-}
-
-// =============================================================================
-// RESEARCH AGENT CLASS
-// =============================================================================
+type ResearchSourceName = 'ceb' | 'courtlistener' | 'statutes' | 'legislative';
 
 export class ResearchAgent {
   private cebSources: CEBSource[] = [];
   private caseLaw: CaseLawSource[] = [];
   private statutes: StatuteSource[] = [];
   private modelLanguage: CEBSearchResult['modelLanguage'] = [];
-  private researchNotes: string = '';
+  private researchNotes = '';
   private keyAuthorities: ResearchPackage['keyAuthorities'] = [];
 
-  constructor() {
-    // No client initialization needed - using fetch
-  }
-
-  /**
-   * Execute research based on the given query and sources
-   */
   async research(
     query: string,
-    sources: Array<'ceb' | 'courtlistener' | 'statutes' | 'legislative'>,
+    sources: ResearchSourceName[],
     focusAreas?: string[]
   ): Promise<ResearchPackage> {
-    console.log('🔍 Research Agent: Starting research via OpenRouter for:', query);
-    
-    // Reset state
+    console.log(`🔍 Research Agent: Starting research via Anthropic Bedrock (${query.length} query chars)`);
+
     this.cebSources = [];
     this.caseLaw = [];
     this.statutes = [];
@@ -222,248 +60,240 @@ export class ResearchAgent {
     this.researchNotes = '';
     this.keyAuthorities = [];
 
-    const apiKey = process.env.OPENROUTER_API_KEY;
-    if (!apiKey) {
-      console.error('OPENROUTER_API_KEY not configured');
-      return this.buildResearchPackage(query);
-    }
+    await Promise.all([
+      sources.includes('ceb') ? this.runCEBSearch(query, focusAreas) : Promise.resolve(),
+      sources.includes('courtlistener') ? this.runCaseLawSearch(query) : Promise.resolve(),
+      sources.includes('statutes') ? this.runStatuteSearch(query) : Promise.resolve(),
+      sources.includes('legislative') ? this.runLegislativeSearch(query) : Promise.resolve(),
+    ]);
 
-    // Build the user message
-    const userMessage = this.buildUserMessage(query, sources, focusAreas);
-
-    // Run the agent loop
-    const messages: OpenRouterMessage[] = [
-      { role: 'user', content: userMessage },
-    ];
-
-    let iterations = 0;
-    const maxIterations = 10;
-
-    while (iterations < maxIterations) {
-      iterations++;
-      console.log(`🔄 Research Agent: Iteration ${iterations}`);
-
-      try {
-        const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${apiKey}`,
-            'Content-Type': 'application/json',
-            'HTTP-Referer': 'https://california-law-chatbot.vercel.app',
-            'X-Title': 'California Law Chatbot'
-          },
-          body: JSON.stringify({
-            model: 'anthropic/claude-haiku-4.5',
-            messages: [
-              { role: 'system', content: RESEARCH_SYSTEM_PROMPT },
-              ...messages
-            ],
-            tools: researchTools,
-            tool_choice: 'auto',
-            temperature: 0.2,
-            max_tokens: 2048
-          })
-        });
-
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error('OpenRouter API error:', errorText);
-          break;
-        }
-
-        const data = await response.json();
-        const choice = data.choices?.[0];
-        const finishReason = choice?.finish_reason;
-        const assistantMessage = choice?.message;
-
-        // Check if we're done
-        if (finishReason === 'stop' || !assistantMessage?.tool_calls?.length) {
-          console.log('✅ Research Agent: Completed (no more tool calls)');
-          break;
-        }
-
-        // Process tool calls
-        if (assistantMessage?.tool_calls?.length > 0) {
-          // Add assistant message to history
-          messages.push({
-            role: 'assistant',
-            content: assistantMessage.content,
-            tool_calls: assistantMessage.tool_calls
-          });
-
-          // Process each tool call
-          let researchComplete = false;
-          for (const toolCall of assistantMessage.tool_calls) {
-            const toolName = toolCall.function.name;
-            console.log(`  🔧 Tool call: ${toolName}`);
-            
-            try {
-              const args = JSON.parse(toolCall.function.arguments);
-              const result = await this.executeTool(toolName, args);
-              
-              // Add tool result to messages
-              messages.push({
-                role: 'tool',
-                tool_call_id: toolCall.id,
-                content: JSON.stringify(result)
-              });
-
-              if (toolName === 'complete_research') {
-                researchComplete = true;
-              }
-            } catch (error) {
-              console.error(`  ❌ Tool error (${toolName}):`, error);
-              messages.push({
-                role: 'tool',
-                tool_call_id: toolCall.id,
-                content: JSON.stringify({ error: error instanceof Error ? error.message : 'Tool execution failed' })
-              });
-            }
-          }
-
-          if (researchComplete) {
-            console.log('✅ Research Agent: Completed (complete_research called)');
-            break;
-          }
-        }
-      } catch (error) {
-        console.error('❌ Research Agent error:', error);
-        break;
-      }
-    }
-
-    // Build and return the research package
+    await this.generateResearchSummary(query, sources, focusAreas);
     return this.buildResearchPackage(query);
   }
 
-  /**
-   * Build the user message for the research query
-   */
-  private buildUserMessage(
+  private async runCEBSearch(query: string, focusAreas?: string[]): Promise<void> {
+    const result = await cebSearchTool({
+      query,
+      categories: this.inferCEBCategories(query, focusAreas),
+      topK: 5,
+    });
+
+    this.cebSources.push(...result.sources);
+    if (result.modelLanguage) {
+      this.modelLanguage.push(...result.modelLanguage);
+    }
+  }
+
+  private async runCaseLawSearch(query: string): Promise<void> {
+    const result = await courtListenerSearchTool({
+      query,
+      courtFilter: 'california_all',
+      maxResults: 5,
+    });
+
+    this.caseLaw.push(...result);
+  }
+
+  private async runStatuteSearch(query: string): Promise<void> {
+    const lookups = this.extractStatuteLookups(query);
+    if (lookups.length === 0) {
+      return;
+    }
+
+    const results = await Promise.all(
+      lookups.map((lookup) => statuteLookupTool(lookup).catch(() => null))
+    );
+
+    for (const result of results) {
+      if (result) {
+        this.statutes.push(result);
+      }
+    }
+  }
+
+  private async runLegislativeSearch(query: string): Promise<void> {
+    await legislativeSearchTool({ query });
+  }
+
+  private inferCEBCategories(query: string, focusAreas?: string[]): string[] | undefined {
+    const searchText = `${query} ${focusAreas?.join(' ') || ''}`.toLowerCase();
+    const categories: string[] = [];
+
+    if (/(trust|estate|probate|will|conservatorship)/.test(searchText)) {
+      categories.push('trusts_estates');
+    }
+    if (/(family|divorce|custody|support|domestic partner|parentage)/.test(searchText)) {
+      categories.push('family_law');
+    }
+    if (/(litigation|discovery|motion|deposition|complaint)/.test(searchText)) {
+      categories.push('business_litigation');
+    }
+    if (/(corporation|llc|partnership|shareholder|entity)/.test(searchText)) {
+      categories.push('business_entities');
+    }
+    if (/(transaction|merger|acquisition|agreement|contract)/.test(searchText)) {
+      categories.push('business_transactions');
+    }
+
+    return categories.length > 0 ? categories : undefined;
+  }
+
+  private extractStatuteLookups(query: string): Array<{ code: string; section: string }> {
+    const lookups: Array<{ code: string; section: string }> = [];
+    const seen = new Set<string>();
+    const pattern =
+      /\b(Family|Probate|Civil|Penal|Government|Corporations|Evidence|Labor|Code of Civil Procedure)\s+Code\s*(?:§|section)?\s*(\d+(?:\.\d+)?)/gi;
+
+    let match;
+    while ((match = pattern.exec(query)) !== null) {
+      const code = match[1];
+      const section = match[2];
+      const key = `${code}:${section}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        lookups.push({ code: `${code} Code`, section });
+      }
+    }
+
+    return lookups;
+  }
+
+  private async generateResearchSummary(
     query: string,
-    sources: Array<'ceb' | 'courtlistener' | 'statutes' | 'legislative'>,
+    sources: ResearchSourceName[],
+    focusAreas?: string[]
+  ): Promise<void> {
+    const fallbackNotes = this.buildFallbackResearchNotes(query, sources, focusAreas);
+
+    if (!hasBedrockProviderCredentials()) {
+      this.researchNotes = fallbackNotes;
+      this.keyAuthorities = this.buildFallbackAuthorities();
+      return;
+    }
+
+    const prompt = `Research query: ${query}
+
+Requested source types: ${sources.join(', ')}
+${focusAreas?.length ? `Focus areas: ${focusAreas.join(', ')}` : ''}
+
+Collected CEB sources:
+${this.cebSources.slice(0, 5).map((source) => `- ${source.cebCitation}: ${(source.excerpt || '').substring(0, 220)}`).join('\n') || '- None'}
+
+Collected case law:
+${this.caseLaw.slice(0, 5).map((source) => `- ${source.caseName} ${source.citation}: ${(source.holding || '').substring(0, 220)}`).join('\n') || '- None'}
+
+Collected statutes:
+${this.statutes.slice(0, 5).map((source) => `- ${source.code} § ${source.section}: ${(source.text || '').substring(0, 160)}`).join('\n') || '- None'}
+
+Model language:
+${this.modelLanguage?.slice(0, 3).map((item) => `- ${item.citation}: ${item.text.substring(0, 160)}`).join('\n') || '- None'}
+
+Return JSON only.`;
+
+    try {
+      const response = await generateText({
+        model:
+          process.env.BEDROCK_RESEARCH_MODEL ||
+          process.env.GEMINI_RESEARCH_MODEL ||
+          'us.anthropic.claude-haiku-4-5-20251001-v1:0',
+        messages: [{ role: 'user', content: prompt }],
+        systemInstruction: RESEARCH_SYSTEM_PROMPT,
+        temperature: 0.2,
+        maxOutputTokens: 2048,
+        responseMimeType: 'application/json',
+      });
+
+      const parsed = JSON.parse(response.text);
+      this.researchNotes =
+        typeof parsed?.research_notes === 'string' && parsed.research_notes.trim()
+          ? parsed.research_notes.trim()
+          : fallbackNotes;
+
+      const authorities = Array.isArray(parsed?.key_authorities) ? parsed.key_authorities : [];
+      this.keyAuthorities = authorities
+        .filter((authority) => authority && authority.citation)
+        .slice(0, 8)
+        .map((authority, index) => ({
+          rank: typeof authority.rank === 'number' ? authority.rank : index + 1,
+          type: typeof authority.type === 'string' ? authority.type : 'unknown',
+          citation: String(authority.citation),
+          relevanceScore: Math.max(0.1, 1 - index * 0.1),
+          summary: typeof authority.summary === 'string' ? authority.summary : '',
+        }));
+
+      if (this.keyAuthorities.length === 0) {
+        this.keyAuthorities = this.buildFallbackAuthorities();
+      }
+    } catch (error) {
+      console.error('Research Agent Bedrock summary generation error:', error);
+      this.researchNotes = fallbackNotes;
+      this.keyAuthorities = this.buildFallbackAuthorities();
+    }
+  }
+
+  private buildFallbackResearchNotes(
+    query: string,
+    sources: ResearchSourceName[],
     focusAreas?: string[]
   ): string {
-    let message = `Research the following legal topic for a California legal document:\n\n"${query}"\n\n`;
-    
-    message += `Available sources to search: ${sources.join(', ')}\n`;
-    
-    if (focusAreas && focusAreas.length > 0) {
-      message += `Focus areas: ${focusAreas.join(', ')}\n`;
+    const parts = [
+      `Research completed for "${query}".`,
+      `Sources searched: ${sources.join(', ')}.`,
+    ];
+
+    if (focusAreas?.length) {
+      parts.push(`Focus areas: ${focusAreas.join(', ')}.`);
     }
-    
-    message += `\nPlease:\n`;
-    message += `1. Search relevant sources for authorities on this topic\n`;
-    message += `2. Identify key cases, statutes, and practice guidance\n`;
-    message += `3. Find any model language or sample clauses if available\n`;
-    message += `4. When done, call complete_research with your findings summary\n`;
-    
-    return message;
+    if (this.cebSources.length) {
+      parts.push(`Found ${this.cebSources.length} CEB source(s).`);
+    }
+    if (this.caseLaw.length) {
+      parts.push(`Found ${this.caseLaw.length} case law source(s).`);
+    }
+    if (this.statutes.length) {
+      parts.push(`Found ${this.statutes.length} statute reference(s).`);
+    }
+
+    return parts.join(' ');
   }
 
-  /**
-   * Execute a specific tool
-   */
-  private async executeTool(
-    toolName: string,
-    input: Record<string, any>
-  ): Promise<unknown> {
-    switch (toolName) {
-      case 'ceb_search': {
-        const result = await cebSearchTool({
-          query: input.query,
-          categories: input.categories,
-          topK: input.top_k || 5,
-        });
-        
-        // Accumulate results
-        this.cebSources.push(...result.sources);
-        if (result.modelLanguage) {
-          this.modelLanguage?.push(...result.modelLanguage);
-        }
-        
-        return {
-          found: result.sources.length,
-          sources: result.sources.map(s => ({
-            title: s.title,
-            citation: s.cebCitation,
-            excerpt: s.excerpt?.substring(0, 300) + '...',
-            confidence: s.confidence,
-          })),
-          hasModelLanguage: !!result.modelLanguage?.length,
-        };
-      }
+  private buildFallbackAuthorities(): ResearchPackage['keyAuthorities'] {
+    const authorities: ResearchPackage['keyAuthorities'] = [];
 
-      case 'courtlistener_search': {
-        const result = await courtListenerSearchTool({
-          query: input.query,
-          courtFilter: input.court_filter,
-          maxResults: input.max_results || 5,
-        });
-        
-        // Accumulate results
-        this.caseLaw.push(...result);
-        
-        return {
-          found: result.length,
-          cases: result.map(c => ({
-            caseName: c.caseName,
-            citation: c.citation,
-            court: c.court,
-            year: c.year,
-            holding: c.holding?.substring(0, 200) + '...',
-          })),
-        };
-      }
+    this.cebSources.slice(0, 3).forEach((source) => {
+      authorities.push({
+        rank: authorities.length + 1,
+        type: 'ceb',
+        citation: source.cebCitation,
+        relevanceScore: Math.max(0.1, 1 - authorities.length * 0.1),
+        summary: (source.excerpt || '').substring(0, 180),
+      });
+    });
 
-      case 'statute_lookup': {
-        const result = await statuteLookupTool({
-          code: input.code,
-          section: input.section,
-        });
-        
-        if (result) {
-          this.statutes.push(result);
-        }
-        
-        return result || { error: 'Statute not found' };
-      }
+    this.caseLaw.slice(0, 3).forEach((source) => {
+      authorities.push({
+        rank: authorities.length + 1,
+        type: 'case',
+        citation: `${source.caseName} ${source.citation}`.trim(),
+        relevanceScore: Math.max(0.1, 1 - authorities.length * 0.1),
+        summary: (source.holding || '').substring(0, 180),
+      });
+    });
 
-      case 'legislative_search': {
-        const result = await legislativeSearchTool({
-          query: input.query,
-          billNumber: input.bill_number,
-        });
-        
-        return {
-          found: result.bills.length,
-          bills: result.bills,
-        };
-      }
+    this.statutes.slice(0, 2).forEach((source) => {
+      authorities.push({
+        rank: authorities.length + 1,
+        type: 'statute',
+        citation: `${source.code} § ${source.section}`,
+        relevanceScore: Math.max(0.1, 1 - authorities.length * 0.1),
+        summary: source.title || '',
+      });
+    });
 
-      case 'complete_research': {
-        this.researchNotes = input.research_notes || '';
-        this.keyAuthorities = (input.key_authorities || []).map((a: any, i: number) => ({
-          rank: a.rank || i + 1,
-          type: a.type || 'unknown',
-          citation: a.citation || '',
-          relevanceScore: 1 - (i * 0.1), // Decreasing relevance
-          summary: a.summary || '',
-        }));
-        
-        return { status: 'research_complete' };
-      }
-
-      default:
-        throw new Error(`Unknown tool: ${toolName}`);
-    }
+    return authorities;
   }
 
-  /**
-   * Build the final research package
-   */
   private buildResearchPackage(query: string): ResearchPackage {
-    // Deduplicate sources
     const uniqueCEB = this.deduplicateByField(this.cebSources, 'cebCitation');
     const uniqueCases = this.deduplicateByField(this.caseLaw, 'citation');
     const uniqueStatutes = this.deduplicateByField(this.statutes, 'section');
@@ -480,12 +310,9 @@ export class ResearchAgent {
     };
   }
 
-  /**
-   * Deduplicate array by a specific field
-   */
   private deduplicateByField<T>(array: T[], field: keyof T): T[] {
     const seen = new Set<unknown>();
-    return array.filter(item => {
+    return array.filter((item) => {
       const value = item[field];
       if (seen.has(value)) return false;
       seen.add(value);
@@ -494,12 +321,9 @@ export class ResearchAgent {
   }
 }
 
-/**
- * Run research and return the package
- */
 export async function runResearchAgent(
   query: string,
-  sources: Array<'ceb' | 'courtlistener' | 'statutes' | 'legislative'> = ['ceb', 'courtlistener', 'statutes'],
+  sources: ResearchSourceName[] = ['ceb', 'courtlistener', 'statutes'],
   focusAreas?: string[]
 ): Promise<ResearchPackage> {
   const agent = new ResearchAgent();

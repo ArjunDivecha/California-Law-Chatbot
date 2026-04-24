@@ -155,6 +155,71 @@ export class ChatService {
     }
 
     /**
+     * Current-law lookups are privacy-sensitive. The browser only calls our own
+     * API route with the full question; that route strips it down to public legal
+     * terms before querying external legislative data providers.
+     */
+    private isPublicCurrentLegalQuery(message: string): boolean {
+        const lowerMessage = message.toLowerCase();
+        const hasCurrentIntent = /\b(current|currently|latest|recent|today|this year|new laws?|passed|signed|chaptered|enacted|effective|pending|introduced|202[4-9])\b/i.test(lowerMessage);
+        return hasCurrentIntent && this.isLegislativeQuery(message);
+    }
+
+    private async fetchPublicLegalContext(
+        message: string,
+        signal?: AbortSignal
+    ): Promise<{ context: string; sources: Source[]; enabled: boolean; queries: string[]; providers: string[]; reason?: string }> {
+        if (!this.isPublicCurrentLegalQuery(message)) {
+            return { context: '', sources: [], enabled: false, queries: [], providers: [], reason: 'heuristic_not_triggered' };
+        }
+
+        try {
+            const response = await fetchWithRetry(
+                '/api/public-legal-context',
+                {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query: message }),
+                    signal,
+                },
+                1,
+                500
+            );
+
+            if (!response.ok) {
+                console.warn(`⚠️ Public legal context lookup failed with status ${response.status}`);
+                return { context: '', sources: [], enabled: false, queries: [], providers: [], reason: `status_${response.status}` };
+            }
+
+            const data = await response.json();
+            const sources = Array.isArray(data?.sources) ? data.sources : [];
+            const queries = Array.isArray(data?.queries) ? data.queries : [];
+            const providers = Array.isArray(data?.providers) ? data.providers : [];
+
+            if (data?.enabled) {
+                console.log(`✅ Public legal context: ${providers.join('+') || 'provider'}:${sources.length} via sanitized queries: ${queries.join(' | ')}`);
+            } else {
+                console.log(`ℹ️ Public legal context unavailable: ${data?.reason || 'no_results'}`);
+            }
+
+            return {
+                context: typeof data?.context === 'string' ? data.context : '',
+                sources,
+                enabled: !!data?.enabled,
+                queries,
+                providers,
+                reason: data?.reason,
+            };
+        } catch (error: any) {
+            if (signal?.aborted || error.message === 'Request cancelled') {
+                throw error;
+            }
+            console.warn('⚠️ Public legal context lookup failed:', error?.message || error);
+            return { context: '', sources: [], enabled: false, queries: [], providers: [], reason: 'lookup_failed' };
+        }
+    }
+
+    /**
      * Search legislative APIs (OpenStates and LegiScan) for general topic queries
      * This is used when isLegislativeQuery() returns true but there's no explicit bill number
      */
@@ -292,8 +357,8 @@ export class ChatService {
             .split(/\s+/)
             .filter(word => word.length > 2 && !stopWords.includes(word));
 
-        // Look for year mentions (2023, 2024, 2025)
-        const yearMatch = message.match(/\b(202[3-5])\b/);
+        // Look for current/recent year mentions
+        const yearMatch = message.match(/\b(202[3-9])\b/);
         const year = yearMatch ? yearMatch[1] : '';
 
         // Combine unique terms
@@ -304,12 +369,20 @@ export class ChatService {
             uniqueTerms.unshift(year);
         }
 
+        if (year && /\b(new laws?|passed|signed|chaptered|enacted|effective)\b/i.test(message)) {
+            for (const term of ['chaptered', 'signed']) {
+                if (!uniqueTerms.includes(term)) {
+                    uniqueTerms.push(term);
+                }
+            }
+        }
+
         return uniqueTerms.slice(0, 5).join(' '); // Limit to 5 terms
     }
 
     /**
-     * Send message to Gemini 3.1 Pro Preview (Generator) via server-side API
-     * Falls back to Gemini 2.5 Pro automatically if capacity issues occur
+     * Send message to the Bedrock-backed generator endpoint.
+     * The route name is preserved for frontend compatibility.
      */
     private async sendToGemini(message: string, conversationHistory?: Array<{ role: string, text: string }>, signal?: AbortSignal): Promise<{ text: string; hasGrounding?: boolean; groundingMetadata?: any }> {
         if (signal?.aborted) {
@@ -322,47 +395,43 @@ export class ChatService {
             day: 'numeric'
         });
 
-        const systemPrompt = `You are an expert legal research assistant specializing in California law with MANDATORY Google Search grounding capabilities.
+        const systemPrompt = `You are an expert legal research assistant specializing in California law.
 
-🚨 ABSOLUTE REQUIREMENTS - READ CAREFULLY:
+ABSOLUTE REQUIREMENTS - READ CAREFULLY:
 
 1. TODAY'S DATE: ${todayLong}
 2. YOUR TRAINING DATA CUTOFF: April 2024 (OUTDATED - DO NOT RELY ON IT FOR 2025 QUESTIONS)
-3. YOU MUST USE GOOGLE SEARCH: You have Google Search grounding enabled. This is NOT optional for 2025 questions.
+3. USE PROVIDED SOURCES FIRST: When the prompt includes source excerpts, full bill text, statutes, cases, or public legal-source context, use those materials as the primary basis for the answer.
+4. BE EXPLICIT ABOUT CURRENT-LAW LIMITS: If the user asks for recent or current law and no current source context is provided, say that recent developments should be checked against primary sources.
 
-🚨 FORBIDDEN RESPONSES:
+FORBIDDEN RESPONSES:
 NEVER say any of these phrases:
-❌ "it is not possible to provide"
-❌ "information becomes available after that month"
-❌ "would be accessible through"
-❌ "for future reference"
-❌ "once the legislative record is available"
-❌ "I cannot provide information about [any 2025 date]"
-❌ Any variation of "I don't have access to information from [2025 date]"
+- "it is not possible to provide"
+- "information becomes available after that month"
+- "would be accessible through"
+- "for future reference"
+- "once the legislative record is available"
+- "I cannot provide information about [any 2025 date]"
+- Any variation of "I don't have access to information from [2025 date]"
 
 IF YOU SAY ANY OF THESE PHRASES, YOU HAVE FAILED YOUR TASK.
 
-✅ REQUIRED BEHAVIOR FOR 2025 QUESTIONS:
-When asked about bills/legislation from 2025 (including October 2025, September 2025, etc.):
-1. IMMEDIATELY use Google Search grounding (it's already enabled - just search!)
-2. Search with specific queries like:
-   - "California AI bills signed October 2025 site:leginfo.legislature.ca.gov"
-   - "Governor Newsom signed AI bills October 2025"
-   - "California artificial intelligence legislation 2025 complete list"
-3. Find ACTUAL BILL NUMBERS (AB 123, SB 456, etc.) from search results
-4. List the bills you found with their descriptions
-5. If you find references to "X bills signed" but only found Y bills where Y < X, search again with different terms
+REQUIRED BEHAVIOR FOR RECENT QUESTIONS:
+When asked about bills/legislation from 2025 or later:
+1. Use any provided legislative, public legal-source, or bill-text context.
+2. Find and discuss actual bill numbers when the context provides them.
+3. If the available context is incomplete, provide the best supported answer and clearly identify what should be verified in primary sources.
+4. Do not cite your training cutoff when current source context has been provided; describe the source coverage instead.
 
-✅ COMPREHENSIVE BILL SEARCHES:
+COMPREHENSIVE BILL SEARCHES:
 When asked about "all bills" or "bills on [topic]":
-- Search MULTIPLE times (minimum 3 different search queries)
-- Cross-reference results to ensure completeness
-- If an article says "18 AI bills" but you only found 4, YOU MUST search again
-- Include ALL bill numbers in your response
+- Cross-reference the provided source context to ensure completeness.
+- If a source says "18 AI bills" but only four bill numbers are available in context, say that the source context is incomplete.
+- Include all bill numbers that are supported by the provided materials.
 
 GUIDELINES:
 1. BE HELPFUL FIRST: Always provide comprehensive, useful answers. Use your knowledge of California law to help users.
-2. USE SEARCH FOR RECENT BILLS: When asked about "new bills", "recent bills", bills from 2025 or later, or current legislation, your Google Search grounding will automatically find the most current information. Trust and use this real-time data.
+2. USE CURRENT CONTEXT FOR RECENT BILLS: When asked about "new bills", "recent bills", bills from 2025 or later, or current legislation, use any provided current public legal-source context and flag gaps.
 3. CITE WHEN POSSIBLE: When sources are provided in SOURCES below, cite them using [1], [2], etc.
 4. PRIORITIZE PROVIDED SOURCES: When full bill text or statute text is provided in SOURCES, USE IT as your primary reference. This is the actual, current law.
 5. PROVIDE CONTEXT: Give full explanations including background, requirements, procedures, and practical implications.
@@ -398,26 +467,24 @@ IMPORTANT - FULL BILL TEXT:
 When you see "FULL BILL TEXT" in the sources below, this is the ACTUAL, CURRENT text of a California bill. Quote directly from it and explain what it means. This text supersedes your training data for that specific bill.
 
 IMPORTANT - RECENT BILLS & DATES:
-- NEVER say "I cannot provide information" or "that date is in the future" when asked about recent bills
-- ALWAYS use Google Search grounding (which is automatically enabled) to find current bills
-- When Google Search grounding returns results, use that information - it's real-time and current
-- If legislative sources are provided, use them even if they seem "recent" relative to your training data
-- Trust the real-time search results over your training data cutoff date
+- NEVER say "I cannot provide information" or "that date is in the future" when asked about recent bills.
+- If legislative or public legal-source context is provided, use it even if it is more recent than your training data.
+- Trust provided source context over your training data cutoff date.
 
 EXAMPLE GOOD RESPONSES:
 - "Under California Family Code § 1615, a prenuptial agreement is unenforceable if..." [then explain the requirements]
 - "California recognizes several grounds for divorce including irreconcilable differences per Family Code § 2310..."
 - "According to the full text of AB 123, which states: '[quote from bill]', this means..." [when bill text is provided]
-- "Based on recent California legislation, here are the new bills passed in October 2025: [list from Google Search grounding results]..." [when asked about recent bills]
+- "Based on the provided recent source context, here are the new bills passed in October 2025: [list supported bills]..." [when asked about recent bills]
 
 DO NOT say things like:
 - "I cannot provide information without sources"
 - "I need you to provide the statute text"
 - "I can only answer if you give me materials"
 - "That date is in the future"
-- "I cannot provide information about October 2025" (use Google Search grounding instead!)
+- "I cannot provide information about October 2025"
 
-Remember: You're trained on California law AND you have access to real-time search. Use Google Search grounding for recent bills and current legislation. When actual bill text is provided, prioritize it over your training data. Format your responses clearly with proper spacing between sections for better readability.`;
+Remember: You're trained on California law, and the app may provide fresh source context separately. When actual bill text or source excerpts are provided, prioritize them over your training data. Do not claim you can perform Google Search yourself; only use source context actually provided in the prompt. Format your responses clearly with proper spacing between sections for better readability.`;
 
         try {
             const response = await fetchWithRetry(
@@ -487,7 +554,7 @@ Remember: You're trained on California law AND you have access to real-time sear
         // E.g., "What about 460?" after "What is Penal Code 459?" → "What is Penal Code 460?"
         const expandedMessage = this.expandQueryWithContext(message, conversationHistory);
         if (expandedMessage !== message) {
-            console.log(`🔄 Expanded query: "${message}" → "${expandedMessage}"`);
+            console.log(`🔄 Expanded query with conversation context (input ${message.length} chars → ${expandedMessage.length} chars)`);
         }
 
         // Route based on source mode (use expanded message for searches)
@@ -650,7 +717,13 @@ Remember: You're trained on California law AND you have access to real-time sear
      * AI Only Mode - Uses existing external APIs (CourtListener, OpenStates, LegiScan)
      * This is the original sendMessage logic
      */
-    private async processAIOnly(message: string, conversationHistory?: Array<{ role: string, text: string }>, signal?: AbortSignal, progressCallback?: ProgressCallback): Promise<BotResponse> {
+    private async processAIOnly(
+        message: string,
+        conversationHistory?: Array<{ role: string, text: string }>,
+        signal?: AbortSignal,
+        progressCallback?: ProgressCallback,
+        options?: { skipPublicLegalContext?: boolean }
+    ): Promise<BotResponse> {
         // Check for cancellation
         if (signal?.aborted) {
             throw new Error('Request cancelled');
@@ -661,13 +734,15 @@ Remember: You're trained on California law AND you have access to real-time sear
         const isLegislativeQuery = this.isLegislativeQuery(message);
         const enableCourtListener = this.courtListenerApiKey === 'configured' && isCaseLawQuery;
         const enableLegislativeSearch = isLegislativeQuery;
+        const enablePublicLegalContext = !options?.skipPublicLegalContext && this.isPublicCurrentLegalQuery(message);
 
         console.log('🔍 Query analysis:', {
-            message: message.substring(0, 50) + (message.length > 50 ? '...' : ''),
+            messageLength: message.length,
             isCaseLawQuery,
             isLegislativeQuery,
             courtListenerEnabled: enableCourtListener,
             legislativeSearchEnabled: enableLegislativeSearch,
+            publicLegalContextEnabled: enablePublicLegalContext,
             hasCourtListenerKey: !!this.courtListenerApiKey
         });
 
@@ -680,6 +755,7 @@ Remember: You're trained on California law AND you have access to real-time sear
         // Parallelize legislation search and case law search
         console.log('🔎 Starting parallel searches...');
         console.log(`  - Legislative API search: ${enableLegislativeSearch ? 'ENABLED (legislative query detected)' : 'SKIPPED (not a legislative query)'}`);
+        console.log(`  - Public legal context: ${enablePublicLegalContext ? 'ENABLED (sanitized current-law lookup)' : 'SKIPPED'}`);
         console.log('  - Legislation lookup: ENABLED');
         console.log(`  - CourtListener search: ${enableCourtListener ? 'ENABLED (case law query detected)' : isCaseLawQuery ? 'DISABLED (no API key)' : 'SKIPPED (not a case law query)'}`);
 
@@ -690,7 +766,7 @@ Remember: You're trained on California law AND you have access to real-time sear
             console.log(`📅 Date filter: ${dateRange.after || 'any'} to ${dateRange.before || 'any'}`);
         }
 
-            const [legislationData, legislativeApiData, caseLawData, scholarData] = await Promise.all([
+            const [legislationData, legislativeApiData, caseLawData, scholarData, publicLegalData] = await Promise.all([
             // Always run fetchLegislationData for explicit bill numbers and code sections
             this.fetchLegislationData(message, signal).catch(err => {
                 if (signal?.aborted || err.message === 'Request cancelled') {
@@ -731,9 +807,12 @@ Remember: You're trained on California law AND you have access to real-time sear
                     return { content: '', sources: [] };
                 })
                 : Promise.resolve({ content: '', sources: [] }),
+            enablePublicLegalContext
+                ? this.fetchPublicLegalContext(message, signal)
+                : Promise.resolve({ context: '', sources: [], enabled: false, queries: [], providers: [], reason: 'skipped' }),
         ]);
 
-        console.log(`✅ Search results: ${legislationData.sources.length} legislation lookup, ${legislativeApiData.sources.length} legislative API, ${caseLawData.sources.length} case law, ${scholarData.sources.length} scholar`);
+        console.log(`✅ Search results: ${legislationData.sources.length} legislation lookup, ${legislativeApiData.sources.length} legislative API, ${publicLegalData.sources.length} public legal context, ${caseLawData.sources.length} case law, ${scholarData.sources.length} scholar`);
 
         // Check if request was cancelled during parallel searches
         if (signal?.aborted) {
@@ -747,16 +826,27 @@ Remember: You're trained on California law AND you have access to real-time sear
         if (legislationData.sources.length > 0) {
             finalSources.push(...legislationData.sources);
         }
+        if (publicLegalData.sources.length > 0) {
+            finalSources.push(...publicLegalData.sources);
+        }
         if (caseLawData.sources.length > 0) {
             finalSources.push(...caseLawData.sources);
         }
         if (scholarData.sources.length > 0) {
             finalSources.push(...scholarData.sources);
         }
-        // Apply retrieval pruning (top-k, dedupe, rerank) - SKIP if exhaustive mode
+        // Apply retrieval pruning (top-k, dedupe, rerank) - SKIP if exhaustive mode.
+        // Current public legal sources should survive pruning for recent-law questions.
+        const publicLegalUrlsForPruning = new Set(publicLegalData.sources.map(source => source.url));
+        const nonPublicSources = finalSources.filter(source => !publicLegalUrlsForPruning.has(source.url));
         const prunedSources = isExhaustive
             ? finalSources  // Keep all sources in exhaustive mode
-            : RetrievalPruner.pruneSources(finalSources, message, 3);
+            : publicLegalData.sources.length > 0
+                ? Array.from(new Map([
+                    ...publicLegalData.sources,
+                    ...RetrievalPruner.pruneSources(nonPublicSources, message, 3)
+                ].map(source => [source.url, source])).values()).slice(0, 10)
+                : RetrievalPruner.pruneSources(finalSources, message, 3);
 
         if (isExhaustive) {
             console.log(`📊 Exhaustive mode: Keeping all ${finalSources.length} sources (pruning disabled)`);
@@ -778,11 +868,12 @@ Remember: You're trained on California law AND you have access to real-time sear
         // Combine context from both legislative API search and direct lookups
         const combinedLegislativeContext = [
             legislativeApiData.context,
-            legislationData.context
+            legislationData.context,
+            publicLegalData.context
         ].filter(Boolean).join('\n\n');
 
         if (combinedLegislativeContext) {
-            legislationContextInstructions = `\n\nLegislative research results (validated from official sources):\n${combinedLegislativeContext}\n\nUse this verified bill information. Reference the specific bill identifiers, summarize their status accurately, and cite the provided sources using [id] format.`;
+            legislationContextInstructions = `\n\nCurrent public legal-source research results:\n${combinedLegislativeContext}\n\nUse this retrieved bill and legislative information when relevant. It was collected through configured legal-data providers using sanitized public-law terms rather than broad web search. Reference specific bill identifiers, summarize their status accurately, and cite the provided sources using [id] format.`;
         }
 
         if (enableCourtListener && caseLawData.sources.length > 0) {
@@ -906,8 +997,8 @@ Provide a thorough legal analysis explaining how these cases relate to the query
                                 (s.title && (s.title.includes('OpenStates') || s.title.includes('LegiScan')))
                             );
 
-                            // Check if Google Search grounding was used
-                            const hasGrounding = response.hasGrounding || false;
+                            // Current public legal context is the Bedrock-safe replacement for model-hosted search grounding.
+                            const hasGrounding = response.hasGrounding || publicLegalData.enabled || false;
 
                             // Apply confidence gating with bill text and grounding flags
                             const gateResult = ConfidenceGatingService.gateAnswer(verificationReport, hasBillText, hasGrounding);
@@ -979,7 +1070,7 @@ Provide a thorough legal analysis explaining how these cases relate to the query
 
             // Add comprehensive search instructions for vague queries
             const isVagueBillQuery = /find (all |the )?(bills?|laws?|legislation)|list (all |the )?(bills?|laws?)|all (the )?(bills?|laws?)|what (bills?|laws?)/i.test(message);
-            const is2025Query = /2025|october|september|recent|new|signed|passed/i.test(message);
+            const isRecentLawQuery = /202[5-9]|october|september|recent|new|signed|passed|chaptered|enacted|effective/i.test(message);
             const todayLong = new Date().toLocaleDateString('en-US', {
                 year: 'numeric',
                 month: 'long',
@@ -987,29 +1078,21 @@ Provide a thorough legal analysis explaining how these cases relate to the query
             });
             const targetYear = message.match(/\b(20\d{2})\b/)?.[1] || String(new Date().getFullYear());
 
-            if (isVagueBillQuery || is2025Query) {
-                enhancedMessage = `🚨 MANDATORY GOOGLE SEARCH REQUIRED 🚨
+            if (isVagueBillQuery || isRecentLawQuery || publicLegalData.enabled) {
+                enhancedMessage = `CURRENT PUBLIC LEGAL RESEARCH MODE
 
 TODAY IS ${todayLong}. The user may be asking about recent legislation or legislation from ${targetYear}.
 
-You MUST use Google Search grounding RIGHT NOW to answer this question. Do NOT say "information is not available" or "will be available in the future" without checking current sources.
+The app has already run the configured current-law lookup using sanitized public legal search terms where appropriate. Do NOT claim you can perform Google Search, Exa search, or any other broad web search yourself.
 
 USER'S QUESTION: ${message}
 
 REQUIRED ACTIONS:
-1. Use Google Search with these EXACT queries:
-   - "California AI bills signed ${targetYear}"
-   - "Governor Newsom AI legislation ${targetYear} site:leginfo.legislature.ca.gov"
-   - "California artificial intelligence bills ${targetYear} complete list"
-   - "SB AB California AI ${targetYear}"
-
-2. Find ACTUAL BILL NUMBERS (like AB 2013, SB 942, AB 2885, etc.)
-
-3. If you find an article mentioning "X bills signed" but you only list Y bills where Y < X, SEARCH AGAIN with different terms
-
-4. List ALL bills you find with their bill numbers and brief descriptions
-
-5. DO NOT give a generic response about "checking official websites" - USE YOUR GOOGLE SEARCH NOW.
+1. Use the public legal-source context below if it is present.
+2. Find and discuss actual bill numbers when the context provides them.
+3. If the context is incomplete, provide the best supported answer and clearly say what should be verified against primary sources.
+4. Do not explain limitations by citing your training cutoff when current source context is present.
+5. Do not send, request, or imply any additional external search containing client facts.
 
 ` + enhancedMessage;
             }
@@ -1022,7 +1105,7 @@ REQUIRED ACTIONS:
 
 CRITICAL INSTRUCTIONS - YOU MUST FOLLOW THESE:
 1. Write a COMPLETE, COHERENT ANSWER in proper paragraphs - DO NOT just list snippets or raw source text
-2. SYNTHESIZE information from multiple sources (legislation, case law, web search) into a unified, professional legal explanation
+2. SYNTHESIZE information from multiple sources (legislation, case law, public legal-source context) into a unified, professional legal explanation
 3. Use clear topic sentences and logical organization
 4. Cite sources throughout your answer with specific references
 5. Be thorough but readable - write for a 10th grade reading level
@@ -1636,8 +1719,8 @@ Key California legal sources to reference:
                         (s.title && (s.title.includes('OpenStates') || s.title.includes('LegiScan')))
                     );
 
-                    // Check if Google Search grounding was used
-                    const hasGrounding = response.hasGrounding || false;
+                    // Current public legal context is the Bedrock-safe replacement for model-hosted search grounding.
+                    const hasGrounding = response.hasGrounding || publicLegalData.enabled || false;
 
                     // Apply confidence gating with bill text and grounding flags
                     const gateResult = ConfidenceGatingService.gateAnswer(verificationReport, hasBillText, hasGrounding);
@@ -1881,7 +1964,7 @@ Answer:`;
 
             // Parallelize CEB search and AI sources
             console.log('🔎 Starting parallel searches (CEB + AI)...');
-            const [cebResult, aiResult] = await Promise.all([
+            const [cebResult, aiResult, publicLegalData] = await Promise.all([
                 // CEB search
                 fetchWithRetry(
                     '/api/ceb-search',
@@ -1908,17 +1991,21 @@ Answer:`;
                 }),
 
                 // AI sources (reuse existing logic)
-                this.processAIOnly(message, conversationHistory, signal).catch(err => {
+                this.processAIOnly(message, conversationHistory, signal, undefined, { skipPublicLegalContext: true }).catch(err => {
                     if (signal?.aborted || err.message === 'Request cancelled') throw err;
                     console.error('❌ AI search failed:', err);
                     return { text: '', sources: [] };
-                })
+                }),
+
+                // Sanitized current-law lookup for public legislative questions.
+                this.fetchPublicLegalContext(message, signal)
             ]);
 
             const cebSources: CEBSource[] = cebResult.sources;
             const aiSources: Source[] = aiResult.sources || [];
+            const publicLegalSources: Source[] = publicLegalData.sources || [];
 
-            console.log(`✅ Found ${cebSources.length} CEB sources + ${aiSources.length} AI sources`);
+            console.log(`✅ Found ${cebSources.length} CEB sources + ${publicLegalSources.length} public legal sources + ${aiSources.length} AI sources`);
 
             // Filter high-confidence CEB sources
             const highConfidenceCEB = cebSources.filter(s => s.confidence >= 0.7);
@@ -1932,14 +2019,19 @@ Answer:`;
                 console.log(`✅ Extracted ${extractedCaseSources.length} case citations from CEB`);
             }
 
-            // Combine sources (CEB first, then extracted cases, then AI sources)
+            // Combine sources (CEB first, then extracted cases, then sanitized public legal sources, then AI sources)
             // Deduplicate: remove AI sources that match extracted cases
             const extractedCaseNames = new Set(extractedCaseSources.map(s => s.title.toLowerCase()));
-            const dedupedAiSources = aiSources.filter(s => !extractedCaseNames.has(s.title.toLowerCase()));
+            const publicLegalUrls = new Set(publicLegalSources.map(s => s.url));
+            const dedupedAiSources = aiSources.filter(s =>
+                !extractedCaseNames.has(s.title.toLowerCase()) &&
+                !publicLegalUrls.has(s.url)
+            );
 
             const allSources: (CEBSource | Source)[] = [
                 ...highConfidenceCEB,
                 ...extractedCaseSources,
+                ...publicLegalSources,
                 ...dedupedAiSources
             ];
 
@@ -1975,6 +2067,20 @@ Answer:`;
                 context += '\n\n';
             }
 
+            if (publicLegalSources.length > 0) {
+                context += 'CURRENT PUBLIC LEGAL SOURCES (Sanitized Current-Law Lookup):\n';
+                context += publicLegalSources
+                    .map((source) => {
+                        const idx = sourceIndex++;
+                        return `[${idx}] ${source.title}\n${source.excerpt || ''}`;
+                    })
+                    .join('\n\n');
+                if (publicLegalData.queries?.length > 0) {
+                    context += `\n\nSanitized lookup queries used: ${publicLegalData.queries.join(' | ')}`;
+                }
+                context += '\n\n';
+            }
+
             if (dedupedAiSources.length > 0) {
                 context += 'SUPPLEMENTARY SOURCES (Additional Case Law, Legislation):\n';
                 context += dedupedAiSources
@@ -2002,7 +2108,7 @@ CRITICAL CITATION INSTRUCTIONS - YOU MUST FOLLOW THESE EXACTLY:
 WRITING INSTRUCTIONS:
 1. Write a COMPLETE, COHERENT ANSWER in proper paragraphs
 2. SYNTHESIZE information from multiple sources into a unified explanation
-3. START with the most important information from CEB practice guides (authoritative)
+3. START with the most important information from CEB practice guides unless the question asks about current/recent law; for current/recent law, prioritize CURRENT PUBLIC LEGAL SOURCES over older CEB background.
 4. Use clear topic sentences and logical organization
 5. Be thorough but readable - write for a 10th grade reading level
 6. DO NOT output raw JSON, snippets, or unformatted data
@@ -2221,7 +2327,7 @@ Answer:`;
     }
 
     private async fetchLegislationData(message: string, signal?: AbortSignal): Promise<{ context: string; sources: Source[] }> {
-        console.log('📜 fetchLegislationData called for message:', message.substring(0, 100));
+        console.log(`📜 fetchLegislationData called (message length: ${message.length})`);
 
         // Pattern for California code sections (e.g., "Family Code § 1615", "Penal Code 187", "Civil Code section 1942")
         // Note: Subsections are typically 1-2 digits (e.g., 12058.5), not years like 2024

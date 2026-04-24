@@ -5,6 +5,9 @@
  * Helps diagnose deployment configuration issues.
  */
 
+import { existsSync } from 'fs';
+import { homedir } from 'os';
+
 export default async function handler(req: any, res: any) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
@@ -15,19 +18,52 @@ export default async function handler(req: any, res: any) {
     return;
   }
 
+  const hasSharedAwsFiles =
+    existsSync(process.env.AWS_SHARED_CREDENTIALS_FILE || `${homedir()}/.aws/credentials`) ||
+    existsSync(process.env.AWS_CONFIG_FILE || `${homedir()}/.aws/config`);
+
+  const hasStaticAwsKeys = !!process.env.AWS_ACCESS_KEY_ID && !!process.env.AWS_SECRET_ACCESS_KEY;
+  const hasAwsProfileHints =
+    !!process.env.AWS_PROFILE ||
+    !!process.env.AWS_ROLE_ARN ||
+    !!process.env.AWS_WEB_IDENTITY_TOKEN_FILE ||
+    !!process.env.AWS_CONTAINER_CREDENTIALS_RELATIVE_URI ||
+    !!process.env.AWS_CONTAINER_CREDENTIALS_FULL_URI;
+
   const envStatus = {
-    OPENROUTER_API_KEY: !!process.env.OPENROUTER_API_KEY,
+    BEDROCK_AWS_REGION: !!process.env.BEDROCK_AWS_REGION,
+    AWS_REGION: !!process.env.AWS_REGION,
+    AWS_ACCESS_KEY_ID: !!process.env.AWS_ACCESS_KEY_ID,
+    AWS_SECRET_ACCESS_KEY: !!process.env.AWS_SECRET_ACCESS_KEY,
+    AWS_SESSION_TOKEN: !!process.env.AWS_SESSION_TOKEN,
+    AWS_BEARER_TOKEN_BEDROCK: !!process.env.AWS_BEARER_TOKEN_BEDROCK,
+    BEDROCK_API_KEY: !!process.env.BEDROCK_API_KEY,
+    AWS_PROFILE: !!process.env.AWS_PROFILE,
+    AWS_SHARED_FILES: hasSharedAwsFiles,
     UPSTASH_VECTOR_REST_URL: !!process.env.UPSTASH_VECTOR_REST_URL,
     UPSTASH_VECTOR_REST_TOKEN: !!process.env.UPSTASH_VECTOR_REST_TOKEN,
-    GEMINI_API_KEY: !!process.env.GEMINI_API_KEY,
-    ANTHROPIC_API_KEY: !!process.env.ANTHROPIC_API_KEY,
     OPENAI_API_KEY: !!process.env.OPENAI_API_KEY,
     COURTLISTENER_API_KEY: !!process.env.COURTLISTENER_API_KEY,
+    EXA_API_KEY: !!process.env.EXA_API_KEY,
+    SERPER_API_KEY: !!process.env.SERPER_API_KEY,
   };
 
-  const missingKeys = Object.entries(envStatus)
-    .filter(([_, isSet]) => !isSet)
-    .map(([key]) => key);
+  const missingKeys: string[] = [];
+
+  if (!envStatus.OPENAI_API_KEY) missingKeys.push('OPENAI_API_KEY');
+  if (!envStatus.COURTLISTENER_API_KEY) missingKeys.push('COURTLISTENER_API_KEY');
+  if (!envStatus.UPSTASH_VECTOR_REST_URL) missingKeys.push('UPSTASH_VECTOR_REST_URL');
+  if (!envStatus.UPSTASH_VECTOR_REST_TOKEN) missingKeys.push('UPSTASH_VECTOR_REST_TOKEN');
+
+  if (
+    !hasStaticAwsKeys &&
+    !envStatus.AWS_BEARER_TOKEN_BEDROCK &&
+    !envStatus.BEDROCK_API_KEY &&
+    !hasAwsProfileHints &&
+    !hasSharedAwsFiles
+  ) {
+    missingKeys.push('AWS_BEDROCK_CREDENTIALS');
+  }
 
   res.status(200).json({
     status: missingKeys.length === 0 ? 'all_configured' : 'missing_keys',

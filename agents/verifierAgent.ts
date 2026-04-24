@@ -2,7 +2,7 @@
  * Verifier Agent
  * 
  * Performs final quality control on generated documents.
- * Uses Claude Sonnet 4.5 via OpenRouter for accurate verification and reasoning.
+ * Uses Anthropic on AWS Bedrock for final verification and reasoning.
  */
 
 import type {
@@ -12,6 +12,7 @@ import type {
   ResearchPackage,
   DocumentType,
 } from '../types';
+import { generateText } from '../utils/anthropicBedrock.ts';
 
 // =============================================================================
 // CONFIGURATION
@@ -52,45 +53,25 @@ VERIFICATION CHECKLIST:
 You will receive the document content and research package. Analyze thoroughly and provide a structured report.`;
 
 // =============================================================================
-// OPENROUTER API HELPER
+// BEDROCK HELPER
 // =============================================================================
 
-async function callOpenRouterClaude(
+async function callVerifierModel(
   systemPrompt: string,
   userMessage: string,
   maxTokens: number = 4096
 ): Promise<string> {
-  const apiKey = process.env.OPENROUTER_API_KEY;
-  if (!apiKey) {
-    throw new Error('OPENROUTER_API_KEY not configured');
-  }
-
-  const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-      'HTTP-Referer': 'https://california-law-chatbot.vercel.app',
-      'X-Title': 'California Law Chatbot'
-    },
-    body: JSON.stringify({
-      model: 'anthropic/claude-sonnet-4.5',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userMessage }
-      ],
-      temperature: 0.2,
-      max_tokens: maxTokens
-    })
+  const response = await generateText({
+    model:
+      process.env.BEDROCK_VERIFIER_MODEL ||
+      process.env.GEMINI_VERIFIER_MODEL ||
+      'us.anthropic.claude-sonnet-4-6',
+    messages: [{ role: 'user', content: userMessage }],
+    systemInstruction: systemPrompt,
+    temperature: 0.2,
+    maxOutputTokens: maxTokens,
   });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`OpenRouter API error: ${response.status} - ${errorText}`);
-  }
-
-  const data = await response.json();
-  return data.choices?.[0]?.message?.content || '';
+  return response.text;
 }
 
 // =============================================================================
@@ -110,13 +91,13 @@ export class VerifierAgent {
     researchPackage: ResearchPackage,
     documentType: DocumentType
   ): Promise<DocumentVerificationReport> {
-    console.log('🔍 Verifier Agent: Starting document verification via OpenRouter...');
+    console.log('🔍 Verifier Agent: Starting document verification via Anthropic Bedrock...');
 
     // Build the verification prompt
     const prompt = this.buildVerificationPrompt(sections, researchPackage, documentType);
 
     try {
-      const responseText = await callOpenRouterClaude(VERIFIER_SYSTEM_PROMPT, prompt, 4096);
+      const responseText = await callVerifierModel(VERIFIER_SYSTEM_PROMPT, prompt, 4096);
 
       // Parse the verification report
       const report = this.parseVerificationResponse(responseText, sections);

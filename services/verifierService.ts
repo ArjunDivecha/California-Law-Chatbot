@@ -1,12 +1,12 @@
 /**
- * Verifier Service - Two-pass verification with Claude Haiku 4.5
+ * Verifier Service - Two-pass verification with Bedrock Claude
  * 
  * INPUT FILES: None
  * OUTPUT FILES: None (utility service)
  * 
  * Implements two-pass verification system:
- * 1. Generator (Gemini 2.5 Flash-Lite) produces answer + claims
- * 2. Verifier (Claude Haiku 4.5) validates claims against sources
+ * 1. Generator produces answer + claims
+ * 2. Verifier validates claims against sources
  * 3. Returns verified rewrite or refusal if claims unsupported
  * 
  * Version: 2.0
@@ -181,12 +181,12 @@ CRITICAL: NEVER set status to "refusal". Always provide the best possible answer
    * Format sources for verifier prompt
    */
   private static formatSourcesForVerifier(sources: Source[]): string {
-    return sources.map((source, index) => {
+    return sources.slice(0, 8).map((source, index) => {
       const id = source.id || String(index + 1);
       return `[id:${id}]
 Title: ${source.title}
 URL: ${source.url}
-Excerpt: ${source.excerpt || 'No excerpt available'}`;
+Excerpt: ${(source.excerpt || 'No excerpt available').slice(0, 1200)}`;
     }).join('\n\n');
   }
   
@@ -229,7 +229,7 @@ ANSWER TO VERIFY:
 ${answerText}
 
 CLAIMS TO VERIFY:
-${JSON.stringify(claims, null, 2)}
+${JSON.stringify(claims.slice(0, 12), null, 2)}
 
 SOURCES:
 ${formattedSources}
@@ -267,7 +267,7 @@ OUTPUT JSON ONLY (no markdown, no explanation):
         throw new Error('Request cancelled');
       }
       
-      // Call Claude Haiku 4.5 API via server-side endpoint
+      // Call the server-side verifier endpoint (backed by Bedrock Claude)
       const response = await fetchWithRetry(
         '/api/claude-chat',
         {
@@ -281,7 +281,7 @@ OUTPUT JSON ONLY (no markdown, no explanation):
           }),
           signal, // Pass AbortSignal for cancellation
         },
-        2, // maxRetries
+        0, // verifier calls are already expensive; surface one definitive result
         1000 // baseDelay
       );
 
@@ -336,7 +336,7 @@ OUTPUT JSON ONLY (no markdown, no explanation):
       // CRITICAL: Never use a refusal message - always show the actual answer
       let verifiedAnswer = verificationResult.verified_answer || answerText;
       
-      // If Claude returned a refusal message, use the original answer instead
+      // If the verifier returned a refusal-like message, use the original answer instead
       if (verifiedAnswer.toLowerCase().includes('cannot provide') || 
           verifiedAnswer.toLowerCase().includes('cannot verify') ||
           verifiedAnswer.toLowerCase().includes('insufficient') ||

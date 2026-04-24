@@ -13,6 +13,7 @@
     "test:openrouter": "node test-comprehensive.js"
   },
   "dependencies": {
+    "@anthropic-ai/bedrock-sdk": "^0.29.0",
     "@anthropic-ai/sdk": "^0.68.0",
     "@clerk/backend": "^3.2.8",
     "@clerk/clerk-react": "^5.61.4",

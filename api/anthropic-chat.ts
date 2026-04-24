@@ -1,12 +1,23 @@
-import Anthropic from '@anthropic-ai/sdk';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import {
+  buildMessagesFromConversation,
+  generateTextStream,
+  getErrorDetails,
+  hasBedrockProviderCredentials,
+} from '../utils/anthropicBedrock.ts';
+import { buildWebSearchContext, shouldUseWebSearch } from '../utils/webSearchContext.ts';
 
-const ANTHROPIC_MODEL = 'claude-sonnet-4-6';
+const ANTHROPIC_MODEL =
+  process.env.BEDROCK_SPEED_MODEL ||
+  process.env.BEDROCK_ANTHROPIC_CHAT_MODEL ||
+  'us.anthropic.claude-sonnet-4-6';
 
 const SYSTEM_PROMPT = `You are a California law research assistant for femme & femme LLP. \
 Answer questions about California statutes, case law, regulations, and legal procedures. \
-Use web search to find current, accurate legal information when needed. \
-Always cite your sources. Clarify when information may vary by jurisdiction or circumstance. \
+Answer from the information available in the conversation, your model knowledge, and any provided web context. \
+If the answer may depend on current law or jurisdiction-specific facts, say so clearly. \
+When web context is provided, use it carefully and cite source URLs inline when you rely on them. \
+This Speed endpoint is a non-client passthrough path; do not represent it as safe for confidential client facts. \
 Do not provide legal advice — provide legal information and research only.`;
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -25,26 +36,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return;
   }
 
-  if (!process.env.ANTHROPIC_API_KEY) {
-    res.status(500).json({ error: 'Server configuration error', message: 'ANTHROPIC_API_KEY is not set.' });
+  if (!hasBedrockProviderCredentials()) {
+    res.status(500).json({
+      error: 'Server configuration error',
+      message:
+        'AWS Bedrock credentials are not configured. Set AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, and AWS_REGION, or provide an AWS profile/role available to the server.',
+    });
     return;
   }
 
-  const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-
-  const history: Array<{ role: string; text: string }> = Array.isArray(conversationHistory)
-    ? conversationHistory
-    : [];
-
-  const messages: Anthropic.Messages.MessageParam[] = [
-    ...history
-      .filter(m => m.text?.trim())
-      .map(m => ({
-        role: (m.role === 'user' ? 'user' : 'assistant') as 'user' | 'assistant',
-        content: m.text,
-      })),
-    { role: 'user', content: message },
-  ];
+  const webSearchRequested = shouldUseWebSearch(message);
+  const { webContext, meta: webSearchMeta } = await buildWebSearchContext(message, webSearchRequested);
+  const groundedMessage = webContext
+    ? `${message}\n\nUse the current web context below when it is relevant to answering accurately.\n${webContext}`
+    : message;
+  const messages = buildMessagesFromConversation(conversationHistory, groundedMessage);
 
   // SSE headers — stream tokens to the client as they arrive
   res.setHeader('Content-Type', 'text/event-stream');
@@ -52,21 +58,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('X-Accel-Buffering', 'no');
 
   try {
-    const stream = await anthropic.messages.stream({
+    console.log(
+      `📡 Streaming Anthropic Bedrock response with model: ${ANTHROPIC_MODEL} (web_search=${webSearchMeta.enabled ? `${webSearchMeta.provider}:${webSearchMeta.resultsCount}` : webSearchMeta.reason || 'off'})`
+    );
+    const streamResponse = await generateTextStream({
       model: ANTHROPIC_MODEL,
-      max_tokens: 4096,
-      system: SYSTEM_PROMPT,
       messages,
-      tools: [
-        {
-          type: 'web_search_20250305',
-          name: 'web_search',
-          max_uses: 3,
-        } as any,
-      ],
+      systemInstruction: SYSTEM_PROMPT,
+      temperature: 0.2,
+      maxOutputTokens: 4096,
     });
 
-    for await (const event of stream) {
+    for await (const event of streamResponse.stream) {
       if (
         event.type === 'content_block_delta' &&
         event.delta.type === 'text_delta' &&
@@ -79,12 +82,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     res.write('data: [DONE]\n\n');
     res.end();
   } catch (err: any) {
-    console.error('Anthropic stream error:', err);
+    console.error('Anthropic Bedrock stream error:', err);
+    const { message } = getErrorDetails(err);
     // If headers not yet sent, send a JSON error; otherwise close the stream
     if (!res.headersSent) {
-      res.status(500).json({ error: 'Internal Server Error', message: err?.message || 'Stream failed.' });
+      res.status(500).json({ error: 'Internal Server Error', message: message || 'Stream failed.' });
     } else {
-      res.write(`data: ${JSON.stringify({ error: err?.message || 'Stream failed.' })}\n\n`);
+      res.write(`data: ${JSON.stringify({ error: message || 'Stream failed.' })}\n\n`);
       res.end();
     }
   }
