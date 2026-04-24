@@ -13,6 +13,7 @@ import type {
 } from '../types';
 import { applyVariablesToTemplate, countWords, extractCitations } from './tools';
 import { generateText } from '../utils/anthropicBedrock.ts';
+import { resolveBedrockModel } from '../utils/bedrockModels.ts';
 
 // =============================================================================
 // CONFIGURATION
@@ -316,10 +317,7 @@ export class DrafterAgent {
    */
   private async callDrafterModel(prompt: string): Promise<string> {
     const response = await generateText({
-      model:
-        process.env.BEDROCK_DRAFTER_MODEL ||
-        process.env.GEMINI_DRAFTER_MODEL ||
-        'us.anthropic.claude-sonnet-4-6',
+      model: resolveBedrockModel('drafter').id,
       messages: [{ role: 'user', content: prompt }],
       systemInstruction: DRAFTER_SYSTEM_PROMPT,
       temperature: 0.7,

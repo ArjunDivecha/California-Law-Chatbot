@@ -13,11 +13,13 @@ import {
   getErrorDetails,
   hasBedrockProviderCredentials,
 } from '../utils/anthropicBedrock.ts';
+import { ACCURACY_ALLOWED, enforceFlow, rejectFlow } from '../utils/flowPolicy.ts';
+import {
+  BedrockConfigError,
+  assertNoPromptCacheMetadata,
+  resolveBedrockModel,
+} from '../utils/bedrockModels.ts';
 
-const VERIFIER_MODEL =
-  process.env.BEDROCK_VERIFIER_MODEL ||
-  process.env.GEMINI_VERIFIER_MODEL ||
-  'us.anthropic.claude-haiku-4-5-20251001-v1:0';
 const VERIFIER_TIMEOUT_MS = Number(process.env.BEDROCK_VERIFIER_TIMEOUT_MS || 60000);
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -37,6 +39,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return;
     }
 
+    // Verifier serves Accuracy flows only.
+    const flowResult = enforceFlow(req.body, ACCURACY_ALLOWED);
+    if (rejectFlow(res, flowResult)) return;
+
     const { message, systemPrompt, conversationHistory } = req.body;
 
     if (!message || typeof message !== 'string' || !message.trim()) {
@@ -54,26 +60,40 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return;
     }
 
+    let verifierModel;
+    try {
+      verifierModel = resolveBedrockModel('verifier');
+    } catch (err) {
+      if (err instanceof BedrockConfigError) {
+        console.error('Bedrock config error:', err.message);
+        res.status(500).json({ error: 'bedrock_config_error', message: err.message });
+        return;
+      }
+      throw err;
+    }
+
     const messages = buildMessagesFromConversation(conversationHistory, message);
-    console.log(`📡 Calling Anthropic Bedrock verifier model: ${VERIFIER_MODEL} (${messages.length} messages in context)`);
+    console.log(`📡 Calling Anthropic Bedrock verifier model: ${verifierModel.id} (${messages.length} messages in context)`);
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), VERIFIER_TIMEOUT_MS);
 
     try {
-      const response = await generateText({
-        model: VERIFIER_MODEL,
+      const requestPayload = {
+        model: verifierModel.id,
         messages,
         systemInstruction:
           systemPrompt || 'You are an expert legal research assistant specializing in California law.',
         temperature: 0.2,
         maxOutputTokens: Number(process.env.BEDROCK_VERIFIER_MAX_TOKENS || 4096),
         abortSignal: controller.signal,
-      });
+      };
+      assertNoPromptCacheMetadata(requestPayload, 'claude-chat');
+      const response = await generateText(requestPayload);
 
       res.status(200).json({
         text: response.text,
-        model: VERIFIER_MODEL,
+        model: verifierModel.id,
         provider: response.providerMode,
       });
     } finally {

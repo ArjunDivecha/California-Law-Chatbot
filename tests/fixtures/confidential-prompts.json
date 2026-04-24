@@ -1,0 +1,17 @@
+{
+  "description": "Synthetic prompts that contain client-confidential facts. These must never reach broad external search or non-Bedrock generative models.",
+  "prompts": [
+    {
+      "id": "conf-1",
+      "text": "Our client Maria Esperanza, age 73, transferred her Pacific Heights residence at 2155 Vallejo Street to her son Daniel Esperanza in 2021 without documenting consideration. The estate is roughly $4.8M. We need analysis of likely undue-influence and elder-financial-abuse exposure under California Welfare and Institutions Code § 15610.30."
+    },
+    {
+      "id": "conf-2",
+      "text": "Client Marcus Chen, SSN 542-87-1199, is asking us to draft a revocable living trust before his pending divorce filing. Spouse is Lin Chen-Park, joint accounts at Wells Fargo (acct 4581-22XXXX). What disclosure obligations does CCP § 2030.300 impose during pending dissolution?"
+    },
+    {
+      "id": "conf-3",
+      "text": "We represent Hudson & Wraight Construction (FEIN 27-3318822) in a dispute with subcontractor Vega Steel about a $1.27M progress payment on the Mission Bay project. The owner is Brookfield Pacific. Outline likely Business and Professions Code § 7108.5 prompt-payment claims."
+    }
+  ]
+}

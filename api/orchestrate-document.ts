@@ -22,6 +22,7 @@ import {
   hasBedrockProviderCredentials,
   isRetryableProviderError,
 } from '../utils/anthropicBedrock.ts';
+import { resolveBedrockModel } from '../utils/bedrockModels.ts';
 
 // Vercel function config
 export const config = {
@@ -538,10 +539,7 @@ async function callDrafterModel(prompt: string, maxWords?: number, retryCount: n
   
   try {
     const response = await generateText({
-      model:
-        process.env.BEDROCK_DRAFTER_MODEL ||
-        process.env.GEMINI_DRAFTER_MODEL ||
-        'us.anthropic.claude-sonnet-4-6',
+      model: resolveBedrockModel('drafter').id,
       messages: [{ role: 'user', content: prompt }],
       systemInstruction: DRAFTER_SYSTEM_PROMPT,
       temperature: 0.7,
@@ -913,10 +911,7 @@ Provide ONLY the JSON response.`;
     const verifierTimeout = setTimeout(() => verifierController.abort(), 45000);
 
     const response = await generateText({
-      model:
-        process.env.BEDROCK_VERIFIER_MODEL ||
-        process.env.GEMINI_VERIFIER_MODEL ||
-        'us.anthropic.claude-sonnet-4-6',
+      model: resolveBedrockModel('verifier').id,
       messages: [{ role: 'user', content: prompt }],
       systemInstruction: VERIFIER_SYSTEM_PROMPT,
       temperature: 0.2,

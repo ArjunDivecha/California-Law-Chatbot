@@ -5,7 +5,13 @@
  * Uses Anthropic on AWS Bedrock to synthesize the collected research.
  */
 
-import type { ResearchPackage, CEBSource, CaseLawSource, StatuteSource } from '../types';
+import type {
+  ResearchPackage,
+  CEBSource,
+  CaseLawSource,
+  StatuteSource,
+  LegislativeSource,
+} from '../types';
 import {
   cebSearchTool,
   courtListenerSearchTool,
@@ -14,6 +20,10 @@ import {
   type CEBSearchResult,
 } from './tools';
 import { generateText, hasBedrockProviderCredentials } from '../utils/anthropicBedrock.ts';
+import {
+  BedrockConfigError,
+  resolveBedrockModel,
+} from '../utils/bedrockModels.ts';
 
 const RESEARCH_SYSTEM_PROMPT = `You are a California legal research specialist. Your job is to organize collected source material into a concise, practical research package for legal drafting.
 
@@ -42,6 +52,7 @@ export class ResearchAgent {
   private cebSources: CEBSource[] = [];
   private caseLaw: CaseLawSource[] = [];
   private statutes: StatuteSource[] = [];
+  private legislativeSources: LegislativeSource[] = [];
   private modelLanguage: CEBSearchResult['modelLanguage'] = [];
   private researchNotes = '';
   private keyAuthorities: ResearchPackage['keyAuthorities'] = [];
@@ -56,6 +67,7 @@ export class ResearchAgent {
     this.cebSources = [];
     this.caseLaw = [];
     this.statutes = [];
+    this.legislativeSources = [];
     this.modelLanguage = [];
     this.researchNotes = '';
     this.keyAuthorities = [];
@@ -112,7 +124,23 @@ export class ResearchAgent {
   }
 
   private async runLegislativeSearch(query: string): Promise<void> {
-    await legislativeSearchTool({ query });
+    const result = await legislativeSearchTool({ query });
+    if (!result?.bills?.length) return;
+
+    for (const bill of result.bills) {
+      const billNumber = (bill.billNumber || '').trim();
+      if (!billNumber) continue;
+      this.legislativeSources.push({
+        billNumber,
+        title: bill.title || billNumber,
+        status: bill.status || 'Unknown',
+        lastAction: bill.lastAction || undefined,
+        url: bill.url || '',
+        // Tool currently routes through OpenStates by default; provider label
+        // will become more accurate when LegiScan is wired in alongside it.
+        provider: 'openstates',
+      });
+    }
   }
 
   private inferCEBCategories(query: string, focusAreas?: string[]): string[] | undefined {
@@ -171,6 +199,20 @@ export class ResearchAgent {
       return;
     }
 
+    let researchModelId: string;
+    try {
+      researchModelId = resolveBedrockModel('research').id;
+    } catch (err) {
+      if (err instanceof BedrockConfigError) {
+        console.error('Research Agent Bedrock config error:', err.message);
+      } else {
+        console.error('Research Agent Bedrock config error:', err);
+      }
+      this.researchNotes = fallbackNotes;
+      this.keyAuthorities = this.buildFallbackAuthorities();
+      return;
+    }
+
     const prompt = `Research query: ${query}
 
 Requested source types: ${sources.join(', ')}
@@ -185,6 +227,9 @@ ${this.caseLaw.slice(0, 5).map((source) => `- ${source.caseName} ${source.citati
 Collected statutes:
 ${this.statutes.slice(0, 5).map((source) => `- ${source.code} § ${source.section}: ${(source.text || '').substring(0, 160)}`).join('\n') || '- None'}
 
+Collected legislation:
+${this.legislativeSources.slice(0, 5).map((source) => `- ${source.billNumber}: ${(source.title || '').substring(0, 160)} [${source.status}]`).join('\n') || '- None'}
+
 Model language:
 ${this.modelLanguage?.slice(0, 3).map((item) => `- ${item.citation}: ${item.text.substring(0, 160)}`).join('\n') || '- None'}
 
@@ -192,10 +237,7 @@ Return JSON only.`;
 
     try {
       const response = await generateText({
-        model:
-          process.env.BEDROCK_RESEARCH_MODEL ||
-          process.env.GEMINI_RESEARCH_MODEL ||
-          'us.anthropic.claude-haiku-4-5-20251001-v1:0',
+        model: researchModelId,
         messages: [{ role: 'user', content: prompt }],
         systemInstruction: RESEARCH_SYSTEM_PROMPT,
         temperature: 0.2,
@@ -253,6 +295,9 @@ Return JSON only.`;
     if (this.statutes.length) {
       parts.push(`Found ${this.statutes.length} statute reference(s).`);
     }
+    if (this.legislativeSources.length) {
+      parts.push(`Found ${this.legislativeSources.length} legislative source(s).`);
+    }
 
     return parts.join(' ');
   }
@@ -290,6 +335,16 @@ Return JSON only.`;
       });
     });
 
+    this.legislativeSources.slice(0, 3).forEach((source) => {
+      authorities.push({
+        rank: authorities.length + 1,
+        type: 'legislation',
+        citation: source.billNumber,
+        relevanceScore: Math.max(0.1, 1 - authorities.length * 0.1),
+        summary: `${source.title} — ${source.status}`.trim(),
+      });
+    });
+
     return authorities;
   }
 
@@ -297,6 +352,7 @@ Return JSON only.`;
     const uniqueCEB = this.deduplicateByField(this.cebSources, 'cebCitation');
     const uniqueCases = this.deduplicateByField(this.caseLaw, 'citation');
     const uniqueStatutes = this.deduplicateByField(this.statutes, 'section');
+    const uniqueLegislation = this.deduplicateByField(this.legislativeSources, 'billNumber');
 
     return {
       query,
@@ -304,6 +360,7 @@ Return JSON only.`;
       cebSources: uniqueCEB,
       caseLaw: uniqueCases,
       statutes: uniqueStatutes,
+      legislativeSources: uniqueLegislation,
       keyAuthorities: this.keyAuthorities,
       modelLanguage: this.modelLanguage,
       researchNotes: this.researchNotes || 'Research completed. Review sources for relevant authorities.',

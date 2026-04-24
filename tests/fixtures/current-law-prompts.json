@@ -1,0 +1,17 @@
+{
+  "description": "Current-law regression prompts. The Accuracy stack must surface legislative or current-data sources for each of these.",
+  "prompts": [
+    {
+      "id": "cur-1",
+      "text": "what new laws have been passed in 2026 in CA"
+    },
+    {
+      "id": "cur-2",
+      "text": "what California bills about electric bicycles were active in 2025-2026"
+    },
+    {
+      "id": "cur-3",
+      "text": "has California changed its lemon law procedures recently"
+    }
+  ]
+}

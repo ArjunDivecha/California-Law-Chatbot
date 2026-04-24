@@ -15,15 +15,13 @@ import {
   hasBedrockProviderCredentials,
   isRetryableProviderError,
 } from '../utils/anthropicBedrock.ts';
+import { ACCURACY_ALLOWED, enforceFlow, rejectFlow } from '../utils/flowPolicy.ts';
+import {
+  BedrockConfigError,
+  assertNoPromptCacheMetadata,
+  resolveBedrockModel,
+} from '../utils/bedrockModels.ts';
 
-const PRIMARY_MODEL =
-  process.env.BEDROCK_PRIMARY_MODEL ||
-  process.env.GEMINI_PRIMARY_MODEL ||
-  'us.anthropic.claude-sonnet-4-6';
-const FALLBACK_MODEL =
-  process.env.BEDROCK_FALLBACK_MODEL ||
-  process.env.GEMINI_FALLBACK_MODEL ||
-  'us.anthropic.claude-haiku-4-5-20251001-v1:0';
 const PRIMARY_TIMEOUT_MS = Number(process.env.BEDROCK_PRIMARY_TIMEOUT_MS || 60000);
 const FALLBACK_TIMEOUT_MS = Number(process.env.BEDROCK_FALLBACK_TIMEOUT_MS || 45000);
 
@@ -48,6 +46,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return;
     }
 
+    // Accuracy generator only accepts client-safe and public-research flows.
+    // Any speed_passthrough payload here is a bug or a bypass attempt.
+    const flowResult = enforceFlow(req.body, ACCURACY_ALLOWED);
+    if (rejectFlow(res, flowResult)) return;
+
     const { message, systemPrompt, conversationHistory, stream = false } = req.body;
 
     if (!message || typeof message !== 'string' || !message.trim()) {
@@ -65,6 +68,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return;
     }
 
+    let primaryModel;
+    let fallbackModel;
+    try {
+      primaryModel = resolveBedrockModel('primary');
+      fallbackModel = resolveBedrockModel('fallback');
+    } catch (err) {
+      if (err instanceof BedrockConfigError) {
+        console.error('Bedrock config error:', err.message);
+        res.status(500).json({ error: 'bedrock_config_error', message: err.message });
+        return;
+      }
+      throw err;
+    }
+
     const messages = buildMessagesFromConversation(conversationHistory, message);
 
     const executeTextRequest = async (model: string, timeoutMs: number) => {
@@ -73,7 +90,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
       try {
-        return await generateText({
+        const requestPayload = {
           model,
           messages,
           systemInstruction:
@@ -81,7 +98,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           temperature: 0.2,
           maxOutputTokens: 8192,
           abortSignal: controller.signal,
-        });
+        };
+        assertNoPromptCacheMetadata(requestPayload, 'gemini-chat');
+        return await generateText(requestPayload);
       } finally {
         clearTimeout(timeoutId);
       }
@@ -93,7 +112,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
       try {
-        return await generateTextStream({
+        const requestPayload = {
           model,
           messages,
           systemInstruction:
@@ -101,7 +120,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           temperature: 0.2,
           maxOutputTokens: 8192,
           abortSignal: controller.signal,
-        });
+        };
+        assertNoPromptCacheMetadata(requestPayload, 'gemini-chat');
+        return await generateTextStream(requestPayload);
       } catch (error) {
         clearTimeout(timeoutId);
         throw error;
@@ -114,24 +135,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       res.setHeader('Connection', 'keep-alive');
     }
 
-    let usedModel = PRIMARY_MODEL;
+    let usedModel = primaryModel.id;
 
     if (stream) {
       let streamResponse;
 
       try {
-        streamResponse = await executeStreamRequest(PRIMARY_MODEL, PRIMARY_TIMEOUT_MS);
+        streamResponse = await executeStreamRequest(primaryModel.id, PRIMARY_TIMEOUT_MS);
       } catch (error) {
         const { message: errorMessage } = getErrorDetails(error);
-        console.warn(`⚠️ Failed with ${PRIMARY_MODEL}:`, errorMessage);
+        console.warn(`⚠️ Failed with ${primaryModel.id}:`, errorMessage);
 
         if (!isRetryableProviderError(error)) {
           throw error;
         }
 
-        console.log(`🔄 Falling back to ${FALLBACK_MODEL}...`);
-        usedModel = FALLBACK_MODEL;
-        streamResponse = await executeStreamRequest(FALLBACK_MODEL, FALLBACK_TIMEOUT_MS);
+        console.log(`🔄 Falling back to ${fallbackModel.id}...`);
+        usedModel = fallbackModel.id;
+        streamResponse = await executeStreamRequest(fallbackModel.id, FALLBACK_TIMEOUT_MS);
       }
 
       try {
@@ -167,18 +188,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     let textResponse;
     try {
-      textResponse = await executeTextRequest(PRIMARY_MODEL, PRIMARY_TIMEOUT_MS);
+      textResponse = await executeTextRequest(primaryModel.id, PRIMARY_TIMEOUT_MS);
     } catch (error) {
       const { message: errorMessage } = getErrorDetails(error);
-      console.warn(`⚠️ Failed with ${PRIMARY_MODEL}:`, errorMessage);
+      console.warn(`⚠️ Failed with ${primaryModel.id}:`, errorMessage);
 
       if (!isRetryableProviderError(error)) {
         throw error;
       }
 
-      console.log(`🔄 Falling back to ${FALLBACK_MODEL}...`);
-      usedModel = FALLBACK_MODEL;
-      textResponse = await executeTextRequest(FALLBACK_MODEL, FALLBACK_TIMEOUT_MS);
+      console.log(`🔄 Falling back to ${fallbackModel.id}...`);
+      usedModel = fallbackModel.id;
+      textResponse = await executeTextRequest(fallbackModel.id, FALLBACK_TIMEOUT_MS);
     }
 
     res.status(200).json({

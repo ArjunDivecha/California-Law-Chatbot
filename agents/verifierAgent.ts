@@ -13,6 +13,7 @@ import type {
   DocumentType,
 } from '../types';
 import { generateText } from '../utils/anthropicBedrock.ts';
+import { resolveBedrockModel } from '../utils/bedrockModels.ts';
 
 // =============================================================================
 // CONFIGURATION
@@ -62,10 +63,7 @@ async function callVerifierModel(
   maxTokens: number = 4096
 ): Promise<string> {
   const response = await generateText({
-    model:
-      process.env.BEDROCK_VERIFIER_MODEL ||
-      process.env.GEMINI_VERIFIER_MODEL ||
-      'us.anthropic.claude-sonnet-4-6',
+    model: resolveBedrockModel('verifier').id,
     messages: [{ role: 'user', content: userMessage }],
     systemInstruction: systemPrompt,
     temperature: 0.2,

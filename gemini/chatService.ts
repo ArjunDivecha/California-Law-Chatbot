@@ -498,6 +498,10 @@ Remember: You're trained on California law, and the app may provide fresh source
                         message,
                         systemPrompt,
                         conversationHistory: conversationHistory || [],
+                        // Until the sanitization layer ships, treat Accuracy as
+                        // public_research; flowPolicy will reject this if the
+                        // route ever changes its allowed-flow set.
+                        flow: 'public_research',
                     }),
                     signal, // Pass AbortSignal for cancellation
                 },
@@ -581,7 +585,7 @@ Remember: You're trained on California law, and the app may provide fresh source
             {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ message, conversationHistory }),
+                body: JSON.stringify({ message, conversationHistory, flow: 'speed_passthrough' }),
                 signal,
             },
             1,

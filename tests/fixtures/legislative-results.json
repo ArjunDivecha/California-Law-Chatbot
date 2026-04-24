@@ -1,0 +1,21 @@
+{
+  "description": "Synthetic OpenStates-shaped legislative results used by the legislative-retention test.",
+  "bills": [
+    {
+      "billNumber": "AB 1042",
+      "title": "Electric bicycles: classification and safety standards.",
+      "status": "Passed Assembly; pending Senate Transportation",
+      "lastAction": "2025-09-12",
+      "url": "https://openstates.example.com/ca/bills/2025/AB1042",
+      "provider": "openstates"
+    },
+    {
+      "billNumber": "SB 211",
+      "title": "Lemon law: notice and repurchase procedure amendments.",
+      "status": "Chaptered Sept 2026",
+      "lastAction": "2026-09-30",
+      "url": "https://openstates.example.com/ca/bills/2026/SB211",
+      "provider": "openstates"
+    }
+  ]
+}

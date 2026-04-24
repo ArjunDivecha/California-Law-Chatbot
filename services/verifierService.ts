@@ -278,6 +278,9 @@ OUTPUT JSON ONLY (no markdown, no explanation):
           body: JSON.stringify({
             message: verificationPrompt,
             systemPrompt: this.systemPrompt,
+            // Verifier serves the same flow as the generator. Until
+            // sanitization ships, treat as public_research.
+            flow: 'public_research',
           }),
           signal, // Pass AbortSignal for cancellation
         },

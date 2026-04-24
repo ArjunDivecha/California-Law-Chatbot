@@ -311,11 +311,23 @@ export interface StatuteSource {
 }
 
 /**
+ * Legislative source for research (active or recently-passed bill)
+ */
+export interface LegislativeSource {
+  billNumber: string;
+  title: string;
+  status: string;
+  lastAction?: string;
+  url: string;
+  provider: 'openstates' | 'legiscan' | 'unknown';
+}
+
+/**
  * Ranked authority
  */
 export interface RankedAuthority {
   rank: number;
-  type: 'case' | 'statute' | 'ceb' | 'secondary';
+  type: 'case' | 'statute' | 'ceb' | 'secondary' | 'legislation';
   citation: string;
   relevanceScore: number;
   summary: string;
@@ -343,6 +355,7 @@ export interface ResearchPackage {
   cebSources: CEBSource[];
   caseLaw: CaseLawSource[];
   statutes: StatuteSource[];
+  legislativeSources: LegislativeSource[];
 
   // Analysis
   keyAuthorities: RankedAuthority[];

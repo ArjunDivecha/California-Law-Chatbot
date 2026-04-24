@@ -1,0 +1,17 @@
+{
+  "description": "Generic public legal-research prompts that contain no client-confidential facts.",
+  "prompts": [
+    {
+      "id": "pub-1",
+      "text": "Summarize the elements of undue influence under California Welfare and Institutions Code § 15610.70."
+    },
+    {
+      "id": "pub-2",
+      "text": "What are the disclosure requirements under CCP § 2030.300 for supplemental responses to interrogatories?"
+    },
+    {
+      "id": "pub-3",
+      "text": "Explain how California Probate Code § 859 damages interact with elder-financial-abuse claims."
+    }
+  ]
+}

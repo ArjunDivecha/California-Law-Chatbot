@@ -10,7 +10,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "test:verification": "node test-verification-system.js",
-    "test:openrouter": "node test-comprehensive.js"
+    "test:openrouter": "node test-comprehensive.js",
+    "test:confidentiality": "node --experimental-strip-types tests/confidentiality.test.mjs"
   },
   "dependencies": {
     "@anthropic-ai/bedrock-sdk": "^0.29.0",

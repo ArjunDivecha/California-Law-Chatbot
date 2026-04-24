@@ -6,11 +6,12 @@ import {
   hasBedrockProviderCredentials,
 } from '../utils/anthropicBedrock.ts';
 import { buildWebSearchContext, shouldUseWebSearch } from '../utils/webSearchContext.ts';
-
-const ANTHROPIC_MODEL =
-  process.env.BEDROCK_SPEED_MODEL ||
-  process.env.BEDROCK_ANTHROPIC_CHAT_MODEL ||
-  'us.anthropic.claude-sonnet-4-6';
+import { enforceFlow, rejectFlow, SPEED_ALLOWED } from '../utils/flowPolicy.ts';
+import {
+  BedrockConfigError,
+  assertNoPromptCacheMetadata,
+  resolveBedrockModel,
+} from '../utils/bedrockModels.ts';
 
 const SYSTEM_PROMPT = `You are a California law research assistant for femme & femme LLP. \
 Answer questions about California statutes, case law, regulations, and legal procedures. \
@@ -29,6 +30,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === 'OPTIONS') { res.status(200).end(); return; }
   if (req.method !== 'POST') { res.status(405).json({ error: 'Method Not Allowed' }); return; }
 
+  // Speed route only accepts the non-client passthrough flow. Reject any
+  // request that tries to use this endpoint for client-safe Accuracy work.
+  const flowResult = enforceFlow(req.body, SPEED_ALLOWED);
+  if (rejectFlow(res, flowResult)) return;
+
   const { message, conversationHistory } = req.body || {};
 
   if (!message || typeof message !== 'string' || !message.trim()) {
@@ -45,6 +51,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return;
   }
 
+  let speedModel;
+  try {
+    speedModel = resolveBedrockModel('speed');
+  } catch (err) {
+    if (err instanceof BedrockConfigError) {
+      console.error('Bedrock config error:', err.message);
+      res.status(500).json({
+        error: 'bedrock_config_error',
+        message: err.message,
+      });
+      return;
+    }
+    throw err;
+  }
+
   const webSearchRequested = shouldUseWebSearch(message);
   const { webContext, meta: webSearchMeta } = await buildWebSearchContext(message, webSearchRequested);
   const groundedMessage = webContext
@@ -59,15 +80,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     console.log(
-      `📡 Streaming Anthropic Bedrock response with model: ${ANTHROPIC_MODEL} (web_search=${webSearchMeta.enabled ? `${webSearchMeta.provider}:${webSearchMeta.resultsCount}` : webSearchMeta.reason || 'off'})`
+      `📡 Streaming Anthropic Bedrock response with model: ${speedModel.id} (web_search=${webSearchMeta.enabled ? `${webSearchMeta.provider}:${webSearchMeta.resultsCount}` : webSearchMeta.reason || 'off'})`
     );
-    const streamResponse = await generateTextStream({
-      model: ANTHROPIC_MODEL,
+    const requestPayload = {
+      model: speedModel.id,
       messages,
       systemInstruction: SYSTEM_PROMPT,
       temperature: 0.2,
       maxOutputTokens: 4096,
-    });
+    };
+    assertNoPromptCacheMetadata(requestPayload, 'anthropic-chat');
+    const streamResponse = await generateTextStream(requestPayload);
 
     for await (const event of streamResponse.stream) {
       if (
