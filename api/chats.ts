@@ -270,7 +270,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ error: 'Method not allowed' });
 
   } catch (err: any) {
-    console.error('[/api/chats]', err);
-    return res.status(500).json({ error: err?.message ?? String(err) });
+    const detail = {
+      method: req.method,
+      chatId: chatId || null,
+      userIdSet: !!userId,
+      errorName: err?.name,
+      errorMessage: err?.message,
+      errorStack: err?.stack,
+      hasRedisUrl: !!process.env.UPSTASH_REDIS_REST_URL,
+      hasRedisToken: !!process.env.UPSTASH_REDIS_REST_TOKEN,
+      hasBlobToken: !!process.env.BLOB_READ_WRITE_TOKEN,
+      hasClerkSecret: !!process.env.CLERK_SECRET_KEY,
+    };
+    console.error('[/api/chats] FAILED', JSON.stringify(detail));
+    return res.status(500).json({ error: err?.message ?? String(err), detail });
   }
 }
