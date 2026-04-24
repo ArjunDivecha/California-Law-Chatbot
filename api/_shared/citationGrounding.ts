@@ -144,6 +144,46 @@ export function findUngroundedCitations(
   };
 }
 
+export interface CebDominanceResult {
+  cebCitedCount: number;
+  nonCebCitedCount: number;
+  isCebDominant: boolean;
+}
+
+/**
+ * Count bracketed `[N]` citations in the answer and classify each cited
+ * source as CEB or non-CEB. The "CEB Verified" amber badge should only
+ * appear when the *cited* source mix is CEB-dominant — not merely because
+ * CEB embeddings happened to show up in the retrieval set.
+ *
+ * Rule: CEB-dominant if cebCitedCount > 0 AND cebCitedCount >= nonCebCitedCount.
+ * A tie resolves in favor of CEB (attorney-friendly: if CEB backs half the
+ * answer, the authoritative-source framing is reasonable).
+ */
+export function analyzeCebDominance(
+  answerText: string,
+  sources: Array<{ id?: string; isCEB?: boolean }>
+): CebDominanceResult {
+  const citationPattern = /\[(\d+)\]/g;
+  const cited = new Set<string>();
+  let m: RegExpExecArray | null;
+  while ((m = citationPattern.exec(answerText)) !== null) {
+    cited.add(m[1]);
+  }
+
+  let cebCitedCount = 0;
+  let nonCebCitedCount = 0;
+  for (const id of cited) {
+    const source = sources.find((s) => s.id === id);
+    if (!source) continue;
+    if (source.isCEB === true) cebCitedCount += 1;
+    else nonCebCitedCount += 1;
+  }
+
+  const isCebDominant = cebCitedCount > 0 && cebCitedCount >= nonCebCitedCount;
+  return { cebCitedCount, nonCebCitedCount, isCebDominant };
+}
+
 /**
  * Short human-facing caveat when ungrounded citations are present.
  * Lists up to 4 so the UI has something concrete to show.

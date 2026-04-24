@@ -396,7 +396,7 @@ test('heuristic extraction satisfies every fixture expectation', () => {
 // 4c. Citation grounding (hallucination safety net)
 // ---------------------------------------------------------------------------
 const grounding = await import('../api/_shared/citationGrounding.ts');
-const { extractCitations, findUngroundedCitations, ungroundedCitationCaveat } = grounding;
+const { extractCitations, findUngroundedCitations, ungroundedCitationCaveat, analyzeCebDominance } = grounding;
 
 test('extractCitations pulls AB/SB/statute references from prose', () => {
   const text =
@@ -440,6 +440,47 @@ test('findUngroundedCitations flags a statute whose section is not in sources', 
   const result = findUngroundedCitations(answer, sources);
   assertEqual(result.ungrounded.length, 1, 'penal code § 459 ungrounded');
   assertEqual(result.ungrounded[0].kind, 'statute', 'kind');
+});
+
+test('analyzeCebDominance: CEB-heavy question keeps CEB badge', () => {
+  const answer =
+    'Under Family Code § 1615, a premarital agreement must be in writing [1]. Independent counsel matters [2]. See also Clarke [3]. The statute text [5].';
+  const sources = [
+    { id: '1', isCEB: true, title: 'CEB Estate Planning' },
+    { id: '2', isCEB: true, title: 'CEB Marital Settlement' },
+    { id: '3', isCEB: true, title: 'CEB Probate' },
+    { id: '4', isCEB: true, title: 'CEB Family Code' },
+    { id: '5', isCEB: false, title: 'Family Code § 1615' },
+  ];
+  const { cebCitedCount, nonCebCitedCount, isCebDominant } = analyzeCebDominance(answer, sources);
+  assertEqual(cebCitedCount, 3, 'three CEB cites');
+  assertEqual(nonCebCitedCount, 1, 'one non-CEB cite');
+  assertEqual(isCebDominant, true, 'CEB dominant');
+});
+
+test('analyzeCebDominance: legislative-heavy question drops CEB dominance', () => {
+  const answer =
+    'See AB 382 [7], AB 1327 [8], SB 517 [9], AB 2313 [10], AB 2110 [11]. Also CEB background [1]. More CEB [2].';
+  const sources = [
+    { id: '1', isCEB: true, title: 'CEB Business Law Reporter' },
+    { id: '2', isCEB: true, title: 'CEB Business Law Reporter' },
+    { id: '7', isCEB: false, title: 'AB 382' },
+    { id: '8', isCEB: false, title: 'AB 1327' },
+    { id: '9', isCEB: false, title: 'SB 517' },
+    { id: '10', isCEB: false, title: 'AB 2313' },
+    { id: '11', isCEB: false, title: 'AB 2110' },
+  ];
+  const { cebCitedCount, nonCebCitedCount, isCebDominant } = analyzeCebDominance(answer, sources);
+  assertEqual(cebCitedCount, 2, 'two CEB cites');
+  assertEqual(nonCebCitedCount, 5, 'five legislative cites');
+  assertEqual(isCebDominant, false, 'NOT CEB dominant — badge must drop');
+});
+
+test('analyzeCebDominance: zero citations yields not dominant', () => {
+  const answer = 'Narrative answer with no numbered citations.';
+  const sources = [{ id: '1', isCEB: true, title: 'CEB' }];
+  const { isCebDominant } = analyzeCebDominance(answer, sources);
+  assertEqual(isCebDominant, false, 'no citations → not dominant');
 });
 
 test('ungroundedCitationCaveat lists up to 4 of the offenders', () => {

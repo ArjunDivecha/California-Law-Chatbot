@@ -6,6 +6,7 @@ import { GuardrailsService } from '../services/guardrailsService';
 import { RetrievalPruner } from '../services/retrievalPruner';
 import { ConfidenceGatingService } from '../services/confidenceGating';
 import {
+    analyzeCebDominance,
     findUngroundedCitations,
     ungroundedCitationCaveat,
 } from '../api/_shared/citationGrounding';
@@ -2167,6 +2168,23 @@ Answer:`;
                 finalAnswer = `> ${caveat}\n\n${finalAnswer}`;
                 finalIsCEBBased = false;
                 verificationStatus = 'unverified';
+            }
+
+            // CEB-dominance check: the "CEB Verified" badge should only show
+            // when the *cited* source mix is actually CEB-dominant. Count
+            // [N] citations in the final answer, classify each cited source
+            // as CEB vs non-CEB. Also drop the badge for anything the
+            // legislative detector caught — a "what new laws" question is
+            // never a CEB-authoritative answer even if CEB chunks rode along.
+            if (finalIsCEBBased) {
+                const dominance = analyzeCebDominance(finalAnswer, sourcesWithIds);
+                const legislative = this.isLegislativeQuery(message);
+                if (!dominance.isCebDominant || legislative) {
+                    console.log(
+                        `🎖️ Dropping CEB badge: dominant=${dominance.isCebDominant} legislative=${legislative} (ceb=${dominance.cebCitedCount}, nonCeb=${dominance.nonCebCitedCount})`
+                    );
+                    finalIsCEBBased = false;
+                }
             }
 
             return {
