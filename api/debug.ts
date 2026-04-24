@@ -65,10 +65,43 @@ export default async function handler(req: any, res: any) {
     missingKeys.push('AWS_BEDROCK_CREDENTIALS');
   }
 
+  // Probe Bedrock client init to surface the actual runtime error.
+  // Region values are safe to echo (not secrets).
+  let bedrockProbe: {
+    awsRegionValue?: string;
+    bedrockAwsRegionValue?: string;
+    clientInit: 'ok' | 'failed';
+    speedCallError?: string;
+  } = { clientInit: 'ok' };
+
+  try {
+    const { getAnthropicBedrockClient, resolveBedrockProviderConfig } = await import('../utils/anthropicBedrock.ts');
+    const cfg = resolveBedrockProviderConfig();
+    bedrockProbe.awsRegionValue = process.env.AWS_REGION || '';
+    bedrockProbe.bedrockAwsRegionValue = cfg.awsRegion;
+    const client = getAnthropicBedrockClient();
+    // Fire-and-forget a tiny probe so we capture a real AWS error if signing fails.
+    try {
+      const { resolveBedrockModel } = await import('../utils/bedrockModels.ts');
+      const model = resolveBedrockModel('speed').id;
+      await client.messages.create({
+        model,
+        max_tokens: 1,
+        messages: [{ role: 'user', content: 'ping' }],
+      });
+    } catch (probeErr: any) {
+      bedrockProbe.speedCallError = probeErr?.message || String(probeErr);
+    }
+  } catch (err: any) {
+    bedrockProbe.clientInit = 'failed';
+    bedrockProbe.speedCallError = err?.message || String(err);
+  }
+
   res.status(200).json({
     status: missingKeys.length === 0 ? 'all_configured' : 'missing_keys',
     envStatus,
     missingKeys,
+    bedrockProbe,
     timestamp: new Date().toISOString(),
   });
 }
