@@ -1346,12 +1346,28 @@ await test('RealChatSanitizer: integrates with setChatSanitizer — chat adapter
 // Wiring grep tests — App.tsx installs the provider + banner
 // ---------------------------------------------------------------------------
 
-await test('App.tsx wraps children in SanitizerProvider', () => {
+await test('App.tsx wraps children in SanitizerProvider and shows the status banner', () => {
   const text = readFileSync(joinPath(repoRoot, 'App.tsx'), 'utf8');
   assert.ok(/SanitizerProvider/.test(text), 'imports/uses SanitizerProvider');
   assert.ok(/<SanitizerProvider>/.test(text) || /<SanitizerProvider\s/.test(text), 'renders it');
   assert.ok(/SanitizationBanner/.test(text), 'renders banner');
-  assert.ok(/SanitizationUnlock/.test(text), 'renders unlock modal');
+});
+
+await test('No passphrase modal exists — sanitization auto-unlocks with a device key', () => {
+  // SanitizationUnlock was removed along with the passphrase flow.
+  assert.throws(
+    () => readFileSync(joinPath(repoRoot, 'components/SanitizationUnlock.tsx'), 'utf8'),
+    /ENOENT/,
+    'SanitizationUnlock.tsx should not exist'
+  );
+  const hook = readFileSync(joinPath(repoRoot, 'hooks/useSanitizer.tsx'), 'utf8');
+  assert.ok(/cla-sanitization-device-key/.test(hook), 'hook reads/writes device key in localStorage');
+  assert.ok(/getOrCreateDeviceKey/.test(hook), 'has auto-key helper');
+  // No `unlock(passphrase)` taking user input exists anymore.
+  assert.ok(
+    !/unlock:\s*\(passphrase/.test(hook),
+    'hook no longer exposes an unlock(passphrase) method'
+  );
 });
 
 // ---------------------------------------------------------------------------

@@ -1,26 +1,26 @@
 /**
- * useSanitizer — React context for the passphrase-unlocked sanitization
- * store.
+ * useSanitizer — React context for the auto-unlocked sanitization store.
  *
- * On unlock, the context constructs a RealChatSanitizer and installs it
- * as the active ChatSanitizer via setChatSanitizer(). Every chat save
- * and every chat load immediately starts running through real
- * tokenize/rehydrate instead of the pass-through default.
+ * There is intentionally no attorney-facing passphrase. On first mount
+ * we generate a device-scoped random key and persist it in localStorage
+ * under `cla-sanitization-device-key`. On subsequent mounts we read
+ * that same key and auto-open the encrypted IndexedDB store. The
+ * RealChatSanitizer is installed as the active ChatSanitizer via
+ * setChatSanitizer(), and chat saves/loads round-trip through tokenize
+ * and rehydrate transparently.
  *
- * Lifecycle:
- *   - Mount: check IndexedDB for an existing `cla-sanitization-v1` db.
- *     If it exists, the provider reports hasExistingStore=true and
- *     the UI prompts the attorney to unlock; if not, first-time
- *     create flow.
- *   - unlock(passphrase): instantiates the store, derives the key,
- *     verifies the sentinel, loads the rehydrate map, installs the
- *     RealChatSanitizer. WrongPassphraseError is surfaced to the
- *     caller.
- *   - lock(): tears down the store, restores the pass-through adapter.
- *     Called on sign-out or when the attorney explicitly locks.
+ * Trust model:
+ *   - Token map lives ONLY in the attorney's browser IndexedDB.
+ *   - The device key never leaves the browser. localStorage is same-
+ *     origin protected.
+ *   - If the attorney clears site data / switches devices, the key is
+ *     gone and prior tokenized chats become un-rehydrate-able (tokens
+ *     show through instead of real names). This is the same
+ *     "no-recovery" property we want without making attorneys type a
+ *     passphrase. A reset() action is exposed for explicit rotation.
  *
- * The provider is browser-only. Under SSR / Node test environments
- * hasExistingStore stays false and unlock no-ops gracefully.
+ * Under SSR / Node tests (no window / no indexedDB) the provider
+ * renders children immediately with ready=false and unlocked=false.
  */
 
 import React, {
@@ -40,105 +40,147 @@ import { setChatSanitizer } from '../services/sanitization/chatAdapter';
 import { RealChatSanitizer } from '../services/sanitization/realSanitizer.ts';
 
 export interface SanitizerContextValue {
+  /** True once the store is open and the RealChatSanitizer is installed. */
   unlocked: boolean;
-  /** True after the mount check found a pre-existing db. */
-  hasExistingStore: boolean;
-  unlock: (passphrase: string) => Promise<void>;
-  lock: () => void;
+  /** True once the provider has finished its mount-time init attempt. */
+  ready: boolean;
   /** Size of the current in-memory token map. Re-renders on change. */
   tokenCount: number;
+  /** Force a hard reset: wipe the device key and the IndexedDB store. */
+  reset: () => Promise<void>;
+  /** Error captured during auto-init, if any. */
+  initError: string | null;
 }
 
 const DEFAULT_CTX: SanitizerContextValue = {
   unlocked: false,
-  hasExistingStore: false,
-  unlock: async () => {},
-  lock: () => {},
+  ready: false,
   tokenCount: 0,
+  reset: async () => {},
+  initError: null,
 };
 
 const SanitizerContext = createContext<SanitizerContextValue>(DEFAULT_CTX);
 
 const DB_NAME = 'cla-sanitization-v1';
+const DEVICE_KEY_STORAGE = 'cla-sanitization-device-key';
 
-async function dbExists(): Promise<boolean> {
-  if (typeof indexedDB === 'undefined') return false;
-  // indexedDB.databases() is the standard way; fall back to an open-
-  // with-no-version probe if the browser lacks it.
-  const api = indexedDB as IDBFactory & {
-    databases?: () => Promise<IDBDatabaseInfo[]>;
-  };
-  if (typeof api.databases === 'function') {
-    try {
-      const list = await api.databases();
-      return list.some((d) => d.name === DB_NAME);
-    } catch {
-      // fall through to the open probe
-    }
-  }
-  return await new Promise<boolean>((resolve) => {
-    // Open with version=1. If the db exists, onsuccess fires with the
-    // existing stores intact. If not, onupgradeneeded fires first — we
-    // abort and report false. Either way we close the handle.
-    let wasNew = false;
-    const req = indexedDB.open(DB_NAME, 1);
-    req.onupgradeneeded = () => {
-      wasNew = true;
-      req.transaction?.abort();
-    };
-    req.onsuccess = () => {
-      req.result.close();
-      resolve(!wasNew);
-    };
-    req.onerror = () => resolve(false);
-    req.onblocked = () => resolve(false);
+function hasBrowserStorage(): boolean {
+  return (
+    typeof window !== 'undefined' &&
+    typeof window.localStorage !== 'undefined' &&
+    typeof indexedDB !== 'undefined'
+  );
+}
+
+function getOrCreateDeviceKey(): string {
+  const existing = window.localStorage.getItem(DEVICE_KEY_STORAGE);
+  if (existing && existing.length >= 32) return existing;
+  const bytes = new Uint8Array(32);
+  window.crypto.getRandomValues(bytes);
+  const hex = Array.from(bytes)
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
+  window.localStorage.setItem(DEVICE_KEY_STORAGE, hex);
+  return hex;
+}
+
+async function deleteDb(): Promise<void> {
+  if (typeof indexedDB === 'undefined') return;
+  await new Promise<void>((resolve) => {
+    const req = indexedDB.deleteDatabase(DB_NAME);
+    req.onsuccess = () => resolve();
+    req.onerror = () => resolve();
+    req.onblocked = () => resolve();
   });
 }
 
 export const SanitizerProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const storeRef = useRef<SanitizationStore | null>(null);
   const [unlocked, setUnlocked] = useState(false);
-  const [hasExistingStore, setHasExistingStore] = useState(false);
+  const [ready, setReady] = useState(false);
   const [tokenCount, setTokenCount] = useState(0);
+  const [initError, setInitError] = useState<string | null>(null);
 
-  // Detect an existing db on mount so the UI can pick between "unlock"
-  // and "create" copy. Fails open: if we can't check, we assume no
-  // existing store and show the create flow — worst case the attorney
-  // sees a create form when they should see an unlock form, then gets
-  // a WrongPassphraseError and re-enters.
+  const openStore = useCallback(async () => {
+    if (!hasBrowserStorage()) {
+      setReady(true);
+      return;
+    }
+    try {
+      const key = getOrCreateDeviceKey();
+      const store = new SanitizationStore();
+      await store.init(key);
+      const map = await store.rehydrateMap();
+      const real = new RealChatSanitizer(store, map);
+      setChatSanitizer(real);
+      storeRef.current = store;
+      setTokenCount(map.size);
+      setUnlocked(true);
+      setInitError(null);
+    } catch (err) {
+      // WrongPassphraseError means the device-key and the stored salt
+      // are out of sync (e.g., localStorage was cleared while IndexedDB
+      // survived). Wipe the db and start fresh — prior tokenized chats
+      // will appear as tokens, which is the correct compliance outcome.
+      if (err instanceof WrongPassphraseError) {
+        console.warn('[sanitizer] device key mismatch; resetting store');
+        await deleteDb();
+        // Generate a new device key and try once more.
+        window.localStorage.removeItem(DEVICE_KEY_STORAGE);
+        try {
+          const key = getOrCreateDeviceKey();
+          const store = new SanitizationStore();
+          await store.init(key);
+          const map = await store.rehydrateMap();
+          const real = new RealChatSanitizer(store, map);
+          setChatSanitizer(real);
+          storeRef.current = store;
+          setTokenCount(map.size);
+          setUnlocked(true);
+        } catch (retryErr) {
+          setInitError(
+            (retryErr as { message?: string })?.message ?? 'Sanitization init failed.'
+          );
+          setChatSanitizer(null);
+        }
+      } else {
+        setInitError(
+          (err as { message?: string })?.message ?? 'Sanitization init failed.'
+        );
+        setChatSanitizer(null);
+      }
+    } finally {
+      setReady(true);
+    }
+  }, []);
+
   useEffect(() => {
-    let cancelled = false;
-    dbExists().then((exists) => {
-      if (!cancelled) setHasExistingStore(exists);
-    });
+    void openStore();
     return () => {
-      cancelled = true;
+      storeRef.current?.close();
+      storeRef.current = null;
+      setChatSanitizer(null);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const unlock = useCallback(async (passphrase: string) => {
-    const store = new SanitizationStore();
-    await store.init(passphrase);
-    const map = await store.rehydrateMap();
-    const real = new RealChatSanitizer(store, map);
-    setChatSanitizer(real);
-    storeRef.current = store;
-    setUnlocked(true);
-    setHasExistingStore(true);
-    setTokenCount(map.size);
-  }, []);
-
-  const lock = useCallback(() => {
+  const reset = useCallback(async () => {
+    setUnlocked(false);
+    setTokenCount(0);
     setChatSanitizer(null);
     storeRef.current?.close();
     storeRef.current = null;
-    setUnlocked(false);
-    setTokenCount(0);
-  }, []);
+    if (hasBrowserStorage()) {
+      window.localStorage.removeItem(DEVICE_KEY_STORAGE);
+      await deleteDb();
+    }
+    await openStore();
+  }, [openStore]);
 
   const value = useMemo<SanitizerContextValue>(
-    () => ({ unlocked, hasExistingStore, unlock, lock, tokenCount }),
-    [unlocked, hasExistingStore, unlock, lock, tokenCount]
+    () => ({ unlocked, ready, tokenCount, reset, initError }),
+    [unlocked, ready, tokenCount, reset, initError]
   );
 
   return <SanitizerContext.Provider value={value}>{children}</SanitizerContext.Provider>;
@@ -147,5 +189,3 @@ export const SanitizerProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 export function useSanitizer(): SanitizerContextValue {
   return useContext(SanitizerContext);
 }
-
-export { WrongPassphraseError };

@@ -13,50 +13,58 @@ import { ResponseModeToggle } from './components/ResponseModeToggle';
 import { DraftingMode } from './components/drafting/DraftingMode';
 import SignInPage from './components/SignInPage';
 import { SanitizerProvider, useSanitizer } from './hooks/useSanitizer';
-import { SanitizationUnlock } from './components/SanitizationUnlock';
-import { Lock, Unlock } from 'lucide-react';
+import { ShieldCheck, ShieldAlert, RotateCcw } from 'lucide-react';
 import type { AppMode } from './types';
 
 // ---------------------------------------------------------------------------
-// SanitizationBanner — clickable status indicator shown at the top of the
-// chat header. Pre-unlock: prompts the attorney to create/unlock. Post-
-// unlock: confirms the sanitizer is active.
+// SanitizationBanner — status indicator shown at the top of the chat header.
+// Auto-unlocked on sign-in; no passphrase prompt. Click to reset the local
+// token map (wipes the IndexedDB store, generates a fresh device key).
 // ---------------------------------------------------------------------------
 const SanitizationBanner: React.FC = () => {
-  const { unlocked, hasExistingStore, lock, tokenCount } = useSanitizer();
-  const [modalOpen, setModalOpen] = useState(false);
+  const { unlocked, ready, tokenCount, reset, initError } = useSanitizer();
 
-  if (unlocked) {
+  if (!ready) {
     return (
-      <button
-        type="button"
-        onClick={lock}
-        title={`Sanitization active — ${tokenCount} tokens in local map. Click to lock.`}
-        className="inline-flex items-center gap-1.5 rounded bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-800 hover:bg-emerald-100"
-      >
-        <Unlock size={12} />
-        Sanitization active
-      </button>
+      <span className="inline-flex items-center gap-1.5 rounded bg-slate-100 px-2 py-1 text-xs text-slate-600">
+        <ShieldAlert size={12} /> Initializing…
+      </span>
     );
   }
 
-  return (
-    <>
-      <button
-        type="button"
-        onClick={() => setModalOpen(true)}
-        className="inline-flex items-center gap-1.5 rounded bg-amber-50 px-2 py-1 text-xs font-medium text-amber-900 hover:bg-amber-100"
+  if (!unlocked) {
+    return (
+      <span
+        title={initError ?? 'Sanitization could not be initialized on this device.'}
+        className="inline-flex items-center gap-1.5 rounded bg-rose-50 px-2 py-1 text-xs font-medium text-rose-900"
       >
-        <Lock size={12} />
-        {hasExistingStore ? 'Unlock sanitization' : 'Enable sanitization'}
-      </button>
-      {modalOpen && (
-        <SanitizationUnlock
-          onUnlocked={() => setModalOpen(false)}
-          onDismiss={() => setModalOpen(false)}
-        />
-      )}
-    </>
+        <ShieldAlert size={12} /> Sanitization unavailable
+      </span>
+    );
+  }
+
+  const handleReset = async () => {
+    if (
+      !window.confirm(
+        'Reset the local token map?\n\nThis wipes the encrypted store on this device. Prior tokenized chats will become un-rehydrate-able (tokens will show through instead of real names). Use this only if you want to start fresh.'
+      )
+    ) {
+      return;
+    }
+    await reset();
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={handleReset}
+      title={`Sanitization active — ${tokenCount} entities in local map. Click to reset the store.`}
+      className="inline-flex items-center gap-1.5 rounded bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-800 hover:bg-emerald-100"
+    >
+      <ShieldCheck size={12} />
+      Sanitization active
+      <RotateCcw size={10} className="opacity-60" />
+    </button>
   );
 };
 
