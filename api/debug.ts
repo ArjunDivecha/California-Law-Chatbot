@@ -75,14 +75,14 @@ export default async function handler(req: any, res: any) {
   } = { clientInit: 'ok' };
 
   try {
-    const { getAnthropicBedrockClient, resolveBedrockProviderConfig } = await import('../utils/anthropicBedrock');
+    const { getAnthropicBedrockClient, resolveBedrockProviderConfig } = await import('./_shared/anthropicBedrock');
     const cfg = resolveBedrockProviderConfig();
     bedrockProbe.awsRegionValue = process.env.AWS_REGION || '';
     bedrockProbe.bedrockAwsRegionValue = cfg.awsRegion;
     const client = getAnthropicBedrockClient();
     // Fire-and-forget a tiny probe so we capture a real AWS error if signing fails.
     try {
-      const { resolveBedrockModel } = await import('../utils/bedrockModels');
+      const { resolveBedrockModel } = await import('./_shared/bedrockModels');
       const model = resolveBedrockModel('speed').id;
       await client.messages.create({
         model,

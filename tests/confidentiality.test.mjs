@@ -74,7 +74,7 @@ function loadFixture(name) {
 // ---------------------------------------------------------------------------
 // 1. Flow policy
 // ---------------------------------------------------------------------------
-const flowPolicy = await import('../utils/flowPolicy.ts');
+const flowPolicy = await import('../api/_shared/flowPolicy.ts');
 const { enforceFlow, SPEED_ALLOWED, ACCURACY_ALLOWED, ALL_FLOW_TYPES } = flowPolicy;
 
 test('flowPolicy exposes the three documented flow types', () => {
@@ -130,7 +130,7 @@ test('Unknown flow string returns 400', () => {
 // ---------------------------------------------------------------------------
 // 2. Bedrock model resolution
 // ---------------------------------------------------------------------------
-const bedrockModels = await import('../utils/bedrockModels.ts');
+const bedrockModels = await import('../api/_shared/bedrockModels.ts');
 const {
   validateBedrockModelId,
   resolveBedrockModel,

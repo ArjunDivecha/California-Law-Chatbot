@@ -12,8 +12,8 @@ import type {
   ResearchPackage,
   DocumentType,
 } from '../types';
-import { generateText } from '../utils/anthropicBedrock';
-import { resolveBedrockModel } from '../utils/bedrockModels';
+import { generateText } from '../api/_shared/anthropicBedrock';
+import { resolveBedrockModel } from '../api/_shared/bedrockModels';
 
 // =============================================================================
 // CONFIGURATION

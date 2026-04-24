@@ -3,23 +3,19 @@
   "functions": {
     "api/orchestrate-document.ts": {
       "memory": 2048,
-      "maxDuration": 300,
-      "includeFiles": "{utils,agents,services,gemini}/**/*.{ts,js}"
+      "maxDuration": 300
     },
     "api/gemini-chat.ts": {
       "memory": 1024,
-      "maxDuration": 300,
-      "includeFiles": "{utils,agents,services,gemini}/**/*.{ts,js}"
+      "maxDuration": 300
     },
     "api/anthropic-chat.ts": {
       "memory": 1024,
-      "maxDuration": 120,
-      "includeFiles": "{utils,agents,services,gemini}/**/*.{ts,js}"
+      "maxDuration": 120
     },
     "api/**/*.ts": {
       "memory": 1024,
-      "maxDuration": 60,
-      "includeFiles": "{utils,agents,services,gemini}/**/*.{ts,js}"
+      "maxDuration": 60
     }
   },
   "headers": [
