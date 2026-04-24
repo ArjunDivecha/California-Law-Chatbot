@@ -894,6 +894,173 @@ await test('components/Sidebar.tsx rehydrates fetched and event-driven titles', 
 });
 
 // ---------------------------------------------------------------------------
+// Audit log (Day 5)
+// ---------------------------------------------------------------------------
+const auditMod = await import('../api/_shared/auditLog.ts');
+const { computeHmac, buildAuditRecord, writeAuditRecord, setAuditSink } = auditMod;
+
+function collectingSink() {
+  const writes = [];
+  const expires = [];
+  return {
+    writes,
+    expires,
+    sink: {
+      async lpush(key, value) {
+        writes.push({ key, value });
+      },
+      async expire(key, seconds) {
+        expires.push({ key, seconds });
+      },
+    },
+  };
+}
+
+await test('auditLog: computeHmac is deterministic for same input + key', () => {
+  process.env.AUDIT_HMAC_KEY = 'test-key-aaa';
+  const h1 = computeHmac('hello world');
+  const h2 = computeHmac('hello world');
+  assert.equal(h1, h2, 'same input → same HMAC');
+  assert.ok(/^[0-9a-f]{64}$/.test(h1), 'hex-encoded SHA-256 (64 chars)');
+});
+
+await test('auditLog: computeHmac differs for different inputs and different keys', () => {
+  process.env.AUDIT_HMAC_KEY = 'test-key-aaa';
+  const hA = computeHmac('payload-1');
+  const hB = computeHmac('payload-2');
+  assert.notEqual(hA, hB, 'different inputs → different HMACs');
+  process.env.AUDIT_HMAC_KEY = 'test-key-bbb';
+  const hC = computeHmac('payload-1');
+  assert.notEqual(hA, hC, 'different keys → different HMACs');
+});
+
+await test('auditLog: computeHmac returns undefined when key is missing', () => {
+  const prev = process.env.AUDIT_HMAC_KEY;
+  delete process.env.AUDIT_HMAC_KEY;
+  try {
+    const h = computeHmac('anything');
+    assert.equal(h, undefined, 'no key → no HMAC');
+  } finally {
+    if (prev !== undefined) process.env.AUDIT_HMAC_KEY = prev;
+  }
+});
+
+await test('auditLog: buildAuditRecord omits raw prompt and stores only HMAC + length', () => {
+  process.env.AUDIT_HMAC_KEY = 'test-key-aaa';
+  const record = buildAuditRecord({
+    route: 'gemini-chat',
+    sanitizedPrompt: 'Our client CLIENT_001 transferred ADDRESS_002.',
+    flowType: 'public_research',
+    model: 'us.anthropic.claude-sonnet-4-6',
+    sourceProviders: ['bedrock', 'ceb'],
+    latencyMs: 1234,
+    statusCode: 200,
+  });
+  assert.equal(record.route, 'gemini-chat');
+  assert.equal(record.model, 'us.anthropic.claude-sonnet-4-6');
+  assert.deepEqual(record.sourceProviders, ['bedrock', 'ceb']);
+  assert.equal(record.promptLength, 'Our client CLIENT_001 transferred ADDRESS_002.'.length);
+  assert.ok(/^[0-9a-f]{64}$/.test(record.sanitizedPromptHmac));
+  // Ensure the raw prompt is not serialized anywhere on the record.
+  const json = JSON.stringify(record);
+  assert.ok(!json.includes('CLIENT_001'), 'raw prompt string must not appear in the record JSON');
+});
+
+await test('auditLog: writeAuditRecord LPUSHes to audit:YYYY-MM-DD and refreshes expire', async () => {
+  const { writes, expires, sink } = collectingSink();
+  setAuditSink(sink);
+  try {
+    await writeAuditRecord({
+      timestamp: '2026-04-24T20:00:00.000Z',
+      route: 'ceb-search',
+      statusCode: 200,
+      latencyMs: 500,
+    });
+    assert.equal(writes.length, 1);
+    assert.ok(/^audit:\d{4}-\d{2}-\d{2}$/.test(writes[0].key), 'daily key format');
+    const parsed = JSON.parse(writes[0].value);
+    assert.equal(parsed.route, 'ceb-search');
+    assert.equal(parsed.statusCode, 200);
+    assert.equal(expires.length, 1, 'EXPIRE refreshed');
+    assert.equal(expires[0].seconds, 60 * 60 * 24 * 90, '90-day TTL');
+  } finally {
+    setAuditSink(null);
+  }
+});
+
+await test('auditLog: writeAuditRecord fails open when the sink throws', async () => {
+  const sink = {
+    async lpush() { throw new Error('redis down'); },
+    async expire() { /* never reached */ },
+  };
+  setAuditSink(sink);
+  try {
+    // Must not throw.
+    await writeAuditRecord({ timestamp: new Date().toISOString(), route: 'ceb-search' });
+  } finally {
+    setAuditSink(null);
+  }
+});
+
+await test('auditLog: backstop rejection record carries categories and statusCode 400', () => {
+  process.env.AUDIT_HMAC_KEY = 'test-key-aaa';
+  const record = buildAuditRecord({
+    route: 'gemini-chat',
+    sanitizedPrompt: 'raw-looking 415-555-0123',
+    backstopTriggered: true,
+    backstopCategories: ['phone'],
+    statusCode: 400,
+  });
+  assert.equal(record.backstopTriggered, true);
+  assert.deepEqual(record.backstopCategories, ['phone']);
+  assert.equal(record.statusCode, 400);
+});
+
+// ---------------------------------------------------------------------------
+// Route-wiring grep tests — every protected route must write audit records
+// ---------------------------------------------------------------------------
+
+function routeAudits(file) {
+  const text = readFileSync(joinPath(repoRoot, file), 'utf8');
+  const importsAudit = /from '[^']*auditLog[^']*'/.test(text);
+  const writesRecord = /writeAuditRecord\s*\(/.test(text);
+  return importsAudit && writesRecord;
+}
+
+for (const file of [
+  'api/gemini-chat.ts',
+  'api/claude-chat.ts',
+  'api/ceb-search.ts',
+  'api/legislative-fanout.ts',
+  'api/courtlistener-search.ts',
+  'api/public-legal-context.ts',
+]) {
+  await test(`${file} writes audit records`, () => {
+    assert.ok(routeAudits(file), `${file} imports auditLog and calls writeAuditRecord`);
+  });
+}
+
+await test('No route log statement writes a raw prompt body to console', () => {
+  // Cheap heuristic: ensure nobody does console.log(message) / console.error(message) /
+  // res.status(...).json({ ..., raw: message }). False-positive risk is low because
+  // these routes were refactored to log metadata only.
+  for (const file of [
+    'api/gemini-chat.ts',
+    'api/claude-chat.ts',
+    'api/ceb-search.ts',
+    'api/legislative-fanout.ts',
+    'api/courtlistener-search.ts',
+    'api/public-legal-context.ts',
+  ]) {
+    const text = readFileSync(joinPath(repoRoot, file), 'utf8');
+    assert.ok(
+      !/console\.(log|error)\s*\(\s*(message|query|question)\s*\)/.test(text),
+      `${file} must not console.log the raw prompt variable`
+    );
+  }
+});
+
+// ---------------------------------------------------------------------------
 // Summary
 // ---------------------------------------------------------------------------
 console.log('\n' + '='.repeat(60));

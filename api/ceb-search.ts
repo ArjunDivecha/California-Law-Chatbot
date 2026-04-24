@@ -18,6 +18,7 @@
 
 import { Index } from '@upstash/vector';
 import { rejectWithBackstop, scanForRawPII } from './_shared/sanitization/guard.js';
+import { buildAuditRecord, writeAuditRecord } from './_shared/auditLog.js';
 
 // ============================================================================
 // STATUTORY CITATION DETECTION (inline to avoid import issues in Vercel)
@@ -308,7 +309,19 @@ export default async function handler(req: any, res: any) {
     }
 
     const backstop = scanForRawPII(query);
-    if (rejectWithBackstop(res, backstop)) return;
+    if (rejectWithBackstop(res, backstop)) {
+      writeAuditRecord(
+        buildAuditRecord({
+          route: 'ceb-search',
+          sanitizedPrompt: query,
+          backstopTriggered: true,
+          backstopCategories: !backstop.ok ? backstop.categories : undefined,
+          statusCode: 400,
+        })
+      );
+      return;
+    }
+    const _auditStart = Date.now();
 
     // Check for Upstash credentials
     const upstashUrl = process.env.UPSTASH_VECTOR_REST_URL;
@@ -468,6 +481,16 @@ export default async function handler(req: any, res: any) {
     };
 
     res.status(200).json(response);
+
+    writeAuditRecord(
+      buildAuditRecord({
+        route: 'ceb-search',
+        sanitizedPrompt: query,
+        sourceProviders: ['ceb'],
+        latencyMs: Date.now() - _auditStart,
+        statusCode: 200,
+      })
+    );
 
   } catch (err: any) {
     console.error('CEB Search API error:', err);

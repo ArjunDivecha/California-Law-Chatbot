@@ -22,6 +22,7 @@ import {
   resolveBedrockModel,
 } from './_shared/bedrockModels.js';
 import { rejectWithBackstop, scanRequest } from './_shared/sanitization/guard.js';
+import { buildAuditRecord, writeAuditRecord } from './_shared/auditLog.js';
 
 const PRIMARY_TIMEOUT_MS = Number(process.env.BEDROCK_PRIMARY_TIMEOUT_MS || 60000);
 const FALLBACK_TIMEOUT_MS = Number(process.env.BEDROCK_FALLBACK_TIMEOUT_MS || 45000);
@@ -62,7 +63,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Sanitization backstop — last line of defense if the client-side
     // tokenizer misses raw PII. Runs deterministic patterns only.
     const backstop = scanRequest(message, conversationHistory);
-    if (rejectWithBackstop(res, backstop)) return;
+    if (rejectWithBackstop(res, backstop)) {
+      writeAuditRecord(
+        buildAuditRecord({
+          route: 'gemini-chat',
+          sanitizedPrompt: message,
+          flowType: flowResult.flow,
+          backstopTriggered: true,
+          backstopCategories: !backstop.ok ? backstop.categories : undefined,
+          statusCode: 400,
+        })
+      );
+      return;
+    }
+    const _auditStart = Date.now();
 
     if (!hasBedrockProviderCredentials()) {
       console.error('Anthropic Bedrock credentials are not set in environment variables');
@@ -178,6 +192,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         );
         res.write('data: [DONE]\n\n');
         res.end();
+        writeAuditRecord(
+          buildAuditRecord({
+            route: 'gemini-chat',
+            sanitizedPrompt: message,
+            flowType: flowResult.flow,
+            model: usedModel,
+            sourceProviders: ['bedrock'],
+            latencyMs: Date.now() - _auditStart,
+            statusCode: 200,
+          })
+        );
       } catch (streamError: any) {
         console.error('Streaming error:', streamError);
         res.write(
@@ -213,6 +238,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       model: usedModel,
       provider: textResponse.providerMode,
     });
+    writeAuditRecord(
+      buildAuditRecord({
+        route: 'gemini-chat',
+        sanitizedPrompt: message,
+        flowType: flowResult.flow,
+        model: usedModel,
+        sourceProviders: ['bedrock'],
+        latencyMs: Date.now() - _auditStart,
+        statusCode: 200,
+      })
+    );
   } catch (err: any) {
     console.error('Anthropic Bedrock chat API error:', err);
     const { message, status } = getErrorDetails(err);

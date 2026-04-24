@@ -17,6 +17,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { planLegislativeQueries } from './_shared/researchPlanner.js';
 import { rejectWithBackstop, scanForRawPII } from './_shared/sanitization/guard.js';
+import { buildAuditRecord, writeAuditRecord } from './_shared/auditLog.js';
 
 export const config = {
   maxDuration: 30,
@@ -85,7 +86,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const backstop = scanForRawPII(question);
-  if (rejectWithBackstop(res, backstop)) return;
+  if (rejectWithBackstop(res, backstop)) {
+    writeAuditRecord(
+      buildAuditRecord({
+        route: 'legislative-fanout',
+        sanitizedPrompt: question,
+        backstopTriggered: true,
+        backstopCategories: !backstop.ok ? backstop.categories : undefined,
+        statusCode: 400,
+      })
+    );
+    return;
+  }
+  const _auditStart = Date.now();
 
   const openStatesKey = process.env.OPENSTATES_API_KEY;
   const legiScanKey = process.env.LEGISCAN_API_KEY;
@@ -182,4 +195,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     rationale: plan.rationale,
     bills,
   });
+
+  writeAuditRecord(
+    buildAuditRecord({
+      route: 'legislative-fanout',
+      sanitizedPrompt: question,
+      sourceProviders: ['openstates', 'legiscan'],
+      latencyMs: Date.now() - _auditStart,
+      statusCode: 200,
+    })
+  );
 }

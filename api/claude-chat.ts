@@ -20,6 +20,7 @@ import {
   resolveBedrockModel,
 } from './_shared/bedrockModels.js';
 import { rejectWithBackstop, scanRequest } from './_shared/sanitization/guard.js';
+import { buildAuditRecord, writeAuditRecord } from './_shared/auditLog.js';
 
 const VERIFIER_TIMEOUT_MS = Number(process.env.BEDROCK_VERIFIER_TIMEOUT_MS || 60000);
 
@@ -52,7 +53,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const backstop = scanRequest(message, conversationHistory);
-    if (rejectWithBackstop(res, backstop)) return;
+    if (rejectWithBackstop(res, backstop)) {
+      writeAuditRecord(
+        buildAuditRecord({
+          route: 'claude-chat',
+          sanitizedPrompt: message,
+          flowType: flowResult.flow,
+          backstopTriggered: true,
+          backstopCategories: !backstop.ok ? backstop.categories : undefined,
+          statusCode: 400,
+        })
+      );
+      return;
+    }
+    const _auditStart = Date.now();
 
     if (!hasBedrockProviderCredentials()) {
       console.error('Anthropic Bedrock credentials are not set in environment variables');
@@ -100,6 +114,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         model: verifierModel.id,
         provider: response.providerMode,
       });
+      writeAuditRecord(
+        buildAuditRecord({
+          route: 'claude-chat',
+          sanitizedPrompt: message,
+          flowType: flowResult.flow,
+          model: verifierModel.id,
+          sourceProviders: ['bedrock'],
+          latencyMs: Date.now() - _auditStart,
+          statusCode: 200,
+        })
+      );
     } finally {
       clearTimeout(timeoutId);
     }

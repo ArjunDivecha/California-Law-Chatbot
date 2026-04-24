@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { buildPublicLegalContext } from './_shared/publicLegalContext.js';
 import { rejectWithBackstop, scanForRawPII } from './_shared/sanitization/guard.js';
+import { buildAuditRecord, writeAuditRecord } from './_shared/auditLog.js';
 
 export const config = {
   maxDuration: 20,
@@ -33,11 +34,32 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const backstop = scanForRawPII(query);
-  if (rejectWithBackstop(res, backstop)) return;
+  if (rejectWithBackstop(res, backstop)) {
+    writeAuditRecord(
+      buildAuditRecord({
+        route: 'public-legal-context',
+        sanitizedPrompt: query,
+        backstopTriggered: true,
+        backstopCategories: !backstop.ok ? backstop.categories : undefined,
+        statusCode: 400,
+      })
+    );
+    return;
+  }
+  const _auditStart = Date.now();
 
   try {
     const result = await buildPublicLegalContext(query);
     res.status(200).json(result);
+    writeAuditRecord(
+      buildAuditRecord({
+        route: 'public-legal-context',
+        sanitizedPrompt: query,
+        sourceProviders: ['public-legal'],
+        latencyMs: Date.now() - _auditStart,
+        statusCode: 200,
+      })
+    );
   } catch (error: any) {
     res.status(500).json({
       error: 'Internal Server Error',

@@ -12,6 +12,7 @@
  * - `results` (simplified) for internal agents/orchestrators that need structured fields
  */
 import { rejectWithBackstop, scanForRawPII } from './_shared/sanitization/guard.js';
+import { buildAuditRecord, writeAuditRecord } from './_shared/auditLog.js';
 
 export default async function handler(req: any, res: any) {
   try {
@@ -25,7 +26,19 @@ export default async function handler(req: any, res: any) {
     }
 
     const backstop = scanForRawPII(q);
-    if (rejectWithBackstop(res, backstop)) return;
+    if (rejectWithBackstop(res, backstop)) {
+      writeAuditRecord(
+        buildAuditRecord({
+          route: 'courtlistener-search',
+          sanitizedPrompt: q,
+          backstopTriggered: true,
+          backstopCategories: !backstop.ok ? backstop.categories : undefined,
+          statusCode: 400,
+        })
+      );
+      return;
+    }
+    const _auditStart = Date.now();
 
     const limitRaw = parseInt(req.query?.limit as string);
     const limit = Number.isFinite(limitRaw) ? limitRaw : 3; // Default 3, max 50
@@ -181,7 +194,7 @@ export default async function handler(req: any, res: any) {
       }));
 
     res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=600');
-    return res.status(200).json({
+    res.status(200).json({
       content,
       sources,
       results: simplifiedResults,
@@ -189,6 +202,16 @@ export default async function handler(req: any, res: any) {
       next: data?.next,
       count: data?.count,
     });
+    writeAuditRecord(
+      buildAuditRecord({
+        route: 'courtlistener-search',
+        sanitizedPrompt: q,
+        sourceProviders: ['courtlistener'],
+        latencyMs: Date.now() - _auditStart,
+        statusCode: 200,
+      })
+    );
+    return;
   } catch (err: any) {
     return res.status(500).json({ error: 'Internal Server Error', message: err?.message || String(err) });
   }
