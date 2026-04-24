@@ -4,6 +4,11 @@ import { ChatMessage, MessageRole, ResponseMode, SourceMode, VerificationStatus 
 import { ChatService } from '../gemini/chatService';
 import { PracticeArea } from '../components/SourceModeSelector';
 import { useAuthFetch } from '../utils/authFetch.ts';
+import {
+  deriveTitleFromRaw,
+  rehydrateMessagesForDisplay,
+  tokenizeMessagesForSave,
+} from '../services/sanitization/chatAdapter';
 
 const SAVE_DEBOUNCE_MS = 1500;
 const LOCAL_DRAFT_PREFIX = 'cal-law-chat-draft:';
@@ -131,7 +136,10 @@ export const useChat = (chatId?: string) => {
       .then(data => {
         if (cancelled) return;
         console.log('[useChat] GET', { chatId, messagesLen: data.messages?.length ?? 0, _debug: data._debug });
-        const loaded: ChatMessage[] = data.messages ?? [];
+        // Server stores tokenized content. Rehydrate against the local
+        // sanitizer's token map before display. Today (pre-Day-7) the
+        // adapter is a pass-through — no change from existing behavior.
+        const loaded: ChatMessage[] = rehydrateMessagesForDisplay(data.messages ?? []);
         const localDraft = readLocalDraft(chatId);
         const remoteUpdatedAt = typeof data.updatedAt === 'number' ? data.updatedAt : 0;
         const shouldPreferLocalDraft =
@@ -181,10 +189,15 @@ export const useChat = (chatId?: string) => {
         console.log('[scheduleSave] calling authFetch PUT...');
         const controller = new AbortController();
         const timeoutId = setTimeout(() => { controller.abort(); console.error('[scheduleSave] authFetch timed out after 15s'); }, 15000);
+        // Tokenize every message and the title before they leave the
+        // browser. With the pass-through adapter this is a no-op; with
+        // the Day-7 real sanitizer, Upstash + Blob receive tokens only.
+        const tokenizedMessages = await tokenizeMessagesForSave(updatedMessages);
+        const tokenizedTitle = title ? await deriveTitleFromRaw(title) : undefined;
         const res = await authFetch(`/api/chats?id=${id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ messages: updatedMessages, title }),
+          body: JSON.stringify({ messages: tokenizedMessages, title: tokenizedTitle }),
           signal: controller.signal,
         });
         clearTimeout(timeoutId);
@@ -196,9 +209,11 @@ export const useChat = (chatId?: string) => {
         }
         clearLocalDraft(id);
         console.log('[scheduleSave] PUT ok, local draft cleared');
-        // Notify sidebar so it can update the title in-place without a full re-fetch
-        if (title) {
-          window.dispatchEvent(new CustomEvent('chat-saved', { detail: { id, title } }));
+        // Notify sidebar so it can update the title in-place without a full re-fetch.
+        // We ship the *tokenized* title — that's what the server now stores, and
+        // the sidebar rehydrates on display.
+        if (tokenizedTitle) {
+          window.dispatchEvent(new CustomEvent('chat-saved', { detail: { id, title: tokenizedTitle } }));
         }
       } catch (err: any) {
         console.error('[scheduleSave] PUT error:', err?.message ?? err);
@@ -221,7 +236,8 @@ export const useChat = (chatId?: string) => {
     let activeChatId = currentChatIdRef.current;
     if (!activeChatId) {
       try {
-        const title = text.slice(0, 60) + (text.length > 60 ? '…' : '');
+        // Title is tokenized via the chat sanitizer adapter before hitting Redis.
+        const title = await deriveTitleFromRaw(text);
         const res = await authFetch('/api/chats', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -321,9 +337,8 @@ export const useChat = (chatId?: string) => {
             );
             // Determine title from first user message
             const firstUser = updated.find(m => m.role === MessageRole.USER);
-            const title = firstUser
-              ? firstUser.text.slice(0, 60) + (firstUser.text.length > 60 ? '…' : '')
-              : undefined;
+            // Pass raw full text; scheduleSave tokenizes first then slices.
+            const title = firstUser?.text;
             // Schedule save outside the updater via a microtask
             setTimeout(() => scheduleSave(updated, title), 0);
             return updated;
@@ -365,9 +380,8 @@ export const useChat = (chatId?: string) => {
       setMessages(prev => {
         const updated = finalMessages(prev);
         const firstUser = updated.find(m => m.role === MessageRole.USER);
-        const title = firstUser
-          ? firstUser.text.slice(0, 60) + (firstUser.text.length > 60 ? '…' : '')
-          : undefined;
+        // Pass raw full text; scheduleSave tokenizes first then slices.
+        const title = firstUser?.text;
         setTimeout(() => scheduleSave(updated, title), 0);
         return updated;
       });
@@ -387,9 +401,8 @@ export const useChat = (chatId?: string) => {
             : msg
         );
         const firstUser = updated.find(m => m.role === MessageRole.USER);
-        const title = firstUser
-          ? firstUser.text.slice(0, 60) + (firstUser.text.length > 60 ? '…' : '')
-          : undefined;
+        // Pass raw full text; scheduleSave tokenizes first then slices.
+        const title = firstUser?.text;
         // Save even on error so the user message is persisted
         setTimeout(() => scheduleSave(updated, title), 0);
         return updated;

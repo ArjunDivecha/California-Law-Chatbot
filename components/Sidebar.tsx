@@ -7,6 +7,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { UserButton } from '@clerk/clerk-react';
 import { useAuthFetch } from '../utils/authFetch.ts';
+import { deriveTitleFromRaw, getChatSanitizer } from '../services/sanitization/chatAdapter';
 
 interface ChatMeta {
   id: string;
@@ -39,7 +40,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
       const res = await authFetch('/api/chats');  // list
       if (!res.ok) return;
       const data = await res.json();
-      setChats(data.chats ?? []);
+      // Server-side titles are tokenized (post-Day-4.5). Rehydrate with
+      // the local sanitizer for display. Pass-through today.
+      const sanitizer = getChatSanitizer();
+      const rehydrated = (data.chats ?? []).map((c: ChatMeta) => ({
+        ...c,
+        title: sanitizer.rehydrateMessage(c.title ?? ''),
+      }));
+      setChats(rehydrated);
     } catch {
       // silently fail — sidebar is non-critical
     } finally {
@@ -51,11 +59,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
     fetchChats();
   }, [fetchChats, activeChatId]); // Refresh whenever active chat changes (new save)
 
-  // Update title in-place when useChat reports a successful save
+  // Update title in-place when useChat reports a successful save.
+  // The event carries the tokenized title (what the server now stores);
+  // we rehydrate for display against the local sanitizer.
   useEffect(() => {
     const handler = (e: Event) => {
       const { id, title } = (e as CustomEvent<{ id: string; title: string }>).detail;
-      setChats(prev => prev.map(c => c.id === id ? { ...c, title } : c));
+      const display = getChatSanitizer().rehydrateMessage(title ?? '');
+      setChats(prev => prev.map(c => c.id === id ? { ...c, title: display } : c));
     };
     window.addEventListener('chat-saved', handler);
     return () => window.removeEventListener('chat-saved', handler);
@@ -103,16 +114,18 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
   };
 
   const commitRename = async (chatId: string) => {
-    const title = renameValue.trim();
-    if (!title) { setRenamingId(null); return; }
+    const rawTitle = renameValue.trim();
+    if (!rawTitle) { setRenamingId(null); return; }
     try {
+      // Tokenize what goes to the server; keep the raw string for local display.
+      const tokenizedTitle = await deriveTitleFromRaw(rawTitle);
       const res = await authFetch(`/api/chats?id=${chatId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title }),
+        body: JSON.stringify({ title: tokenizedTitle }),
       });
       if (res.ok) {
-        setChats(prev => prev.map(c => c.id === chatId ? { ...c, title } : c));
+        setChats(prev => prev.map(c => c.id === chatId ? { ...c, title: rawTitle } : c));
       }
     } catch {
       // ignore

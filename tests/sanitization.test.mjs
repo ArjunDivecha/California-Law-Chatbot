@@ -767,6 +767,133 @@ await test('anthropic-chat (Speed) is intentionally NOT wired to the backstop', 
 });
 
 // ---------------------------------------------------------------------------
+// Chat-persistence adapter (Day 4.5)
+// ---------------------------------------------------------------------------
+const adapter = await import('../services/sanitization/chatAdapter.ts');
+const {
+  passthroughSanitizer,
+  getChatSanitizer,
+  setChatSanitizer,
+  tokenizeMessagesForSave,
+  rehydrateMessagesForDisplay,
+  deriveTitleFromRaw,
+} = adapter;
+
+await test('chatAdapter: default is the pass-through sanitizer', () => {
+  assert.equal(getChatSanitizer(), passthroughSanitizer);
+});
+
+await test('chatAdapter: passthroughSanitizer.tokenizeMessage preserves text', async () => {
+  const out = await passthroughSanitizer.tokenizeMessage('Maria Esperanza transferred her home.');
+  assert.equal(out, 'Maria Esperanza transferred her home.');
+});
+
+await test('chatAdapter: passthroughSanitizer.deriveSafeTitle slices + ellipsis', async () => {
+  const short = await passthroughSanitizer.deriveSafeTitle('hello');
+  assert.equal(short, 'hello');
+  const long = await passthroughSanitizer.deriveSafeTitle('x'.repeat(200));
+  assert.equal(long.length, 61);
+  assert.ok(long.endsWith('…'));
+});
+
+await test('chatAdapter: setChatSanitizer swaps the active sanitizer and null restores pass-through', async () => {
+  const custom = {
+    async tokenizeMessage(text) { return `[TOK]${text}`; },
+    rehydrateMessage(text) { return text.startsWith('[TOK]') ? text.slice(5) : text; },
+    async deriveSafeTitle(text) { return `T:${text.slice(0, 5)}`; },
+  };
+  setChatSanitizer(custom);
+  try {
+    const tok = await getChatSanitizer().tokenizeMessage('hello');
+    assert.equal(tok, '[TOK]hello');
+    const rh = getChatSanitizer().rehydrateMessage('[TOK]hello');
+    assert.equal(rh, 'hello');
+  } finally {
+    setChatSanitizer(null);
+  }
+  assert.equal(getChatSanitizer(), passthroughSanitizer);
+});
+
+await test('chatAdapter: tokenizeMessagesForSave maps every message through the active sanitizer', async () => {
+  setChatSanitizer({
+    async tokenizeMessage(text) { return text.replace(/Maria Esperanza/g, 'CLIENT_001'); },
+    rehydrateMessage(text) { return text; },
+    async deriveSafeTitle(text) { return text; },
+  });
+  try {
+    const out = await tokenizeMessagesForSave([
+      { id: '1', role: 'user', text: 'Our client Maria Esperanza called.' },
+      { id: '2', role: 'bot', text: 'What did Maria Esperanza say?' },
+    ]);
+    assert.equal(out[0].text, 'Our client CLIENT_001 called.');
+    assert.equal(out[1].text, 'What did CLIENT_001 say?');
+    assert.equal(out[0].id, '1', 'id preserved');
+  } finally {
+    setChatSanitizer(null);
+  }
+});
+
+await test('chatAdapter: rehydrateMessagesForDisplay maps every message through rehydrate', () => {
+  setChatSanitizer({
+    async tokenizeMessage(t) { return t; },
+    rehydrateMessage(text) { return text.replace(/CLIENT_001/g, 'Maria Esperanza'); },
+    async deriveSafeTitle(t) { return t; },
+  });
+  try {
+    const out = rehydrateMessagesForDisplay([
+      { id: '1', role: 'user', text: 'Follow up with CLIENT_001 today.' },
+    ]);
+    assert.equal(out[0].text, 'Follow up with Maria Esperanza today.');
+  } finally {
+    setChatSanitizer(null);
+  }
+});
+
+await test('chatAdapter: deriveTitleFromRaw uses active sanitizer', async () => {
+  setChatSanitizer({
+    async tokenizeMessage(t) { return t; },
+    rehydrateMessage(t) { return t; },
+    async deriveSafeTitle(text) { return `SAFE:${text.slice(0, 10)}`; },
+  });
+  try {
+    const t = await deriveTitleFromRaw('Our client Maria Esperanza has a question.');
+    assert.equal(t, 'SAFE:Our client');
+  } finally {
+    setChatSanitizer(null);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Wiring grep tests — hooks/useChat.ts and components/Sidebar.tsx
+// ---------------------------------------------------------------------------
+
+await test('hooks/useChat.ts imports the chat sanitizer adapter', () => {
+  const text = readFileSync(joinPath(repoRoot, 'hooks/useChat.ts'), 'utf8');
+  assert.ok(/from '[^']*chatAdapter[^']*'/.test(text), 'imports chatAdapter');
+  assert.ok(/tokenizeMessagesForSave\s*\(/.test(text), 'calls tokenizeMessagesForSave on save');
+  assert.ok(/rehydrateMessagesForDisplay\s*\(/.test(text), 'calls rehydrateMessagesForDisplay on load');
+  assert.ok(/deriveTitleFromRaw\s*\(/.test(text), 'uses deriveTitleFromRaw for titles');
+});
+
+await test('hooks/useChat.ts no longer slices raw titles in-place', () => {
+  const text = readFileSync(joinPath(repoRoot, 'hooks/useChat.ts'), 'utf8');
+  // Inline .text.slice(0, 60) for title derivation used to appear three times.
+  // After Day 4.5, titles pass through deriveTitleFromRaw inside scheduleSave.
+  assert.equal(
+    (text.match(/firstUser\.text\.slice\(0,\s*60\)/g) ?? []).length,
+    0,
+    'inline title slicing removed'
+  );
+});
+
+await test('components/Sidebar.tsx rehydrates fetched and event-driven titles', () => {
+  const text = readFileSync(joinPath(repoRoot, 'components/Sidebar.tsx'), 'utf8');
+  assert.ok(/from '[^']*chatAdapter[^']*'/.test(text), 'imports chatAdapter');
+  assert.ok(/rehydrateMessage\s*\(/.test(text), 'rehydrates titles in the sidebar');
+  assert.ok(/deriveTitleFromRaw\s*\(/.test(text), 'uses deriveTitleFromRaw for rename');
+});
+
+// ---------------------------------------------------------------------------
 // Summary
 // ---------------------------------------------------------------------------
 console.log('\n' + '='.repeat(60));
