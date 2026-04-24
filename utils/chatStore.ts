@@ -17,7 +17,7 @@ const kv = new Redis({
 });
 import { put, del, head } from '@vercel/blob';
 import { randomUUID } from 'crypto';
-import type { ChatMessage } from '../types.ts';
+import type { ChatMessage } from '../types';
 
 // ---------------------------------------------------------------------------
 // Types

@@ -19,11 +19,11 @@ import {
   legislativeSearchTool,
   type CEBSearchResult,
 } from './tools';
-import { generateText, hasBedrockProviderCredentials } from '../utils/anthropicBedrock.ts';
+import { generateText, hasBedrockProviderCredentials } from '../utils/anthropicBedrock';
 import {
   BedrockConfigError,
   resolveBedrockModel,
-} from '../utils/bedrockModels.ts';
+} from '../utils/bedrockModels';
 
 const RESEARCH_SYSTEM_PROMPT = `You are a California legal research specialist. Your job is to organize collected source material into a concise, practical research package for legal drafting.
 

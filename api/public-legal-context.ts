@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { buildPublicLegalContext } from '../utils/publicLegalContext.ts';
+import { buildPublicLegalContext } from '../utils/publicLegalContext';
 
 export const config = {
   maxDuration: 20,

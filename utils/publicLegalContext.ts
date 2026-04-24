@@ -1,4 +1,4 @@
-import type { Source } from '../types.ts';
+import type { Source } from '../types';
 
 export interface PublicLegalContextResult {
   requested: boolean;

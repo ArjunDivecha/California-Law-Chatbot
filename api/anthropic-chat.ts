@@ -4,14 +4,14 @@ import {
   generateTextStream,
   getErrorDetails,
   hasBedrockProviderCredentials,
-} from '../utils/anthropicBedrock.ts';
-import { buildWebSearchContext, shouldUseWebSearch } from '../utils/webSearchContext.ts';
-import { enforceFlow, rejectFlow, SPEED_ALLOWED } from '../utils/flowPolicy.ts';
+} from '../utils/anthropicBedrock';
+import { buildWebSearchContext, shouldUseWebSearch } from '../utils/webSearchContext';
+import { enforceFlow, rejectFlow, SPEED_ALLOWED } from '../utils/flowPolicy';
 import {
   BedrockConfigError,
   assertNoPromptCacheMetadata,
   resolveBedrockModel,
-} from '../utils/bedrockModels.ts';
+} from '../utils/bedrockModels';
 
 const SYSTEM_PROMPT = `You are a California law research assistant for femme & femme LLP. \
 Answer questions about California statutes, case law, regulations, and legal procedures. \

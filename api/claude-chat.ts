@@ -12,13 +12,13 @@ import {
   generateText,
   getErrorDetails,
   hasBedrockProviderCredentials,
-} from '../utils/anthropicBedrock.ts';
-import { ACCURACY_ALLOWED, enforceFlow, rejectFlow } from '../utils/flowPolicy.ts';
+} from '../utils/anthropicBedrock';
+import { ACCURACY_ALLOWED, enforceFlow, rejectFlow } from '../utils/flowPolicy';
 import {
   BedrockConfigError,
   assertNoPromptCacheMetadata,
   resolveBedrockModel,
-} from '../utils/bedrockModels.ts';
+} from '../utils/bedrockModels';
 
 const VERIFIER_TIMEOUT_MS = Number(process.env.BEDROCK_VERIFIER_TIMEOUT_MS || 60000);
 

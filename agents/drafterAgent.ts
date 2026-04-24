@@ -12,8 +12,8 @@ import type {
   DocumentTemplate,
 } from '../types';
 import { applyVariablesToTemplate, countWords, extractCitations } from './tools';
-import { generateText } from '../utils/anthropicBedrock.ts';
-import { resolveBedrockModel } from '../utils/bedrockModels.ts';
+import { generateText } from '../utils/anthropicBedrock';
+import { resolveBedrockModel } from '../utils/bedrockModels';
 
 // =============================================================================
 // CONFIGURATION
