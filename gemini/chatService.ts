@@ -5,6 +5,10 @@ import { VerifierService } from '../services/verifierService';
 import { GuardrailsService } from '../services/guardrailsService';
 import { RetrievalPruner } from '../services/retrievalPruner';
 import { ConfidenceGatingService } from '../services/confidenceGating';
+import {
+    findUngroundedCitations,
+    ungroundedCitationCaveat,
+} from '../api/_shared/citationGrounding';
 
 export interface BotResponse {
     text: string;
@@ -227,110 +231,70 @@ export class ChatService {
         message: string,
         signal?: AbortSignal
     ): Promise<{ context: string; sources: Source[] }> {
-        console.log('🏛️ searchLegislativeAPIs: Starting general legislative search');
-
-        // Extract search terms - remove common words, keep substantive terms
-        const searchTerms = this.extractLegislativeSearchTerms(message);
-        console.log('🏛️ Extracted search terms:', searchTerms);
-
-        if (!searchTerms) {
-            console.log('⚠️ No meaningful search terms extracted');
-            return { context: '', sources: [] };
-        }
-
-        const collectedSources: Source[] = [];
-        const summaryChunks: string[] = [];
+        console.log('🏛️ searchLegislativeAPIs: Starting fan-out legislative search');
 
         try {
-            // Run OpenStates and LegiScan searches in parallel
-            const [openStatesResult, legiScanResult] = await Promise.all([
-                fetchWithRetry(
-                    `/api/legislative-search?q=${encodeURIComponent(searchTerms)}&source=openstates`,
-                    { signal },
-                    2,
-                    500
-                )
-                    .then(r => r.json())
-                    .catch(err => {
-                        if (err.message === 'Request cancelled') throw err;
-                        console.error('OpenStates search failed:', err);
-                        return { items: [] };
-                    }),
-                fetchWithRetry(
-                    `/api/legislative-search?q=${encodeURIComponent(searchTerms)}&source=legiscan`,
-                    { signal },
-                    2,
-                    500
-                )
-                    .then(r => r.json())
-                    .catch(err => {
-                        if (err.message === 'Request cancelled') throw err;
-                        console.error('LegiScan search failed:', err);
-                        return { searchresult: {} };
-                    })
-            ]);
+            // New path: server-side LLM query-expansion + OpenStates + LegiScan
+            // fan-out with dedupe by bill number. See /api/legislative-fanout.
+            const response = await fetchWithRetry(
+                '/api/legislative-fanout',
+                {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ question: message }),
+                    signal,
+                },
+                1,
+                500
+            );
 
-            // Process OpenStates results
-            const openStatesItems = Array.isArray(openStatesResult?.items) ? openStatesResult.items : [];
-            console.log(`🏛️ OpenStates returned ${openStatesItems.length} results`);
+            if (!response.ok) {
+                console.warn(`⚠️ legislative-fanout returned ${response.status}`);
+                return { context: '', sources: [] };
+            }
 
-            for (const item of openStatesItems.slice(0, 10)) { // Limit to top 10
-                const identifier = item.identifier || 'Unknown Bill';
-                const title = item.title || 'Title unavailable';
-                const session = typeof item.session === 'string'
-                    ? item.session
-                    : (item.session?.name || item.session?.identifier || '');
-                const url = item.url || '';
+            const data = await response.json();
+            const variants: string[] = Array.isArray(data?.variants) ? data.variants : [];
+            const bills: Array<{
+                billNumber: string;
+                title: string;
+                session?: string;
+                lastAction?: string;
+                url?: string;
+                providers?: string[];
+                matchedVariants?: string[];
+            }> = Array.isArray(data?.bills) ? data.bills : [];
 
-                summaryChunks.push(`**${identifier}**: ${title}${session ? ` (Session: ${session})` : ''}`);
+            console.log(
+                `🏛️ Fan-out legislative search: ${variants.length} variant(s) → ${bills.length} merged bill(s)`
+            );
 
-                if (url) {
+            const summaryChunks: string[] = [];
+            const collectedSources: Source[] = [];
+
+            for (const b of bills.slice(0, 15)) {
+                const title = b.title || 'Title unavailable';
+                const session = b.session ? ` (Session: ${b.session})` : '';
+                const lastAction = b.lastAction ? ` [${b.lastAction}]` : '';
+                summaryChunks.push(`**${b.billNumber}**: ${title}${session}${lastAction}`);
+                if (b.url) {
                     collectedSources.push({
-                        title: `${identifier} – ${title.substring(0, 50)}${title.length > 50 ? '...' : ''}`,
-                        url: url,
-                        excerpt: title
+                        title: `${b.billNumber} – ${title.substring(0, 50)}${title.length > 50 ? '...' : ''}`,
+                        url: b.url,
+                        excerpt: `${title}. ${b.lastAction || ''}`.trim(),
                     });
                 }
             }
 
-            // Process LegiScan results
-            const legiScanResults = legiScanResult?.searchresult || {};
-            const legiScanEntries = Object.values(legiScanResults)
-                .filter((entry: any) => entry && typeof entry === 'object' && entry.bill_number);
-            console.log(`🏛️ LegiScan returned ${legiScanEntries.length} results`);
-
-            for (const entry of (legiScanEntries as any[]).slice(0, 10)) { // Limit to top 10
-                const billNumber = entry.bill_number || 'Unknown';
-                const title = entry.title || 'Title unavailable';
-                const lastAction = entry.last_action || '';
-                const url = entry.url || '';
-
-                // Avoid duplicates if already found in OpenStates
-                const isDuplicate = summaryChunks.some(s => s.includes(billNumber));
-                if (!isDuplicate) {
-                    summaryChunks.push(`**${billNumber}**: ${title}${lastAction ? ` [${lastAction}]` : ''}`);
-
-                    if (url) {
-                        collectedSources.push({
-                            title: `${billNumber} – ${title.substring(0, 50)}${title.length > 50 ? '...' : ''}`,
-                            url: url,
-                            excerpt: `${title}. ${lastAction}`
-                        });
-                    }
-                }
-            }
-
-            const context = summaryChunks.length > 0
-                ? `Found ${summaryChunks.length} relevant California bills:\n\n${summaryChunks.join('\n\n')}`
-                : '';
-
-            console.log(`✅ Legislative search complete: ${collectedSources.length} sources, ${summaryChunks.length} summaries`);
+            const context =
+                summaryChunks.length > 0
+                    ? `Found ${summaryChunks.length} relevant California bills (retrieved via ${variants.length} query variant${variants.length !== 1 ? 's' : ''}):\n\n${summaryChunks.join('\n\n')}`
+                    : '';
 
             return { context, sources: collectedSources };
-
         } catch (error: any) {
             if (error.message === 'Request cancelled') throw error;
-            console.error('❌ Legislative API search error:', error);
+            console.error('❌ Legislative fan-out error:', error);
             return { context: '', sources: [] };
         }
     }
@@ -2185,11 +2149,31 @@ Answer:`;
                 }
             }
 
+            // Citation-grounding safety net: regardless of the CEB/verifier
+            // path, every bill-number / statute citation in the final answer
+            // must appear in at least one retrieved source. If not, the
+            // answer has hallucination candidates — downgrade the status,
+            // drop the misleading "CEB Verified" badge, and surface a
+            // visible caveat inline. This is the last line of defense.
+            let finalIsCEBBased = isCEBBased;
+            const grounding = findUngroundedCitations(finalAnswer, sourcesWithIds);
+            if (grounding.ungrounded.length > 0) {
+                console.warn(
+                    `⚠️ Ungrounded citations detected (${grounding.ungrounded.length}): ${grounding.ungrounded
+                        .map((c) => c.raw)
+                        .join(', ')}`
+                );
+                const caveat = ungroundedCitationCaveat(grounding);
+                finalAnswer = `> ${caveat}\n\n${finalAnswer}`;
+                finalIsCEBBased = false;
+                verificationStatus = 'unverified';
+            }
+
             return {
                 text: finalAnswer,
                 sources: sourcesWithIds,
-                isCEBBased,
-                cebCategory: isCEBBased ? category : undefined,
+                isCEBBased: finalIsCEBBased,
+                cebCategory: finalIsCEBBased ? category : undefined,
                 sourceMode: 'hybrid',
                 verificationStatus,
                 verificationReport,

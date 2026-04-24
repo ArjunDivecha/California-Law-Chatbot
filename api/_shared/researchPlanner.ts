@@ -257,6 +257,75 @@ Identify gaps and propose follow-up queries. Return JSON only.`;
   }
 }
 
+const LEGISLATIVE_QUERY_SYSTEM_PROMPT = `You are a search-query planner for California legislative databases (OpenStates, LegiScan).
+
+Given a research question, generate 3 to 8 diverse query variants that a keyword-based bill search would understand. Include synonyms, broader and narrower phrasings, and — only if strongly implied by the question — a plausible author last name or bill-number guess. Do NOT invent specific bill numbers. Keep each variant under 60 characters.
+
+Rules:
+- Include obvious synonyms (e.g. "e-bike" for "electric bicycle").
+- Include one or two broad variants and one or two narrow variants.
+- Do not include the word "California" (the search is already state-scoped).
+- Do not include years unless the question references a specific year.
+- Do not fabricate bill numbers.
+- Output JSON only.
+
+Schema:
+{
+  "variants": ["electric bicycle", "e-bike", "class 3 bicycle helmet", "electric bike safety"],
+  "rationale": "one sentence"
+}`;
+
+export interface LegislativeQueryPlan {
+  variants: string[];
+  rationale: string;
+}
+
+export const EMPTY_LEGISLATIVE_PLAN: LegislativeQueryPlan = {
+  variants: [],
+  rationale: '',
+};
+
+/**
+ * LLM-based query expansion for legislative searches. Returns 3–8 variants
+ * the caller can fan out in parallel to OpenStates + LegiScan. Fails open
+ * on any error.
+ */
+export async function planLegislativeQueries(query: string): Promise<LegislativeQueryPlan> {
+  if (!hasBedrockProviderCredentials()) return EMPTY_LEGISLATIVE_PLAN;
+  const model = normalizeModel('research');
+  if (!model) return EMPTY_LEGISLATIVE_PLAN;
+
+  try {
+    const response = await generateText({
+      model,
+      messages: [{ role: 'user', content: `Research question:\n${query.trim()}\n\nReturn JSON only.` }],
+      systemInstruction: LEGISLATIVE_QUERY_SYSTEM_PROMPT,
+      temperature: 0,
+      maxOutputTokens: 400,
+      responseMimeType: 'application/json',
+    });
+
+    const parsed = safeParseJSON<Partial<LegislativeQueryPlan>>(response.text, {});
+    const rawVariants = Array.isArray(parsed.variants) ? parsed.variants : [];
+    const variants = Array.from(
+      new Set(
+        rawVariants
+          .filter((v): v is string => typeof v === 'string')
+          .map((v) => v.trim())
+          .filter((v) => v.length > 0 && v.length <= 80)
+      )
+    ).slice(0, 8);
+
+    return {
+      variants,
+      rationale: typeof parsed.rationale === 'string' ? parsed.rationale : '',
+    };
+  } catch (err) {
+    console.error('planLegislativeQueries error:', err);
+    return EMPTY_LEGISLATIVE_PLAN;
+  }
+}
+
 /**
  * Deterministic helper for callers that do not have Bedrock credentials
  * available (tests, fallback paths). Pulls statute lookups, practice areas,

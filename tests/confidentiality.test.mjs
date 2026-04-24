@@ -393,6 +393,76 @@ test('heuristic extraction satisfies every fixture expectation', () => {
 });
 
 // ---------------------------------------------------------------------------
+// 4c. Citation grounding (hallucination safety net)
+// ---------------------------------------------------------------------------
+const grounding = await import('../api/_shared/citationGrounding.ts');
+const { extractCitations, findUngroundedCitations, ungroundedCitationCaveat } = grounding;
+
+test('extractCitations pulls AB/SB/statute references from prose', () => {
+  const text =
+    'Under California Family Code § 1615, this is governed. Also see AB 2989 (Dixon) and SB 1456 (Blakespear). AB 2234 passed.';
+  const cites = extractCitations(text);
+  const bills = cites.filter((c) => c.kind === 'bill').map((c) => c.normalized).sort();
+  const statutes = cites.filter((c) => c.kind === 'statute').map((c) => c.normalized);
+  assertEqual(bills.join(','), 'AB2234,AB2989,SB1456', 'bill citations');
+  assertEqual(statutes.length, 1, 'one statute citation');
+  assertEqual(statutes[0], 'family|1615', 'statute canonicalization (code prefix only)');
+});
+
+test('findUngroundedCitations flags AB 2989 hallucination against real e-bike sources', () => {
+  const answer =
+    'Key 2025-2026 bills include AB 2989 (Dixon), SB 1456 (Blakespear), and AB 2234 (Boerner). See prior AB 2346.';
+  const sources = [
+    { title: 'AB 2234 - Vehicles: electric bicycles', url: 'https://leginfo.legislature.ca.gov/AB2234' },
+    { title: 'AB 2346 - Vehicles: electric bicycles and speed limits', url: 'https://legiscan.com/CA/bill/AB2346' },
+    { title: 'SB 1283 - Electric vehicle charging stations', url: 'https://openstates.org/SB1283' },
+  ];
+  const result = findUngroundedCitations(answer, sources);
+  const ungroundedNums = result.ungrounded.map((c) => c.normalized).sort();
+  assertEqual(ungroundedNums.join(','), 'AB2989,SB1456', 'AB 2989 and SB 1456 are ungrounded');
+  assertEqual(result.groundedCount, 2, 'AB 2234 and AB 2346 are grounded');
+});
+
+test('findUngroundedCitations grounds statute citations when code+section both appear in any source', () => {
+  const answer =
+    'Under Family Code § 1615 this is clear. Cited as well: Probate Code § 859.';
+  const sources = [
+    { title: 'Family Code 1615', url: 'https://leginfo.legislature.ca.gov/1615' },
+    { title: 'California Probate Code § 859 double damages', url: 'https://leginfo.../Probate859' },
+  ];
+  const result = findUngroundedCitations(answer, sources);
+  assertEqual(result.ungrounded.length, 0, 'both statutes grounded');
+});
+
+test('findUngroundedCitations flags a statute whose section is not in sources', () => {
+  const answer = 'See Penal Code § 459 for burglary.';
+  const sources = [{ title: 'Some unrelated CEB chunk', url: 'https://ceb/x' }];
+  const result = findUngroundedCitations(answer, sources);
+  assertEqual(result.ungrounded.length, 1, 'penal code § 459 ungrounded');
+  assertEqual(result.ungrounded[0].kind, 'statute', 'kind');
+});
+
+test('ungroundedCitationCaveat lists up to 4 of the offenders', () => {
+  const answer = 'AB 1. AB 2. AB 3. AB 4. AB 5. AB 6.';
+  const result = findUngroundedCitations(answer, []);
+  const caveat = ungroundedCitationCaveat(result);
+  assertTrue(/AB 1/.test(caveat), 'includes AB 1');
+  assertTrue(/and \d+ more/.test(caveat), 'mentions overflow count');
+});
+
+// ---------------------------------------------------------------------------
+// 4d. Legislative query planner shape
+// ---------------------------------------------------------------------------
+const legPlanner = await import('../api/_shared/researchPlanner.ts');
+const { EMPTY_LEGISLATIVE_PLAN } = legPlanner;
+
+test('EMPTY_LEGISLATIVE_PLAN is well-formed for fail-open callers', () => {
+  assertEqual(Array.isArray(EMPTY_LEGISLATIVE_PLAN.variants), true, 'variants array');
+  assertEqual(EMPTY_LEGISLATIVE_PLAN.variants.length, 0, 'empty variants');
+  assertEqual(EMPTY_LEGISLATIVE_PLAN.rationale, '', 'empty rationale');
+});
+
+// ---------------------------------------------------------------------------
 // 5. Source-code grep checks for forbidden patterns on Bedrock paths
 // ---------------------------------------------------------------------------
 test('No production Bedrock call site falls back to a GEMINI_* model env var', () => {
