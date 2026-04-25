@@ -33,13 +33,6 @@ export async function tokenize(
   store: SanitizationStore
 ): Promise<TokenizeResult> {
   const { spans } = analyze(prompt);
-  if (spans.length === 0) {
-    return {
-      sanitized: prompt,
-      tokenMap: new Map(),
-      tokenCategoryCounts: {},
-    };
-  }
 
   // analyze() returns merged non-overlapping spans sorted by position.
   // Walk once, building the sanitized output in order.
@@ -61,12 +54,55 @@ export async function tokenize(
     cursor = span.end;
   }
   parts.push(prompt.slice(cursor));
+  let sanitized = parts.join('');
+
+  // Second pass — apply any entries already in the persistent store that
+  // the analyzer missed for this turn. Without this, adding "James Donde"
+  // in the token-store viewer would have no effect on a lowercase
+  // "james donde" in chat (the detector wouldn't fire). Iterate from
+  // longest raw to shortest so multi-word names match before any
+  // single-word substring inside them. Case-insensitive substring match
+  // with word boundaries — same shape as the rehydrate side.
+  const fullMap = await store.rehydrateMap();
+  const manualEntries = Array.from(fullMap.entries())
+    .filter(([token]) => !tokenMap.has(token))
+    .sort(([, a], [, b]) => b.length - a.length);
+  for (const [token, raw] of manualEntries) {
+    if (!raw) continue;
+    const re = new RegExp(`\\b${escapeRegex(raw)}\\b`, 'gi');
+    if (!re.test(sanitized)) continue;
+    sanitized = sanitized.replace(re, token);
+    tokenMap.set(token, raw);
+    const inferred = inferCategoryFromToken(token);
+    tokenCategoryCounts[inferred] =
+      (tokenCategoryCounts[inferred] ?? 0) + 1;
+  }
 
   return {
-    sanitized: parts.join(''),
+    sanitized,
     tokenMap,
     tokenCategoryCounts,
   };
+}
+
+function inferCategoryFromToken(token: string): string {
+  const prefix = token.split('_')[0];
+  switch (prefix) {
+    case 'CLIENT': return 'name';
+    case 'ADDRESS': return 'street_address';
+    case 'PHONE': return 'phone';
+    case 'EMAIL': return 'email';
+    case 'DATE': return 'date';
+    case 'SSN': return 'ssn';
+    case 'TIN': return 'tin';
+    case 'LICENSE': return 'driver_license';
+    case 'CARD': return 'credit_card';
+    case 'ACCT': return 'bank_account';
+    case 'MRN': return 'medical_record';
+    case 'MATTER': return 'client_matter';
+    case 'ZIP': return 'zip';
+    default: return 'name';
+  }
 }
 
 // ---------------------------------------------------------------------------
