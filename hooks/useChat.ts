@@ -6,6 +6,7 @@ import { PracticeArea } from '../components/SourceModeSelector';
 import { useAuthFetch } from '../utils/authFetch.ts';
 import {
   deriveTitleFromRaw,
+  getChatSanitizer,
   presavePiiScan,
   rehydrateMessagesForDisplay,
   tokenizeMessagesForSave,
@@ -272,6 +273,13 @@ export const useChat = (chatId?: string) => {
       } catch { /* proceed without persistence */ }
     }
 
+    // Tokenize the new prompt and the in-memory conversation history
+    // before any wire call. The model only ever sees CLIENT_001 / etc.
+    // for any entity our detector caught. UI keeps the raw text so the
+    // attorney still sees real names locally.
+    const sanitizer = getChatSanitizer();
+    const sanitizedText = await sanitizer.tokenizeMessage(text);
+
     const userMessage: ChatMessage = {
       id: `user-${Date.now()}`,
       role: MessageRole.USER,
@@ -292,19 +300,23 @@ export const useChat = (chatId?: string) => {
     setIsLoading(true);
 
     try {
-      const conversationHistory = messages.map(msg => ({
-        role: msg.role === MessageRole.USER ? 'user' : 'assistant',
-        text: msg.text,
-      }));
+      const conversationHistory = await Promise.all(
+        messages.map(async (msg) => ({
+          role: msg.role === MessageRole.USER ? 'user' : 'assistant',
+          text: await sanitizer.tokenizeMessage(msg.text),
+        }))
+      );
 
       const lastUpdateRef = { current: Date.now() };
       const accumulatedTextRef = { current: '' };
 
       const progressCallback = {
         onToken: (token: string) => {
-          // Speed mode streaming — show tokens as they arrive
+          // Speed mode streaming — show tokens as they arrive. Rehydrate
+          // each token chunk so any CLIENT_001 the model produced shows
+          // up as the real name in the UI.
           setIsLoading(false);
-          accumulatedTextRef.current += token;
+          accumulatedTextRef.current += sanitizer.rehydrateMessage(token);
           const now = Date.now();
           if (now - lastUpdateRef.current > 50) {
             setMessages(prev =>
@@ -325,7 +337,7 @@ export const useChat = (chatId?: string) => {
               msg.id === botMessageId
                 ? {
                     ...msg,
-                    text: response.text,
+                    text: sanitizer.rehydrateMessage(response.text),
                     sources: response.sources,
                     verificationStatus: response.verificationStatus as VerificationStatus,
                     claims: response.claims,
@@ -345,7 +357,7 @@ export const useChat = (chatId?: string) => {
               msg.id === botMessageId
                 ? {
                     ...msg,
-                    text: response.text,
+                    text: sanitizer.rehydrateMessage(response.text),
                     verificationStatus: response.verificationStatus,
                     verificationReport: response.verificationReport,
                   }
@@ -363,7 +375,7 @@ export const useChat = (chatId?: string) => {
       };
 
       const botResponseData = await chatServiceRef.current.sendMessage(
-        text,
+        sanitizedText,
         conversationHistory,
         responseMode,
         sourceMode,
@@ -380,7 +392,7 @@ export const useChat = (chatId?: string) => {
         msg.id === botMessageId
           ? {
               ...msg,
-              text: msg.text || botResponseData.text,
+              text: msg.text || sanitizer.rehydrateMessage(botResponseData.text),
               sources: botResponseData.sources,
               verificationStatus: botResponseData.verificationStatus,
               verificationReport: botResponseData.verificationReport,
