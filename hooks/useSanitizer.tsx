@@ -36,6 +36,7 @@ import {
   SanitizationStore,
   WrongPassphraseError,
 } from '../api/_shared/sanitization/store.ts';
+import type { SpanCategory } from '../api/_shared/sanitization/index.ts';
 import { setChatSanitizer } from '../services/sanitization/chatAdapter';
 import { RealChatSanitizer } from '../services/sanitization/realSanitizer.ts';
 
@@ -50,6 +51,12 @@ export interface SanitizerContextValue {
   reset: () => Promise<void>;
   /** Error captured during auto-init, if any. */
   initError: string | null;
+  /** Snapshot of token→raw mappings for UI display. */
+  getMap: () => Map<string, string>;
+  /** Manually add an entity to the persistent store and return its token. */
+  addEntity: (raw: string, category: SpanCategory) => Promise<string | null>;
+  /** Forget a token (deletes from store + cache). */
+  forgetToken: (token: string) => Promise<void>;
 }
 
 const DEFAULT_CTX: SanitizerContextValue = {
@@ -58,6 +65,9 @@ const DEFAULT_CTX: SanitizerContextValue = {
   tokenCount: 0,
   reset: async () => {},
   initError: null,
+  getMap: () => new Map(),
+  addEntity: async () => null,
+  forgetToken: async () => {},
 };
 
 const SanitizerContext = createContext<SanitizerContextValue>(DEFAULT_CTX);
@@ -97,6 +107,7 @@ async function deleteDb(): Promise<void> {
 
 export const SanitizerProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const storeRef = useRef<SanitizationStore | null>(null);
+  const sanitizerRef = useRef<RealChatSanitizer | null>(null);
   const [unlocked, setUnlocked] = useState(false);
   const [ready, setReady] = useState(false);
   const [tokenCount, setTokenCount] = useState(0);
@@ -115,6 +126,7 @@ export const SanitizerProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       const real = new RealChatSanitizer(store, map);
       setChatSanitizer(real);
       storeRef.current = store;
+      sanitizerRef.current = real;
       setTokenCount(map.size);
       setUnlocked(true);
       setInitError(null);
@@ -171,6 +183,7 @@ export const SanitizerProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     setChatSanitizer(null);
     storeRef.current?.close();
     storeRef.current = null;
+    sanitizerRef.current = null;
     if (hasBrowserStorage()) {
       window.localStorage.removeItem(DEVICE_KEY_STORAGE);
       await deleteDb();
@@ -178,9 +191,37 @@ export const SanitizerProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     await openStore();
   }, [openStore]);
 
+  const getMap = useCallback((): Map<string, string> => {
+    return sanitizerRef.current?.snapshotMap() ?? new Map();
+  }, []);
+
+  const addEntity = useCallback(
+    async (raw: string, category: SpanCategory): Promise<string | null> => {
+      const store = storeRef.current;
+      const sanitizer = sanitizerRef.current;
+      if (!store || !sanitizer) return null;
+      const trimmed = raw.trim();
+      if (!trimmed) return null;
+      const tok = await store.assignToken(trimmed, category);
+      // Reload the in-memory cache so rehydrate picks up the new entry.
+      const map = await store.rehydrateMap();
+      sanitizer.replaceMap(map);
+      setTokenCount(map.size);
+      return tok.value;
+    },
+    []
+  );
+
+  const forgetToken = useCallback(async (token: string): Promise<void> => {
+    const sanitizer = sanitizerRef.current;
+    if (!sanitizer) return;
+    await sanitizer.forgetEntity(token);
+    setTokenCount(sanitizer.snapshotMap().size);
+  }, []);
+
   const value = useMemo<SanitizerContextValue>(
-    () => ({ unlocked, ready, tokenCount, reset, initError }),
-    [unlocked, ready, tokenCount, reset, initError]
+    () => ({ unlocked, ready, tokenCount, reset, initError, getMap, addEntity, forgetToken }),
+    [unlocked, ready, tokenCount, reset, initError, getMap, addEntity, forgetToken]
   );
 
   return <SanitizerContext.Provider value={value}>{children}</SanitizerContext.Provider>;

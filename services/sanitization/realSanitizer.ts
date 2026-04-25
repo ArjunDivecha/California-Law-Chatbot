@@ -77,6 +77,19 @@ export class RealChatSanitizer implements ChatSanitizer {
   }
 
   /**
+   * Replace the in-memory rehydrate cache with a fresh snapshot from the
+   * store. Used after the UI mutates the store directly (manual entity
+   * add/remove from the token-store viewer) so subsequent rehydrates see
+   * the new entries.
+   */
+  replaceMap(next: Map<string, string>): void {
+    this.tokenMap.clear();
+    for (const [token, raw] of next) {
+      this.tokenMap.set(token, raw);
+    }
+  }
+
+  /**
    * Return any TOKEN_NNN references in `text` that are NOT in the cached
    * map — suggests the model made up a token that was not in the
    * original prompt. UI surfaces this as a visible warning.

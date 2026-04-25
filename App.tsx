@@ -14,7 +14,8 @@ import { DraftingMode } from './components/drafting/DraftingMode';
 import SignInPage from './components/SignInPage';
 import { SanitizerProvider, useSanitizer } from './hooks/useSanitizer';
 import { ConfidentialityAttestation } from './components/ConfidentialityAttestation';
-import { ShieldCheck, ShieldAlert, RotateCcw } from 'lucide-react';
+import TokenStoreModal from './components/TokenStoreModal';
+import { ShieldCheck, ShieldAlert, RotateCcw, KeyRound } from 'lucide-react';
 import type { AppMode } from './types';
 
 // ---------------------------------------------------------------------------
@@ -24,6 +25,7 @@ import type { AppMode } from './types';
 // ---------------------------------------------------------------------------
 const SanitizationBanner: React.FC = () => {
   const { unlocked, ready, tokenCount, reset, initError } = useSanitizer();
+  const [modalOpen, setModalOpen] = useState(false);
 
   if (!ready) {
     return (
@@ -56,16 +58,29 @@ const SanitizationBanner: React.FC = () => {
   };
 
   return (
-    <button
-      type="button"
-      onClick={handleReset}
-      title={`Sanitization active — ${tokenCount} entities in local map. Click to reset the store.`}
-      className="inline-flex items-center gap-1.5 rounded bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-800 hover:bg-emerald-100"
-    >
-      <ShieldCheck size={12} />
-      Sanitization active
-      <RotateCcw size={10} className="opacity-60" />
-    </button>
+    <>
+      <div className="inline-flex items-center gap-1 rounded bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-800">
+        <button
+          type="button"
+          onClick={() => setModalOpen(true)}
+          title={`${tokenCount} ${tokenCount === 1 ? 'entity' : 'entities'} in local map — click to view & edit.`}
+          className="inline-flex items-center gap-1 rounded hover:bg-emerald-100 px-1"
+        >
+          <ShieldCheck size={12} />
+          Sanitization · {tokenCount}
+          <KeyRound size={10} className="opacity-60" />
+        </button>
+        <button
+          type="button"
+          onClick={handleReset}
+          title="Reset the local token map (wipes IndexedDB on this device)."
+          className="rounded p-0.5 hover:bg-emerald-100"
+        >
+          <RotateCcw size={10} className="opacity-60" />
+        </button>
+      </div>
+      <TokenStoreModal open={modalOpen} onClose={() => setModalOpen(false)} />
+    </>
   );
 };
 
