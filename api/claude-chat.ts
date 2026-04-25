@@ -60,7 +60,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           sanitizedPrompt: message,
           flowType: flowResult.flow,
           backstopTriggered: true,
-          backstopCategories: !backstop.ok ? backstop.categories : undefined,
+          backstopCategories: 'categories' in backstop ? backstop.categories : undefined,
           statusCode: 400,
         })
       );

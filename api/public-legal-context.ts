@@ -40,7 +40,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         route: 'public-legal-context',
         sanitizedPrompt: query,
         backstopTriggered: true,
-        backstopCategories: !backstop.ok ? backstop.categories : undefined,
+        backstopCategories: 'categories' in backstop ? backstop.categories : undefined,
         statusCode: 400,
       })
     );

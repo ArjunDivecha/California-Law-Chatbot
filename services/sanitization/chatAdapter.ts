@@ -149,7 +149,7 @@ export function presavePiiScan(args: {
 
   if (typeof args.title === 'string') {
     const r = scanForRawPII(args.title);
-    if (!r.ok) {
+    if ('categories' in r) {
       for (const c of r.categories) cats.add(c);
       dirty.push(-1);
     }
@@ -159,7 +159,7 @@ export function presavePiiScan(args: {
       const text = m?.text;
       if (typeof text !== 'string') return;
       const r = scanForRawPII(text);
-      if (!r.ok) {
+      if ('categories' in r) {
         for (const c of r.categories) cats.add(c);
         dirty.push(idx);
       }

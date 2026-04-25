@@ -1,0 +1,21 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "skipLibCheck": true,
+    "moduleResolution": "node",
+    "allowImportingTsExtensions": true
+  },
+  "include": [
+    "api/**/*.ts",
+    "api/_shared/**/*.ts",
+    "services/sanitization/**/*.ts",
+    "types.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "tests",
+    "api/export-document.ts"
+  ]
+}

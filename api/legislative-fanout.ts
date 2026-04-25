@@ -92,7 +92,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         route: 'legislative-fanout',
         sanitizedPrompt: question,
         backstopTriggered: true,
-        backstopCategories: !backstop.ok ? backstop.categories : undefined,
+        backstopCategories: 'categories' in backstop ? backstop.categories : undefined,
         statusCode: 400,
       })
     );

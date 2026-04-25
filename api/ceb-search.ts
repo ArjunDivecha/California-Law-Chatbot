@@ -315,7 +315,7 @@ export default async function handler(req: any, res: any) {
           route: 'ceb-search',
           sanitizedPrompt: query,
           backstopTriggered: true,
-          backstopCategories: !backstop.ok ? backstop.categories : undefined,
+          backstopCategories: 'categories' in backstop ? backstop.categories : undefined,
           statusCode: 400,
         })
       );

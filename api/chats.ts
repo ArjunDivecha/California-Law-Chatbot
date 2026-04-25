@@ -107,14 +107,14 @@ function scanChatPayload(args: {
   const hits = new Set<string>();
   if (typeof args.title === 'string') {
     const r = scanForRawPII(args.title);
-    if (!r.ok) for (const c of r.categories) hits.add(c);
+    if ('categories' in r) for (const c of r.categories) hits.add(c);
   }
   if (Array.isArray(args.messages)) {
     for (const m of args.messages as Array<{ text?: unknown }>) {
       const text = m?.text;
       if (typeof text !== 'string') continue;
       const r = scanForRawPII(text);
-      if (!r.ok) for (const c of r.categories) hits.add(c);
+      if ('categories' in r) for (const c of r.categories) hits.add(c);
     }
   }
   return hits.size === 0 ? null : Array.from(hits).sort();

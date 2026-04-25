@@ -84,8 +84,8 @@ export function scanRequest(primaryText: unknown, history?: unknown): BackstopRe
   if (primary.ok && histResult.ok) return { ok: true };
 
   const cats = new Set<string>();
-  if (!primary.ok) for (const c of primary.categories) cats.add(c);
-  if (!histResult.ok) for (const c of histResult.categories) cats.add(c);
+  if ('categories' in primary) for (const c of primary.categories) cats.add(c);
+  if ('categories' in histResult) for (const c of histResult.categories) cats.add(c);
   const categories = Array.from(cats).sort();
 
   return {
@@ -106,10 +106,12 @@ export function rejectWithBackstop(
   result: BackstopResult
 ): boolean {
   if (result.ok) return false;
+  // result is BackstopReject here; cast for downstream property access.
+  const reject = result as Exclude<BackstopResult, { ok: true }>;
   res.status(400).json({
     error: 'backstop_triggered',
-    categories: result.categories,
-    message: result.message,
+    categories: reject.categories,
+    message: reject.message,
   });
   return true;
 }
