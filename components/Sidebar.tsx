@@ -6,6 +6,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { UserButton } from '@clerk/clerk-react';
+import { Sparkles } from 'lucide-react';
 import { useAuthFetch } from '../utils/authFetch.ts';
 
 interface ChatMeta {
@@ -165,6 +166,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle }) => {
               <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
             </svg>
             New chat
+          </button>
+          <button
+            onClick={() => navigate('/drafting-magic')}
+            className="mt-1 w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-gray-700 hover:bg-pink-50 hover:text-pink-700 transition-colors"
+          >
+            <Sparkles size={15} />
+            Drafting Magic
           </button>
         </div>
 
