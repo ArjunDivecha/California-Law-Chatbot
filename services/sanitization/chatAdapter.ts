@@ -25,6 +25,13 @@ export interface ChatSanitizer {
   rehydrateMessage(text: string): string;
   /** Derive a sidebar title from a raw first user message. Must be token-safe. */
   deriveSafeTitle(text: string, maxLen?: number): Promise<string>;
+  /**
+   * Return any TOKEN_NNN references in `text` that are NOT present in the
+   * sanitizer's local map — indicators of model-invented entities. The UI
+   * should warn when this returns non-empty. Pass-through sanitizer returns
+   * an empty array (no map = nothing to invent against).
+   */
+  findInventedTokens?(text: string): string[];
 }
 
 // ---------------------------------------------------------------------------
@@ -44,6 +51,9 @@ export const passthroughSanitizer: ChatSanitizer = {
   },
   async deriveSafeTitle(text: string, maxLen = DEFAULT_TITLE_MAX): Promise<string> {
     return sliceWithEllipsis(text.trim(), maxLen);
+  },
+  findInventedTokens(): string[] {
+    return [];
   },
 };
 
@@ -85,6 +95,19 @@ export async function tokenizeMessagesForSave(messages: ChatMessage[]): Promise<
 export function rehydrateMessagesForDisplay(messages: ChatMessage[]): ChatMessage[] {
   const sanitizer = getChatSanitizer();
   return messages.map((m) => ({ ...m, text: sanitizer.rehydrateMessage(m.text) }));
+}
+
+/**
+ * Find TOKEN_NNN patterns in the rehydrated text that are not in the
+ * active sanitizer's token map. Empty array when the active sanitizer
+ * is the pass-through or when the text references no tokens.
+ */
+export function findInventedTokensInText(text: string): string[] {
+  if (!text) return [];
+  const sanitizer = getChatSanitizer();
+  return typeof sanitizer.findInventedTokens === 'function'
+    ? sanitizer.findInventedTokens(text)
+    : [];
 }
 
 /**

@@ -1471,6 +1471,57 @@ await test('ConfidentialityAttestation covers the four narrative points', () => 
 });
 
 // ---------------------------------------------------------------------------
+// Invented-token detection (Day 9)
+// ---------------------------------------------------------------------------
+const { findInventedTokensInText } = adapter;
+
+await test('Real sanitizer: findInventedTokens flags tokens not in the cached map', async () => {
+  const { real } = await freshRealSanitizer();
+  await real.tokenizeMessage('Our client Maria Esperanza called today.');
+  // Known token should be in the map; an invented one should not.
+  const snap = real.snapshotMap();
+  const known = [...snap.keys()][0];
+  const invented = real.findInventedTokens(
+    `Follow up with ${known} and also CLIENT_999 tomorrow. ADDRESS_042 is on file.`
+  );
+  assert.ok(!invented.includes(known), 'known token not flagged');
+  assert.ok(invented.includes('CLIENT_999'), 'unknown CLIENT flagged');
+  assert.ok(invented.includes('ADDRESS_042'), 'unknown ADDRESS flagged');
+});
+
+await test('Real sanitizer: findInventedTokens returns [] on plain text', async () => {
+  const { real } = await freshRealSanitizer();
+  assert.deepEqual(real.findInventedTokens('Plain response with no tokens.'), []);
+  assert.deepEqual(real.findInventedTokens(''), []);
+});
+
+await test('findInventedTokensInText delegates to the active sanitizer', async () => {
+  const { real } = await freshRealSanitizer();
+  await real.tokenizeMessage('Our client Maria Esperanza called.');
+  setChatSanitizer(real);
+  try {
+    const unknown = findInventedTokensInText(
+      'Invented: CLIENT_777. Real text follows.'
+    );
+    assert.ok(unknown.includes('CLIENT_777'));
+  } finally {
+    setChatSanitizer(null);
+  }
+});
+
+await test('findInventedTokensInText: pass-through sanitizer returns []', () => {
+  // Default / pass-through sanitizer has no map — nothing can be "invented".
+  assert.deepEqual(findInventedTokensInText('CLIENT_001 and CLIENT_002.'), []);
+});
+
+await test('components/Message.tsx shows the InventedTokenWarning banner', () => {
+  const text = readFileSync(joinPath(repoRoot, 'components/Message.tsx'), 'utf8');
+  assert.ok(/findInventedTokensInText/.test(text), 'imports helper');
+  assert.ok(/InventedTokenWarning/.test(text), 'renders the warning component');
+  assert.ok(/<InventedTokenWarning\b/.test(text), 'mounts the warning in the message body');
+});
+
+// ---------------------------------------------------------------------------
 // Summary
 // ---------------------------------------------------------------------------
 console.log('\n' + '='.repeat(60));

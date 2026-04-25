@@ -1,9 +1,33 @@
-import React, { useState, useRef } from 'react';
+import React, { useMemo, useState, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { MessageRole } from '../types';
 import type { ChatMessage, Source, CEBSource } from '../types';
 import CEBBadge from './CEBBadge';
+import { findInventedTokensInText } from '../services/sanitization/chatAdapter';
+
+// InventedTokenWarning — shows when the model response references TOKEN_NNN
+// patterns that aren't in the attorney's local sanitizer map. Indicates a
+// potential hallucination of an entity not present in the original prompt.
+// Renders nothing when the active sanitizer is the pass-through (no map).
+const InventedTokenWarning: React.FC<{ text: string }> = ({ text }) => {
+  const unknown = useMemo(() => findInventedTokensInText(text), [text]);
+  if (unknown.length === 0) return null;
+  const shown = unknown.slice(0, 5).join(', ');
+  const more = unknown.length > 5 ? ` and ${unknown.length - 5} more` : '';
+  return (
+    <div className="mb-3 rounded border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+      <div className="mb-0.5 font-semibold">
+        ⚠️ Model referenced {unknown.length} token{unknown.length !== 1 ? 's' : ''} not in your local map
+      </div>
+      <div>
+        {shown}
+        {more}. These were not assigned from your prompt — treat as potentially invented. Verify
+        the specific identifier before relying on it.
+      </div>
+    </div>
+  );
+};
 
 interface MessageProps {
   message: ChatMessage;
@@ -536,6 +560,11 @@ const Message: React.FC<MessageProps> = ({ message }) => {
         </div>
         )}
         
+        {/* Invented-token warning — model referenced TOKEN_NNN patterns
+             that are not in the attorney's local sanitizer map. Suggests
+             a hallucinated entity. Pass-through sanitizer returns []. */}
+        <InventedTokenWarning text={message.text} />
+
         {/* Verification Badge */}
         {getVerificationBadge() && verificationStatus !== 'not_needed' && (
           <div className="mb-3 flex items-center">

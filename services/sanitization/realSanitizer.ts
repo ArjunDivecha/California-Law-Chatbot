@@ -16,7 +16,11 @@
  */
 
 import type { ChatSanitizer } from './chatAdapter.ts';
-import { tokenize, rehydrate } from '../../api/_shared/sanitization/tokenize.ts';
+import {
+  findUnknownTokens,
+  rehydrate,
+  tokenize,
+} from '../../api/_shared/sanitization/tokenize.ts';
 import type { SanitizationStore } from '../../api/_shared/sanitization/store.ts';
 
 const DEFAULT_TITLE_MAX = 60;
@@ -70,6 +74,16 @@ export class RealChatSanitizer implements ChatSanitizer {
   /** Expose the in-memory map (read-only copy) for UI token panels. */
   snapshotMap(): Map<string, string> {
     return new Map(this.tokenMap);
+  }
+
+  /**
+   * Return any TOKEN_NNN references in `text` that are NOT in the cached
+   * map — suggests the model made up a token that was not in the
+   * original prompt. UI surfaces this as a visible warning.
+   */
+  findInventedTokens(text: string): string[] {
+    if (!text) return [];
+    return findUnknownTokens(text, this.tokenMap);
   }
 
   /** Drop a token from both the store and the cache. */
