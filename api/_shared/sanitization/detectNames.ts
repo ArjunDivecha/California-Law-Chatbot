@@ -398,7 +398,7 @@ const COMMON_NON_NAME_STARTS = new Set<string>([
  * determiners, modal verbs, common follow-on words). If any token in the
  * candidate is a stop word, the whole span is dropped.
  */
-const STRONG_VERB_CUE = `(?:help|helping|helped|represent|representing|represented|advise|advising|advised|defend|defending|defended|prosecute|prosecuting|prosecuted|sue|suing|sued|file\\s+against|talk\\s+to|meet\\s+with|consult\\s+with|interview|interviewing|deposed?|deposition\\s+of|on\\s+behalf\\s+of|engage|engaging|engaged|retain|retaining|retained|hire|hiring|hired)`;
+const STRONG_VERB_CUE = `(?:help|helping|helped|represent|representing|represented|advise|advising|advised|defend|defending|defended|prosecute|prosecuting|prosecuted|sue|suing|sued|file\\s+against|talk\\s+to|meet\\s+with|consult\\s+with|interview|interviewing|deposed?|deposition\\s+of|on\\s+behalf\\s+of|engage|engaging|engaged|retain|retaining|retained|hire|hiring|hired|want|wants|wanted|need|needs|needed|ask|asks|asked|asking|tell|tells|told|call|calls|called|email|emails|emailed|contact|contacted|paid|pay|pays|owe|owes|owed)`;
 
 const RELATIONAL_CUE_CI =
   `(?:client|ward|decedent|deceased|testator|testatrix|trustor|settlor|trustee|beneficiary|guardian|conservator|conservatee|personal\\s+representative|executor|executrix|administrator|administratrix|petitioner|respondent|plaintiff|defendant|debtor|creditor|assignor|assignee|opposing\\s+party|husband|wife|spouse|son|daughter|child|sibling|brother|sister|mother|father|parent|partner|fiance|fiancee|niece|nephew|cousin|aunt|uncle|friend|colleague|coworker|employee|tenant|landlord)`;
@@ -454,9 +454,12 @@ function scanLowercaseCue(text: string): NameSpan[] {
   // "james donde with" and then reject the whole span — losing the valid
   // 2-word slice. Cascading matches keep "james donde" while still
   // letting "first middle last" through when no stop word follows.
+  // Token character class accepts upper- or lowercase first letter so
+  // mixed-case names like "arjun Divecha" or "John smith" qualify. The
+  // stop-word filter still applies to all tokens lowercased.
   const tokenCandidates = [
-    /^([a-z][a-z'-]+(?:\s+[a-z][a-z'-]+){2})\b/,
-    /^([a-z][a-z'-]+(?:\s+[a-z][a-z'-]+){1})\b/,
+    /^([A-Za-z][A-Za-z'-]+(?:\s+[A-Za-z][A-Za-z'-]+){2})\b/,
+    /^([A-Za-z][A-Za-z'-]+(?:\s+[A-Za-z][A-Za-z'-]+){1})\b/,
   ];
   const out: NameSpan[] = [];
   let cueMatch: RegExpExecArray | null;
@@ -474,8 +477,20 @@ function scanLowercaseCue(text: string): NameSpan[] {
       if (!m) continue;
       const raw = m[1];
       const words = raw.split(/\s+/);
-      if (words.some((w) => LOWERCASE_NAME_STOPWORDS.has(w))) continue;
-      if (words.some((w) => /ing$/.test(w) && w.length > 4)) continue;
+      const lowered = words.map((w) => w.toLowerCase());
+      if (lowered.some((w) => LOWERCASE_NAME_STOPWORDS.has(w))) continue;
+      if (lowered.some((w) => /ing$/.test(w) && w.length > 4)) continue;
+      // Reject candidates whose tokens look like past-tense verbs
+      // ("called", "asked", "filed"). Names ending in -ed are rare and
+      // typically <5 chars ("Reed", "Fred"); 5+ char -ed words are
+      // overwhelmingly verbs.
+      if (lowered.some((w) => /ed$/.test(w) && w.length >= 5)) continue;
+      // Filter known topic-phrase / legal-noun tokens regardless of case.
+      const canonicalize = (w: string) =>
+        w[0].toUpperCase() + w.slice(1).toLowerCase();
+      if (words.some((w) => COMMON_LEGAL_PHRASE_WORDS.has(canonicalize(w)))) continue;
+      if (words.some((w) => COMMON_NON_NAME_STARTS.has(canonicalize(w)))) continue;
+      if (words.some((w) => US_STATE_ABBR.has(w.toUpperCase()))) continue;
       out.push({
         start: nameStart,
         end: nameStart + raw.length,

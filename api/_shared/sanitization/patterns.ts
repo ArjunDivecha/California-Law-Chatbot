@@ -114,7 +114,10 @@ export const ZIP: PIIPattern = {
 export const DATE_NUMERIC: PIIPattern = {
   category: 'date',
   label: 'Date',
-  regex: /\b(?:0?[1-9]|1[0-2])[/-](?:0?[1-9]|[12]\d|3[01])[/-](?:\d{2}|\d{4})\b/g,
+  // MM/DD/YY through MM/DD/YYYYY — accept 2-4 digit years so typos like
+  // "12/26/155" (clearly meant as a date but with a malformed year) still
+  // get caught. The shape is the strong signal, not the exact year width.
+  regex: /\b(?:0?[1-9]|1[0-2])[/-](?:0?[1-9]|[12]\d|3[01])[/-]\d{2,4}\b/g,
 };
 
 // ---------------------------------------------------------------------------
