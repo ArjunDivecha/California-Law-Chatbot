@@ -60,11 +60,14 @@ function nameToSpan(n: NameSpan): Span {
 }
 
 /**
- * Merge overlapping spans into a minimal non-overlapping set. When two spans
- * overlap, the *longer* one wins (it's more specific). Ties go to the span
- * that starts first. Categories from the dropped span are lost — we log but
- * don't surface this; for sanitization purposes we only need to know *that*
- * a region is sensitive, not the full set of detectors that fired.
+ * Merge overlapping spans into a minimal non-overlapping set.
+ *
+ * Resolution rule:
+ *   - If exactly one of the overlapping spans is a `name`, the OTHER
+ *     wins. The non-name PII detectors (SSN, ZIP, phone, address, etc.)
+ *     are more specific signals; the bigram name scanner is the
+ *     broadest. This stops "San Francisco CA" from eating "CA 94123".
+ *   - Otherwise the longer span wins; ties broken by earliest start.
  */
 function mergeSpans(spans: Span[]): Span[] {
   if (spans.length <= 1) return [...spans];
@@ -79,7 +82,18 @@ function mergeSpans(spans: Span[]): Span[] {
       out.push(s);
       continue;
     }
-    // Overlap: keep the longer span.
+    const lastIsName = last.category === 'name';
+    const sIsName = s.category === 'name';
+    if (lastIsName && !sIsName) {
+      // Specific signal beats broad name.
+      out[out.length - 1] = s;
+      continue;
+    }
+    if (!lastIsName && sIsName) {
+      // Keep the existing specific span; drop the name.
+      continue;
+    }
+    // Same-class overlap: keep the longer one.
     const lastLen = last.end - last.start;
     const sLen = s.end - s.start;
     if (sLen > lastLen) {

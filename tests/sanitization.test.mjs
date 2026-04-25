@@ -323,14 +323,19 @@ await test('analyze: end-to-end on the Maria Esperanza fixture', () => {
 await test('analyze: suppresses public-case captions and statute citations', () => {
   const text =
     'Under Family Code § 1615, the outcome in People v. Smith (2020) 50 Cal.App.5th 123 applies to our facts. See also California Supreme Court guidance.';
-  const { spans, suppressedByAllowlist } = analyze(text);
-  // No span should cover "People" or "Smith" (public case caption is on allowlist).
+  const { spans } = analyze(text);
+  // Public case names + court names + statute citations must never be
+  // tokenized — verified directly. (suppressedByAllowlist may be 0 now
+  // because the bigram filters drop the candidate spans before they
+  // ever reach the allowlist suppression step; that's the correct
+  // optimization.)
   const raws = spans.map((s) => s.raw);
   assert.ok(
     !raws.some((r) => r === 'People' || r === 'Smith' || r.includes('Smith')),
     'public case names not tokenized'
   );
-  assert.ok(suppressedByAllowlist > 0, 'at least one allowlist suppression');
+  assert.ok(!raws.some((r) => r.includes('Family Code')), 'statute citation not tokenized');
+  assert.ok(!raws.some((r) => r.includes('Supreme Court')), 'court name not tokenized');
 });
 
 await test('analyze: over-eager — tokenizes random capitalized bigrams', () => {

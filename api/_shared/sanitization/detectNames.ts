@@ -67,11 +67,16 @@ function scanPossessive(text: string): NameSpan[] {
   const out: NameSpan[] = [];
   let m: RegExpExecArray | null;
   while ((m = re.exec(text)) !== null) {
+    const raw = m[1];
+    const words = raw.split(/\s+/);
+    if (COMMON_NON_NAME_STARTS.has(words[0])) continue;
+    if (words.some((w) => COMMON_LEGAL_PHRASE_WORDS.has(w))) continue;
+    if (words.some((w) => US_STATE_ABBR.has(w))) continue;
     const start = m.index;
     out.push({
       start,
-      end: start + m[1].length,
-      raw: m[1],
+      end: start + raw.length,
+      raw,
       signal: 'possessive',
     });
   }
@@ -117,14 +122,21 @@ function scanRelational(text: string): NameSpan[] {
  * "X residing at" / "X, age N" / "X of [city]" patterns.
  */
 function scanAddressCue(text: string): NameSpan[] {
-  const re = new RegExp(`\\b(${NAME_PHRASE})(?=\\s*(?:,\\s*age\\s+\\d+|,?\\s*residing\\s+at|,?\\s*of\\s+[A-Z]))`, 'g');
+  // Two narrow signals: "X, age NN" and "X residing at ...". The
+  // earlier "X of [A-Z]" lookahead matched too many topic phrases
+  // ("Code of Civil", "Department of Justice") and was dropped.
+  const re = new RegExp(`\\b(${NAME_PHRASE})(?=\\s*(?:,\\s*age\\s+\\d+|,?\\s*residing\\s+at\\b))`, 'g');
   const out: NameSpan[] = [];
   let m: RegExpExecArray | null;
   while ((m = re.exec(text)) !== null) {
+    const raw = m[1];
+    const words = raw.split(/\s+/);
+    if (COMMON_NON_NAME_STARTS.has(words[0])) continue;
+    if (words.some((w) => COMMON_LEGAL_PHRASE_WORDS.has(w))) continue;
     out.push({
       start: m.index,
-      end: m.index + m[1].length,
-      raw: m[1],
+      end: m.index + raw.length,
+      raw,
       signal: 'address_cue',
     });
   }
@@ -141,14 +153,27 @@ function scanCapitalizedBigram(text: string): NameSpan[] {
   // Bigram names at sentence start ("Maria Esperanza arrived...") must be
   // caught — those are exactly the ones that matter. We rely on the
   // COMMON_NON_NAME_STARTS filter below to suppress "The X", "Section Y",
-  // etc. rather than a position-based exclusion.
+  // etc. rather than a position-based exclusion. We also drop any span
+  // whose words intersect the US state abbreviation set or the
+  // common-legal-phrase set, which are common false positives in
+  // public-research prompts.
   const re = new RegExp(`\\b(${NAME_WORD}\\s+${NAME_WORD}(?:\\s+${NAME_WORD})?)\\b`, 'g');
   const out: NameSpan[] = [];
   let m: RegExpExecArray | null;
   while ((m = re.exec(text)) !== null) {
     const raw = m[1];
-    const firstWord = raw.split(/\s+/)[0];
+    const words = raw.split(/\s+/);
+    const firstWord = words[0];
     if (COMMON_NON_NAME_STARTS.has(firstWord)) continue;
+    // If any word in the candidate is a US state abbreviation, this is
+    // almost certainly an address fragment (e.g. "Francisco CA 94123"),
+    // not a personal name.
+    if (words.some((w) => US_STATE_ABBR.has(w))) continue;
+    // If any word is a public-legal phrase token (Code, Court,
+    // Constitution, Procedure, Rights, etc.), the bigram is a topic
+    // phrase, not a personal name. The allowlist catches the
+    // canonical forms; this catches the long-tail.
+    if (words.some((w) => COMMON_LEGAL_PHRASE_WORDS.has(w))) continue;
     out.push({
       start: m.index,
       end: m.index + raw.length,
@@ -158,6 +183,78 @@ function scanCapitalizedBigram(text: string): NameSpan[] {
   }
   return out;
 }
+
+const US_STATE_ABBR = new Set<string>([
+  'AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA', 'HI', 'ID',
+  'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME', 'MD', 'MA', 'MI', 'MN', 'MS',
+  'MO', 'MT', 'NE', 'NV', 'NH', 'NJ', 'NM', 'NY', 'NC', 'ND', 'OH', 'OK',
+  'OR', 'PA', 'RI', 'SC', 'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA', 'WV',
+  'WI', 'WY', 'DC',
+]);
+
+/**
+ * Words that, when present in a bigram span, mark it as a topic phrase
+ * rather than a personal name. Keeps "California Probate Code",
+ * "Superior Court", "Civil Procedure", "Privacy Act", etc. from being
+ * tokenized by the broad bigram scanner. The allowlist still does the
+ * heavy lifting for canonical statute and case citations.
+ */
+const COMMON_LEGAL_PHRASE_WORDS = new Set<string>([
+  'Code',
+  'Court',
+  'Courts',
+  'Procedure',
+  'Procedures',
+  'Constitution',
+  'Constitutional',
+  'Act',
+  'Acts',
+  'Rights',
+  'Rule',
+  'Rules',
+  'Section',
+  'Article',
+  'Amendment',
+  'Probate',
+  'Civil',
+  'Criminal',
+  'Family',
+  'Penal',
+  'Government',
+  'Corporations',
+  'Evidence',
+  'Labor',
+  'Welfare',
+  'Health',
+  'Education',
+  'Insurance',
+  'Vehicle',
+  'Water',
+  'Public',
+  'Federal',
+  'State',
+  'Superior',
+  'Supreme',
+  'Appellate',
+  'District',
+  'Privacy',
+  'Tax',
+  'Taxation',
+  'Business',
+  'Professions',
+  'Department',
+  'Bureau',
+  'Commission',
+  'Board',
+  'Agency',
+  'Office',
+  'County',
+  'City',
+  'Statute',
+  'Statutes',
+  'Reporter',
+  'Reports',
+]);
 
 /**
  * Words that commonly appear capitalized but are not name starts. Not
@@ -180,6 +277,24 @@ const COMMON_NON_NAME_STARTS = new Set<string>([
   'Those',
   'No',
   'Yes',
+  // Topic phrases that commonly start California legal questions but are
+  // never personal names.
+  'California',
+  "California's",
+  'Cal',
+  'Federal',
+  // Imperative verbs that commonly anchor research prompts.
+  'Summarize',
+  'Explain',
+  'Outline',
+  'Describe',
+  'Identify',
+  'List',
+  'Compare',
+  'Define',
+  'Analyze',
+  'Discuss',
+  'Provide',
   // Numbering
   'First',
   'Second',
