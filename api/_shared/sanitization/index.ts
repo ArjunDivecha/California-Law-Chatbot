@@ -14,9 +14,9 @@ import {
   runPatterns,
   type PatternMatch,
   type PIICategory,
-} from './patterns.ts';
-import { findAllowlistMatches, overlapsAllowlist } from './allowlist.ts';
-import { detectNames, type NameSpan } from './detectNames.ts';
+} from './patterns.js';
+import { findAllowlistMatches, overlapsAllowlist } from './allowlist.js';
+import { detectNames, type NameSpan } from './detectNames.js';
 
 export type SpanCategory = PIICategory | 'name';
 

@@ -15,13 +15,13 @@
  * the store.
  */
 
-import type { ChatSanitizer } from './chatAdapter.ts';
+import type { ChatSanitizer } from './chatAdapter.js';
 import {
   findUnknownTokens,
   rehydrate,
   tokenize,
-} from '../../api/_shared/sanitization/tokenize.ts';
-import type { SanitizationStore } from '../../api/_shared/sanitization/store.ts';
+} from '../../api/_shared/sanitization/tokenize.js';
+import type { SanitizationStore } from '../../api/_shared/sanitization/store.js';
 
 const DEFAULT_TITLE_MAX = 60;
 

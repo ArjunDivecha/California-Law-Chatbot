@@ -17,8 +17,8 @@
  * already-tokenized payload).
  */
 
-import { analyze } from './index.ts';
-import type { SanitizationStore } from './store.ts';
+import { analyze } from './index.js';
+import type { SanitizationStore } from './store.js';
 
 export interface TokenizeResult {
   sanitized: string;

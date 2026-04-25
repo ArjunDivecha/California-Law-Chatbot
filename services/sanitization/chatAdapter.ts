@@ -14,7 +14,7 @@
  */
 
 import type { ChatMessage } from '../../types';
-import { scanForRawPII } from '../../api/_shared/sanitization/guard.ts';
+import { scanForRawPII } from '../../api/_shared/sanitization/guard.js';
 
 const DEFAULT_TITLE_MAX = 60;
 

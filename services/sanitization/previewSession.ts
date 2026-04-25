@@ -13,8 +13,8 @@
  * complete but the tokens re-start at _001 every mount.
  */
 
-import { analyze, type Span, type SpanCategory } from '../../api/_shared/sanitization/index.ts';
-import { overlapsAllowlist, findAllowlistMatches } from '../../api/_shared/sanitization/allowlist.ts';
+import { analyze, type Span, type SpanCategory } from '../../api/_shared/sanitization/index.js';
+import { overlapsAllowlist, findAllowlistMatches } from '../../api/_shared/sanitization/allowlist.js';
 
 const TOKEN_PREFIX: Record<SpanCategory, string> = {
   name: 'CLIENT',

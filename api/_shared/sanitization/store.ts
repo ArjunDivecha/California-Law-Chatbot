@@ -20,7 +20,7 @@
  * browser use, both default to `globalThis`.
  */
 
-import type { SpanCategory } from './index.ts';
+import type { SpanCategory } from './index.js';
 import {
   WrongPassphraseError,
   createSentinel,
@@ -31,7 +31,7 @@ import {
   newSalt,
   verifySentinel,
   type EncryptedBlob,
-} from './crypto.ts';
+} from './crypto.js';
 
 // ---------------------------------------------------------------------------
 // Public token shape

@@ -19,7 +19,7 @@
  * names — so the audit log stays free of raw PII.
  */
 
-import { runPatterns, type PatternMatch } from './patterns.ts';
+import { runPatterns, type PatternMatch } from './patterns.js';
 
 export interface BackstopAccept {
   ok: true;
