@@ -23,6 +23,10 @@ import {
 } from '../api/_shared/sanitization/index.ts';
 import { useSanitizer } from '../hooks/useSanitizer';
 import { detectPii } from '../services/sanitization/detectionPipeline';
+import {
+  addToUserAllowlist,
+  subscribeToUserAllowlist,
+} from '../services/sanitization/userAllowlist';
 
 const PREVIEW_DEBOUNCE_MS = 350;
 
@@ -117,6 +121,14 @@ export const ComposerPreview: React.FC<ComposerPreviewProps> = ({ text }) => {
   const [quickAddBusy, setQuickAddBusy] = useState(false);
   const [quickAddNote, setQuickAddNote] = useState<string | null>(null);
 
+  // Re-detect when the user allowlist changes (e.g., after a "don't
+  // tokenize" click) so the preview reflects the new state without
+  // waiting for the next keystroke.
+  const [allowlistTick, setAllowlistTick] = useState(0);
+  useEffect(() => {
+    return subscribeToUserAllowlist(() => setAllowlistTick((n) => n + 1));
+  }, []);
+
   // Debounced OPF-driven detection. Fires ~350ms after the user pauses
   // typing. Calls detectPii in best-effort mode — when the daemon is
   // healthy we get OPF spans (catches lowercase / mixed-case / addresses);
@@ -152,7 +164,7 @@ export const ComposerPreview: React.FC<ComposerPreviewProps> = ({ text }) => {
       cancelled = true;
       window.clearTimeout(handle);
     };
-  }, [text]);
+  }, [text, allowlistTick]);
 
   const handleQuickAdd = useCallback(async () => {
     const raw = quickAddRaw.trim();
@@ -270,7 +282,12 @@ export const ComposerPreview: React.FC<ComposerPreviewProps> = ({ text }) => {
       </div>
       <div className="grid grid-cols-1 gap-px bg-slate-100 sm:grid-cols-2">
         <div className="bg-white px-3 py-2 text-sm leading-relaxed">
-          <p className="mb-1 text-[10px] uppercase tracking-wide text-slate-400">You typed</p>
+          <p className="mb-1 flex items-center justify-between text-[10px] uppercase tracking-wide text-slate-400">
+            <span>You typed</span>
+            {segments.some((s) => s.type === 'span') && (
+              <span className="normal-case tracking-normal text-slate-400">click a highlight to keep it raw</span>
+            )}
+          </p>
           <p className="whitespace-pre-wrap break-words text-slate-900">
             {segments.length === 0
               ? <span className="text-slate-400">{text}</span>
@@ -278,13 +295,24 @@ export const ComposerPreview: React.FC<ComposerPreviewProps> = ({ text }) => {
                   seg.type === 'plain' ? (
                     <React.Fragment key={i}>{seg.text}</React.Fragment>
                   ) : (
-                    <span
+                    <button
                       key={i}
-                      className={`rounded px-1 ${CATEGORY_BG[seg.category!]}`}
-                      title={`${seg.category} → ${seg.token ?? '(token will be assigned on send)'}`}
+                      type="button"
+                      onClick={() => {
+                        const term = seg.text.trim();
+                        if (!term) return;
+                        if (
+                          !window.confirm(
+                            `Don't tokenize "${term}"?\n\nFuture messages containing "${term}" will be sent to the model unchanged. You can undo this in the token store viewer.`
+                          )
+                        ) return;
+                        addToUserAllowlist(term);
+                      }}
+                      className={`rounded px-1 ${CATEGORY_BG[seg.category!]} hover:ring-2 hover:ring-slate-400 cursor-pointer`}
+                      title={`${seg.category} → ${seg.token ?? '(token will be assigned on send)'} · click to keep "${seg.text}" raw`}
                     >
                       {seg.text}
-                    </span>
+                    </button>
                   )
                 )}
           </p>

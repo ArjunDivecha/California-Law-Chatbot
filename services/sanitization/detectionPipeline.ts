@@ -35,6 +35,7 @@ import {
 } from '../../api/_shared/sanitization/allowlist.js';
 import { runPatterns } from '../../api/_shared/sanitization/patterns.js';
 import { detectSpans, type DetectResult } from './opfClient.js';
+import { getUserAllowlistLower } from './userAllowlist.js';
 
 export class OpfUnavailableError extends Error {
   constructor(cause?: unknown) {
@@ -100,6 +101,75 @@ function patternSpans(text: string): Span[] {
 }
 
 /**
+ * Split a span around any user-allowlisted substring it contains. The
+ * allowlisted slice gets removed entirely (sent raw); the remaining
+ * non-allowlisted slices are returned as separate sub-spans with the
+ * same category and label, so they still get tokenized.
+ *
+ * Example: OPF returns one private_address span "161 bret harte road,
+ * berkeley ca 94708". User allowlist contains "Berkeley". This returns
+ * two sub-spans: "161 bret harte road," and "ca 94708" — Berkeley is
+ * dropped from the span set and survives on the wire as plain text.
+ *
+ * Whole-span match (the entire raw equals an allowlisted entry) is
+ * handled by the caller before this function is invoked.
+ */
+function splitSpanByUserAllowlist(span: Span, userAllowSet: Set<string>): Span[] {
+  if (userAllowSet.size === 0) return [span];
+  const lowerRaw = span.raw.toLowerCase();
+  const ranges: Array<[number, number]> = [];
+  for (const allowed of userAllowSet) {
+    if (!allowed) continue;
+    let from = 0;
+    let idx;
+    while ((idx = lowerRaw.indexOf(allowed, from)) !== -1) {
+      // Word-boundary check so allowlisting "ca" doesn't strip "California".
+      const before = idx === 0 ? '' : span.raw[idx - 1];
+      const after = idx + allowed.length >= span.raw.length ? '' : span.raw[idx + allowed.length];
+      const wordLeft = !before || /\W/.test(before);
+      const wordRight = !after || /\W/.test(after);
+      if (wordLeft && wordRight) ranges.push([idx, idx + allowed.length]);
+      from = idx + allowed.length;
+    }
+  }
+  if (ranges.length === 0) return [span];
+  // Merge overlapping ranges
+  ranges.sort((a, b) => a[0] - b[0]);
+  const merged: Array<[number, number]> = [];
+  for (const r of ranges) {
+    if (merged.length === 0 || merged[merged.length - 1][1] < r[0]) {
+      merged.push([r[0], r[1]]);
+    } else {
+      merged[merged.length - 1][1] = Math.max(merged[merged.length - 1][1], r[1]);
+    }
+  }
+  // Build remaining sub-spans from the gaps between allowlisted ranges.
+  const out: Span[] = [];
+  let cursor = 0;
+  const pushIfNonEmpty = (s: number, e: number) => {
+    if (e <= s) return;
+    const slice = span.raw.slice(s, e);
+    const leading = slice.length - slice.trimStart().length;
+    const trailing = slice.length - slice.trimEnd().length;
+    const innerStart = s + leading;
+    const innerEnd = e - trailing;
+    if (innerEnd <= innerStart) return;
+    out.push({
+      ...span,
+      start: span.start + innerStart,
+      end: span.start + innerEnd,
+      raw: span.raw.slice(innerStart, innerEnd),
+    });
+  };
+  for (const [s, e] of merged) {
+    pushIfNonEmpty(cursor, s);
+    cursor = e;
+  }
+  pushIfNonEmpty(cursor, span.raw.length);
+  return out;
+}
+
+/**
  * Run the full detection pipeline using OPF as the primary detector.
  *
  * @param text   The text to analyze.
@@ -139,13 +209,29 @@ export async function detectPii(
     };
   }
 
-  // OPF spans + regex spans → unsuppressed → merged
+  // OPF spans + regex spans → drop allowlist overlaps → split around
+  // user allowlist substrings → merge.
+  //
+  // Static legal allowlist (overlapsAllowlist): canonical statute
+  // citations, case captions etc. — drop the whole span.
+  //
+  // User allowlist (userAllowSet): per-device list of "always send raw"
+  // terms. If a span's raw text exactly matches an entry, drop the
+  // span entirely. If a span contains an allowlisted substring (e.g.,
+  // an OPF address span containing "Berkeley" that the user marked
+  // public), split the span around the substring so the allowlisted
+  // chunk survives on the wire as plain text and the rest still
+  // tokenizes.
+  const userAllowSet = getUserAllowlistLower();
   const all = [...regexSpans, ...opfResult.spans];
-  const unsuppressed = all.filter(
-    (s) => !overlapsAllowlist(s.start, s.end, allowlist)
-  );
-  const suppressedByAllowlist = all.length - unsuppressed.length;
-  const merged = mergeSpans(unsuppressed);
+  const beforeStatic = all.filter((s) => !overlapsAllowlist(s.start, s.end, allowlist));
+  const afterUserAllow: Span[] = [];
+  for (const span of beforeStatic) {
+    if (userAllowSet.has(span.raw.toLowerCase())) continue; // whole-span match
+    afterUserAllow.push(...splitSpanByUserAllowlist(span, userAllowSet));
+  }
+  const suppressedByAllowlist = all.length - afterUserAllow.length;
+  const merged = mergeSpans(afterUserAllow);
 
   return {
     spans: merged,

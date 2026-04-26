@@ -15,6 +15,12 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { X, Trash2, Plus } from 'lucide-react';
 import { useSanitizer } from '../hooks/useSanitizer';
 import type { SpanCategory } from '../api/_shared/sanitization/index.ts';
+import {
+  addToUserAllowlist,
+  getUserAllowlist,
+  removeFromUserAllowlist,
+  subscribeToUserAllowlist,
+} from '../services/sanitization/userAllowlist';
 
 interface TokenStoreModalProps {
   open: boolean;
@@ -218,8 +224,91 @@ export const TokenStoreModal: React.FC<TokenStoreModalProps> = ({ open, onClose 
               </tbody>
             </table>
           )}
+          <UserAllowlistSection />
         </div>
       </div>
+    </div>
+  );
+};
+
+// ---------------------------------------------------------------------------
+// "Don't tokenize" section — user-editable allowlist of terms that the
+// detector should always pass through unchanged. Reads from localStorage
+// via the userAllowlist module; subscribes to changes so click-to-allow
+// from the composer preview updates the modal in real time.
+// ---------------------------------------------------------------------------
+
+const UserAllowlistSection: React.FC = () => {
+  const [list, setList] = useState<string[]>(() => getUserAllowlist());
+  const [draft, setDraft] = useState('');
+
+  useEffect(() => {
+    const refresh = () => setList(getUserAllowlist());
+    return subscribeToUserAllowlist(refresh);
+  }, []);
+
+  const handleAdd = () => {
+    const term = draft.trim();
+    if (!term) return;
+    addToUserAllowlist(term);
+    setDraft('');
+  };
+  const handleRemove = (term: string) => {
+    if (!window.confirm(`Stop allowlisting "${term}"? It will be tokenized again on future sends.`)) return;
+    removeFromUserAllowlist(term);
+  };
+
+  return (
+    <div className="mt-6 border-t border-slate-200 pt-4">
+      <h3 className="text-sm font-semibold text-slate-900">Don't tokenize</h3>
+      <p className="mb-2 text-xs text-slate-500">
+        Terms in this list are always sent to the model unchanged. Click a highlighted term in the composer preview to add it here, or type one in below.
+      </p>
+      <div className="mb-2 flex flex-wrap items-center gap-2">
+        <input
+          type="text"
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          placeholder="e.g. Berkeley"
+          className="min-w-[10rem] flex-1 rounded border border-slate-300 bg-white px-2 py-1 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              handleAdd();
+            }
+          }}
+        />
+        <button
+          type="button"
+          onClick={handleAdd}
+          disabled={!draft.trim()}
+          className="inline-flex items-center gap-1 rounded bg-slate-700 px-3 py-1 text-sm font-medium text-white hover:bg-slate-800 disabled:bg-slate-300"
+        >
+          <Plus size={14} /> Allow
+        </button>
+      </div>
+      {list.length === 0 ? (
+        <p className="text-xs text-slate-400 italic">No terms allowlisted yet.</p>
+      ) : (
+        <ul className="flex flex-wrap gap-2">
+          {list.map((term) => (
+            <li
+              key={term}
+              className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs text-slate-800"
+            >
+              <span>{term}</span>
+              <button
+                type="button"
+                onClick={() => handleRemove(term)}
+                title={`Remove "${term}" from the don't-tokenize list`}
+                className="rounded-full p-0.5 text-slate-400 hover:bg-rose-100 hover:text-rose-700"
+              >
+                <X size={12} />
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 };
