@@ -123,6 +123,15 @@ function heuristicNameSpans(text: string): Span[] {
  * lowercase pairs ("the buyer") and US state abbreviations.
  */
 function lenientNamesInSpan(text: string, span: Span): Span[] {
+  // Skip lenient name detection inside OPF spans whose category isn't
+  // person-adjacent. Inside private_address spans the lenient detector
+  // would happily tag "Oak Street", "Berkeley CA", etc. as names —
+  // splitting the address into nonsense fragments. Limit to private_*
+  // categories where a human name plausibly co-occurs (currently only
+  // `name` and `street_address` since OPF sometimes wraps "person of
+  // address" into one address span). For other categories, skip.
+  if (span.category !== 'street_address' && span.category !== 'name') return [];
+
   // Anchored single-word "head". From each head we try a 3-word match,
   // then 2-word, and accept the first one that passes filters. Greedy
   // single-regex patterns get foiled by stop-word tails ("arjun Divecha
@@ -132,6 +141,23 @@ function lenientNamesInSpan(text: string, span: Span): Span[] {
     'of', 'at', 'for', 'with', 'to', 'by', 'from', 'on', 'in', 'and',
     'or', 'the', 'a', 'an', 'his', 'her', 'their', 'my', 'our',
     'is', 'was', 'are', 'were', 'be', 'been',
+  ]);
+  // Words that are *components of an address*, never personal names.
+  // If any token in the candidate matches one of these, reject — it's
+  // an address fragment OPF already labeled correctly.
+  const ADDRESS_WORDS = new Set([
+    'st', 'street', 'ave', 'avenue', 'blvd', 'boulevard', 'rd', 'road',
+    'dr', 'drive', 'ln', 'lane', 'ct', 'court', 'pl', 'place', 'way',
+    'pkwy', 'parkway', 'terr', 'terrace', 'cir', 'circle', 'hwy',
+    'highway', 'suite', 'apt', 'apartment', 'unit', 'floor', 'fl',
+    'building', 'bldg', 'po', 'box',
+  ]);
+  const US_STATES = new Set([
+    'al', 'ak', 'az', 'ar', 'ca', 'co', 'ct', 'de', 'fl', 'ga', 'hi',
+    'id', 'il', 'in', 'ia', 'ks', 'ky', 'la', 'me', 'md', 'ma', 'mi',
+    'mn', 'ms', 'mo', 'mt', 'ne', 'nv', 'nh', 'nj', 'nm', 'ny', 'nc',
+    'nd', 'oh', 'ok', 'or', 'pa', 'ri', 'sc', 'sd', 'tn', 'tx', 'ut',
+    'vt', 'va', 'wa', 'wv', 'wi', 'wy', 'dc',
   ]);
   const slice = text.slice(span.start, span.end);
   const out: Span[] = [];
@@ -155,6 +181,12 @@ function lenientNamesInSpan(text: string, span: Span): Span[] {
       if (!words.some((w) => /^[A-Z]/.test(w))) continue;
       if (words.some((w) => STOP.has(w.toLowerCase()))) continue;
       if (words.some((w) => /ed$/.test(w) && w.length >= 5)) continue;
+      // Reject if any token is an address component or a state — those
+      // are address fragments, not personal names.
+      if (words.some((w) => ADDRESS_WORDS.has(w.toLowerCase()))) continue;
+      if (words.some((w) => US_STATES.has(w.toLowerCase()))) continue;
+      // Reject if any token is purely numeric (street numbers).
+      if (words.some((w) => /^\d+$/.test(w))) continue;
       accepted = { raw, len: raw.length };
       break;
     }
@@ -192,8 +224,15 @@ function refineOpfWithNames(
       out.push(opf);
       continue;
     }
+    const ADDRESS_OR_STATE_RE = /\b(?:st|street|ave|avenue|blvd|boulevard|rd|road|dr|drive|ln|lane|ct|court|pl|place|way|pkwy|parkway|terr|terrace|cir|circle|hwy|highway|suite|apt|apartment|unit|floor|fl|building|bldg|po|box|al|ak|az|ar|ca|co|ct|de|fl|ga|hi|id|il|in|ia|ks|ky|la|me|md|ma|mi|mn|ms|mo|mt|ne|nv|nh|nj|nm|ny|nc|nd|oh|ok|or|pa|ri|sc|sd|tn|tx|ut|vt|va|wa|wv|wi|wy|dc)\b/i;
     const globalContained = nameSpans.filter(
-      (n) => n.start >= opf.start && n.end <= opf.end
+      (n) =>
+        n.start >= opf.start &&
+        n.end <= opf.end &&
+        // When the OPF span is an address, reject heuristic names that
+        // are actually address components (the capitalized_bigram
+        // detector tags "Oak Street" as a name — wrong here).
+        !(opf.category === 'street_address' && ADDRESS_OR_STATE_RE.test(n.raw))
     );
     const lenient = lenientNamesInSpan(text, opf);
     // Dedupe by position, prefer global heuristic matches over lenient

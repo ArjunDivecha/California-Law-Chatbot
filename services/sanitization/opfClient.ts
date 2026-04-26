@@ -88,7 +88,7 @@ export type DaemonStatus =
  */
 export async function getHealth(): Promise<DaemonHealth> {
   const ctrl = new AbortController();
-  const timer = window.setTimeout(() => ctrl.abort(), HEALTH_TIMEOUT_MS);
+  const timer = globalThis.setTimeout(() => ctrl.abort(), HEALTH_TIMEOUT_MS);
   try {
     const res = await fetch(`${OPF_DAEMON_URL}/v1/health`, {
       method: 'GET',
@@ -114,7 +114,7 @@ export async function getHealth(): Promise<DaemonHealth> {
       version: data.version,
     };
   } finally {
-    window.clearTimeout(timer);
+    globalThis.clearTimeout(timer);
   }
 }
 
@@ -164,7 +164,7 @@ export async function detectSpans(
   opts: DetectOptions = {}
 ): Promise<DetectResult> {
   const ctrl = new AbortController();
-  const timer = window.setTimeout(
+  const timer = globalThis.setTimeout(
     () => ctrl.abort(),
     opts.timeoutMs ?? DETECT_TIMEOUT_MS
   );
@@ -196,7 +196,7 @@ export async function detectSpans(
     }
     return { spans, elapsedMs: data.elapsed_ms, modelLoaded: data.model_loaded };
   } finally {
-    window.clearTimeout(timer);
+    globalThis.clearTimeout(timer);
   }
 }
 
