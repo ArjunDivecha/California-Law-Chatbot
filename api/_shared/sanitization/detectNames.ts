@@ -60,27 +60,68 @@ function scanTitlePrefix(text: string): NameSpan[] {
 }
 
 /**
- * Possessives: a capitalized name phrase immediately followed by 's or '.
- * Example: "Esperanza's estate", "Maria Esperanza's son".
+ * Words that commonly appear as lowercase possessives but are NOT personal
+ * names. Applied in scanPossessive's lowercase-first branch.
+ * Note: complements LOWERCASE_NAME_STOPWORDS (defined later in file) —
+ * both sets are checked, so only add words not already in that set.
+ */
+const POSSESSIVE_STOPWORDS_LOWER = new Set<string>([
+  // Legal / institutional nouns not in LOWERCASE_NAME_STOPWORDS
+  'state', 'law', 'act', 'code', 'rule', 'policy', 'contract',
+  'government', 'county', 'city', 'district', 'department', 'agency',
+  'company', 'corporation', 'firm', 'office', 'board', 'commission',
+  'trust', 'estate', 'counsel', 'judge', 'creditor', 'debtor',
+  'trustee', 'executor', 'guardian', 'beneficiary', 'settlor',
+  'trustor', 'decedent', 'testator', 'petitioner', 'respondent',
+  // Informal family not in LOWERCASE_NAME_STOPWORDS
+  'mom', 'dad', 'grandma', 'grandpa', 'grandpa', 'granny',
+  'boss', 'colleague', 'coworker', 'neighbor', 'neighbour',
+  // Geographic / institutional
+  'california', 'america', 'federal', 'national',
+]);
+
+/**
+ * Possessives: a name phrase immediately followed by 's or '.
+ * Catches both Title-case (Rachel's) and lowercase (rachel's).
+ * Example: "Esperanza's estate", "Maria Esperanza's son", "rachel's case".
  */
 function scanPossessive(text: string): NameSpan[] {
-  const re = new RegExp(`\\b(${NAME_PHRASE})(?:'s|'s)\\b`, 'g');
   const out: NameSpan[] = [];
   let m: RegExpExecArray | null;
-  while ((m = re.exec(text)) !== null) {
+
+  // Pattern 1 (original, unchanged): Title-case multi-word possessives.
+  // "Rachel's estate", "Maria Esperanza's son".
+  const re1 = new RegExp(`\\b(${NAME_PHRASE})(?:'s|'s)\\b`, 'g');
+  while ((m = re1.exec(text)) !== null) {
     const raw = m[1];
     const words = raw.split(/\s+/);
     if (COMMON_NON_NAME_STARTS.has(words[0])) continue;
     if (words.some((w) => COMMON_LEGAL_PHRASE_WORDS.has(w))) continue;
     if (words.some((w) => US_STATE_ABBR.has(w))) continue;
-    const start = m.index;
-    out.push({
-      start,
-      end: start + raw.length,
-      raw,
-      signal: 'possessive',
-    });
+    out.push({ start: m.index, end: m.index + raw.length, raw, signal: 'possessive' });
   }
+
+  // Pattern 2 (new): lowercase-first SINGLE-WORD possessives.
+  // "rachel's case", "john's matter". Single-word only — multi-word greedy
+  // patterns over-match non-name context ("tsting what about rachel" → wrong).
+  // Possessive 's is itself a strong heuristic for a proper noun.
+  const re2 = /\b([a-z][a-zA-Z'-]+)(?:'s|'s)\b/g;
+  while ((m = re2.exec(text)) !== null) {
+    const raw = m[1];
+    if (raw.length < 3) continue; // "it" → not a name
+    const lower = raw.toLowerCase();
+    // Check against both stop-word sets (LOWERCASE_NAME_STOPWORDS defined
+    // later in file — safe to reference here because this function only
+    // executes after full module initialization).
+    if (POSSESSIVE_STOPWORDS_LOWER.has(lower)) continue;
+    if (LOWERCASE_NAME_STOPWORDS.has(lower)) continue;
+    // Normalize to Title-case and check capitalized sets.
+    const cap = raw[0].toUpperCase() + raw.slice(1).toLowerCase();
+    if (COMMON_NON_NAME_STARTS.has(cap)) continue;
+    if (COMMON_LEGAL_PHRASE_WORDS.has(cap)) continue;
+    out.push({ start: m.index, end: m.index + raw.length, raw, signal: 'possessive' });
+  }
+
   return out;
 }
 

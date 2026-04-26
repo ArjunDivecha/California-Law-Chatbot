@@ -398,8 +398,19 @@ export async function detectPii(
   const localNames = heuristicNameSpans(text);
   const refinedOpf = refineOpfWithNames(text, opfResult.spans, localNames);
 
-  // OPF refined spans + regex spans → drop allowlist overlaps → split around
-  // user allowlist substrings → merge.
+  // Include high-precision heuristic name signals as OPF supplements so
+  // names that OPF misses (e.g. lowercase possessives: "rachel's", "john's")
+  // are still caught. Excludes 'capitalized_bigram' (too noisy) and
+  // 'address_cue' (already handled by OPF address spans).
+  const HIGH_PRECISION_SIGNALS = new Set([
+    'title_prefix', 'possessive', 'relational', 'cue_lowercase',
+  ]);
+  const supplementNames = localNames.filter(
+    (n) => HIGH_PRECISION_SIGNALS.has(n.label)
+  );
+
+  // OPF refined spans + regex spans + heuristic supplements → drop allowlist
+  // overlaps → split around user allowlist substrings → merge.
   //
   // Static legal allowlist (overlapsAllowlist): canonical statute
   // citations, case captions etc. — drop the whole span.
@@ -412,7 +423,7 @@ export async function detectPii(
   // chunk survives on the wire as plain text and the rest still
   // tokenizes.
   const userAllowSet = getUserAllowlistLower();
-  const all = [...regexSpans, ...refinedOpf];
+  const all = [...regexSpans, ...refinedOpf, ...supplementNames];
   const beforeStatic = all.filter((s) => !overlapsAllowlist(s.start, s.end, allowlist));
   const afterUserAllow: Span[] = [];
   for (const span of beforeStatic) {
