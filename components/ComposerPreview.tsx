@@ -18,11 +18,13 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Plus, ShieldCheck } from 'lucide-react';
 import {
-  analyze,
   type Span,
   type SpanCategory,
 } from '../api/_shared/sanitization/index.ts';
 import { useSanitizer } from '../hooks/useSanitizer';
+import { detectPii } from '../services/sanitization/detectionPipeline';
+
+const PREVIEW_DEBOUNCE_MS = 350;
 
 const QUICK_ADD_CATEGORIES: Array<{ value: SpanCategory; label: string }> = [
   { value: 'name', label: 'Name' },
@@ -105,12 +107,52 @@ function buildSegments(
 }
 
 export const ComposerPreview: React.FC<ComposerPreviewProps> = ({ text }) => {
-  const { unlocked, getMap, addEntity } = useSanitizer();
+  const { unlocked, getMap, addEntity, daemonStatus } = useSanitizer();
   const [, setTick] = useState(0);
+  const [detectorSpans, setDetectorSpans] = useState<Span[]>([]);
+  const [usedOpf, setUsedOpf] = useState<boolean>(false);
+  const [detecting, setDetecting] = useState<boolean>(false);
   const [quickAddRaw, setQuickAddRaw] = useState('');
   const [quickAddCat, setQuickAddCat] = useState<SpanCategory>('name');
   const [quickAddBusy, setQuickAddBusy] = useState(false);
   const [quickAddNote, setQuickAddNote] = useState<string | null>(null);
+
+  // Debounced OPF-driven detection. Fires ~350ms after the user pauses
+  // typing. Calls detectPii in best-effort mode — when the daemon is
+  // healthy we get OPF spans (catches lowercase / mixed-case / addresses);
+  // when unreachable we fall back to the heuristic detector silently and
+  // mark usedOpf=false so the UI can flag it.
+  //
+  // Each typing burst cancels the prior in-flight call via the
+  // generation counter. Only the latest call's result wins.
+  useEffect(() => {
+    if (!text || !text.trim()) {
+      setDetectorSpans([]);
+      setUsedOpf(false);
+      setDetecting(false);
+      return;
+    }
+    let cancelled = false;
+    setDetecting(true);
+    const handle = window.setTimeout(async () => {
+      try {
+        const result = await detectPii(text, 'best-effort');
+        if (cancelled) return;
+        setDetectorSpans(result.spans);
+        setUsedOpf(result.usedOpf);
+      } catch {
+        if (cancelled) return;
+        setDetectorSpans([]);
+        setUsedOpf(false);
+      } finally {
+        if (!cancelled) setDetecting(false);
+      }
+    }, PREVIEW_DEBOUNCE_MS);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(handle);
+    };
+  }, [text]);
 
   const handleQuickAdd = useCallback(async () => {
     const raw = quickAddRaw.trim();
@@ -147,8 +189,6 @@ export const ComposerPreview: React.FC<ComposerPreviewProps> = ({ text }) => {
       byRaw.set(raw.toLowerCase(), token);
     }
     const tokenForRaw = (raw: string): string | undefined => byRaw.get(raw.toLowerCase());
-
-    const detectorSpans = analyze(text).spans;
 
     // Mirror the second pass of tokenize(): overlay literal matches for
     // every entry in the store the detector missed. Longest raws first
@@ -200,7 +240,7 @@ export const ComposerPreview: React.FC<ComposerPreviewProps> = ({ text }) => {
     );
     const segs = buildSegments(text, allSpans, tokenForRaw);
     return { segments: segs, hasSpans: allSpans.length > 0, tokenForRaw };
-  }, [text, unlocked, getMap]);
+  }, [text, unlocked, getMap, detectorSpans]);
 
   if (!text.trim()) return null;
 
@@ -208,8 +248,17 @@ export const ComposerPreview: React.FC<ComposerPreviewProps> = ({ text }) => {
     <div className="mt-2 rounded-xl border border-slate-200 bg-white">
       <div className="flex items-center justify-between border-b border-slate-100 px-3 py-1.5 text-[11px] uppercase tracking-wide text-slate-500">
         <span className="inline-flex items-center gap-1">
-          <ShieldCheck size={12} className="text-emerald-600" />
+          <ShieldCheck size={12} className={usedOpf ? 'text-emerald-600' : 'text-amber-500'} />
           Sanitization preview
+          {detecting ? (
+            <span className="text-slate-400 normal-case tracking-normal">· detecting…</span>
+          ) : usedOpf ? (
+            <span className="text-emerald-700 normal-case tracking-normal">· OPF</span>
+          ) : daemonStatus.state === 'unreachable' ? (
+            <span className="text-amber-700 normal-case tracking-normal">· fallback (OPF unreachable)</span>
+          ) : (
+            <span className="text-slate-400 normal-case tracking-normal">· heuristic</span>
+          )}
         </span>
         <span>
           {hasSpans

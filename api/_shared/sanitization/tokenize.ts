@@ -17,7 +17,7 @@
  * already-tokenized payload).
  */
 
-import { analyze } from './index.js';
+import { analyze, type Span } from './index.js';
 import type { SanitizationStore } from './store.js';
 
 export interface TokenizeResult {
@@ -33,9 +33,24 @@ export async function tokenize(
   store: SanitizationStore
 ): Promise<TokenizeResult> {
   const { spans } = analyze(prompt);
+  return tokenizeWithSpans(prompt, store, spans);
+}
 
-  // analyze() returns merged non-overlapping spans sorted by position.
-  // Walk once, building the sanitized output in order.
+/**
+ * Apply pre-computed spans (from any detector — heuristic, OPF, or a
+ * combination) to `prompt`, producing the wire-safe sanitized text plus
+ * the per-request rehydrate map. Used by the OPF-driven path so the
+ * detection happens upstream and this function only does the
+ * substitution + persistent-store reconciliation.
+ *
+ * The spans are expected to be merged + non-overlapping + sorted by
+ * start (the same shape `analyze()` produces). No re-merging here.
+ */
+export async function tokenizeWithSpans(
+  prompt: string,
+  store: SanitizationStore,
+  spans: Span[]
+): Promise<TokenizeResult> {
   const tokenMap = new Map<string, string>();
   const tokenCategoryCounts: Record<string, number> = {};
 

@@ -32,6 +32,18 @@ export interface ChatSanitizer {
    * an empty array (no map = nothing to invent against).
    */
   findInventedTokens?(text: string): string[];
+  /**
+   * OPF-aware tokenize. Returns the tokenized text plus a flag indicating
+   * whether the OPF daemon actually ran (false = heuristic fallback was
+   * used, which the UI should surface to the attorney). Optional: legacy
+   * sanitizers (pass-through) can skip this and callers fall back to
+   * plain tokenizeMessage.
+   */
+  tokenizeMessageWithDetection?(text: string): Promise<{
+    sanitized: string;
+    usedOpf: boolean;
+    opfElapsedMs: number | null;
+  }>;
 }
 
 // ---------------------------------------------------------------------------
@@ -74,6 +86,28 @@ export function setChatSanitizer(sanitizer: ChatSanitizer | null): void {
 // ---------------------------------------------------------------------------
 // Helpers used by useChat
 // ---------------------------------------------------------------------------
+
+/**
+ * OPF-driven tokenize for the wire path. Falls back to plain
+ * tokenizeMessage when the active sanitizer doesn't support
+ * tokenizeMessageWithDetection (the pass-through sanitizer that runs
+ * before the SanitizerProvider has initialized).
+ */
+export async function tokenizeForWire(text: string): Promise<{
+  sanitized: string;
+  usedOpf: boolean;
+  opfElapsedMs: number | null;
+}> {
+  const sanitizer = getChatSanitizer();
+  if (typeof sanitizer.tokenizeMessageWithDetection === 'function') {
+    return sanitizer.tokenizeMessageWithDetection(text);
+  }
+  // Pass-through sanitizer (or anything without OPF support): no
+  // tokenization, no OPF, but flagged so the UI can surface that the
+  // detector wasn't running.
+  const sanitized = await sanitizer.tokenizeMessage(text);
+  return { sanitized, usedOpf: false, opfElapsedMs: null };
+}
 
 /**
  * Map every ChatMessage through the sanitizer's tokenizeMessage.

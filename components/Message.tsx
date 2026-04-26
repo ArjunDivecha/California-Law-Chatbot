@@ -383,6 +383,7 @@ const Message: React.FC<MessageProps> = ({ message }) => {
   };
 
   if (isUser) {
+    const heuristicSanitized = message.sanitizationMethod === 'heuristic';
     return (
       <div className="flex justify-end">
         <div className="flex items-start gap-3 w-full max-w-[85%]">
@@ -390,6 +391,15 @@ const Message: React.FC<MessageProps> = ({ message }) => {
             <p className="whitespace-pre-wrap text-[15px] font-medium leading-6 text-slate-800 tracking-[0.01em]">
               {message.text}
             </p>
+            {heuristicSanitized && (
+              <p
+                title="The OPF detector was unreachable when this message was sent. The local heuristic detector ran instead, which may miss lowercase, mixed-case, or foreign names. Install the OPF daemon on this device for full sanitization."
+                className="mt-2 inline-flex items-center gap-1 rounded bg-amber-50 px-1.5 py-0.5 text-[11px] font-medium text-amber-800 border border-amber-200"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                Sanitized with fallback detector
+              </p>
+            )}
           </div>
           <div className="flex-shrink-0 w-8 h-8 rounded-full bg-slate-100 ring-1 ring-slate-200 flex items-center justify-center shadow-sm">
              <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-slate-500"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>

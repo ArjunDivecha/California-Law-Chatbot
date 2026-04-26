@@ -54,6 +54,14 @@ export interface ChatMessage {
   cebCategory?: string; // Which CEB vertical was used
   sourceMode?: SourceMode; // Which mode was used for this message
   responseMode?: ResponseMode; // Whether the answer used the fast direct path or full accuracy flow
+  /**
+   * Which detector sanitized this message before it left the device.
+   * 'opf' = full OPF detector ran. 'heuristic' = OPF was unreachable
+   * and we fell back to the local heuristic detector (weaker on
+   * lowercase / mixed-case / foreign names — UI flags this on the
+   * message bubble).
+   */
+  sanitizationMethod?: 'opf' | 'heuristic';
 }
 
 // =============================================================================

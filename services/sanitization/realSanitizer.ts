@@ -20,8 +20,10 @@ import {
   findUnknownTokens,
   rehydrate,
   tokenize,
+  tokenizeWithSpans,
 } from '../../api/_shared/sanitization/tokenize.js';
 import type { SanitizationStore } from '../../api/_shared/sanitization/store.js';
+import { detectPii } from './detectionPipeline.js';
 
 const DEFAULT_TITLE_MAX = 60;
 
@@ -42,6 +44,10 @@ export class RealChatSanitizer implements ChatSanitizer {
   /**
    * Tokenize outgoing text and merge any newly-allocated tokens into
    * the in-memory rehydrate cache so subsequent rehydrates see them.
+   *
+   * Default path uses the heuristic detector — kept for legacy callers
+   * (chat persistence, title derivation) where we can be slightly less
+   * thorough since the data never leaves the device.
    */
   async tokenizeMessage(text: string): Promise<string> {
     if (!text || typeof text !== 'string') return text ?? '';
@@ -50,6 +56,36 @@ export class RealChatSanitizer implements ChatSanitizer {
       this.tokenMap.set(token, raw);
     }
     return sanitized;
+  }
+
+  /**
+   * Tokenize using the OPF-driven detection pipeline (best-effort:
+   * falls back to the heuristic detector if the daemon is unreachable,
+   * with the `usedOpf` flag indicating which detector ran).
+   *
+   * Returns metadata so the caller can decide whether to flag the
+   * message as having degraded sanitization. Used by the wire path
+   * (useChat.sendMessage) and any other feature that needs the
+   * highest-quality detection plus visibility into the method used.
+   */
+  async tokenizeMessageWithDetection(text: string): Promise<{
+    sanitized: string;
+    usedOpf: boolean;
+    opfElapsedMs: number | null;
+  }> {
+    if (!text || typeof text !== 'string') {
+      return { sanitized: text ?? '', usedOpf: false, opfElapsedMs: null };
+    }
+    const detection = await detectPii(text, 'best-effort');
+    const { sanitized, tokenMap } = await tokenizeWithSpans(text, this.store, detection.spans);
+    for (const [token, raw] of tokenMap) {
+      this.tokenMap.set(token, raw);
+    }
+    return {
+      sanitized,
+      usedOpf: detection.usedOpf,
+      opfElapsedMs: detection.opfElapsedMs,
+    };
   }
 
   /**

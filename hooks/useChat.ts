@@ -9,6 +9,7 @@ import {
   getChatSanitizer,
   presavePiiScan,
   rehydrateMessagesForDisplay,
+  tokenizeForWire,
   tokenizeMessagesForSave,
 } from '../services/sanitization/chatAdapter';
 
@@ -273,17 +274,37 @@ export const useChat = (chatId?: string) => {
       } catch { /* proceed without persistence */ }
     }
 
-    // Tokenize the new prompt and the in-memory conversation history
-    // before any wire call. The model only ever sees CLIENT_001 / etc.
-    // for any entity our detector caught. UI keeps the raw text so the
-    // attorney still sees real names locally.
+    // Tokenize the new prompt AND the conversation history through the
+    // OPF-driven path BEFORE any rendering, so the user message bubble
+    // can be tagged with the correct sanitization method on first paint.
+    //
+    // tokenizeForWire returns spans from OPF when the daemon is healthy
+    // and falls back to the local heuristic detector when unreachable.
+    // If any single tokenize call falls back, the whole send is tagged
+    // 'heuristic' since the wire payload includes both the new prompt
+    // and the history.
     const sanitizer = getChatSanitizer();
-    const sanitizedText = await sanitizer.tokenizeMessage(text);
+    const wire = await tokenizeForWire(text);
+    const sanitizedText = wire.sanitized;
+
+    const tokenizedHistory = await Promise.all(
+      messages.map(async (msg) => {
+        const r = await tokenizeForWire(msg.text);
+        return {
+          role: msg.role === MessageRole.USER ? 'user' : 'assistant',
+          text: r.sanitized,
+          usedOpf: r.usedOpf,
+        };
+      })
+    );
+    const allUsedOpf = wire.usedOpf && tokenizedHistory.every((h) => h.usedOpf);
+    const sanitizationMethod: 'opf' | 'heuristic' = allUsedOpf ? 'opf' : 'heuristic';
 
     const userMessage: ChatMessage = {
       id: `user-${Date.now()}`,
       role: MessageRole.USER,
       text,
+      sanitizationMethod,
     };
 
     const botMessageId = `bot-${Date.now()}`;
@@ -300,12 +321,8 @@ export const useChat = (chatId?: string) => {
     setIsLoading(true);
 
     try {
-      const conversationHistory = await Promise.all(
-        messages.map(async (msg) => ({
-          role: msg.role === MessageRole.USER ? 'user' : 'assistant',
-          text: await sanitizer.tokenizeMessage(msg.text),
-        }))
-      );
+      // Strip the usedOpf flag — chatService.sendMessage takes the public shape.
+      const conversationHistory = tokenizedHistory.map(({ role, text }) => ({ role, text }));
 
       const lastUpdateRef = { current: Date.now() };
       const accumulatedTextRef = { current: '' };
