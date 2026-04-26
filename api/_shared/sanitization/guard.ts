@@ -42,6 +42,20 @@ export interface BackstopReject {
    * residual or a whole sentence" without showing the content.
    */
   fieldLength?: number;
+  /**
+   * Char range of the FIRST matched pattern within the field. Helps
+   * pinpoint where in the message the leak is, without revealing the
+   * content.
+   */
+  matchAt?: { start: number; end: number; label: string };
+  /**
+   * Privacy-safe context preview: the matched substring is replaced
+   * with █ characters of equal length, plus up to 30 chars of
+   * surrounding text on each side. Lets the attorney see structure
+   * ("...lives at ████████████ berkeley...") without seeing the
+   * actual matched value.
+   */
+  redactedContext?: string;
 }
 
 export type BackstopResult = BackstopAccept | BackstopReject;
@@ -56,13 +70,38 @@ export function scanForRawPII(text: unknown): BackstopResult {
   if (matches.length === 0) return { ok: true };
 
   const categories = Array.from(new Set(matches.map((m) => m.category))).sort();
+  const first = matches[0];
+  const matchAt = { start: first.start, end: first.end, label: first.label };
+  const redactedContext = buildRedactedContext(text, first.start, first.end);
+
   return {
     ok: false,
     categories,
     message: `The request contains content that looks like raw personal data (${categories.join(
       ', '
     )}). Client-side sanitization did not catch it. Please re-sanitize in your browser before resubmitting.`,
+    matchAt,
+    redactedContext,
   };
+}
+
+/**
+ * Replace the matched substring with █ characters of the same length
+ * and include up to 30 chars of context before and after. Used in
+ * the rejection response so the attorney can see structure ("...lives
+ * at ████████████ berkeley...") without the value leaving the wire.
+ */
+function buildRedactedContext(text: string, start: number, end: number): string {
+  const before = Math.max(0, start - 30);
+  const after = Math.min(text.length, end + 30);
+  const head = text.slice(before, start);
+  const tail = text.slice(end, after);
+  const blocks = '█'.repeat(end - start);
+  let out = '';
+  if (before > 0) out += '…';
+  out += head + blocks + tail;
+  if (after < text.length) out += '…';
+  return out;
 }
 
 /**
@@ -147,6 +186,8 @@ export function rejectWithBackstop(
     message: reject.message,
     field: reject.field,
     fieldLength: reject.fieldLength,
+    matchAt: reject.matchAt,
+    redactedContext: reject.redactedContext,
   });
   return true;
 }
