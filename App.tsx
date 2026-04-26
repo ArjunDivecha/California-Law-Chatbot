@@ -15,6 +15,7 @@ import SignInPage from './components/SignInPage';
 import { SanitizerProvider, useSanitizer } from './hooks/useSanitizer';
 import { ConfidentialityAttestation } from './components/ConfidentialityAttestation';
 import TokenStoreModal from './components/TokenStoreModal';
+import { DaemonSetupModal } from './components/DaemonSetupModal';
 import { ShieldCheck, ShieldAlert, RotateCcw, KeyRound } from 'lucide-react';
 import type { AppMode } from './types';
 
@@ -217,6 +218,23 @@ const NewChatRedirect: React.FC = () => {
 };
 
 // ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// DaemonGate — shows setup modal when daemon is unreachable on first load.
+// Lives inside SanitizerProvider so it can read daemonStatus.
+// Only shows for signed-in users (the daemon is only needed for chat).
+// ---------------------------------------------------------------------------
+const DaemonGate: React.FC = () => {
+  const { daemonStatus, ready } = useSanitizer();
+  const [dismissed, setDismissed] = useState(false);
+
+  // Wait until the first health probe completes before showing the modal,
+  // so we don't flash it on every page load while the probe is in-flight.
+  if (!ready || dismissed) return null;
+  if (daemonStatus.state !== 'unreachable') return null;
+
+  return <DaemonSetupModal onDismiss={() => setDismissed(true)} />;
+};
+
 // Root App
 // ---------------------------------------------------------------------------
 const App: React.FC = () => {
@@ -225,6 +243,7 @@ const App: React.FC = () => {
   return (
     <ErrorBoundary>
       <SanitizerProvider>
+        <DaemonGate />
         <Routes>
           {/* Sign-in (public) */}
           <Route path="/sign-in/*" element={<SignInPage />} />
