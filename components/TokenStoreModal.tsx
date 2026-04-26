@@ -15,6 +15,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { X, Trash2, Plus } from 'lucide-react';
 import { useSanitizer } from '../hooks/useSanitizer';
 import type { SpanCategory } from '../api/_shared/sanitization/index.ts';
+import { isCommonStopWord } from '../api/_shared/sanitization/tokenize.ts';
 import {
   addToUserAllowlist,
   getUserAllowlist,
@@ -89,6 +90,10 @@ export const TokenStoreModal: React.FC<TokenStoreModalProps> = ({ open, onClose 
   const handleAdd = useCallback(async () => {
     const raw = newRaw.trim();
     if (!raw) return;
+    if (isCommonStopWord(raw)) {
+      setError(`Refusing to tokenize "${raw}" — that's a common stop word.`);
+      return;
+    }
     setBusy(true);
     setError(null);
     try {

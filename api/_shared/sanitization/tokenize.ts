@@ -78,12 +78,17 @@ export async function tokenizeWithSpans(
   // longest raw to shortest so multi-word names match before any
   // single-word substring inside them. Case-insensitive substring match
   // with word boundaries — same shape as the rehydrate side.
+  //
+  // Skip single-word entries that are common stop words. These can end
+  // up in the store via accidental quick-add or older buggy paths, and
+  // applying them would tokenize every "the", "a", "for" etc. in chat.
   const fullMap = await store.rehydrateMap();
   const manualEntries = Array.from(fullMap.entries())
     .filter(([token]) => !tokenMap.has(token))
     .sort(([, a], [, b]) => b.length - a.length);
   for (const [token, raw] of manualEntries) {
     if (!raw) continue;
+    if (isCommonStopWord(raw)) continue;
     const re = new RegExp(`\\b${escapeRegex(raw)}\\b`, 'gi');
     if (!re.test(sanitized)) continue;
     sanitized = sanitized.replace(re, token);
@@ -98,6 +103,37 @@ export async function tokenizeWithSpans(
     tokenMap,
     tokenCategoryCounts,
   };
+}
+
+/**
+ * Tokens whose `raw` mapping is a single common stop word are
+ * defensively skipped during the manual-store substring pass. They
+ * would otherwise tokenize every occurrence of "the", "a", "for"
+ * etc. in chat — corrupting both the wire payload and the rehydrate
+ * round-trip. Single-word raws only; multi-word entries containing a
+ * stop word ("for James Donde") are still applied normally.
+ */
+const COMMON_STOP_WORDS = new Set<string>([
+  'a', 'an', 'the', 'this', 'that', 'these', 'those',
+  'i', 'you', 'he', 'she', 'it', 'we', 'they',
+  'me', 'him', 'her', 'us', 'them',
+  'my', 'your', 'his', 'their', 'our', 'its',
+  'is', 'was', 'are', 'were', 'be', 'been', 'being',
+  'have', 'has', 'had', 'do', 'does', 'did',
+  'and', 'or', 'but', 'so', 'if', 'then',
+  'of', 'at', 'for', 'with', 'to', 'by', 'from',
+  'on', 'in', 'about', 'as', 'into', 'over', 'under',
+  'no', 'yes', 'not',
+  'whats', "what's", 'who', 'when', 'where', 'why', 'how',
+  'will', 'would', 'should', 'could', 'can', 'may', 'might',
+]);
+
+export function isCommonStopWord(raw: string): boolean {
+  if (!raw) return false;
+  const trimmed = raw.trim();
+  if (!trimmed) return true;
+  if (/\s/.test(trimmed)) return false; // multi-word entries are fine
+  return COMMON_STOP_WORDS.has(trimmed.toLowerCase());
 }
 
 function inferCategoryFromToken(token: string): string {

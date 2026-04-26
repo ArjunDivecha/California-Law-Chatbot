@@ -21,6 +21,7 @@ import {
   type Span,
   type SpanCategory,
 } from '../api/_shared/sanitization/index.ts';
+import { isCommonStopWord } from '../api/_shared/sanitization/tokenize.ts';
 import { useSanitizer } from '../hooks/useSanitizer';
 import { detectPii } from '../services/sanitization/detectionPipeline';
 import {
@@ -169,6 +170,10 @@ export const ComposerPreview: React.FC<ComposerPreviewProps> = ({ text }) => {
   const handleQuickAdd = useCallback(async () => {
     const raw = quickAddRaw.trim();
     if (!raw) return;
+    if (isCommonStopWord(raw)) {
+      setQuickAddNote(`Refusing to tokenize "${raw}" — that's a common stop word.`);
+      return;
+    }
     setQuickAddBusy(true);
     setQuickAddNote(null);
     try {
@@ -217,6 +222,10 @@ export const ComposerPreview: React.FC<ComposerPreviewProps> = ({ text }) => {
       }
       for (const [token, raw] of sortedRaws) {
         if (!raw) continue;
+        // Skip stop-word entries (defense matching the wire-path pass in
+        // tokenize.ts). Stops "the" → CLIENT_017 from highlighting every
+        // article in chat.
+        if (isCommonStopWord(raw)) continue;
         const needle = raw.toLowerCase();
         let idx = 0;
         while ((idx = lower.indexOf(needle, idx)) !== -1) {

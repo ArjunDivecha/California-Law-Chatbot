@@ -34,6 +34,7 @@ import {
   overlapsAllowlist,
 } from '../../api/_shared/sanitization/allowlist.js';
 import { runPatterns } from '../../api/_shared/sanitization/patterns.js';
+import { detectNames } from '../../api/_shared/sanitization/detectNames.js';
 import { detectSpans, type DetectResult } from './opfClient.js';
 import { getUserAllowlistLower } from './userAllowlist.js';
 
@@ -98,6 +99,147 @@ function patternSpans(text: string): Span[] {
     raw: m.raw,
     label: m.label,
   }));
+}
+
+function heuristicNameSpans(text: string): Span[] {
+  return detectNames(text).map((n) => ({
+    start: n.start,
+    end: n.end,
+    category: 'name' as const,
+    raw: n.raw,
+    label: n.signal,
+  }));
+}
+
+/**
+ * Lenient name detector for use INSIDE an OPF non-name span. OPF has
+ * already declared this region PII, so a lower-precision bigram match
+ * is acceptable — false positives stay tokenized either way (the
+ * fragments around the match still get the original OPF category).
+ *
+ * Pattern: any bigram (or trigram) of word-tokens where at least one
+ * token starts with a capital letter, with word boundaries. Catches
+ * "arjun Divecha", "Maria Esperanza", "John Q Smith". Skips lone
+ * lowercase pairs ("the buyer") and US state abbreviations.
+ */
+function lenientNamesInSpan(text: string, span: Span): Span[] {
+  // Anchored single-word "head". From each head we try a 3-word match,
+  // then 2-word, and accept the first one that passes filters. Greedy
+  // single-regex patterns get foiled by stop-word tails ("arjun Divecha
+  // of" → "of" stop word → whole thing rejected, we lose "arjun Divecha").
+  const headRe = /\b[A-Za-z][a-zA-Z'-]+/g;
+  const STOP = new Set([
+    'of', 'at', 'for', 'with', 'to', 'by', 'from', 'on', 'in', 'and',
+    'or', 'the', 'a', 'an', 'his', 'her', 'their', 'my', 'our',
+    'is', 'was', 'are', 'were', 'be', 'been',
+  ]);
+  const slice = text.slice(span.start, span.end);
+  const out: Span[] = [];
+  let h: RegExpExecArray | null;
+  let lastEnd = -1;
+  while ((h = headRe.exec(slice)) !== null) {
+    const headStart = h.index;
+    if (headStart < lastEnd) continue; // skip head positions inside an already-accepted span
+    // Try 3-word, then 2-word match starting at this head.
+    const candidates = [
+      new RegExp(`^([A-Za-z][a-zA-Z'-]+(?:\\s+[A-Za-z][a-zA-Z'-]+){2})\\b`),
+      new RegExp(`^([A-Za-z][a-zA-Z'-]+\\s+[A-Za-z][a-zA-Z'-]+)\\b`),
+    ];
+    const tail = slice.slice(headStart);
+    let accepted: { raw: string; len: number } | null = null;
+    for (const re of candidates) {
+      const m = re.exec(tail);
+      if (!m) continue;
+      const raw = m[1];
+      const words = raw.split(/\s+/);
+      if (!words.some((w) => /^[A-Z]/.test(w))) continue;
+      if (words.some((w) => STOP.has(w.toLowerCase()))) continue;
+      if (words.some((w) => /ed$/.test(w) && w.length >= 5)) continue;
+      accepted = { raw, len: raw.length };
+      break;
+    }
+    if (!accepted) continue;
+    out.push({
+      start: span.start + headStart,
+      end: span.start + headStart + accepted.len,
+      category: 'name',
+      raw: accepted.raw,
+      label: 'opf-internal-bigram',
+    });
+    lastEnd = headStart + accepted.len;
+  }
+  return out;
+}
+
+/**
+ * When OPF returns a long non-name span ("arjun Divecha of 161 bret
+ * harte road, berkeley" labeled private_address), find the person
+ * inside and split the OPF span around them so the person and the
+ * address tokenize as separate entities. Uses both the global
+ * heuristic detector and a lenient bigram pass restricted to inside
+ * the OPF span.
+ *
+ * Mutates neither input. Returns a new array.
+ */
+function refineOpfWithNames(
+  text: string,
+  opfSpans: Span[],
+  nameSpans: Span[]
+): Span[] {
+  const out: Span[] = [];
+  for (const opf of opfSpans) {
+    if (opf.category === 'name') {
+      out.push(opf);
+      continue;
+    }
+    const globalContained = nameSpans.filter(
+      (n) => n.start >= opf.start && n.end <= opf.end
+    );
+    const lenient = lenientNamesInSpan(text, opf);
+    // Dedupe by position, prefer global heuristic matches over lenient
+    // when they overlap.
+    const all = [...globalContained, ...lenient].sort(
+      (a, b) => a.start - b.start
+    );
+    const contained: Span[] = [];
+    for (const cand of all) {
+      const last = contained[contained.length - 1];
+      if (!last || cand.start >= last.end) contained.push(cand);
+    }
+    if (contained.length === 0) {
+      out.push(opf);
+      continue;
+    }
+    let cursor = opf.start;
+    const pushFragment = (s: number, e: number) => {
+      if (e <= s) return;
+      const slice = text.slice(s, e);
+      const leading = slice.length - slice.trimStart().length;
+      const trailing = slice.length - slice.trimEnd().length;
+      const innerStart = s + leading;
+      const innerEnd = e - trailing;
+      if (innerEnd <= innerStart) return;
+      // Heuristic: if the fragment is JUST a connector like "of" or
+      // "at" or "for" with no other words, drop it — it's safer not
+      // to send a phantom address consisting only of "of".
+      const trimmed = text.slice(innerStart, innerEnd);
+      if (/^(?:of|at|for|with|to|by|from|on|in)\b\s*$/i.test(trimmed)) return;
+      out.push({
+        ...opf,
+        start: innerStart,
+        end: innerEnd,
+        raw: trimmed,
+        label: `${opf.label}+name-split`,
+      });
+    };
+    for (const name of contained) {
+      pushFragment(cursor, name.start);
+      out.push(name);
+      cursor = name.end;
+    }
+    pushFragment(cursor, opf.end);
+  }
+  return out;
 }
 
 /**
@@ -209,7 +351,15 @@ export async function detectPii(
     };
   }
 
-  // OPF spans + regex spans → drop allowlist overlaps → split around
+  // OPF can occasionally return a single span for "person of address"
+  // phrasings ("arjun Divecha of 161 bret harte road, berkeley" → one
+  // private_address span). Run our heuristic name detector and split
+  // OPF non-name spans around any contained name so the person and
+  // the address tokenize as separate entities.
+  const localNames = heuristicNameSpans(text);
+  const refinedOpf = refineOpfWithNames(text, opfResult.spans, localNames);
+
+  // OPF refined spans + regex spans → drop allowlist overlaps → split around
   // user allowlist substrings → merge.
   //
   // Static legal allowlist (overlapsAllowlist): canonical statute
@@ -223,7 +373,7 @@ export async function detectPii(
   // chunk survives on the wire as plain text and the rest still
   // tokenizes.
   const userAllowSet = getUserAllowlistLower();
-  const all = [...regexSpans, ...opfResult.spans];
+  const all = [...regexSpans, ...refinedOpf];
   const beforeStatic = all.filter((s) => !overlapsAllowlist(s.start, s.end, allowlist));
   const afterUserAllow: Span[] = [];
   for (const span of beforeStatic) {
