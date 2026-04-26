@@ -24,7 +24,7 @@ import type { AppMode } from './types';
 // token map (wipes the IndexedDB store, generates a fresh device key).
 // ---------------------------------------------------------------------------
 const SanitizationBanner: React.FC = () => {
-  const { unlocked, ready, tokenCount, reset, initError } = useSanitizer();
+  const { unlocked, ready, tokenCount, reset, initError, daemonStatus } = useSanitizer();
   const [modalOpen, setModalOpen] = useState(false);
 
   if (!ready) {
@@ -57,9 +57,31 @@ const SanitizationBanner: React.FC = () => {
     await reset();
   };
 
+  // Daemon status indicator: green dot when OPF is healthy + model loaded;
+  // amber when daemon up but model not loaded yet (warming); red when
+  // unreachable (sends will fail-closed). Tooltip carries the detail.
+  let daemonDot: React.ReactNode = null;
+  let daemonTitle = '';
+  if (daemonStatus.state === 'healthy') {
+    if (daemonStatus.health.modelLoaded) {
+      daemonDot = <span className="inline-block w-2 h-2 rounded-full bg-emerald-500" aria-label="OPF ready" />;
+      daemonTitle = `OPF detector ready (v${daemonStatus.health.version}). Model loaded; idle unload after ${daemonStatus.health.idleUnloadSeconds}s.`;
+    } else {
+      daemonDot = <span className="inline-block w-2 h-2 rounded-full bg-amber-400" aria-label="OPF warming" />;
+      daemonTitle = `OPF daemon up; model not loaded. First detect call will trigger ~19s cold start.`;
+    }
+  } else if (daemonStatus.state === 'unreachable') {
+    daemonDot = <span className="inline-block w-2 h-2 rounded-full bg-rose-500" aria-label="OPF unreachable" />;
+    daemonTitle = `OPF detector unreachable: ${daemonStatus.error}. Sends will fail-closed.`;
+  } else {
+    daemonDot = <span className="inline-block w-2 h-2 rounded-full bg-slate-300" aria-label="OPF status unknown" />;
+    daemonTitle = 'Probing OPF detector…';
+  }
+
   return (
     <>
       <div className="inline-flex items-center gap-1 rounded bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-800">
+        <span title={daemonTitle} className="inline-flex items-center pl-0.5">{daemonDot}</span>
         <button
           type="button"
           onClick={() => setModalOpen(true)}

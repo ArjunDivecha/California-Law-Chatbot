@@ -39,6 +39,11 @@ import {
 import type { SpanCategory } from '../api/_shared/sanitization/index.ts';
 import { setChatSanitizer } from '../services/sanitization/chatAdapter';
 import { RealChatSanitizer } from '../services/sanitization/realSanitizer.ts';
+import {
+  getHealth,
+  warmup as opfWarmup,
+  type DaemonStatus,
+} from '../services/sanitization/opfClient';
 
 export interface SanitizerContextValue {
   /** True once the store is open and the RealChatSanitizer is installed. */
@@ -57,6 +62,8 @@ export interface SanitizerContextValue {
   addEntity: (raw: string, category: SpanCategory) => Promise<string | null>;
   /** Forget a token (deletes from store + cache). */
   forgetToken: (token: string) => Promise<void>;
+  /** Health of the local OPF detection daemon. Polled every 30s. */
+  daemonStatus: DaemonStatus;
 }
 
 const DEFAULT_CTX: SanitizerContextValue = {
@@ -68,6 +75,7 @@ const DEFAULT_CTX: SanitizerContextValue = {
   getMap: () => new Map(),
   addEntity: async () => null,
   forgetToken: async () => {},
+  daemonStatus: { state: 'unknown' },
 };
 
 const SanitizerContext = createContext<SanitizerContextValue>(DEFAULT_CTX);
@@ -112,6 +120,7 @@ export const SanitizerProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [ready, setReady] = useState(false);
   const [tokenCount, setTokenCount] = useState(0);
   const [initError, setInitError] = useState<string | null>(null);
+  const [daemonStatus, setDaemonStatus] = useState<DaemonStatus>({ state: 'unknown' });
 
   const openStore = useCallback(async () => {
     if (!hasBrowserStorage()) {
@@ -177,6 +186,57 @@ export const SanitizerProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // ─── OPF daemon lifecycle (Option C: warm on app open) ────────────────────
+  // Fires once when the SanitizerProvider mounts — typically right after
+  // sign-in, before the user navigates into a chat or drafting tab. By the
+  // time they finish typing their first message the model is already
+  // loaded. After that, the model stays warm during active use and the
+  // daemon's own idle-watcher unloads it after 10 minutes.
+  //
+  // Health is polled every 30s. If the daemon goes from healthy →
+  // unreachable mid-session, the SanitizationBanner flips state and
+  // outbound sends will fail-closed.
+  useEffect(() => {
+    let cancelled = false;
+
+    const probe = async () => {
+      try {
+        const health = await getHealth();
+        if (!cancelled) setDaemonStatus({ state: 'healthy', health });
+        return health;
+      } catch (err) {
+        if (!cancelled) {
+          setDaemonStatus({
+            state: 'unreachable',
+            error: err instanceof Error ? err.message : String(err),
+          });
+        }
+        return null;
+      }
+    };
+
+    // Initial probe + warmup. We don't await warmup because it can take
+    // 19s on a launchd-spawned process; let it happen in the background.
+    void (async () => {
+      const initial = await probe();
+      if (cancelled) return;
+      if (initial && !initial.modelLoaded) {
+        // Fire and forget: triggers cold load while the user is reading.
+        opfWarmup()
+          .catch(() => { /* warmup failure is non-fatal — health probe will surface it */ })
+          .finally(() => {
+            if (!cancelled) void probe();
+          });
+      }
+    })();
+
+    const interval = window.setInterval(() => { void probe(); }, 30_000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+    };
+  }, []);
+
   const reset = useCallback(async () => {
     setUnlocked(false);
     setTokenCount(0);
@@ -220,8 +280,8 @@ export const SanitizerProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   }, []);
 
   const value = useMemo<SanitizerContextValue>(
-    () => ({ unlocked, ready, tokenCount, reset, initError, getMap, addEntity, forgetToken }),
-    [unlocked, ready, tokenCount, reset, initError, getMap, addEntity, forgetToken]
+    () => ({ unlocked, ready, tokenCount, reset, initError, getMap, addEntity, forgetToken, daemonStatus }),
+    [unlocked, ready, tokenCount, reset, initError, getMap, addEntity, forgetToken, daemonStatus]
   );
 
   return <SanitizerContext.Provider value={value}>{children}</SanitizerContext.Provider>;
