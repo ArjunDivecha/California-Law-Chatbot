@@ -74,10 +74,19 @@ export const DaemonSetupModal: React.FC<Props> = ({ onDismiss }) => {
               </li>
               <li className="flex gap-3">
                 <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-600 text-white text-xs font-bold flex items-center justify-center">2</span>
-                <span className="text-sm text-slate-700">Open your <strong>Downloads</strong> folder and double-click <em>Install Privacy Filter.command</em></span>
+                <span className="text-sm text-slate-700">
+                  Open your <strong>Downloads</strong> folder, find <em>Install Privacy Filter.command</em>,
+                  then <strong>right-click it</strong> and choose <strong>Open</strong>
+                </span>
               </li>
               <li className="flex gap-3">
                 <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-600 text-white text-xs font-bold flex items-center justify-center">3</span>
+                <span className="text-sm text-slate-700">
+                  macOS will ask <em>"Are you sure?"</em> — click <strong>Open</strong> to confirm
+                </span>
+              </li>
+              <li className="flex gap-3">
+                <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-600 text-white text-xs font-bold flex items-center justify-center">4</span>
                 <span className="text-sm text-slate-700">A Terminal window will open — wait for it to say <strong>"Privacy filter is ready"</strong></span>
               </li>
             </ol>
@@ -106,8 +115,9 @@ export const DaemonSetupModal: React.FC<Props> = ({ onDismiss }) => {
             <div className="mt-5 bg-amber-50 border border-amber-200 rounded-lg p-3 text-left">
               <p className="text-xs text-amber-800 font-medium mb-1">Haven't run it yet?</p>
               <p className="text-xs text-amber-700">
-                Open your <strong>Downloads</strong> folder, find <em>Install Privacy Filter.command</em>, and double-click it.
-                If macOS asks "Are you sure?", click <strong>Open</strong>.
+                Open your <strong>Downloads</strong> folder, find <em>Install Privacy Filter.command</em>,
+                then <strong>right-click → Open</strong>. When macOS asks "Are you sure?", click <strong>Open</strong>.
+                (Do not double-click — macOS will block it.)
               </p>
             </div>
 
