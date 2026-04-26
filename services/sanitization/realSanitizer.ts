@@ -32,6 +32,10 @@ function sliceWithEllipsis(text: string, maxLen: number): string {
   return trimmed.length > maxLen ? `${trimmed.slice(0, maxLen)}…` : trimmed;
 }
 
+function escapeRegex(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 export class RealChatSanitizer implements ChatSanitizer {
   private readonly store: SanitizationStore;
   private readonly tokenMap: Map<string, string>;
@@ -56,6 +60,41 @@ export class RealChatSanitizer implements ChatSanitizer {
       this.tokenMap.set(token, raw);
     }
     return sanitized;
+  }
+
+  /**
+   * Persistence-only tokenize: applies ONLY the existing token-store
+   * mappings via word-bounded substring match. Does NOT run OPF, the
+   * heuristic detector, or the regex pattern pass — so bot-response
+   * text never adds new tokens to the store.
+   *
+   * Use case: chat persistence. User input has already been tokenized
+   * pre-send via tokenizeMessageWithDetection. When saving the entire
+   * thread (user + bot messages), we want bot text re-tokenized so
+   * stored chat history doesn't carry rehydrated client names. But
+   * the bot's natural language often contains capitalized phrases
+   * ("What You Need", "Confidentiality Warning") that the detector
+   * mistakes for client names — adding junk entries to the store.
+   *
+   * This method is the safe path: only known entities (already in the
+   * store from the user's input) get re-tokenized in bot text. New
+   * model-generated phrases pass through untouched.
+   */
+  async tokenizeForSaveStoreOnly(text: string): Promise<string> {
+    if (!text || typeof text !== 'string') return text ?? '';
+    if (this.tokenMap.size === 0) return text;
+    // Iterate longest raw first so multi-word names match before any
+    // single-word substring inside them.
+    const entries = Array.from(this.tokenMap.entries()).sort(
+      ([, a], [, b]) => b.length - a.length
+    );
+    let out = text;
+    for (const [token, raw] of entries) {
+      if (!raw || raw.length < 2) continue;
+      const re = new RegExp(`\\b${escapeRegex(raw)}\\b`, 'gi');
+      out = out.replace(re, token);
+    }
+    return out;
   }
 
   /**

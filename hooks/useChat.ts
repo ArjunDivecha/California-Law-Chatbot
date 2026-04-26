@@ -274,37 +274,60 @@ export const useChat = (chatId?: string) => {
       } catch { /* proceed without persistence */ }
     }
 
-    // Tokenize the new prompt AND the conversation history through the
-    // OPF-driven path BEFORE any rendering, so the user message bubble
-    // can be tagged with the correct sanitization method on first paint.
+    // Speed mode is for general legal research, not client work — bypass
+    // the entire sanitization pipeline. No tokenization, no detection,
+    // no token-store updates. Wire gets the raw text. The attorney is
+    // responsible for keeping client info out of this mode (the UI
+    // surfaces the active mode prominently).
     //
-    // tokenizeForWire returns spans from OPF when the daemon is healthy
-    // and falls back to the local heuristic detector when unreachable.
-    // If any single tokenize call falls back, the whole send is tagged
-    // 'heuristic' since the wire payload includes both the new prompt
-    // and the history.
+    // Accuracy mode runs the full OPF-driven tokenize-for-wire path and
+    // tags the user message with the detector that was used.
     const sanitizer = getChatSanitizer();
-    const wire = await tokenizeForWire(text);
-    const sanitizedText = wire.sanitized;
+    const isSpeedMode = responseMode === 'speed';
 
-    const tokenizedHistory = await Promise.all(
-      messages.map(async (msg) => {
-        const r = await tokenizeForWire(msg.text);
-        return {
-          role: msg.role === MessageRole.USER ? 'user' : 'assistant',
-          text: r.sanitized,
-          usedOpf: r.usedOpf,
-        };
-      })
-    );
-    const allUsedOpf = wire.usedOpf && tokenizedHistory.every((h) => h.usedOpf);
-    const sanitizationMethod: 'opf' | 'heuristic' = allUsedOpf ? 'opf' : 'heuristic';
+    let sanitizedText: string;
+    let tokenizedHistory: Array<{ role: string; text: string; usedOpf: boolean }>;
+    let sanitizationMethod: 'opf' | 'heuristic' | undefined;
+
+    if (isSpeedMode) {
+      sanitizedText = text;
+      tokenizedHistory = messages.map((msg) => ({
+        role: msg.role === MessageRole.USER ? 'user' : 'assistant',
+        text: msg.text,
+        usedOpf: false,
+      }));
+      sanitizationMethod = undefined; // No sanitization marker in Speed mode
+    } else {
+      // Tokenize the new prompt AND the conversation history through the
+      // OPF-driven path BEFORE any rendering, so the user message bubble
+      // can be tagged with the correct sanitization method on first paint.
+      //
+      // tokenizeForWire returns spans from OPF when the daemon is healthy
+      // and falls back to the local heuristic detector when unreachable.
+      // If any single tokenize call falls back, the whole send is tagged
+      // 'heuristic' since the wire payload includes both the new prompt
+      // and the history.
+      const wire = await tokenizeForWire(text);
+      sanitizedText = wire.sanitized;
+      tokenizedHistory = await Promise.all(
+        messages.map(async (msg) => {
+          const r = await tokenizeForWire(msg.text);
+          return {
+            role: msg.role === MessageRole.USER ? 'user' : 'assistant',
+            text: r.sanitized,
+            usedOpf: r.usedOpf,
+          };
+        })
+      );
+      const allUsedOpf = wire.usedOpf && tokenizedHistory.every((h) => h.usedOpf);
+      sanitizationMethod = allUsedOpf ? 'opf' : 'heuristic';
+    }
 
     const userMessage: ChatMessage = {
       id: `user-${Date.now()}`,
       role: MessageRole.USER,
       text,
-      sanitizationMethod,
+      ...(sanitizationMethod ? { sanitizationMethod } : {}),
     };
 
     const botMessageId = `bot-${Date.now()}`;

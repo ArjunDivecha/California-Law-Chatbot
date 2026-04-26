@@ -44,6 +44,14 @@ export interface ChatSanitizer {
     usedOpf: boolean;
     opfElapsedMs: number | null;
   }>;
+  /**
+   * Persistence-only tokenize for bot messages. Applies ONLY existing
+   * store mappings via word-bounded substring match. Does NOT run OPF
+   * or the heuristic detector — keeps bot-generated capitalized
+   * phrases out of the token store. Optional: passthrough returns
+   * the input unchanged.
+   */
+  tokenizeForSaveStoreOnly?(text: string): Promise<string>;
 }
 
 // ---------------------------------------------------------------------------
@@ -110,14 +118,42 @@ export async function tokenizeForWire(text: string): Promise<{
 }
 
 /**
- * Map every ChatMessage through the sanitizer's tokenizeMessage.
- * Preserves every other field.
+ * Tokenize messages for chat persistence.
+ *
+ * Two paths:
+ *   - User messages: full tokenizeMessage (runs OPF + heuristic + regex,
+ *     allocates new tokens for any new entities). User-typed content
+ *     is the source of truth for new client identifiers.
+ *   - Bot messages: store-only path via tokenizeForSaveStoreOnly. Only
+ *     applies existing token-store entries via word-bounded substring
+ *     match. Does NOT run OPF or the heuristic detector — bot output
+ *     contains capitalized phrases ("What You Need", "Confidentiality
+ *     Warning", section headers) that those detectors mistake for
+ *     names, polluting the store with junk entries. The bot can only
+ *     reference entities the user already mentioned (which are
+ *     already in the store), so the substring path is sufficient.
+ *
+ * Speed-mode messages (responseMode='speed') are sent raw and saved
+ * raw — sanitization is skipped entirely for that path. This function
+ * still tokenizes them via the user-message path if they happen to
+ * contain known store entries, but doesn't add new ones.
  */
 export async function tokenizeMessagesForSave(messages: ChatMessage[]): Promise<ChatMessage[]> {
   const sanitizer = getChatSanitizer();
+  // Optional methods on the sanitizer interface for the production
+  // implementation; pass-through sanitizer falls back to plain
+  // tokenizeMessage which is a no-op for it anyway.
+  const storeOnlyFn = sanitizer.tokenizeForSaveStoreOnly?.bind(sanitizer);
+
   const out: ChatMessage[] = [];
   for (const m of messages) {
-    out.push({ ...m, text: await sanitizer.tokenizeMessage(m.text) });
+    let nextText: string;
+    if (m.role === 'bot' && storeOnlyFn) {
+      nextText = await storeOnlyFn(m.text);
+    } else {
+      nextText = await sanitizer.tokenizeMessage(m.text);
+    }
+    out.push({ ...m, text: nextText });
   }
   return out;
 }
