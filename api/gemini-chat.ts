@@ -53,7 +53,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const flowResult = enforceFlow(req.body, ACCURACY_ALLOWED);
     if (rejectFlow(res, flowResult)) return;
 
-    const { message, systemPrompt, conversationHistory, stream = false } = req.body;
+    const { message, systemPrompt, conversationHistory, userMessage, stream = false } = req.body;
 
     if (!message || typeof message !== 'string' || !message.trim()) {
       res.status(400).json({ error: 'Missing or invalid message parameter' });
@@ -62,12 +62,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // Sanitization backstop — last line of defense if the client-side
     // tokenizer misses raw PII. Runs deterministic patterns only.
-    const backstop = scanRequest(message, conversationHistory);
+    //
+    // We scan ONLY the user's tokenized input (userMessage) and the
+    // conversation history — never the full augmented prompt (`message`).
+    // The augmented prompt contains CEB practice-guide excerpts and other
+    // firm-curated public legal content which legitimately includes
+    // example addresses and dates; running the regex backstop on it
+    // produced false positives that blocked legitimate sends.
+    //
+    // If the client doesn't pass userMessage (legacy clients), fall back
+    // to scanning `message` for backwards compatibility.
+    const backstopTarget: string =
+      typeof userMessage === 'string' && userMessage.length > 0 ? userMessage : message;
+    const backstop = scanRequest(backstopTarget, conversationHistory);
     if (rejectWithBackstop(res, backstop)) {
       writeAuditRecord(
         buildAuditRecord({
           route: 'gemini-chat',
-          sanitizedPrompt: message,
+          sanitizedPrompt: backstopTarget,
           flowType: flowResult.flow,
           backstopTriggered: true,
           backstopCategories: 'categories' in backstop ? backstop.categories : undefined,

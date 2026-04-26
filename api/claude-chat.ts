@@ -45,19 +45,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const flowResult = enforceFlow(req.body, ACCURACY_ALLOWED);
     if (rejectFlow(res, flowResult)) return;
 
-    const { message, systemPrompt, conversationHistory } = req.body;
+    const { message, systemPrompt, conversationHistory, userMessage } = req.body;
 
     if (!message || typeof message !== 'string' || !message.trim()) {
       res.status(400).json({ error: 'Missing or invalid message parameter' });
       return;
     }
 
-    const backstop = scanRequest(message, conversationHistory);
+    // Backstop scans the user's tokenized input only (NOT the augmented
+    // prompt with CEB excerpts) — see api/gemini-chat.ts for the
+    // rationale. Falls back to scanning `message` if userMessage absent.
+    const backstopTarget: string =
+      typeof userMessage === 'string' && userMessage.length > 0 ? userMessage : message;
+    const backstop = scanRequest(backstopTarget, conversationHistory);
     if (rejectWithBackstop(res, backstop)) {
       writeAuditRecord(
         buildAuditRecord({
           route: 'claude-chat',
-          sanitizedPrompt: message,
+          sanitizedPrompt: backstopTarget,
           flowType: flowResult.flow,
           backstopTriggered: true,
           backstopCategories: 'categories' in backstop ? backstop.categories : undefined,

@@ -349,7 +349,7 @@ export class ChatService {
      * Send message to the Bedrock-backed generator endpoint.
      * The route name is preserved for frontend compatibility.
      */
-    private async sendToGemini(message: string, conversationHistory?: Array<{ role: string, text: string }>, signal?: AbortSignal): Promise<{ text: string; hasGrounding?: boolean; groundingMetadata?: any }> {
+    private async sendToGemini(message: string, conversationHistory?: Array<{ role: string, text: string }>, signal?: AbortSignal, userMessage?: string): Promise<{ text: string; hasGrounding?: boolean; groundingMetadata?: any }> {
         if (signal?.aborted) {
             throw new Error('Request cancelled');
         }
@@ -461,6 +461,11 @@ Remember: You're trained on California law, and the app may provide fresh source
                     },
                     body: JSON.stringify({
                         message,
+                        // Pass the user's original tokenized input separately
+                        // so the server-side backstop scans ONLY that — not
+                        // the augmented prompt with CEB excerpts that
+                        // legitimately contain example addresses, dates, etc.
+                        userMessage,
                         systemPrompt,
                         conversationHistory: conversationHistory || [],
                         // Until the sanitization layer ships, treat Accuracy as
@@ -908,7 +913,7 @@ Provide a thorough legal analysis explaining how these cases relate to the query
                     }
 
                     console.log('🤖 Sending enhanced message to Gemini 3.1 Pro (with fallback to 2.5 Pro)...');
-                    const response = await this.sendToGemini(enhancedMessage, conversationHistory, signal);
+                    const response = await this.sendToGemini(enhancedMessage, conversationHistory, signal, message);
 
                     // Check if request was cancelled during AI response
                     if (signal?.aborted) {
@@ -1089,7 +1094,7 @@ Key California legal sources to reference:
 - Official court opinions and case law through CourtListener
 - Current California bills (AB/SB/etc.) with status and summaries`;
 
-            const response = await this.sendToGemini(enhancedMessage, conversationHistory, signal);
+            const response = await this.sendToGemini(enhancedMessage, conversationHistory, signal, message);
 
             // Check if request was cancelled during AI response
             if (signal?.aborted) {
@@ -1875,7 +1880,7 @@ Your answer should read like a legal memorandum with proper [1], [2] source cita
 
 Answer:`;
 
-            const response = await this.sendToGemini(prompt, conversationHistory, signal);
+            const response = await this.sendToGemini(prompt, conversationHistory, signal, message);
 
             // Assign IDs to CEB sources for citation mapping
             const cebSourcesWithIds = highConfidenceSources.map((source, index) => ({
@@ -2086,7 +2091,7 @@ Your answer should read like a legal memorandum with proper source citations thr
 
 Answer:`;
 
-            const response = await this.sendToGemini(prompt, conversationHistory, signal);
+            const response = await this.sendToGemini(prompt, conversationHistory, signal, message);
 
             // Determine if verification is needed
             // CEB-based answers don't need verification, but AI sources do
