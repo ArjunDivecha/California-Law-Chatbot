@@ -31,6 +31,17 @@ export interface BackstopReject {
   categories: string[];
   /** Human-readable caveat for the chat UI to show the attorney. */
   message: string;
+  /**
+   * Where the offending pattern was found — 'message' (the user's current
+   * prompt), or 'history[N]' for the Nth entry in conversationHistory.
+   * Surfaces the layer that needs fixing without leaking the actual text.
+   */
+  field?: string;
+  /**
+   * Length of the offending field (chars). Helps debug "is this a tiny
+   * residual or a whole sentence" without showing the content.
+   */
+  fieldLength?: number;
 }
 
 export type BackstopResult = BackstopAccept | BackstopReject;
@@ -63,12 +74,20 @@ export function scanConversationHistory(
   history: unknown
 ): BackstopResult {
   if (!Array.isArray(history)) return { ok: true };
-  for (const entry of history) {
+  for (let i = 0; i < history.length; i++) {
+    const entry = history[i];
     if (!entry || typeof entry !== 'object') continue;
     const raw = (entry as { text?: unknown; content?: unknown }).text ??
       (entry as { content?: unknown }).content;
     const result = scanForRawPII(raw);
-    if (!result.ok) return result;
+    if (!result.ok) {
+      const reject = result as Exclude<BackstopResult, { ok: true }>;
+      return {
+        ...reject,
+        field: `history[${i}]`,
+        fieldLength: typeof raw === 'string' ? raw.length : undefined,
+      };
+    }
   }
   return { ok: true };
 }
@@ -88,12 +107,26 @@ export function scanRequest(primaryText: unknown, history?: unknown): BackstopRe
   if ('categories' in histResult) for (const c of histResult.categories) cats.add(c);
   const categories = Array.from(cats).sort();
 
+  // Carry through field info from whichever side first triggered, so the
+  // client can show the attorney exactly where the leak is.
+  let field: string | undefined;
+  let fieldLength: number | undefined;
+  if (!primary.ok) {
+    field = 'message';
+    fieldLength = typeof primaryText === 'string' ? primaryText.length : undefined;
+  } else if (!histResult.ok && 'field' in histResult) {
+    field = histResult.field;
+    fieldLength = histResult.fieldLength;
+  }
+
   return {
     ok: false,
     categories,
     message: `The request contains content that looks like raw personal data (${categories.join(
       ', '
-    )}). Client-side sanitization did not catch it. Please re-sanitize in your browser before resubmitting.`,
+    )}) in ${field ?? 'the request'}. Client-side sanitization did not catch it. Please re-sanitize in your browser before resubmitting.`,
+    field,
+    fieldLength,
   };
 }
 
@@ -112,6 +145,8 @@ export function rejectWithBackstop(
     error: 'backstop_triggered',
     categories: reject.categories,
     message: reject.message,
+    field: reject.field,
+    fieldLength: reject.fieldLength,
   });
   return true;
 }
