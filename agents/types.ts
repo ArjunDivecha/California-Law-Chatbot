@@ -29,8 +29,8 @@ export type AgentRole =
   | 'verifier';
 
 export type AgentModel =
-  | 'claude-sonnet-4-5-20250514'
-  | 'claude-haiku-4-5-20250514'
+  | 'claude-sonnet-4-6'
+  | 'claude-haiku-4-5-20251001'
   | 'gemini-2.5-pro';
 
 export interface AgentConfig {

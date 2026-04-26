@@ -253,7 +253,7 @@ export class ResearchAgent {
             'X-Title': 'California Law Chatbot'
           },
           body: JSON.stringify({
-            model: 'anthropic/claude-haiku-4.5',
+            model: 'anthropic/claude-haiku-4-5-20251001',
             messages: [
               { role: 'system', content: RESEARCH_SYSTEM_PROMPT },
               ...messages

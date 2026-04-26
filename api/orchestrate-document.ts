@@ -955,7 +955,7 @@ Provide ONLY the JSON response.`;
         'X-Title': 'California Law Chatbot'
       },
       body: JSON.stringify({
-        model: 'anthropic/claude-sonnet-4.5',
+        model: 'anthropic/claude-opus-4-7',
         max_tokens: 4096,
         messages: [
           { role: 'system', content: VERIFIER_SYSTEM_PROMPT },

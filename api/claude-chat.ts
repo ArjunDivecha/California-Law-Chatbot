@@ -4,7 +4,7 @@
  * POST /api/claude-chat - Generate content with Claude via OpenRouter
  * 
  * Uses OpenRouter for unified API access to Anthropic Claude models
- * MODEL: Claude Sonnet 4.5 (anthropic/claude-sonnet-4.5)
+ * MODEL: Claude Sonnet 4.6 (anthropic/claude-sonnet-4-6)
  */
 
 const CLAUDE_TIMEOUT_MS = 25000;
@@ -88,7 +88,7 @@ export default async function handler(req: any, res: any) {
       content: message.trim()
     });
 
-    console.log(`📡 Calling OpenRouter Claude API with model: anthropic/claude-sonnet-4.5 (${messages.length} messages in context)`);
+    console.log(`📡 Calling OpenRouter Claude API with model: anthropic/claude-sonnet-4-6 (${messages.length} messages in context)`);
     
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), CLAUDE_TIMEOUT_MS);
@@ -103,7 +103,7 @@ export default async function handler(req: any, res: any) {
           'X-Title': 'California Law Chatbot'
         },
         body: JSON.stringify({
-          model: 'anthropic/claude-sonnet-4.5',
+          model: 'anthropic/claude-sonnet-4-6',
           messages: [
             {
               role: 'system',

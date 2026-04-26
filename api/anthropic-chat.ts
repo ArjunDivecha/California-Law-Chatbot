@@ -3,11 +3,6 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 const ANTHROPIC_MODEL = 'claude-sonnet-4-6';
 
-const SYSTEM_PROMPT = `You are a California law research assistant for femme & femme LLP. \
-Answer questions about California statutes, case law, regulations, and legal procedures. \
-Use web search to find current, accurate legal information when needed. \
-Always cite your sources. Clarify when information may vary by jurisdiction or circumstance. \
-Do not provide legal advice — provide legal information and research only.`;
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -55,7 +50,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const stream = await anthropic.messages.stream({
       model: ANTHROPIC_MODEL,
       max_tokens: 4096,
-      system: SYSTEM_PROMPT,
       messages,
       tools: [
         {
