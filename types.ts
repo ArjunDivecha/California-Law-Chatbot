@@ -71,7 +71,7 @@ export interface ChatMessage {
 /**
  * Application mode - research (chat) or drafting (documents)
  */
-export type AppMode = 'research' | 'drafting';
+export type AppMode = 'research' | 'drafting' | 'magic';
 
 /**
  * Supported document types

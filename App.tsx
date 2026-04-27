@@ -11,6 +11,7 @@ import { Sidebar } from './components/Sidebar';
 import { ModeSelector } from './components/ModeSelector';
 import { ResponseModeToggle } from './components/ResponseModeToggle';
 import { DraftingMode } from './components/drafting/DraftingMode';
+import { DraftingMagicPage } from './components/draftingMagic/DraftingMagicPage';
 import SignInPage from './components/SignInPage';
 import { SanitizerProvider, useSanitizer } from './hooks/useSanitizer';
 import { ConfidentialityAttestation } from './components/ConfidentialityAttestation';
@@ -18,6 +19,87 @@ import TokenStoreModal from './components/TokenStoreModal';
 import { DaemonSetupModal } from './components/DaemonSetupModal';
 import { ShieldCheck, ShieldAlert, RotateCcw, KeyRound } from 'lucide-react';
 import type { AppMode } from './types';
+
+const AppHeader: React.FC<{
+  sidebarOpen: boolean;
+  appMode: AppMode;
+  onModeChange: (mode: AppMode) => void;
+  responseMode?: ReturnType<typeof useChat>['responseMode'];
+  setResponseMode?: ReturnType<typeof useChat>['setResponseMode'];
+  responseModeDisabled?: boolean;
+  leftAccessory?: React.ReactNode;
+}> = ({ sidebarOpen, appMode, onModeChange, responseMode, setResponseMode, responseModeDisabled = false, leftAccessory }) => {
+  return (
+    <header className="bg-white border-b border-gray-100 px-4 py-4 sm:px-6">
+      <div className={`mx-auto flex flex-col items-center gap-3 sm:flex-row sm:justify-between ${sidebarOpen ? 'max-w-full' : 'max-w-4xl'}`}>
+        <div className={`flex items-center justify-center gap-3 ${sidebarOpen ? '' : 'sm:pl-10'}`}>
+          <div className="w-10 h-10 rounded-xl overflow-hidden shadow-sm">
+            <img src="/Heart Favicon.png" alt="Logo" className="w-full h-full object-contain" />
+          </div>
+          <div className="text-center">
+            <h1 className="text-lg font-semibold text-gray-900">California Law Chatbot</h1>
+            <a
+              href="https://www.femmeandfemmelaw.com/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm text-pink-500 hover:text-pink-600 hover:underline transition-colors"
+            >
+              femme & femme LLP
+            </a>
+          </div>
+        </div>
+
+        <div className="flex w-full min-w-0 flex-wrap items-center justify-center gap-2 sm:w-auto sm:justify-end">
+          {leftAccessory}
+          {appMode === 'research' && responseMode && setResponseMode && (
+            <ResponseModeToggle mode={responseMode} onModeChange={setResponseMode} disabled={responseModeDisabled} />
+          )}
+          <ModeSelector mode={appMode} onModeChange={onModeChange} />
+        </div>
+      </div>
+    </header>
+  );
+};
+
+const StandaloneDraftingPage: React.FC<{ sidebarOpen: boolean; initialMode: Extract<AppMode, 'drafting' | 'magic'> }> = ({
+  sidebarOpen,
+  initialMode,
+}) => {
+  const navigate = useNavigate();
+  const [appMode, setAppMode] = useState<AppMode>(initialMode);
+
+  const handleModeChange = (mode: AppMode) => {
+    setAppMode(mode);
+    if (mode === 'research') navigate('/');
+    if (mode === 'drafting') navigate('/drafting');
+    if (mode === 'magic') navigate('/drafting-magic');
+  };
+
+  useEffect(() => {
+    setAppMode(initialMode);
+  }, [initialMode]);
+
+  return (
+    <div
+      className={`flex flex-col h-screen transition-all duration-200 ${sidebarOpen ? 'md:pl-64' : ''}`}
+      style={{ backgroundColor: '#FAFAF8', fontFamily: 'Georgia, "Times New Roman", serif' }}
+    >
+      <AppHeader
+        sidebarOpen={sidebarOpen}
+        appMode={appMode}
+        onModeChange={handleModeChange}
+        leftAccessory={<SanitizationBanner />}
+      />
+      <main className="flex-1 overflow-hidden">
+        {appMode === 'drafting' ? (
+          <DraftingMode onModeChange={() => handleModeChange('research')} />
+        ) : (
+          <DraftingMagicPage />
+        )}
+      </main>
+    </div>
+  );
+};
 
 // ---------------------------------------------------------------------------
 // SanitizationBanner — status indicator shown at the top of the chat header.
@@ -111,6 +193,7 @@ const SanitizationBanner: React.FC = () => {
 // ChatPage — loaded at /c/:chatId
 // ---------------------------------------------------------------------------
 const ChatPage: React.FC<{ sidebarOpen: boolean }> = ({ sidebarOpen }) => {
+  const navigate = useNavigate();
   const { chatId } = useParams<{ chatId: string }>();
   const {
     messages,
@@ -124,41 +207,26 @@ const ChatPage: React.FC<{ sidebarOpen: boolean }> = ({ sidebarOpen }) => {
   } = useChat(chatId);
 
   const [appMode, setAppMode] = useState<AppMode>('research');
+  const handleModeChange = (mode: AppMode) => {
+    setAppMode(mode);
+    if (mode === 'drafting') navigate('/drafting');
+    if (mode === 'magic') navigate('/drafting-magic');
+  };
 
   return (
     <div
       className={`flex flex-col h-screen transition-all duration-200 ${sidebarOpen ? 'md:pl-64' : ''}`}
       style={{ backgroundColor: '#FAFAF8', fontFamily: 'Georgia, "Times New Roman", serif' }}
     >
-      <header className="bg-white border-b border-gray-100 px-6 py-4">
-        <div className={`mx-auto flex items-center justify-between ${sidebarOpen ? 'max-w-full' : 'max-w-4xl'}`}>
-          {/* Logo — offset from hamburger button */}
-          <div className={`flex items-center gap-3 ${sidebarOpen ? '' : 'pl-10'}`}>
-            <div className="w-10 h-10 rounded-xl overflow-hidden shadow-sm">
-              <img src="/Heart Favicon.png" alt="Logo" className="w-full h-full object-contain" />
-            </div>
-            <div className="text-center">
-              <h1 className="text-lg font-semibold text-gray-900">California Law Chatbot</h1>
-              <a
-                href="https://www.femmeandfemmelaw.com/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-sm text-pink-500 hover:text-pink-600 hover:underline transition-colors"
-              >
-                femme & femme LLP
-              </a>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <SanitizationBanner />
-            {appMode === 'research' && (
-              <ResponseModeToggle mode={responseMode} onModeChange={setResponseMode} disabled={isLoading} />
-            )}
-            <ModeSelector mode={appMode} onModeChange={setAppMode} />
-          </div>
-        </div>
-      </header>
+      <AppHeader
+        sidebarOpen={sidebarOpen}
+        appMode={appMode}
+        onModeChange={handleModeChange}
+        responseMode={responseMode}
+        setResponseMode={setResponseMode}
+        responseModeDisabled={isLoading}
+        leftAccessory={<SanitizationBanner />}
+      />
 
       <main className="flex-1 overflow-hidden">
         {appMode === 'research' ? (
@@ -171,8 +239,10 @@ const ChatPage: React.FC<{ sidebarOpen: boolean }> = ({ sidebarOpen }) => {
               <ChatWindow messages={messages} isLoading={isLoading} onSend={sendMessage} />
             )}
           </div>
+        ) : appMode === 'drafting' ? (
+          <DraftingMode onModeChange={() => handleModeChange('research')} />
         ) : (
-          <DraftingMode onModeChange={() => setAppMode('research')} />
+          <DraftingMagicPage />
         )}
       </main>
     </div>
@@ -260,6 +330,11 @@ const App: React.FC = () => {
                   <Routes>
                     <Route path="/" element={<NewChatRedirect />} />
                     <Route path="/c/:chatId" element={<ChatPage sidebarOpen={sidebarOpen} />} />
+                    <Route path="/drafting" element={<StandaloneDraftingPage sidebarOpen={sidebarOpen} initialMode="drafting" />} />
+                    <Route
+                      path="/drafting-magic"
+                      element={<StandaloneDraftingPage sidebarOpen={sidebarOpen} initialMode="magic" />}
+                    />
                     <Route path="*" element={<Navigate to="/" replace />} />
                   </Routes>
                 </SignedIn>
@@ -269,6 +344,7 @@ const App: React.FC = () => {
               </>
             }
           />
+          <Route path="/drafting-magic-preview" element={<StandaloneDraftingPage sidebarOpen={false} initialMode="magic" />} />
         </Routes>
       </SanitizerProvider>
     </ErrorBoundary>

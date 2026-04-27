@@ -10,6 +10,7 @@ import {
   assertNoPromptCacheMetadata,
   resolveBedrockModel,
 } from './_shared/bedrockModels.js';
+import { SPEED_ALLOWED, enforceFlow, rejectFlow } from './_shared/flowPolicy.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -19,6 +20,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   if (req.method === 'OPTIONS') { res.status(200).end(); return; }
   if (req.method !== 'POST') { res.status(405).json({ error: 'Method Not Allowed' }); return; }
+
+  // Speed mode is deliberately non-client passthrough. Reject direct POSTs that
+  // try to route confidential/client-safe flows through this endpoint.
+  const flowResult = enforceFlow(req.body, SPEED_ALLOWED);
+  if (rejectFlow(res, flowResult)) return;
 
   const { message, conversationHistory } = req.body || {};
 
