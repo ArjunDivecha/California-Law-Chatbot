@@ -954,8 +954,8 @@ export const DraftingMagicPage: React.FC = () => {
     : 'Not saved yet';
 
   return (
-    <div className="h-full overflow-hidden bg-[#f7f6f2] text-gray-900">
-      <div className="flex h-full min-h-0 flex-col">
+    <div className="min-h-full overflow-y-auto bg-[#f7f6f2] text-gray-900 lg:h-full lg:overflow-hidden">
+      <div className="flex min-h-full flex-col lg:h-full lg:min-h-0">
         <div className="border-b border-gray-200 bg-white px-5 py-3">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="min-w-0">
@@ -1026,8 +1026,8 @@ export const DraftingMagicPage: React.FC = () => {
           </div>
         </div>
 
-        <div className="grid min-h-0 flex-1 grid-cols-1 gap-0 overflow-hidden lg:grid-cols-[288px_minmax(0,1fr)_380px]">
-          <aside className="order-2 min-h-0 overflow-y-auto border-r border-gray-200 bg-white lg:order-none">
+        <div className="grid flex-none grid-cols-1 gap-0 overflow-visible lg:min-h-0 lg:flex-1 lg:grid-cols-[288px_minmax(0,1fr)_380px] lg:overflow-hidden">
+          <aside className="order-2 overflow-visible border-r border-gray-200 bg-white lg:order-none lg:min-h-0 lg:overflow-y-auto">
             <SectionHeader icon={<FileText size={15} />} title="Source Library" meta={`${sources.length} items`} />
             <div className="space-y-3 p-3">
               <button
@@ -1124,7 +1124,7 @@ export const DraftingMagicPage: React.FC = () => {
             </div>
           </aside>
 
-          <main className="order-1 min-h-0 overflow-y-auto bg-[#fbfaf7] lg:order-none">
+          <main className="order-1 overflow-visible bg-[#fbfaf7] lg:order-none lg:min-h-0 lg:overflow-y-auto">
             {activeTab === 'inputs' && (
               <div className="p-5">
                 <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -1602,7 +1602,7 @@ export const DraftingMagicPage: React.FC = () => {
             )}
           </main>
 
-          <aside className="order-3 min-h-0 overflow-y-auto border-l border-gray-200 bg-white lg:order-none">
+          <aside className="order-3 overflow-visible border-l border-gray-200 bg-white lg:order-none lg:min-h-0 lg:overflow-y-auto">
             <SectionHeader icon={<PanelRight size={15} />} title="Decision Detail" meta={activeTab} />
 
             <div className="space-y-4 p-4">
