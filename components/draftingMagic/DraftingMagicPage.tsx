@@ -12,6 +12,7 @@ import {
   FileText,
   GitCompareArrows,
   Highlighter,
+  Loader2,
   Lock,
   PanelRight,
   PencilLine,
@@ -23,14 +24,18 @@ import {
   Upload,
   Wand2,
 } from 'lucide-react';
+import { useSanitizer } from '../../hooks/useSanitizer';
+import { getChatSanitizer, tokenizeForWire } from '../../services/sanitization/chatAdapter';
 import { extractTextFromFile } from './fileTextExtraction';
-import { generateDraftPackage } from './localDraftGeneration';
+import type { GeneratedDraftPackage } from './localDraftGeneration';
 import { buildPacketComparisonRows, extractDraftingUnits } from './localExtraction';
 
 type WorkflowTab = 'inputs' | 'compare' | 'strategy' | 'draft' | 'review';
 type SourceRole = 'Trust' | 'Pour-over will' | 'Advance directive' | 'Financial POA' | 'Prenup';
 type RowRecommendation = 'Keep' | 'Revise' | 'Discard' | 'Add' | 'Review';
 type SourceInputMode = 'sample' | 'uploaded' | 'pasted';
+type DraftGenerationStatus = 'idle' | 'sanitizing' | 'generating';
+type DraftSanitizationMethod = 'opf' | 'heuristic' | 'mixed';
 
 interface DraftingMagicSource {
   id: string;
@@ -105,6 +110,27 @@ interface DraftingMagicWorkspaceSnapshot {
   draftSections: DraftSection[];
   complianceItems: ComplianceItem[];
   selectedSectionId: string;
+}
+
+interface SanitizedDraftingMagicPayload {
+  flow: 'accuracy_client';
+  attorneyUpdate: string;
+  sources: Array<{
+    id: string;
+    name: string;
+    role: SourceRole;
+    included: boolean;
+    base: boolean;
+    text: string;
+    description: string;
+    format: string;
+  }>;
+  rows: ComparisonRow[];
+  strategy: DraftingMagicStrategy;
+  sanitization: {
+    method: DraftSanitizationMethod;
+    tokenCount: number;
+  };
 }
 
 const workspaceStorageKey = 'drafting-magic:estate-workspace:v1';
@@ -412,6 +438,7 @@ function SectionHeader({ icon, title, meta }: { icon: React.ReactNode; title: st
 }
 
 export const DraftingMagicPage: React.FC = () => {
+  const { ready: sanitizerReady, unlocked: sanitizerUnlocked, tokenCount } = useSanitizer();
   const [activeTab, setActiveTab] = useState<WorkflowTab>('inputs');
   const [sources, setSources] = useState<DraftingMagicSource[]>(initialSources);
   const [rows, setRows] = useState<ComparisonRow[]>(initialRows);
@@ -427,6 +454,10 @@ export const DraftingMagicPage: React.FC = () => {
   const [workspaceLoaded, setWorkspaceLoaded] = useState(false);
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [generationStatus, setGenerationStatus] = useState<DraftGenerationStatus>('idle');
+  const [generationError, setGenerationError] = useState<string | null>(null);
+  const [lastDraftedAt, setLastDraftedAt] = useState<string | null>(null);
+  const [lastDraftMethod, setLastDraftMethod] = useState<DraftSanitizationMethod | null>(null);
 
   const selectedRow = rows.find((row) => row.id === selectedRowId) || rows[0];
   const selectedSection = draftSections.find((section) => section.id === selectedSectionId) || draftSections[0] || initialDraftSections[0];
@@ -441,6 +472,10 @@ export const DraftingMagicPage: React.FC = () => {
   const includedSources = sources.filter((source) => source.included);
   const packetComplete = includedSources.length === sources.length;
   const reviewNeededCount = sources.filter((source) => source.status === 'Needs review').length;
+  const isGeneratingDraft = generationStatus !== 'idle';
+  const lastDraftedLabel = lastDraftedAt
+    ? new Date(lastDraftedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+    : null;
 
   const workflowSummary = useMemo(
     () => [
@@ -538,10 +573,12 @@ export const DraftingMagicPage: React.FC = () => {
   const markAnalysisStale = () => {
     setAnalysisFresh(false);
     setDraftReady(false);
+    setGenerationError(null);
   };
 
   const markDraftStale = () => {
     setDraftReady(false);
+    setGenerationError(null);
   };
 
   const toggleSource = (sourceId: string) => {
@@ -668,19 +705,168 @@ export const DraftingMagicPage: React.FC = () => {
     setActiveTab('compare');
   };
 
-  const generateDraft = () => {
-    const draftPackage = generateDraftPackage({
-      attorneyUpdate,
-      rows,
-      sources,
-      strategy,
+  const buildSanitizedPayload = async (): Promise<SanitizedDraftingMagicPayload> => {
+    const rawFields: string[] = [];
+    const addField = (value: string): number => {
+      rawFields.push(value || '');
+      return rawFields.length - 1;
+    };
+
+    const attorneyUpdateIdx = addField(attorneyUpdate);
+    const strategyIndexes = {
+      outputType: addField(strategy.outputType),
+      baseStrategy: addField(strategy.baseStrategy),
+      tone: addField(strategy.tone),
+      citations: addField(strategy.citations),
+    };
+    const sourceIndexes = sources.map((source) => ({
+      name: addField(source.name),
+      text: addField(source.excerpt?.trim() || source.description),
+      description: addField(source.description),
+    }));
+    const rowIndexes = rows.map((row) => ({
+      issue: addField(row.issue),
+      rowType: addField(row.rowType),
+      sourceALabel: addField(row.sourceALabel),
+      sourceA: addField(row.sourceA),
+      sourceBLabel: addField(row.sourceBLabel),
+      sourceB: addField(row.sourceB),
+      sourceCLabel: addField(row.sourceCLabel),
+      sourceC: addField(row.sourceC),
+      newLawImpact: addField(row.newLawImpact),
+      rationale: addField(row.rationale),
+    }));
+
+    const markers = rawFields.map((_, index) => `@@DM_FIELD_${String(index).padStart(4, '0')}@@`);
+    const combined = rawFields.map((value, index) => `${markers[index]}\n${value}`).join('\n');
+    const tokenizedPacket = await tokenizeForWire(combined);
+    const sanitizedFields = rawFields.map((value, index) => {
+      const marker = markers[index];
+      const start = tokenizedPacket.sanitized.indexOf(marker);
+      if (start === -1) return value;
+      const contentStart = start + marker.length;
+      const nextMarker = markers[index + 1];
+      const nextStart = nextMarker ? tokenizedPacket.sanitized.indexOf(nextMarker, contentStart) : -1;
+      const rawChunk = tokenizedPacket.sanitized.slice(contentStart, nextStart === -1 ? undefined : nextStart);
+      return rawChunk.replace(/^\n/, '').replace(/\n$/, '');
     });
 
-    setDraftSections(draftPackage.sections);
-    setComplianceItems(draftPackage.checklist);
-    setSelectedSectionId(draftPackage.sections[0]?.id || initialDraftSections[0].id);
-    setDraftReady(true);
+    const sanitizedAttorneyUpdate = sanitizedFields[attorneyUpdateIdx];
+    const sanitizedStrategy: DraftingMagicStrategy = {
+      outputType: sanitizedFields[strategyIndexes.outputType],
+      baseStrategy: sanitizedFields[strategyIndexes.baseStrategy],
+      tone: sanitizedFields[strategyIndexes.tone],
+      citations: sanitizedFields[strategyIndexes.citations],
+    };
+
+    const sanitizedSources: SanitizedDraftingMagicPayload['sources'] = [];
+    for (const [index, source] of sources.entries()) {
+      const fieldIndexes = sourceIndexes[index];
+      sanitizedSources.push({
+        id: source.id,
+        name: sanitizedFields[fieldIndexes.name],
+        role: source.role,
+        included: source.included,
+        base: source.base,
+        text: sanitizedFields[fieldIndexes.text],
+        description: sanitizedFields[fieldIndexes.description],
+        format: source.format,
+      });
+    }
+
+    const sanitizedRows: ComparisonRow[] = [];
+    for (const [index, row] of rows.entries()) {
+      const fieldIndexes = rowIndexes[index];
+      sanitizedRows.push({
+        ...row,
+        issue: sanitizedFields[fieldIndexes.issue],
+        rowType: sanitizedFields[fieldIndexes.rowType],
+        sourceALabel: sanitizedFields[fieldIndexes.sourceALabel],
+        sourceA: sanitizedFields[fieldIndexes.sourceA],
+        sourceBLabel: sanitizedFields[fieldIndexes.sourceBLabel],
+        sourceB: sanitizedFields[fieldIndexes.sourceB],
+        sourceCLabel: sanitizedFields[fieldIndexes.sourceCLabel],
+        sourceC: sanitizedFields[fieldIndexes.sourceC],
+        newLawImpact: sanitizedFields[fieldIndexes.newLawImpact],
+        rationale: sanitizedFields[fieldIndexes.rationale],
+      });
+    }
+
+    const method: DraftSanitizationMethod = tokenizedPacket.usedOpf ? 'opf' : 'heuristic';
+
+    return {
+      flow: 'accuracy_client',
+      attorneyUpdate: sanitizedAttorneyUpdate,
+      sources: sanitizedSources,
+      rows: sanitizedRows,
+      strategy: sanitizedStrategy,
+      sanitization: {
+        method,
+        tokenCount,
+      },
+    };
+  };
+
+  const rehydrateDraftPackage = (draftPackage: GeneratedDraftPackage): GeneratedDraftPackage => {
+    const sanitizer = getChatSanitizer();
+    return {
+      sections: draftPackage.sections.map((section) => ({
+        ...section,
+        title: sanitizer.rehydrateMessage(section.title),
+        lineage: sanitizer.rehydrateMessage(section.lineage),
+        requirements: sanitizer.rehydrateMessage(section.requirements),
+        content: sanitizer.rehydrateMessage(section.content),
+      })),
+      checklist: draftPackage.checklist.map((item) => ({
+        ...item,
+        requirement: sanitizer.rehydrateMessage(item.requirement),
+        location: sanitizer.rehydrateMessage(item.location),
+        evidence: sanitizer.rehydrateMessage(item.evidence),
+      })),
+    };
+  };
+
+  const generateDraft = async () => {
+    if (!sanitizerReady || !sanitizerUnlocked) {
+      setGenerationError('Sanitization is not ready on this device yet. Wait for the banner to unlock before generating a cloud draft.');
+      setActiveTab('draft');
+      return;
+    }
+
+    setGenerationError(null);
+    setGenerationStatus('sanitizing');
+    setDraftReady(false);
     setActiveTab('draft');
+
+    try {
+      const payload = await buildSanitizedPayload();
+      setLastDraftMethod(payload.sanitization.method);
+      setGenerationStatus('generating');
+
+      const response = await fetch('/api/drafting-magic', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data?.message || `Drafting Magic API failed with status ${response.status}.`);
+      }
+      if (!data?.draftPackage) {
+        throw new Error('Drafting Magic returned an empty draft package.');
+      }
+
+      const rehydrated = rehydrateDraftPackage(data.draftPackage as GeneratedDraftPackage);
+      setDraftSections(rehydrated.sections);
+      setComplianceItems(rehydrated.checklist);
+      setSelectedSectionId(rehydrated.sections[0]?.id || initialDraftSections[0].id);
+      setDraftReady(true);
+      setLastDraftedAt(new Date().toISOString());
+    } catch (error) {
+      setGenerationError(error instanceof Error ? error.message : 'Drafting Magic failed.');
+    } finally {
+      setGenerationStatus('idle');
+    }
   };
 
   const resetWorkspace = () => {
@@ -766,7 +952,9 @@ export const DraftingMagicPage: React.FC = () => {
                 Browser workspace
               </span>
               <Badge tone={saveError ? 'warn' : 'success'}>{saveError || `Saved locally ${lastSavedLabel}`}</Badge>
-              <span className="text-gray-500">Packet text stays in this browser preview.</span>
+              <span className="text-gray-500">Cloud drafting receives tokenized packet text; rehydration stays in this browser.</span>
+              {lastDraftedLabel && <Badge tone="info">Cloud draft {lastDraftedLabel}</Badge>}
+              {lastDraftMethod && <Badge tone={lastDraftMethod === 'opf' ? 'success' : 'warn'}>{lastDraftMethod.toUpperCase()} sanitized</Badge>}
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <button
@@ -1177,10 +1365,20 @@ export const DraftingMagicPage: React.FC = () => {
                     <button
                       type="button"
                       onClick={generateDraft}
-                      className="inline-flex items-center gap-2 rounded-md bg-pink-500 px-3 py-2 text-xs font-semibold text-white hover:bg-pink-600"
+                      disabled={isGeneratingDraft || !sanitizerReady || !sanitizerUnlocked}
+                      className="inline-flex items-center gap-2 rounded-md bg-pink-500 px-3 py-2 text-xs font-semibold text-white hover:bg-pink-600 disabled:cursor-not-allowed disabled:bg-gray-300"
                     >
-                      Generate draft
-                      <ArrowRight size={14} />
+                      {isGeneratingDraft ? (
+                        <>
+                          <Loader2 size={14} className="animate-spin" />
+                          {generationStatus === 'sanitizing' ? 'Sanitizing packet' : 'Generating draft'}
+                        </>
+                      ) : (
+                        <>
+                          Generate cloud draft
+                          <ArrowRight size={14} />
+                        </>
+                      )}
                     </button>
                   </div>
 
@@ -1209,10 +1407,15 @@ export const DraftingMagicPage: React.FC = () => {
                     <button
                       type="button"
                       onClick={generateDraft}
-                      className="inline-flex items-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50"
+                      disabled={isGeneratingDraft || !sanitizerReady || !sanitizerUnlocked}
+                      className="inline-flex items-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400"
                     >
-                      <RefreshCw size={14} />
-                      Regenerate draft
+                      {isGeneratingDraft ? (
+                        <Loader2 size={14} className="animate-spin" />
+                      ) : (
+                        <RefreshCw size={14} />
+                      )}
+                      {generationStatus === 'sanitizing' ? 'Sanitizing packet' : generationStatus === 'generating' ? 'Generating draft' : 'Regenerate cloud draft'}
                     </button>
                     <button
                       type="button"
@@ -1229,6 +1432,31 @@ export const DraftingMagicPage: React.FC = () => {
                   <div className="mb-3 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
                     <AlertTriangle size={16} className="mt-0.5 shrink-0" />
                     <span>The comparison matrix or drafting strategy changed. Regenerate before treating this preview as current.</span>
+                  </div>
+                )}
+
+                {isGeneratingDraft && (
+                  <div className="mb-3 flex items-start gap-2 rounded-lg border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900">
+                    <Loader2 size={16} className="mt-0.5 shrink-0 animate-spin" />
+                    <span>
+                      {generationStatus === 'sanitizing'
+                        ? 'Tokenizing the packet locally before it leaves the browser.'
+                        : 'Sending the tokenized packet to the Bedrock drafter.'}
+                    </span>
+                  </div>
+                )}
+
+                {generationError && (
+                  <div className="mb-3 flex items-start gap-2 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900">
+                    <AlertTriangle size={16} className="mt-0.5 shrink-0" />
+                    <span>{generationError}</span>
+                  </div>
+                )}
+
+                {lastDraftedLabel && !generationError && (
+                  <div className="mb-3 flex items-start gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+                    <ShieldCheck size={16} className="mt-0.5 shrink-0" />
+                    <span>Cloud draft generated from a tokenized packet at {lastDraftedLabel}; display text was rehydrated locally.</span>
                   </div>
                 )}
 

@@ -511,6 +511,7 @@ test('No production Bedrock call site falls back to a GEMINI_* model env var', (
     'api/anthropic-chat.ts',
     'api/gemini-chat.ts',
     'api/claude-chat.ts',
+    'api/drafting-magic.ts',
     'api/orchestrate-document.ts',
     'agents/researchAgent.ts',
     'agents/verifierAgent.ts',
@@ -535,10 +536,17 @@ test('Speed route declares only speed_passthrough flow', () => {
 });
 
 test('Accuracy routes enforce ACCURACY_ALLOWED', () => {
-  for (const file of ['api/gemini-chat.ts', 'api/claude-chat.ts']) {
+  for (const file of ['api/gemini-chat.ts', 'api/claude-chat.ts', 'api/drafting-magic.ts']) {
     const text = readFileSync(join(__dirname, '..', file), 'utf8');
     assertTrue(/enforceFlow\(\s*req\.body,\s*ACCURACY_ALLOWED/.test(text), `${file} must enforce ACCURACY_ALLOWED`);
   }
+});
+
+test('Drafting Magic uses the Bedrock drafter role and preserves tokenized response boundary', () => {
+  const text = readFileSync(join(__dirname, '..', 'api/drafting-magic.ts'), 'utf8');
+  assertTrue(/resolveBedrockModel\(\s*['"]drafter['"]\s*\)/.test(text), 'must resolve BEDROCK_DRAFTER_MODEL');
+  assertTrue(/response intentionally remains tokenized/i.test(text), 'must document browser-only rehydration boundary');
+  assertTrue(/assertNoPromptCacheMetadata\(\s*requestPayload,\s*['"]drafting-magic['"]/.test(text), 'must reject prompt-cache metadata');
 });
 
 // ---------------------------------------------------------------------------

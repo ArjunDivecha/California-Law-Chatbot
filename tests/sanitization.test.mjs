@@ -763,6 +763,10 @@ await test('public-legal-context route is wired to the backstop', () => {
   assert.ok(routeCallsBackstop('api/public-legal-context.ts'));
 });
 
+await test('drafting-magic route is wired to the backstop', () => {
+  assert.ok(routeCallsBackstop('api/drafting-magic.ts'));
+});
+
 await test('anthropic-chat (Speed) is intentionally NOT wired to the backstop', () => {
   // Speed is the non-client passthrough; it must not hard-reject PII-shaped
   // content because attorneys may run hypotheticals there.
@@ -1041,6 +1045,7 @@ for (const file of [
   'api/legislative-fanout.ts',
   'api/courtlistener-search.ts',
   'api/public-legal-context.ts',
+  'api/drafting-magic.ts',
 ]) {
   await test(`${file} writes audit records`, () => {
     assert.ok(routeAudits(file), `${file} imports auditLog and calls writeAuditRecord`);
@@ -1058,6 +1063,7 @@ await test('No route log statement writes a raw prompt body to console', () => {
     'api/legislative-fanout.ts',
     'api/courtlistener-search.ts',
     'api/public-legal-context.ts',
+    'api/drafting-magic.ts',
   ]) {
     const text = readFileSync(joinPath(repoRoot, file), 'utf8');
     assert.ok(
@@ -1065,6 +1071,14 @@ await test('No route log statement writes a raw prompt body to console', () => {
       `${file} must not console.log the raw prompt variable`
     );
   }
+});
+
+await test('Drafting Magic client tokenizes before the cloud drafter call', () => {
+  const text = readFileSync(joinPath(repoRoot, 'components/draftingMagic/DraftingMagicPage.tsx'), 'utf8');
+  assert.ok(/tokenizeForWire/.test(text), 'Drafting Magic must tokenize source packet text before POST');
+  assert.ok(/getChatSanitizer/.test(text), 'Drafting Magic must rehydrate responses with the browser token map');
+  assert.ok(/['"]\/api\/drafting-magic['"]/.test(text), 'Drafting Magic must call the drafter route');
+  assert.ok(/flow:\s*['"]accuracy_client['"]/.test(text), 'Drafting Magic must declare an Accuracy client flow');
 });
 
 // ---------------------------------------------------------------------------

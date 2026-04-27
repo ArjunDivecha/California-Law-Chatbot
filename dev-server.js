@@ -83,6 +83,11 @@ app.all('/api/orchestrate-document', async (req, res) => {
   await handler(req, res);
 });
 
+app.all('/api/drafting-magic', async (req, res) => {
+  const handler = await loadHandler('./api/drafting-magic.ts');
+  await handler(req, res);
+});
+
 app.all('/api/export-document', async (req, res) => {
   const handler = await loadHandler('./api/export-document.ts');
   await handler(req, res);
