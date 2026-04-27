@@ -1093,6 +1093,144 @@ await test('Drafting Magic DOCX export stays browser-side', () => {
   assert.ok(!/\/api\//.test(exporter), 'DOCX export must not depend on any API route');
 });
 
+const draftSectionState = await import('../components/draftingMagic/draftSectionState.ts');
+const {
+  markSectionEdited,
+  mergeGeneratedDraftSections,
+  replaceDraftSectionFromGenerated,
+  toggleSectionLock,
+} = draftSectionState;
+
+await test('Drafting Magic section edits auto-lock and mark the section reviewed', () => {
+  const sections = [
+    {
+      id: 'summary',
+      title: 'Summary',
+      status: 'Generated',
+      lineage: 'Trust',
+      requirements: 'Packet summary',
+      content: 'Original generated text.',
+    },
+  ];
+  const edited = markSectionEdited(sections, 'summary', { content: 'Attorney revised text.' }, '2026-04-27T12:00:00.000Z');
+  assert.equal(edited[0].content, 'Attorney revised text.');
+  assert.equal(edited[0].status, 'Reviewed');
+  assert.equal(edited[0].locked, true);
+  assert.equal(edited[0].editedAt, '2026-04-27T12:00:00.000Z');
+});
+
+await test('Drafting Magic full regeneration preserves locked attorney-edited sections', () => {
+  const current = [
+    {
+      id: 'summary',
+      title: 'Summary',
+      status: 'Reviewed',
+      lineage: 'Trust',
+      requirements: 'Packet summary',
+      content: 'Attorney revised text.',
+      locked: true,
+      editedAt: '2026-04-27T12:00:00.000Z',
+    },
+    {
+      id: 'plan',
+      title: 'Plan',
+      status: 'Generated',
+      lineage: 'Prenup',
+      requirements: 'Plan',
+      content: 'Old generated plan.',
+    },
+  ];
+  const generated = [
+    {
+      id: 'summary',
+      title: 'AI Summary',
+      status: 'Generated',
+      lineage: 'Trust',
+      requirements: 'Packet summary',
+      content: 'New AI text that should not overwrite locked edits.',
+    },
+    {
+      id: 'plan',
+      title: 'AI Plan',
+      status: 'Generated',
+      lineage: 'Prenup',
+      requirements: 'Plan',
+      content: 'New AI plan.',
+    },
+  ];
+  const merged = mergeGeneratedDraftSections(current, generated);
+  assert.equal(merged[0].content, 'Attorney revised text.');
+  assert.equal(merged[0].locked, true);
+  assert.equal(merged[1].content, 'New AI plan.');
+  assert.equal(merged[1].locked, undefined);
+});
+
+await test('Drafting Magic section regeneration replaces only the target unlocked section', () => {
+  const current = [
+    {
+      id: 'summary',
+      title: 'Summary',
+      status: 'Generated',
+      lineage: 'Trust',
+      requirements: 'Packet summary',
+      content: 'Existing summary.',
+    },
+    {
+      id: 'plan',
+      title: 'Plan',
+      status: 'Reviewed',
+      lineage: 'Prenup',
+      requirements: 'Plan',
+      content: 'Locked attorney plan.',
+      locked: true,
+    },
+  ];
+  const generated = [
+    {
+      id: 'generated-summary',
+      title: 'Regenerated Summary',
+      status: 'Generated',
+      lineage: 'Trust',
+      requirements: 'Packet summary',
+      content: 'Fresh summary.',
+    },
+    {
+      id: 'generated-plan',
+      title: 'Regenerated Plan',
+      status: 'Generated',
+      lineage: 'Prenup',
+      requirements: 'Plan',
+      content: 'Fresh plan.',
+    },
+  ];
+  const replaced = replaceDraftSectionFromGenerated(current, generated, 'summary');
+  assert.equal(replaced[0].id, 'summary', 'target id stays stable for selection and persistence');
+  assert.equal(replaced[0].content, 'Fresh summary.');
+  assert.equal(replaced[1].content, 'Locked attorney plan.');
+
+  const lockedAttempt = replaceDraftSectionFromGenerated(current, generated, 'plan');
+  assert.equal(lockedAttempt[1].content, 'Locked attorney plan.', 'locked target is not replaced');
+});
+
+await test('Drafting Magic section lock toggles without changing draft text', () => {
+  const sections = [
+    {
+      id: 'summary',
+      title: 'Summary',
+      status: 'Generated',
+      lineage: 'Trust',
+      requirements: 'Packet summary',
+      content: 'Keep this text.',
+    },
+  ];
+  const locked = toggleSectionLock(sections, 'summary');
+  const unlocked = toggleSectionLock(locked, 'summary');
+  assert.equal(locked[0].locked, true);
+  assert.equal(locked[0].content, 'Keep this text.');
+  assert.equal(unlocked[0].locked, false);
+  assert.equal(unlocked[0].content, 'Keep this text.');
+});
+
 // ---------------------------------------------------------------------------
 // Preview session (Day 6)
 // ---------------------------------------------------------------------------

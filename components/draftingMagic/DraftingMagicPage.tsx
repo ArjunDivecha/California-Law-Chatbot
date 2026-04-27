@@ -22,11 +22,19 @@ import {
   ShieldCheck,
   Sparkles,
   Upload,
+  Unlock,
   Wand2,
 } from 'lucide-react';
 import { useSanitizer } from '../../hooks/useSanitizer';
 import { getChatSanitizer, tokenizeForWire } from '../../services/sanitization/chatAdapter';
 import { downloadDraftPackageDocx } from './draftDocxExport';
+import {
+  markSectionEdited,
+  mergeGeneratedDraftSections,
+  replaceDraftSectionFromGenerated,
+  toggleSectionLock,
+  type EditableDraftSection,
+} from './draftSectionState';
 import { extractTextFromFile } from './fileTextExtraction';
 import type { GeneratedDraftPackage } from './localDraftGeneration';
 import { buildPacketComparisonRows, extractDraftingUnits } from './localExtraction';
@@ -73,14 +81,7 @@ interface ComparisonRow {
   approved: boolean;
 }
 
-interface DraftSection {
-  id: string;
-  title: string;
-  status: 'Reviewed' | 'Needs review' | 'Generated';
-  lineage: string;
-  requirements: string;
-  content: string;
-}
+type DraftSection = EditableDraftSection;
 
 interface ComplianceItem {
   id: string;
@@ -463,6 +464,7 @@ export const DraftingMagicPage: React.FC = () => {
   const [draftExportStatus, setDraftExportStatus] = useState<DraftExportStatus>('idle');
   const [draftExportError, setDraftExportError] = useState<string | null>(null);
   const [lastDocxExportedAt, setLastDocxExportedAt] = useState<string | null>(null);
+  const [regeneratingSectionId, setRegeneratingSectionId] = useState<string | null>(null);
 
   const selectedRow = rows.find((row) => row.id === selectedRowId) || rows[0];
   const selectedSection = draftSections.find((section) => section.id === selectedSectionId) || draftSections[0] || initialDraftSections[0];
@@ -479,11 +481,15 @@ export const DraftingMagicPage: React.FC = () => {
   const reviewNeededCount = sources.filter((source) => source.status === 'Needs review').length;
   const isGeneratingDraft = generationStatus !== 'idle';
   const isExportingDocx = draftExportStatus !== 'idle';
+  const lockedSectionCount = draftSections.filter((section) => section.locked).length;
   const lastDraftedLabel = lastDraftedAt
     ? new Date(lastDraftedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
     : null;
   const lastDocxExportedLabel = lastDocxExportedAt
     ? new Date(lastDocxExportedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+    : null;
+  const selectedSectionEditedLabel = selectedSection.editedAt
+    ? new Date(selectedSection.editedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
     : null;
 
   const workflowSummary = useMemo(
@@ -835,6 +841,17 @@ export const DraftingMagicPage: React.FC = () => {
     };
   };
 
+  const editDraftSection = (sectionId: string, patch: Partial<Pick<DraftSection, 'title' | 'content'>>) => {
+    setDraftSections((current) => markSectionEdited(current, sectionId, patch));
+    setSelectedSectionId(sectionId);
+    setDraftExportError(null);
+  };
+
+  const toggleDraftSectionLock = (sectionId: string) => {
+    setDraftSections((current) => toggleSectionLock(current, sectionId));
+    setSelectedSectionId(sectionId);
+  };
+
   const generateDraft = async () => {
     if (!sanitizerReady || !sanitizerUnlocked) {
       setGenerationError('Sanitization is not ready on this device yet. Wait for the banner to unlock before generating a cloud draft.');
@@ -866,15 +883,68 @@ export const DraftingMagicPage: React.FC = () => {
       }
 
       const rehydrated = rehydrateDraftPackage(data.draftPackage as GeneratedDraftPackage);
-      setDraftSections(rehydrated.sections);
+      const mergedSections = mergeGeneratedDraftSections(draftSections, rehydrated.sections);
+      setDraftSections(mergedSections);
       setComplianceItems(rehydrated.checklist);
-      setSelectedSectionId(rehydrated.sections[0]?.id || initialDraftSections[0].id);
+      setSelectedSectionId(mergedSections[0]?.id || initialDraftSections[0].id);
       setDraftReady(true);
       setLastDraftedAt(new Date().toISOString());
     } catch (error) {
       setGenerationError(error instanceof Error ? error.message : 'Drafting Magic failed.');
     } finally {
       setGenerationStatus('idle');
+    }
+  };
+
+  const regenerateDraftSection = async (sectionId: string) => {
+    const targetSection = draftSections.find((section) => section.id === sectionId);
+    if (!targetSection) {
+      return;
+    }
+    if (targetSection.locked) {
+      setGenerationError('Unlock this section before regenerating it.');
+      setActiveTab('draft');
+      return;
+    }
+    if (!sanitizerReady || !sanitizerUnlocked) {
+      setGenerationError('Sanitization is not ready on this device yet. Wait for the banner to unlock before regenerating a section.');
+      setActiveTab('draft');
+      return;
+    }
+
+    setGenerationError(null);
+    setRegeneratingSectionId(sectionId);
+    setGenerationStatus('sanitizing');
+    setActiveTab('draft');
+
+    try {
+      const payload = await buildSanitizedPayload();
+      setLastDraftMethod(payload.sanitization.method);
+      setGenerationStatus('generating');
+
+      const response = await fetch('/api/drafting-magic', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data?.message || `Drafting Magic API failed with status ${response.status}.`);
+      }
+      if (!data?.draftPackage) {
+        throw new Error('Drafting Magic returned an empty draft package.');
+      }
+
+      const rehydrated = rehydrateDraftPackage(data.draftPackage as GeneratedDraftPackage);
+      setDraftSections((current) => replaceDraftSectionFromGenerated(current, rehydrated.sections, sectionId));
+      setComplianceItems(rehydrated.checklist);
+      setSelectedSectionId(sectionId);
+      setLastDraftedAt(new Date().toISOString());
+    } catch (error) {
+      setGenerationError(error instanceof Error ? error.message : 'Drafting Magic section regeneration failed.');
+    } finally {
+      setGenerationStatus('idle');
+      setRegeneratingSectionId(null);
     }
   };
 
@@ -989,6 +1059,7 @@ export const DraftingMagicPage: React.FC = () => {
               {lastDraftedLabel && <Badge tone="info">Cloud draft {lastDraftedLabel}</Badge>}
               {lastDraftMethod && <Badge tone={lastDraftMethod === 'opf' ? 'success' : 'warn'}>{lastDraftMethod.toUpperCase()} sanitized</Badge>}
               {lastDocxExportedLabel && <Badge tone="success">DOCX exported {lastDocxExportedLabel}</Badge>}
+              {lockedSectionCount > 0 && <Badge tone="info">{lockedSectionCount} locked section{lockedSectionCount === 1 ? '' : 's'}</Badge>}
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <button
@@ -1511,38 +1582,92 @@ export const DraftingMagicPage: React.FC = () => {
                 )}
 
                 <div className="space-y-3">
-                  {draftSections.map((section) => (
-                    <button
-                      key={section.id}
-                      type="button"
-                      onClick={() => setSelectedSectionId(section.id)}
-                      className={`w-full rounded-lg border bg-white p-5 text-left shadow-sm transition hover:border-pink-200 ${
-                        selectedSectionId === section.id ? 'border-pink-300 ring-2 ring-pink-100' : 'border-gray-200'
-                      }`}
-                    >
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <h3 className="text-base font-semibold text-gray-950">{section.title}</h3>
-                        <span
-                          className={`rounded-md border px-2 py-1 text-[11px] font-semibold leading-none ${
-                            statusColors[section.status] || 'border-gray-200 bg-gray-50 text-gray-700'
-                          }`}
-                        >
-                          {section.status}
-                        </span>
-                      </div>
-                      <p className="mt-3 text-sm leading-7 text-gray-700">{section.content}</p>
-                      <div className="mt-4 flex flex-wrap gap-2 text-xs text-gray-500">
-                        <span className="inline-flex items-center gap-1">
-                          <Highlighter size={14} />
-                          {section.lineage}
-                        </span>
-                        <span className="inline-flex items-center gap-1">
-                          <ClipboardCheck size={14} />
-                          {section.requirements}
-                        </span>
-                      </div>
-                    </button>
-                  ))}
+                  {draftSections.map((section) => {
+                    const isSelected = selectedSectionId === section.id;
+                    const isRegeneratingThis = regeneratingSectionId === section.id;
+
+                    return (
+                      <article
+                        key={section.id}
+                        onClick={() => setSelectedSectionId(section.id)}
+                        className={`rounded-lg border bg-white p-5 text-left shadow-sm transition hover:border-pink-200 ${
+                          isSelected ? 'border-pink-300 ring-2 ring-pink-100' : 'border-gray-200'
+                        }`}
+                      >
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div className="min-w-0 flex-1">
+                            <input
+                              value={section.title}
+                              onChange={(event) => editDraftSection(section.id, { title: event.target.value })}
+                              onFocus={() => setSelectedSectionId(section.id)}
+                              className="w-full rounded-md border border-transparent bg-transparent px-0 py-1 text-base font-semibold text-gray-950 outline-none transition focus:border-pink-200 focus:bg-pink-50/40 focus:px-2"
+                              aria-label={`Edit title for ${section.title}`}
+                            />
+                            <div className="mt-1 flex flex-wrap gap-1">
+                              <span
+                                className={`rounded-md border px-2 py-1 text-[11px] font-semibold leading-none ${
+                                  statusColors[section.status] || 'border-gray-200 bg-gray-50 text-gray-700'
+                                }`}
+                              >
+                                {section.status}
+                              </span>
+                              {section.locked && <Badge tone="info">Locked</Badge>}
+                              {section.editedAt && <Badge tone="success">Edited</Badge>}
+                            </div>
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            <button
+                              type="button"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                toggleDraftSectionLock(section.id);
+                              }}
+                              className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-2 text-xs font-semibold ${
+                                section.locked
+                                  ? 'border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100'
+                                  : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
+                              }`}
+                              aria-pressed={Boolean(section.locked)}
+                            >
+                              {section.locked ? <Lock size={14} /> : <Unlock size={14} />}
+                              {section.locked ? 'Locked' : 'Lock'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                void regenerateDraftSection(section.id);
+                              }}
+                              disabled={isGeneratingDraft || Boolean(section.locked)}
+                              className="inline-flex items-center gap-1.5 rounded-md border border-gray-200 bg-white px-2.5 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400"
+                            >
+                              {isRegeneratingThis ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
+                              {isRegeneratingThis ? 'Regenerating' : 'Regenerate section'}
+                            </button>
+                          </div>
+                        </div>
+
+                        <textarea
+                          value={section.content}
+                          onChange={(event) => editDraftSection(section.id, { content: event.target.value })}
+                          onFocus={() => setSelectedSectionId(section.id)}
+                          className="mt-3 min-h-32 w-full resize-y rounded-md border border-gray-200 bg-gray-50 px-3 py-3 text-sm leading-7 text-gray-700 outline-none transition focus:border-pink-300 focus:bg-white focus:ring-2 focus:ring-pink-100"
+                          aria-label={`Edit draft content for ${section.title}`}
+                        />
+
+                        <div className="mt-4 flex flex-wrap gap-2 text-xs text-gray-500">
+                          <span className="inline-flex items-center gap-1">
+                            <Highlighter size={14} />
+                            {section.lineage}
+                          </span>
+                          <span className="inline-flex items-center gap-1">
+                            <ClipboardCheck size={14} />
+                            {section.requirements}
+                          </span>
+                        </div>
+                      </article>
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -1663,13 +1788,39 @@ export const DraftingMagicPage: React.FC = () => {
               </div>
 
               <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-                <div className="flex items-center gap-2 text-sm font-semibold text-gray-950">
-                  <Sparkles size={16} />
-                  Draft lineage
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 text-sm font-semibold text-gray-950">
+                    <Sparkles size={16} />
+                    Draft lineage
+                  </div>
+                  <Badge tone={selectedSection.locked ? 'info' : 'neutral'}>{selectedSection.locked ? 'Locked' : 'Editable'}</Badge>
                 </div>
                 <div className="mt-3 rounded-md bg-gray-50 p-3">
                   <div className="text-sm font-semibold text-gray-900">{selectedSection.title}</div>
                   <p className="mt-2 text-xs leading-5 text-gray-600">{selectedSection.content}</p>
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => toggleDraftSectionLock(selectedSection.id)}
+                    className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-2 text-xs font-semibold ${
+                      selectedSection.locked
+                        ? 'border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100'
+                        : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
+                    }`}
+                  >
+                    {selectedSection.locked ? <Lock size={14} /> : <Unlock size={14} />}
+                    {selectedSection.locked ? 'Unlock section' : 'Lock section'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void regenerateDraftSection(selectedSection.id)}
+                    disabled={isGeneratingDraft || Boolean(selectedSection.locked)}
+                    className="inline-flex items-center gap-1.5 rounded-md border border-gray-200 bg-white px-2.5 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400"
+                  >
+                    {regeneratingSectionId === selectedSection.id ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
+                    {regeneratingSectionId === selectedSection.id ? 'Regenerating' : 'Regenerate'}
+                  </button>
                 </div>
                 <div className="mt-3 space-y-2 text-xs text-gray-600">
                   <div className="flex items-start gap-2">
@@ -1682,7 +1833,11 @@ export const DraftingMagicPage: React.FC = () => {
                   </div>
                   <div className="flex items-start gap-2">
                     <Lock size={14} className="mt-0.5 shrink-0 text-gray-500" />
-                    <span>Attorney edits are preserved during section regeneration.</span>
+                    <span>
+                      {selectedSectionEditedLabel
+                        ? `Edited locally at ${selectedSectionEditedLabel}. Locked sections are preserved during regeneration.`
+                        : 'Lock a section to preserve attorney edits during regeneration.'}
+                    </span>
                   </div>
                 </div>
               </div>
