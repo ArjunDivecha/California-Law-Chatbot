@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import { useSanitizer } from '../../hooks/useSanitizer';
 import { getChatSanitizer, tokenizeForWire } from '../../services/sanitization/chatAdapter';
+import { downloadDraftPackageDocx } from './draftDocxExport';
 import { extractTextFromFile } from './fileTextExtraction';
 import type { GeneratedDraftPackage } from './localDraftGeneration';
 import { buildPacketComparisonRows, extractDraftingUnits } from './localExtraction';
@@ -36,6 +37,7 @@ type RowRecommendation = 'Keep' | 'Revise' | 'Discard' | 'Add' | 'Review';
 type SourceInputMode = 'sample' | 'uploaded' | 'pasted';
 type DraftGenerationStatus = 'idle' | 'sanitizing' | 'generating';
 type DraftSanitizationMethod = 'opf' | 'heuristic' | 'mixed';
+type DraftExportStatus = 'idle' | 'exporting';
 
 interface DraftingMagicSource {
   id: string;
@@ -458,6 +460,9 @@ export const DraftingMagicPage: React.FC = () => {
   const [generationError, setGenerationError] = useState<string | null>(null);
   const [lastDraftedAt, setLastDraftedAt] = useState<string | null>(null);
   const [lastDraftMethod, setLastDraftMethod] = useState<DraftSanitizationMethod | null>(null);
+  const [draftExportStatus, setDraftExportStatus] = useState<DraftExportStatus>('idle');
+  const [draftExportError, setDraftExportError] = useState<string | null>(null);
+  const [lastDocxExportedAt, setLastDocxExportedAt] = useState<string | null>(null);
 
   const selectedRow = rows.find((row) => row.id === selectedRowId) || rows[0];
   const selectedSection = draftSections.find((section) => section.id === selectedSectionId) || draftSections[0] || initialDraftSections[0];
@@ -473,8 +478,12 @@ export const DraftingMagicPage: React.FC = () => {
   const packetComplete = includedSources.length === sources.length;
   const reviewNeededCount = sources.filter((source) => source.status === 'Needs review').length;
   const isGeneratingDraft = generationStatus !== 'idle';
+  const isExportingDocx = draftExportStatus !== 'idle';
   const lastDraftedLabel = lastDraftedAt
     ? new Date(lastDraftedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+    : null;
+  const lastDocxExportedLabel = lastDocxExportedAt
+    ? new Date(lastDocxExportedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
     : null;
 
   const workflowSummary = useMemo(
@@ -916,6 +925,30 @@ export const DraftingMagicPage: React.FC = () => {
     URL.revokeObjectURL(url);
   };
 
+  const exportDraftDocx = async () => {
+    setDraftExportError(null);
+    setDraftExportStatus('exporting');
+
+    try {
+      await downloadDraftPackageDocx({
+        sections: draftSections,
+        checklist: complianceItems,
+        sources,
+        rows,
+        strategy,
+        attorneyUpdate,
+        generatedAt: lastDraftedAt,
+        draftReady,
+        sanitizationMethod: lastDraftMethod,
+      });
+      setLastDocxExportedAt(new Date().toISOString());
+    } catch (error) {
+      setDraftExportError(error instanceof Error ? error.message : 'Could not export the DOCX draft.');
+    } finally {
+      setDraftExportStatus('idle');
+    }
+  };
+
   const lastSavedLabel = lastSavedAt
     ? new Date(lastSavedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
     : 'Not saved yet';
@@ -955,6 +988,7 @@ export const DraftingMagicPage: React.FC = () => {
               <span className="text-gray-500">Cloud drafting receives tokenized packet text; rehydration stays in this browser.</span>
               {lastDraftedLabel && <Badge tone="info">Cloud draft {lastDraftedLabel}</Badge>}
               {lastDraftMethod && <Badge tone={lastDraftMethod === 'opf' ? 'success' : 'warn'}>{lastDraftMethod.toUpperCase()} sanitized</Badge>}
+              {lastDocxExportedLabel && <Badge tone="success">DOCX exported {lastDocxExportedLabel}</Badge>}
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <button
@@ -1402,7 +1436,7 @@ export const DraftingMagicPage: React.FC = () => {
                     <h2 className="text-lg font-semibold text-gray-950">Draft preview</h2>
                     <p className="mt-1 text-sm text-gray-600">Each section carries lineage, requirement mapping, and review status.</p>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2">
                     <Badge tone={draftReady ? 'success' : 'warn'}>{draftReady ? 'Draft current' : 'Needs regeneration'}</Badge>
                     <button
                       type="button"
@@ -1416,6 +1450,15 @@ export const DraftingMagicPage: React.FC = () => {
                         <RefreshCw size={14} />
                       )}
                       {generationStatus === 'sanitizing' ? 'Sanitizing packet' : generationStatus === 'generating' ? 'Generating draft' : 'Regenerate cloud draft'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void exportDraftDocx()}
+                      disabled={isExportingDocx}
+                      className="inline-flex items-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400"
+                    >
+                      {isExportingDocx ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+                      {isExportingDocx ? 'Exporting DOCX' : 'Export draft DOCX'}
                     </button>
                     <button
                       type="button"
@@ -1450,6 +1493,13 @@ export const DraftingMagicPage: React.FC = () => {
                   <div className="mb-3 flex items-start gap-2 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900">
                     <AlertTriangle size={16} className="mt-0.5 shrink-0" />
                     <span>{generationError}</span>
+                  </div>
+                )}
+
+                {draftExportError && (
+                  <div className="mb-3 flex items-start gap-2 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900">
+                    <AlertTriangle size={16} className="mt-0.5 shrink-0" />
+                    <span>{draftExportError}</span>
                   </div>
                 )}
 
@@ -1504,8 +1554,26 @@ export const DraftingMagicPage: React.FC = () => {
                     <h2 className="text-lg font-semibold text-gray-950">Review and export readiness</h2>
                     <p className="mt-1 text-sm text-gray-600">Map every requirement to draft text before the attorney exports.</p>
                   </div>
-                  <Badge tone="warn">Ready with warnings</Badge>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge tone="warn">Ready with warnings</Badge>
+                    <button
+                      type="button"
+                      onClick={() => void exportDraftDocx()}
+                      disabled={isExportingDocx}
+                      className="inline-flex items-center gap-2 rounded-md bg-gray-950 px-3 py-2 text-xs font-semibold text-white hover:bg-gray-800 disabled:cursor-not-allowed disabled:bg-gray-300"
+                    >
+                      {isExportingDocx ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+                      {isExportingDocx ? 'Exporting DOCX' : 'Export draft DOCX'}
+                    </button>
+                  </div>
                 </div>
+
+                {draftExportError && (
+                  <div className="mb-3 flex items-start gap-2 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900">
+                    <AlertTriangle size={16} className="mt-0.5 shrink-0" />
+                    <span>{draftExportError}</span>
+                  </div>
+                )}
 
                 <div className="grid gap-3">
                   {complianceItems.map((item) => (

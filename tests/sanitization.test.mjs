@@ -1081,6 +1081,18 @@ await test('Drafting Magic client tokenizes before the cloud drafter call', () =
   assert.ok(/flow:\s*['"]accuracy_client['"]/.test(text), 'Drafting Magic must declare an Accuracy client flow');
 });
 
+await test('Drafting Magic DOCX export stays browser-side', () => {
+  const page = readFileSync(joinPath(repoRoot, 'components/draftingMagic/DraftingMagicPage.tsx'), 'utf8');
+  const exporter = readFileSync(joinPath(repoRoot, 'components/draftingMagic/draftDocxExport.ts'), 'utf8');
+  assert.ok(/downloadDraftPackageDocx/.test(page), 'Drafting Magic page must call the browser DOCX exporter');
+  assert.ok(/Packer\.toBlob/.test(exporter), 'DOCX exporter must build the file as a browser Blob');
+  assert.ok(/URL\.createObjectURL/.test(exporter), 'DOCX exporter must create a local object URL');
+  assert.ok(/URL\.revokeObjectURL/.test(exporter), 'DOCX exporter must revoke the local object URL');
+  assert.ok(!/fetch\s*\(/.test(exporter), 'DOCX export must not post rehydrated text to a server');
+  assert.ok(!/XMLHttpRequest/.test(exporter), 'DOCX export must not use a network request');
+  assert.ok(!/\/api\//.test(exporter), 'DOCX export must not depend on any API route');
+});
+
 // ---------------------------------------------------------------------------
 // Preview session (Day 6)
 // ---------------------------------------------------------------------------
