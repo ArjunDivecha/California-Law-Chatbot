@@ -14,6 +14,7 @@ import {
   Highlighter,
   Loader2,
   Lock,
+  ListChecks,
   PanelRight,
   PencilLine,
   RefreshCw,
@@ -23,6 +24,7 @@ import {
   Sparkles,
   Upload,
   Unlock,
+  UsersRound,
   Wand2,
 } from 'lucide-react';
 import { useSanitizer } from '../../hooks/useSanitizer';
@@ -155,6 +157,52 @@ const defaultStrategy: DraftingMagicStrategy = {
   tone: 'Client-friendly',
   citations: 'Attorney checklist',
 };
+
+const estateMatterModel = [
+  {
+    id: 'people-roles',
+    label: 'People and roles',
+    status: 'Review',
+    detail: 'Trustee, executor, financial agent, health care agent, spouse, successors, and alternates.',
+    signal: 'AHCD and financial POA agent order mismatch',
+  },
+  {
+    id: 'trust-identity',
+    label: 'Trust identity',
+    status: 'Normalize',
+    detail: 'Trust name, date, amendments, settlor/trustor language, and pour-over references.',
+    signal: 'Pour-over will should use the same operative trust identity',
+  },
+  {
+    id: 'property-character',
+    label: 'Property character',
+    status: 'High risk',
+    detail: 'Separate property, community property, funding schedules, and prenup carveouts.',
+    signal: 'Prenup terms constrain trust funding language',
+  },
+  {
+    id: 'authority-powers',
+    label: 'Authority and powers',
+    status: 'Map',
+    detail: 'Trustee powers, financial authority, health decisions, HIPAA release, and incapacity triggers.',
+    signal: 'Authority should be reconciled before drafting',
+  },
+  {
+    id: 'execution-packet',
+    label: 'Execution packet',
+    status: 'Checklist',
+    detail: 'Signing memo, certificates, witnessing/notary requirements, and funding instructions.',
+    signal: 'Final draft should create attorney review gates',
+  },
+];
+
+const lawImpactChecklist = [
+  'Extract requirement from new law or client instruction',
+  'Map requirement to each affected estate document',
+  'Approve keep/revise/add/discard decisions',
+  'Generate draft only from approved plan',
+  'Verify output before DOCX export',
+];
 
 const countWords = (text: string) => {
   const count = text.trim().split(/\s+/).filter(Boolean).length;
@@ -501,6 +549,18 @@ export const DraftingMagicPage: React.FC = () => {
       { label: 'Open flags', value: reviewCount.toString() },
     ],
     [approvedCount, extractedUnitCount, reviewCount, rows.length, sources]
+  );
+
+  const prioritizedRows = useMemo(
+    () =>
+      [...rows].sort((a, b) => {
+        if (a.approved !== b.approved) {
+          return a.approved ? 1 : -1;
+        }
+        const rank: Record<RowRecommendation, number> = { Review: 0, Revise: 1, Add: 2, Discard: 3, Keep: 4 };
+        return rank[a.recommendation] - rank[b.recommendation];
+      }),
+    [rows]
   );
 
   useEffect(() => {
@@ -1217,6 +1277,54 @@ export const DraftingMagicPage: React.FC = () => {
                   </div>
                 </div>
 
+                <div className="mb-4 grid gap-3 xl:grid-cols-[minmax(0,1fr)_340px]">
+                  <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 text-sm font-semibold text-gray-950">
+                        <UsersRound size={16} />
+                        Matter model
+                      </div>
+                      <Badge tone="info">Built before drafting</Badge>
+                    </div>
+                    <div className="mt-3 grid gap-2 md:grid-cols-2 2xl:grid-cols-3">
+                      {estateMatterModel.map((item) => (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => setActiveTab('compare')}
+                          className="rounded-md border border-gray-200 bg-gray-50 p-3 text-left transition hover:border-pink-200 hover:bg-pink-50"
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="text-xs font-semibold text-gray-950">{item.label}</div>
+                            <span className="shrink-0 rounded border border-white bg-white px-1.5 py-0.5 text-[10px] font-semibold text-gray-600">
+                              {item.status}
+                            </span>
+                          </div>
+                          <p className="mt-2 line-clamp-2 text-xs leading-5 text-gray-600">{item.detail}</p>
+                          <div className="mt-2 text-[11px] font-semibold leading-4 text-pink-700">{item.signal}</div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="rounded-lg border border-emerald-100 bg-emerald-50 p-4">
+                    <div className="flex items-center gap-2 text-sm font-semibold text-emerald-950">
+                      <ListChecks size={16} />
+                      Law impact path
+                    </div>
+                    <div className="mt-3 space-y-2">
+                      {lawImpactChecklist.map((item, index) => (
+                        <div key={item} className="flex items-start gap-2 text-xs leading-5 text-emerald-900">
+                          <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-white text-[11px] font-semibold text-emerald-700">
+                            {index + 1}
+                          </span>
+                          <span>{item}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
                 <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
                   {sources.map((source) => (
                     <div
@@ -1368,53 +1476,91 @@ export const DraftingMagicPage: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
-                  <div className="grid grid-cols-[minmax(190px,1.1fr)_minmax(180px,1fr)_minmax(180px,1fr)_minmax(150px,0.8fr)] border-b border-gray-200 bg-gray-50 text-xs font-semibold text-gray-600">
-                    <div className="px-3 py-2">Issue</div>
-                    <div className="px-3 py-2">New-law impact</div>
-                    <div className="px-3 py-2">Recommendation</div>
-                    <div className="px-3 py-2">Action</div>
+                <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_300px]">
+                  <div className="space-y-3">
+                    {prioritizedRows.map((row) => (
+                      <button
+                        key={row.id}
+                        type="button"
+                        onClick={() => setSelectedRowId(row.id)}
+                        className={`w-full rounded-lg border bg-white p-4 text-left shadow-sm transition hover:border-pink-200 ${
+                          selectedRowId === row.id ? 'border-pink-300 ring-2 ring-pink-100' : 'border-gray-200'
+                        }`}
+                      >
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div className="min-w-0 flex-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="text-sm font-semibold text-gray-950">{row.issue}</span>
+                              <Badge tone={row.approved ? 'success' : 'warn'}>{row.approved ? 'Approved' : 'Attorney decision'}</Badge>
+                              <Badge>{row.rowType}</Badge>
+                            </div>
+                            <p className="mt-2 text-xs leading-5 text-gray-600">{row.newLawImpact}</p>
+                          </div>
+                          <div className="flex shrink-0 flex-wrap items-center gap-2">
+                            <span className="rounded-md border border-gray-200 bg-gray-50 px-2 py-1 text-xs font-semibold text-gray-700">
+                              {row.recommendation}
+                            </span>
+                            <span className="text-xs font-semibold text-gray-500">{row.confidence}</span>
+                            <ChevronRight size={15} className="text-gray-400" />
+                          </div>
+                        </div>
+
+                        <div className="mt-3 grid gap-2 md:grid-cols-3">
+                          {[row.sourceALabel, row.sourceBLabel, row.sourceCLabel].map((label, index) => {
+                            const value = [row.sourceA, row.sourceB, row.sourceC][index];
+                            return (
+                              <div key={`${row.id}-${label}`} className="rounded-md border border-gray-100 bg-gray-50 px-3 py-2">
+                                <div className="text-[11px] font-semibold text-gray-500">{label}</div>
+                                <p className="mt-1 line-clamp-2 text-xs leading-5 text-gray-700">{value}</p>
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        <div className="mt-3 rounded-md border border-pink-100 bg-pink-50 px-3 py-2 text-xs leading-5 text-pink-950">
+                          {row.rationale}
+                        </div>
+                      </button>
+                    ))}
                   </div>
 
-                  {rows.map((row) => (
-                    <button
-                      key={row.id}
-                      type="button"
-                      onClick={() => setSelectedRowId(row.id)}
-                      className={`grid w-full grid-cols-[minmax(190px,1.1fr)_minmax(180px,1fr)_minmax(180px,1fr)_minmax(150px,0.8fr)] border-b border-gray-100 text-left transition last:border-b-0 hover:bg-pink-50/50 ${
-                        selectedRowId === row.id ? 'bg-pink-50' : 'bg-white'
-                      }`}
-                    >
-                      <div className="px-3 py-3">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-semibold text-gray-950">{row.issue}</span>
-                          {!row.approved && <span className="h-2 w-2 rounded-full bg-amber-400" />}
-                        </div>
-                        <div className="mt-1 text-xs text-gray-500">{row.rowType}</div>
+                  <div className="space-y-3">
+                    <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+                      <div className="flex items-center gap-2 text-sm font-semibold text-gray-950">
+                        <UsersRound size={16} />
+                        Matter model coverage
                       </div>
-                      <div className="px-3 py-3 text-xs leading-5 text-gray-700">{row.newLawImpact}</div>
-                      <div className="px-3 py-3">
-                        <div className="flex items-center gap-2">
-                          <span className="rounded-md border border-gray-200 bg-gray-50 px-2 py-1 text-xs font-semibold text-gray-700">
-                            {row.recommendation}
-                          </span>
-                          <span className="text-xs text-gray-500">{row.confidence}</span>
-                        </div>
-                        <div className="mt-2 line-clamp-2 text-xs leading-5 text-gray-600">{row.rationale}</div>
+                      <div className="mt-3 space-y-2">
+                        {estateMatterModel.map((item) => (
+                          <div key={item.id} className="rounded-md border border-gray-100 bg-gray-50 px-3 py-2">
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="text-xs font-semibold text-gray-900">{item.label}</span>
+                              <span className="text-[11px] font-semibold text-gray-500">{item.status}</span>
+                            </div>
+                            <p className="mt-1 text-xs leading-5 text-gray-600">{item.signal}</p>
+                          </div>
+                        ))}
                       </div>
-                      <div className="flex items-center gap-2 px-3 py-3">
-                        <span
-                          className={`inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs font-semibold ${
-                            row.approved ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-amber-200 bg-amber-50 text-amber-700'
-                          }`}
-                        >
-                          {row.approved ? <Check size={13} /> : <AlertTriangle size={13} />}
-                          {row.approved ? 'Approved' : 'Open'}
-                        </span>
-                        <ChevronRight size={15} className="ml-auto text-gray-400" />
+                    </div>
+
+                    <div className="rounded-lg border border-amber-100 bg-amber-50 p-4">
+                      <div className="flex items-center gap-2 text-sm font-semibold text-amber-950">
+                        <AlertTriangle size={16} />
+                        Drafting gate
                       </div>
-                    </button>
-                  ))}
+                      <p className="mt-2 text-xs leading-5 text-amber-900">
+                        Generate after the attorney has approved the open decisions or intentionally left them as review flags.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab('strategy')}
+                        className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-md bg-gray-950 px-3 py-2 text-xs font-semibold text-white hover:bg-gray-800"
+                      >
+                        Continue to draft plan
+                        <ArrowRight size={14} />
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
