@@ -39,7 +39,7 @@ import {
 } from './draftSectionState';
 import { extractTextFromFile } from './fileTextExtraction';
 import type { GeneratedDraftPackage } from './localDraftGeneration';
-import { buildPacketComparisonRows, extractDraftingUnits } from './localExtraction';
+import { buildPacketComparisonRows, extractDraftingUnits, getSourceText } from './localExtraction';
 
 type WorkflowTab = 'inputs' | 'compare' | 'strategy' | 'draft' | 'review';
 type SourceRole = 'Trust' | 'Pour-over will' | 'Advance directive' | 'Financial POA' | 'Prenup';
@@ -517,6 +517,13 @@ export const DraftingMagicPage: React.FC = () => {
   const selectedRow = rows.find((row) => row.id === selectedRowId) || rows[0];
   const selectedSection = draftSections.find((section) => section.id === selectedSectionId) || draftSections[0] || initialDraftSections[0];
   const activeSource = sources.find((source) => source.id === activeSourceId) || sources[0];
+  const activeSourcePreview = useMemo(() => getSourceText(activeSource), [activeSource]);
+  const activeSourcePreviewMode =
+    activeSource.inputMode === 'uploaded'
+      ? `Extracted from ${activeSource.uploadedFileName || 'uploaded file'}`
+      : activeSource.inputMode === 'pasted'
+        ? 'Pasted source text'
+        : 'Built-in sample text';
   const activeSourceUnits = useMemo(() => extractDraftingUnits(activeSource), [activeSource]);
   const extractedUnitCount = useMemo(
     () => sources.reduce((count, source) => (source.included ? count + extractDraftingUnits(source).length : count), 0),
@@ -1437,6 +1444,15 @@ export const DraftingMagicPage: React.FC = () => {
                           <div className="text-gray-400">Words</div>
                           <div className="font-semibold text-gray-800">{activeSource.words}</div>
                         </div>
+                      </div>
+                      <div className="mt-3 rounded-md border border-pink-100 bg-white px-3 py-2">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div className="text-xs font-semibold text-gray-600">Source preview</div>
+                          <Badge tone={activeSource.inputMode === 'sample' ? 'neutral' : 'success'}>{activeSourcePreviewMode}</Badge>
+                        </div>
+                        <p className="mt-2 max-h-28 overflow-y-auto whitespace-pre-wrap text-xs leading-5 text-gray-700">
+                          {activeSourcePreview || 'No source text loaded yet. Upload a file or paste text into this packet slot.'}
+                        </p>
                       </div>
                     </div>
                     <div className="mt-3 rounded-md bg-white/70 p-3">
