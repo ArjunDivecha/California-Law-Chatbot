@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Routes, Route, Navigate, useParams, useNavigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation, useParams, useNavigate } from 'react-router-dom';
 import { SignedIn, SignedOut, RedirectToSignIn } from '@clerk/clerk-react';
 import { useAuthFetch } from './utils/authFetch.ts';
 
@@ -295,7 +295,12 @@ const NewChatRedirect: React.FC = () => {
 // ---------------------------------------------------------------------------
 const DaemonGate: React.FC = () => {
   const { daemonStatus, ready } = useSanitizer();
+  const location = useLocation();
   const [dismissed, setDismissed] = useState(false);
+
+  // The public Drafting Magic preview is a shareable product demo. It should
+  // render even when Safari cannot reach the user's local OPF daemon.
+  if (location.pathname.startsWith('/drafting-magic-preview')) return null;
 
   // Wait until the first health probe completes before showing the modal,
   // so we don't flash it on every page load while the probe is in-flight.
