@@ -42,7 +42,27 @@ import type { GeneratedDraftPackage } from './localDraftGeneration';
 import { buildPacketComparisonRows, extractDraftingUnits, getSourceText } from './localExtraction';
 
 type WorkflowTab = 'inputs' | 'compare' | 'strategy' | 'draft' | 'review';
-type SourceRole = 'Trust' | 'Pour-over will' | 'Advance directive' | 'Financial POA' | 'Prenup';
+type PracticePathway = 'estate-planning' | 'family-law';
+type PacketTemplateId =
+  | 'estate-single'
+  | 'estate-couple'
+  | 'estate-other-triad-chosen'
+  | 'family-prenup'
+  | 'family-confirming-adoption'
+  | 'family-known-donor';
+type SourceRole =
+  | 'Trust'
+  | 'Pour-over will'
+  | 'Advance directive'
+  | 'Financial POA'
+  | 'Prenup'
+  | 'Trust plan'
+  | 'Will plan'
+  | 'Prenup package'
+  | 'Regional confirmation'
+  | 'Non-regional confirmation'
+  | 'Known donor contract'
+  | 'Donor document package';
 type RowRecommendation = 'Keep' | 'Revise' | 'Discard' | 'Add' | 'Review';
 type SourceInputMode = 'sample' | 'uploaded' | 'pasted' | 'edited';
 type DraftGenerationStatus = 'idle' | 'sanitizing' | 'generating';
@@ -108,6 +128,8 @@ interface DraftingMagicWorkspaceSnapshot {
   rows: ComparisonRow[];
   selectedRowId: string;
   activeSourceId: string;
+  practicePathway?: PracticePathway;
+  packetTemplateId?: PacketTemplateId;
   attorneyUpdate: string;
   analysisFresh: boolean;
   strategy: DraftingMagicStrategy;
@@ -164,6 +186,13 @@ const sourceDisplayNameByRole: Record<SourceRole, string> = {
   'Advance directive': 'Advance health care directive',
   'Financial POA': 'Durable financial power of attorney',
   Prenup: 'Prenuptial agreement',
+  'Trust plan': 'Trust plan',
+  'Will plan': 'Will plan',
+  'Prenup package': 'Prenup document package',
+  'Regional confirmation': 'Regional confirmation adoption',
+  'Non-regional confirmation': 'Non-regional confirmation adoption',
+  'Known donor contract': 'Known donor contract',
+  'Donor document package': 'Donor clearance letter',
 };
 
 const getSourceDisplayName = (source: Pick<DraftingMagicSource, 'role' | 'name'>) => sourceDisplayNameByRole[source.role] || source.name;
@@ -347,6 +376,177 @@ const initialSources: DraftingMagicSource[] = [
     warning: 'Separate-property terms should constrain trust funding language',
   },
 ];
+
+interface PacketTemplate {
+  id: PacketTemplateId;
+  pathway: PracticePathway;
+  label: string;
+  description: string;
+  sources: DraftingMagicSource[];
+  attorneyUpdate: string;
+}
+
+const makeSource = (
+  id: string,
+  name: string,
+  role: SourceRole,
+  description: string,
+  options: Partial<Pick<DraftingMagicSource, 'format' | 'sections' | 'words' | 'base' | 'status' | 'warning'>> = {}
+): DraftingMagicSource => ({
+  id,
+  name,
+  role,
+  description,
+  format: options.format || 'DOCX',
+  sections: options.sections || 1,
+  words: options.words || '0',
+  included: true,
+  base: Boolean(options.base),
+  status: options.status || 'Ready',
+  inputMode: 'sample',
+  warning: options.warning,
+});
+
+const estateSingleSources: DraftingMagicSource[] = [
+  makeSource('single-revocable-trust', 'Revocable living trust', 'Trust', 'Base estate plan instrument, trustee powers, distribution structure, and funding schedules.', {
+    base: true,
+    sections: 18,
+    words: '0',
+  }),
+  makeSource('single-pour-over-will', 'Pour-over will', 'Pour-over will', 'Will residue, trust identity, executor appointments, guardianship language, and execution details.', {
+    format: 'PDF',
+    sections: 8,
+    words: '0',
+  }),
+  makeSource(
+    'single-ahcd',
+    'Advance health care directive',
+    'Advance directive',
+    'Health care agent order, treatment authority, end-of-life instructions, and privacy release.',
+    {
+      sections: 10,
+      words: '0',
+      status: 'Needs review',
+      warning: 'Review agent order and privacy release',
+    }
+  ),
+  makeSource(
+    'single-financial-poa',
+    'Durable financial power of attorney',
+    'Financial POA',
+    'Financial agent authority, gifting powers, third-party reliance language, and effective date.',
+    {
+      sections: 12,
+      words: '0',
+    }
+  ),
+  makeSource(
+    'single-prenup',
+    'Prenuptial agreement',
+    'Prenup',
+    'Separate-property classifications, spousal waivers, disclosure exhibits, and transfer limits.',
+    {
+      format: 'PDF',
+      sections: 15,
+      words: '0',
+      warning: 'Include when the matter has premarital or separate-property constraints',
+    }
+  ),
+];
+
+const estateCoupleSources = initialSources;
+
+const estateOtherTriadChosenSources: DraftingMagicSource[] = estateSingleSources.map((source) => ({
+  ...source,
+  id: source.id.replace(/^single-/, 'other-'),
+  base: source.role === 'Trust',
+}));
+
+const familyPrenupSources: DraftingMagicSource[] = [
+  makeSource('family-prenup-package', 'Prenup document package', 'Prenup package', 'Prenup drafts, disclosures, schedules, and related negotiation documents.', {
+    base: true,
+    sections: 8,
+    words: '0',
+  }),
+];
+
+const familyConfirmationSources: DraftingMagicSource[] = [
+  makeSource('regional-confirmation', 'Regional confirmation adoption', 'Regional confirmation', 'Regional confirmation/adoption document package.', {
+    base: true,
+    sections: 6,
+    words: '0',
+  }),
+  makeSource('non-regional-confirmation', 'Non-regional confirmation adoption', 'Non-regional confirmation', 'Non-regional confirmation/adoption document package.', {
+    sections: 6,
+    words: '0',
+  }),
+];
+
+const familyKnownDonorSources: DraftingMagicSource[] = [
+  makeSource('known-donor-contract', 'Known donor contract', 'Known donor contract', 'Known donor agreement, parentage terms, clinic requirements, and execution terms.', {
+    base: true,
+    sections: 8,
+    words: '0',
+  }),
+  makeSource('donor-clearance-letter', 'Donor clearance letter', 'Donor document package', 'Donor clearance letter and related clearance requirements for review.', {
+    sections: 5,
+    words: '0',
+  }),
+];
+
+const packetTemplates: PacketTemplate[] = [
+  {
+    id: 'estate-single',
+    pathway: 'estate-planning',
+    label: 'Single person plan',
+    description: 'Trust, pour-over will, AHCD, financial POA, and optional prenup packet.',
+    sources: estateSingleSources,
+    attorneyUpdate: 'New instruction: build a single-person estate-planning packet, reconcile the trust, pour-over will, AHCD, financial POA, and any prenup constraints, and flag missing execution or funding decisions before drafting.',
+  },
+  {
+    id: 'estate-couple',
+    pathway: 'estate-planning',
+    label: 'Couple / married plan',
+    description: 'Trust, pour-over will, AHCD, financial POA, and prenup packet.',
+    sources: estateCoupleSources,
+    attorneyUpdate: defaultAttorneyUpdate,
+  },
+  {
+    id: 'estate-other-triad-chosen',
+    pathway: 'estate-planning',
+    label: 'Other / triad / chosen family',
+    description: 'Trust, pour-over will, AHCD, financial POA, and prenup packet.',
+    sources: estateOtherTriadChosenSources,
+    attorneyUpdate:
+      'New instruction: build an estate-planning packet for an other, triad, or chosen-family structure; reconcile the trust, pour-over will, AHCD, financial POA, and any prenup constraints; and flag role, beneficiary, and execution decisions before drafting.',
+  },
+  {
+    id: 'family-prenup',
+    pathway: 'family-law',
+    label: 'Prenups',
+    description: 'Prenup document package.',
+    sources: familyPrenupSources,
+    attorneyUpdate: 'New instruction: review the prenuptial agreement package, preserve separate-property classifications, and flag any disclosure, waiver, or execution gaps before drafting.',
+  },
+  {
+    id: 'family-confirming-adoption',
+    pathway: 'family-law',
+    label: 'Confirming adoption',
+    description: 'Regional and non-regional confirmation/adoption paths.',
+    sources: familyConfirmationSources,
+    attorneyUpdate: 'New instruction: review the confirmation/adoption packet, identify regional versus non-regional requirements, and generate a document plan with missing filing or execution items flagged.',
+  },
+  {
+    id: 'family-known-donor',
+    pathway: 'family-law',
+    label: 'Known donor contracts',
+    description: 'Known donor contract and donor clearance letter.',
+    sources: familyKnownDonorSources,
+    attorneyUpdate: 'New instruction: review the known donor contract and donor clearance letter, reconcile parentage intent, donor obligations, clinic requirements, and execution steps before drafting.',
+  },
+];
+
+const packetTemplatesById = new Map(packetTemplates.map((template) => [template.id, template]));
 
 const initialRows: ComparisonRow[] = [
   {
@@ -547,6 +747,8 @@ function SectionHeader({ icon, title, meta }: { icon: React.ReactNode; title: st
 export const DraftingMagicPage: React.FC = () => {
   const { ready: sanitizerReady, unlocked: sanitizerUnlocked, tokenCount, daemonStatus } = useSanitizer();
   const [activeTab, setActiveTab] = useState<WorkflowTab>('inputs');
+  const [practicePathway, setPracticePathway] = useState<PracticePathway>('estate-planning');
+  const [packetTemplateId, setPacketTemplateId] = useState<PacketTemplateId>('estate-couple');
   const [sources, setSources] = useState<DraftingMagicSource[]>(initialSources);
   const [rows, setRows] = useState<ComparisonRow[]>(initialRows);
   const [selectedRowId, setSelectedRowId] = useState(initialRows[0].id);
@@ -574,6 +776,8 @@ export const DraftingMagicPage: React.FC = () => {
 
   const selectedRow = rows.find((row) => row.id === selectedRowId) || rows[0];
   const selectedSection = draftSections.find((section) => section.id === selectedSectionId) || draftSections[0] || initialDraftSections[0];
+  const currentPacketTemplate = packetTemplatesById.get(packetTemplateId) || packetTemplates[1];
+  const visiblePacketTemplates = packetTemplates.filter((template) => template.pathway === practicePathway);
   const includedSources = sources.filter((source) => source.included);
   const activeSource =
     sources.find((source) => source.id === activeSourceId && source.included) ||
@@ -650,6 +854,8 @@ export const DraftingMagicPage: React.FC = () => {
       }
 
       setActiveTab(parsed.activeTab || 'inputs');
+      setPracticePathway(parsed.practicePathway || 'estate-planning');
+      setPacketTemplateId(parsed.packetTemplateId || 'estate-couple');
       setSources(parsed.sources);
       setRows(parsed.rows);
       setSelectedRowId(parsed.selectedRowId || parsed.rows[0]?.id || initialRows[0].id);
@@ -681,6 +887,8 @@ export const DraftingMagicPage: React.FC = () => {
       version: 1,
       savedAt,
       activeTab,
+      practicePathway,
+      packetTemplateId,
       sources,
       rows,
       selectedRowId,
@@ -709,6 +917,8 @@ export const DraftingMagicPage: React.FC = () => {
     complianceItems,
     draftSections,
     draftReady,
+    packetTemplateId,
+    practicePathway,
     rows,
     selectedRowId,
     selectedSectionId,
@@ -726,6 +936,33 @@ export const DraftingMagicPage: React.FC = () => {
   const markDraftStale = () => {
     setDraftReady(false);
     setGenerationError(null);
+  };
+
+  const applyPacketTemplate = (templateId: PacketTemplateId) => {
+    const template = packetTemplatesById.get(templateId);
+    if (!template) {
+      return;
+    }
+
+    const nextSources = template.sources.map((source) => ({ ...source }));
+    setPracticePathway(template.pathway);
+    setPacketTemplateId(template.id);
+    setSources(nextSources);
+    setActiveSourceId(nextSources[0]?.id || initialSources[0].id);
+    setAttorneyUpdate(template.attorneyUpdate);
+    setRows(buildPacketComparisonRows(nextSources, template.attorneyUpdate));
+    setSelectedRowId('fiduciary-alignment');
+    setAnalysisFresh(false);
+    setDraftReady(false);
+    setInstructionResult(null);
+    setInstructionError(null);
+  };
+
+  const choosePracticePathway = (pathway: PracticePathway) => {
+    const firstTemplate = packetTemplates.find((template) => template.pathway === pathway);
+    if (firstTemplate) {
+      applyPacketTemplate(firstTemplate.id);
+    }
   };
 
   const toggleSource = (sourceId: string) => {
@@ -1150,6 +1387,8 @@ export const DraftingMagicPage: React.FC = () => {
 
     window.localStorage.removeItem(workspaceStorageKey);
     setActiveTab('inputs');
+    setPracticePathway('estate-planning');
+    setPacketTemplateId('estate-couple');
     setSources(initialSources);
     setRows(initialRows);
     setSelectedRowId(initialRows[0].id);
@@ -1227,10 +1466,10 @@ export const DraftingMagicPage: React.FC = () => {
               <div className="flex flex-wrap items-center gap-2">
                 <h1 className="text-xl font-semibold tracking-normal text-gray-950">Drafting Magic</h1>
                 <Badge tone="success">Workbench prototype</Badge>
-                <Badge tone="info">5 document estate packet</Badge>
+                <Badge tone="info">{currentPacketTemplate.label}</Badge>
               </div>
               <p className="mt-1 max-w-3xl text-sm text-gray-600">
-                Compare trusts, pour-over wills, directives, financial powers of attorney, and prenups before generating a traceable new draft.
+                Compare source documents, resolve inconsistencies, and generate a traceable new draft for the selected practice pathway.
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
@@ -1399,7 +1638,7 @@ export const DraftingMagicPage: React.FC = () => {
                 <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <h2 className="text-lg font-semibold text-gray-950">Prepare the packet</h2>
-                    <p className="mt-1 text-sm text-gray-600">Load the estate-planning documents, confirm the base, and add the new instruction.</p>
+                    <p className="mt-1 text-sm text-gray-600">Choose the practice pathway, load the documents, confirm the base, and add the new instruction.</p>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     <Badge tone={packetComplete ? 'success' : 'warn'}>{includedSources.length} of {sources.length} present</Badge>
@@ -1412,6 +1651,65 @@ export const DraftingMagicPage: React.FC = () => {
                       <Wand2 size={14} />
                       Generate comparison
                     </button>
+                  </div>
+                </div>
+
+                <div className="mb-4 rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <h3 className="text-sm font-semibold text-gray-950">Manage packet</h3>
+                      <p className="mt-1 text-xs leading-5 text-gray-600">Start with a practice pathway, then choose the document package for this matter.</p>
+                    </div>
+                    <Badge tone="info">{currentPacketTemplate.description}</Badge>
+                  </div>
+
+                  <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                    {[
+                      ['estate-planning', 'Estate Planning', 'Single person or couple/married estate-plan packets.'],
+                      ['family-law', 'Family Law', 'Prenups, confirming adoption, and known donor contracts.'],
+                    ].map(([id, label, description]) => {
+                      const active = practicePathway === id;
+                      return (
+                        <button
+                          key={id}
+                          type="button"
+                          onClick={() => choosePracticePathway(id as PracticePathway)}
+                          className={`rounded-lg border p-3 text-left transition ${
+                            active ? 'border-gray-950 bg-gray-950 text-white' : 'border-gray-200 bg-gray-50 text-gray-800 hover:border-pink-300 hover:bg-pink-50'
+                          }`}
+                        >
+                          <div className="text-sm font-semibold">{label}</div>
+                          <p className={`mt-1 text-xs leading-5 ${active ? 'text-gray-200' : 'text-gray-600'}`}>{description}</p>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <div className="mt-3 grid gap-2 md:grid-cols-3">
+                    {visiblePacketTemplates.map((template) => {
+                      const active = packetTemplateId === template.id;
+                      return (
+                        <button
+                          key={template.id}
+                          type="button"
+                          onClick={() => applyPacketTemplate(template.id)}
+                          className={`rounded-lg border p-3 text-left transition ${
+                            active ? 'border-pink-300 bg-pink-50 ring-2 ring-pink-100' : 'border-gray-200 bg-white hover:border-pink-200 hover:bg-pink-50'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="text-sm font-semibold text-gray-950">{template.label}</div>
+                            {active && <Check size={15} className="text-pink-600" />}
+                          </div>
+                          <p className="mt-1 text-xs leading-5 text-gray-600">{template.description}</p>
+                          <div className="mt-2 flex flex-wrap gap-1">
+                            {template.sources.map((source) => (
+                              <Badge key={source.id}>{getSourceDisplayName(source)}</Badge>
+                            ))}
+                          </div>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
 

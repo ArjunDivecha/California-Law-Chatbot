@@ -1,4 +1,4 @@
-export type DraftingMagicSourceRole = 'Trust' | 'Pour-over will' | 'Advance directive' | 'Financial POA' | 'Prenup';
+export type DraftingMagicSourceRole = string;
 
 export interface DraftingMagicSourceForExtraction {
   id: string;
@@ -80,11 +80,15 @@ const issuePatterns = [
   },
 ];
 
-export const getSourceText = (source: DraftingMagicSourceForExtraction) =>
-  source.excerpt?.trim() || sampleSourceTextById[source.id] || source.description;
+const asText = (value: unknown) => (typeof value === 'string' ? value : value == null ? '' : String(value));
+
+export const getSourceText = (source: DraftingMagicSourceForExtraction) => {
+  const excerpt = asText(source.excerpt).trim();
+  return excerpt || sampleSourceTextById[source.id] || asText(source.description);
+};
 
 const sentenceSplit = (text: string) =>
-  text
+  asText(text)
     .replace(/\s+/g, ' ')
     .split(/(?<=[.!?])\s+(?=(?:Article|Section|\d+\.|[A-Z]))/)
     .map((part) => part.trim())
