@@ -289,9 +289,14 @@ for i in $(seq 1 15); do
 done
 
 if curl -sS -m 1 "http://127.0.0.1:$PORT/v1/health" >/tmp/opf-health.json 2>/dev/null; then
-  err "Daemon responded over HTTP, but Safari HTTPS trust is not working yet."
-  err "Check the certificate trust prompt or logs: $LOG_DIR/daemon.err.log"
-  exit 1
+  echo
+  bold "✓ Privacy filter is running"
+  echo
+  warn "Safari will use the local privacy-filter bridge window if HTTPS certificate trust is unavailable."
+  info "You can now return to the chatbot."
+  info "The privacy filter starts automatically when you log in."
+  info "Logs: $LOG_DIR/daemon.err.log"
+  exit 0
 fi
 
 err "Daemon did not start within 15 seconds."

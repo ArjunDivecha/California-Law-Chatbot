@@ -9,7 +9,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { ShieldCheck, Copy, Check, Loader2 } from 'lucide-react';
-import { getHealth } from '../services/sanitization/opfClient';
+import { connectBridge, getHealth, isSafariBrowser } from '../services/sanitization/opfClient';
 
 const INSTALL_CMD =
   'curl -fsSL https://raw.githubusercontent.com/ArjunDivecha/California-Law-Chatbot/codex/drafting-magic/tools/opf-daemon/install-remote.sh | bash';
@@ -21,7 +21,9 @@ interface Props {
 export const DaemonSetupModal: React.FC<Props> = ({ onDismiss }) => {
   const [step, setStep] = useState<'guide' | 'waiting'>('guide');
   const [copied, setCopied] = useState(false);
+  const [connectionHint, setConnectionHint] = useState<string | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleCopy = async () => {
     await navigator.clipboard.writeText(INSTALL_CMD);
@@ -31,21 +33,44 @@ export const DaemonSetupModal: React.FC<Props> = ({ onDismiss }) => {
 
   const handleDone = () => {
     setStep('waiting');
+    setConnectionHint(null);
     if (intervalRef.current) clearInterval(intervalRef.current);
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+
+    if (isSafariBrowser()) {
+      void connectBridge().catch((err) => {
+        setConnectionHint(
+          err instanceof Error && err.message.includes('blocked')
+            ? 'Safari blocked the local privacy-filter window. Allow popups for this site, then click Go back and try again.'
+            : 'Safari needs the local privacy-filter window. If it opened, keep it open and return here.'
+        );
+      });
+    }
 
     const probe = async () => {
       try {
         await getHealth();
         if (intervalRef.current) clearInterval(intervalRef.current);
+        if (timeoutRef.current) clearTimeout(timeoutRef.current);
         onDismiss();
       } catch { /* not running yet */ }
     };
 
     void probe();
     intervalRef.current = setInterval(() => { void probe(); }, 3000);
+    timeoutRef.current = setTimeout(() => {
+      setConnectionHint(
+        isSafariBrowser()
+          ? 'Still waiting. Run the setup command again, approve any macOS trust prompt, and leave the local privacy-filter window open.'
+          : 'Still waiting. Run the setup command again and wait for Terminal to say the privacy filter is running.'
+      );
+    }, 12_000);
   };
 
-  useEffect(() => () => { if (intervalRef.current) clearInterval(intervalRef.current); }, []);
+  useEffect(() => () => {
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+  }, []);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
@@ -93,7 +118,7 @@ export const DaemonSetupModal: React.FC<Props> = ({ onDismiss }) => {
               <li className="flex gap-3">
                 <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-600 text-white text-xs font-bold flex items-center justify-center">3</span>
                 <span className="text-sm text-slate-700">
-                  If macOS asks to trust the local privacy filter, approve it. Wait for Terminal to say <strong>"Privacy filter is running and Safari-ready"</strong>, then click the button below
+                  Wait for Terminal to say the privacy filter is running. In Safari, keep the local privacy-filter window open if one appears.
                 </span>
               </li>
             </ol>
@@ -114,6 +139,11 @@ export const DaemonSetupModal: React.FC<Props> = ({ onDismiss }) => {
             <p className="text-xs text-slate-400 mb-5">
               This will close automatically once the filter is running.
             </p>
+            {connectionHint && (
+              <p className="mb-5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                {connectionHint}
+              </p>
+            )}
             <button
               onClick={() => setStep('guide')}
               className="text-xs text-blue-600 hover:underline"

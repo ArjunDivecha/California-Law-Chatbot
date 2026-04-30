@@ -33,10 +33,23 @@ export const OPF_DAEMON_URLS = [
   'http://localhost:47821',
   'http://[::1]:47821',
 ];
+export const OPF_BRIDGE_URL = 'http://127.0.0.1:47821/bridge';
+const OPF_BRIDGE_ORIGIN = 'http://127.0.0.1:47821';
 
 const DETECT_TIMEOUT_MS = 30_000;
 const HEALTH_TIMEOUT_MS = 1_500;
 let preferredDaemonUrl: string | null = null;
+let bridgeWindow: Window | null = null;
+let bridgeReady = false;
+let bridgeListenerAttached = false;
+const pendingBridgeRequests = new Map<
+  string,
+  {
+    resolve: (res: Response) => void;
+    reject: (err: Error) => void;
+    timer: ReturnType<typeof globalThis.setTimeout>;
+  }
+>();
 
 // ---------------------------------------------------------------------------
 // Label mapping: OPF labels → our SpanCategory taxonomy
@@ -102,6 +115,131 @@ function daemonUrlCandidates(): string[] {
   return [...new Set(candidates)];
 }
 
+function isBrowserRuntime(): boolean {
+  return typeof window !== 'undefined' && typeof window.open === 'function';
+}
+
+export function isSafariBrowser(): boolean {
+  if (typeof navigator === 'undefined') return false;
+  const ua = navigator.userAgent;
+  return /Safari/i.test(ua) && !/Chrome|Chromium|CriOS|Edg|OPR|Firefox/i.test(ua);
+}
+
+function normalizeHeaders(headers: HeadersInit | undefined): Record<string, string> {
+  if (!headers) return {};
+  if (headers instanceof Headers) return Object.fromEntries(headers.entries());
+  if (Array.isArray(headers)) return Object.fromEntries(headers);
+  return headers;
+}
+
+function attachBridgeListener(): void {
+  if (!isBrowserRuntime() || bridgeListenerAttached) return;
+  window.addEventListener('message', (event) => {
+    if (event.origin !== OPF_BRIDGE_ORIGIN) return;
+    const data = event.data as {
+      type?: string;
+      id?: string;
+      ok?: boolean;
+      status?: number;
+      body?: unknown;
+      error?: string;
+    } | null;
+    if (!data || typeof data !== 'object') return;
+    if (data.type === 'opf-bridge-ready') {
+      bridgeReady = true;
+      return;
+    }
+    if (data.type !== 'opf-bridge-response' || typeof data.id !== 'string') return;
+    const pending = pendingBridgeRequests.get(data.id);
+    if (!pending) return;
+    pendingBridgeRequests.delete(data.id);
+    globalThis.clearTimeout(pending.timer);
+    if (!data.ok) {
+      pending.reject(new Error(data.error || `OPF bridge http ${data.status ?? 0}`));
+      return;
+    }
+    pending.resolve(
+      new Response(JSON.stringify(data.body ?? {}), {
+        status: data.status || 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    );
+  });
+  bridgeListenerAttached = true;
+}
+
+async function waitForBridgeReady(timeoutMs: number): Promise<void> {
+  if (bridgeReady) return;
+  await new Promise<void>((resolve, reject) => {
+    const started = Date.now();
+    const timer = globalThis.setInterval(() => {
+      if (bridgeReady) {
+        globalThis.clearInterval(timer);
+        resolve();
+        return;
+      }
+      if (Date.now() - started >= timeoutMs) {
+        globalThis.clearInterval(timer);
+        reject(new Error('OPF bridge did not become ready'));
+      }
+    }, 100);
+  });
+}
+
+export async function connectBridge(timeoutMs = 12_000): Promise<void> {
+  if (!isBrowserRuntime()) throw new Error('OPF bridge is only available in a browser');
+  attachBridgeListener();
+  if (!bridgeWindow || bridgeWindow.closed) {
+    bridgeWindow = window.open(
+      OPF_BRIDGE_URL,
+      'fflp-opf-privacy-filter-bridge',
+      'popup,width=560,height=420'
+    );
+  } else {
+    bridgeWindow.focus();
+  }
+  if (!bridgeWindow) {
+    throw new Error('Safari blocked the privacy filter bridge window');
+  }
+  await waitForBridgeReady(timeoutMs);
+}
+
+async function fetchViaBridge(
+  path: string,
+  init: RequestInit,
+  timeoutMs: number
+): Promise<Response> {
+  if (!isBrowserRuntime()) throw new Error('OPF bridge is only available in a browser');
+  attachBridgeListener();
+  if (!bridgeReady || !bridgeWindow || bridgeWindow.closed) {
+    throw new Error('OPF bridge is not connected');
+  }
+  const id =
+    typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  const body = typeof init.body === 'string' ? init.body : undefined;
+
+  return new Promise<Response>((resolve, reject) => {
+    const timer = globalThis.setTimeout(() => {
+      pendingBridgeRequests.delete(id);
+      reject(new Error(`OPF bridge timed out after ${timeoutMs}ms`));
+    }, timeoutMs);
+    pendingBridgeRequests.set(id, { resolve, reject, timer });
+    bridgeWindow?.postMessage(
+      {
+        type: 'opf-bridge-request',
+        id,
+        path,
+        method: init.method || 'GET',
+        headers: normalizeHeaders(init.headers),
+        body,
+      },
+      OPF_BRIDGE_ORIGIN
+    );
+  });
+}
+
 async function fetchFromDaemon(
   path: string,
   init: RequestInit,
@@ -131,8 +269,14 @@ async function fetchFromDaemon(
     }
   }
 
+  try {
+    return await fetchViaBridge(path, init, timeoutMs);
+  } catch (err) {
+    lastError = err;
+  }
+
   throw new Error(
-    `OPF daemon unreachable on loopback (${daemonUrlCandidates().join(', ')}): ${
+    `OPF daemon unreachable on loopback (${daemonUrlCandidates().join(', ')}, bridge): ${
       lastError instanceof Error ? lastError.message : String(lastError)
     }`
   );

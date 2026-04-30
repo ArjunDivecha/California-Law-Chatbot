@@ -21,6 +21,8 @@ Endpoints:
                        "elapsed_ms": N, "model_loaded": bool }
   GET  /v1/health  → { "ok": true, "model_loaded": bool, "uptime_s": N,
                        "last_request_age_s": N | null, "version": "..." }
+  GET  /bridge     → a local browser bridge used by Safari when a deployed
+                     HTTPS app cannot directly fetch loopback HTTP/HTTPS.
 
 CORS: responds with `Access-Control-Allow-Origin: *` so the chatbot (running on
 vercel.app) can call this localhost service.
@@ -204,10 +206,27 @@ class OPFRequestHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(payload)
 
+    def _send_html(self, status: int, html: str) -> None:
+        payload = html.encode("utf-8")
+        self.send_response(status)
+        self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.send_header("Content-Length", str(len(payload)))
+        self.send_header("Cache-Control", "no-store")
+        self.send_header(
+            "Content-Security-Policy",
+            "default-src 'none'; script-src 'unsafe-inline'; "
+            "style-src 'unsafe-inline'; connect-src 'self'",
+        )
+        self.end_headers()
+        self.wfile.write(payload)
+
     def do_OPTIONS(self) -> None:  # noqa: N802
         self._send_json(204, {})
 
     def do_GET(self) -> None:  # noqa: N802
+        if self.path == "/bridge":
+            self._send_html(200, _bridge_html())
+            return
         if self.path == "/v1/health":
             svc: OPFService = self.server.opf_service  # type: ignore[attr-defined]
             self._send_json(
@@ -263,6 +282,119 @@ class OPFRequestHandler(BaseHTTPRequestHandler):
         except Exception as e:
             logger.exception("detect error: %s", e)
             self._send_json(500, {"error": "internal_error", "message": str(e)})
+
+
+def _bridge_html() -> str:
+    return f"""<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Privacy Filter Bridge</title>
+  <style>
+    body {{
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: #111827;
+      background: #f8fafc;
+    }}
+    main {{
+      max-width: 520px;
+      border: 1px solid #d1d5db;
+      border-radius: 14px;
+      background: #fff;
+      padding: 28px;
+      box-shadow: 0 18px 40px rgba(15, 23, 42, 0.12);
+    }}
+    h1 {{ margin: 0 0 10px; font-size: 22px; }}
+    p {{ margin: 0 0 10px; line-height: 1.5; color: #4b5563; }}
+    .status {{ margin-top: 18px; color: #047857; font-weight: 700; }}
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Privacy filter connected</h1>
+    <p>This local window lets Safari talk to the on-device privacy filter.</p>
+    <p>Keep it open while using the chatbot. Client information is filtered on this Mac before anything is sent out.</p>
+    <div class="status" id="status">Waiting for chatbot...</div>
+  </main>
+  <script>
+    const VERSION = {json.dumps(VERSION)};
+    const statusEl = document.getElementById('status');
+
+    function isAllowedOrigin(origin) {{
+      try {{
+        const url = new URL(origin);
+        if (url.protocol === 'http:' && (url.hostname === '127.0.0.1' || url.hostname === 'localhost')) {{
+          return true;
+        }}
+        if (url.protocol !== 'https:') return false;
+        return (
+          url.hostname === 'california-law-chatbot.vercel.app' ||
+          (url.hostname.endsWith('.vercel.app') && (
+            url.hostname.startsWith('california-law-chatbot-') ||
+            url.hostname.startsWith('california-law-chatb-git-')
+          ))
+        );
+      }} catch {{
+        return false;
+      }}
+    }}
+
+    async function callDaemon(message) {{
+      const path = message.path === '/v1/detect' ? '/v1/detect' : '/v1/health';
+      const init = {{
+        method: message.method === 'POST' ? 'POST' : 'GET',
+        headers: message.headers && typeof message.headers === 'object' ? message.headers : undefined,
+        body: typeof message.body === 'string' ? message.body : undefined,
+        cache: 'no-store',
+      }};
+      const response = await fetch(path, init);
+      const text = await response.text();
+      let body = null;
+      if (text) {{
+        try {{ body = JSON.parse(text); }} catch {{ body = {{ text }}; }}
+      }}
+      return {{ status: response.status, ok: response.ok, body }};
+    }}
+
+    window.addEventListener('message', async (event) => {{
+      if (!isAllowedOrigin(event.origin)) return;
+      const message = event.data || {{}};
+      if (message.type !== 'opf-bridge-request' || typeof message.id !== 'string') return;
+      try {{
+        const result = await callDaemon(message);
+        event.source.postMessage({{
+          type: 'opf-bridge-response',
+          id: message.id,
+          ok: result.ok,
+          status: result.status,
+          body: result.body,
+        }}, event.origin);
+        statusEl.textContent = 'Connected to chatbot';
+      }} catch (err) {{
+        event.source.postMessage({{
+          type: 'opf-bridge-response',
+          id: message.id,
+          ok: false,
+          status: 0,
+          error: err && err.message ? err.message : String(err),
+        }}, event.origin);
+      }}
+    }});
+
+    function announceReady() {{
+      if (window.opener && !window.opener.closed) {{
+        window.opener.postMessage({{ type: 'opf-bridge-ready', version: VERSION }}, '*');
+      }}
+    }}
+    announceReady();
+    setInterval(announceReady, 1000);
+  </script>
+</body>
+</html>"""
 
 
 def main() -> int:

@@ -2,7 +2,7 @@
 
 ## ⚠️ CRITICAL: Sanitization is ALWAYS LOCAL
 
-The OPF daemon and all PII detection runs on the user's machine (`https://localhost:47822` for Safari/deployed HTTPS pages, with `http://127.0.0.1:47821` as the compatibility endpoint). This is non-negotiable — the entire point of the architecture is that client confidential data never leaves the device before being sanitized. **Never suggest moving PII detection server-side, to a cloud function, Railway, Vercel, or any remote service.**
+The OPF daemon and all PII detection runs on the user's machine (`https://localhost:47822` for direct browser calls, `http://127.0.0.1:47821` for compatibility, and `http://127.0.0.1:47821/bridge` as Safari's local bridge when certificate trust blocks direct calls). This is non-negotiable — the entire point of the architecture is that client confidential data never leaves the device before being sanitized. **Never suggest moving PII detection server-side, to a cloud function, Railway, Vercel, or any remote service.**
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 

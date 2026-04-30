@@ -1,6 +1,6 @@
 # OPF Daemon
 
-Local loopback service wrapping [OpenAI Privacy Filter](https://github.com/openai/privacy-filter) so the California Law Chatbot can run client PII detection entirely on-device. The chatbot's browser process calls `https://localhost:47822/v1/detect` first, with `http://127.0.0.1:47821/v1/detect` kept as a compatibility fallback; the daemon returns spans + categories; the chatbot tokenizes locally before any network call.
+Local loopback service wrapping [OpenAI Privacy Filter](https://github.com/openai/privacy-filter) so the California Law Chatbot can run client PII detection entirely on-device. The chatbot's browser process calls `https://localhost:47822/v1/detect` first, with `http://127.0.0.1:47821/v1/detect` and a local `/bridge` window kept as compatibility fallbacks; the daemon returns spans + categories; the chatbot tokenizes locally before any network call.
 
 Bound to `127.0.0.1` only — never reachable from the network.
 
@@ -83,5 +83,7 @@ Response:
 **`/v1/detect` returns 500 on first call**: probably the model download failed mid-flight. Delete `~/.opf/privacy_filter/` and call `/v1/detect` again to retry. Requires internet for the first call only.
 
 **Browser CORS or Safari connection error**: the daemon sends `Access-Control-Allow-Origin: *` by design (loopback-only, no auth). Safari requires the HTTPS loopback endpoint when the app is loaded from Vercel. Check `https://localhost:47822/v1/health` first, then `http://127.0.0.1:47821/v1/health` for backward-compatible HTTP.
+
+**Safari certificate trust still fails**: Safari can use `http://127.0.0.1:47821/bridge` as a local bridge window. The bridge page runs on the same Mac, calls OPF from loopback, and returns only detected spans to the chatbot page via browser `postMessage`.
 
 **Daemon eats RAM forever**: the idle-unload thread should drop the model after 10 minutes. If RAM stays high while idle, check the logs for "idle … unloading OPF model" entries — if absent, the watcher thread crashed; restart the daemon.

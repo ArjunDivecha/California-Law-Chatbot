@@ -280,9 +280,13 @@ for i in $(seq 1 15); do
 done
 
 if curl -sS -m 1 "http://127.0.0.1:$PORT/v1/health" >/tmp/opf-health.json 2>/dev/null; then
-  err "daemon responded over HTTP, but Safari HTTPS trust is not working yet"
-  err "check the certificate trust prompt or logs: $LOG_DIR/daemon.err.log"
-  exit 1
+  bold "✓ daemon alive"
+  cat /tmp/opf-health.json
+  echo
+  warn "local HTTPS certificate is not trusted yet; Safari will use the local bridge window"
+  info "logs: $LOG_DIR/daemon.{out,err}.log"
+  info "to uninstall: $SCRIPT_DIR/uninstall.sh"
+  exit 0
 fi
 
 err "daemon did not respond within 15s"
