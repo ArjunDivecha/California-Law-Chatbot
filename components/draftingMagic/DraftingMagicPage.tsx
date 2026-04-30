@@ -564,7 +564,12 @@ export const DraftingMagicPage: React.FC = () => {
 
   const selectedRow = rows.find((row) => row.id === selectedRowId) || rows[0];
   const selectedSection = draftSections.find((section) => section.id === selectedSectionId) || draftSections[0] || initialDraftSections[0];
-  const activeSource = sources.find((source) => source.id === activeSourceId) || sources[0];
+  const includedSources = sources.filter((source) => source.included);
+  const activeSource =
+    sources.find((source) => source.id === activeSourceId && source.included) ||
+    includedSources[0] ||
+    sources.find((source) => source.id === activeSourceId) ||
+    sources[0];
   const activeSourcePreview = useMemo(() => getSourceText(activeSource), [activeSource]);
   const activeSourcePreviewMode =
     activeSource.inputMode === 'uploaded'
@@ -581,7 +586,6 @@ export const DraftingMagicPage: React.FC = () => {
   );
   const approvedCount = rows.filter((row) => row.approved).length;
   const reviewCount = rows.length - approvedCount;
-  const includedSources = sources.filter((source) => source.included);
   const packetComplete = includedSources.length === sources.length;
   const reviewNeededCount = sources.filter((source) => source.status === 'Needs review').length;
   const isGeneratingDraft = generationStatus !== 'idle';
@@ -715,12 +719,14 @@ export const DraftingMagicPage: React.FC = () => {
   };
 
   const toggleSource = (sourceId: string) => {
-    setSources((current) =>
-      current.map((source) =>
-        source.id === sourceId ? { ...source, included: !source.included, base: source.included ? false : source.base } : source
-      )
+    const target = sources.find((source) => source.id === sourceId);
+    const nextSources = sources.map((source) =>
+      source.id === sourceId ? { ...source, included: !source.included, base: source.included ? false : source.base } : source
     );
-    setActiveSourceId(sourceId);
+    const turnedOffActiveSource = Boolean(target?.included && sourceId === activeSourceId);
+
+    setSources(nextSources);
+    setActiveSourceId(turnedOffActiveSource ? nextSources.find((source) => source.included)?.id || sourceId : sourceId);
     markAnalysisStale();
   };
 
@@ -1451,7 +1457,7 @@ export const DraftingMagicPage: React.FC = () => {
                 </div>
 
                 <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
-                  {sources.map((source) => (
+                  {includedSources.map((source) => (
                     <div
                       key={source.id}
                       className={`rounded-lg border bg-white p-4 shadow-sm transition ${
@@ -1516,6 +1522,11 @@ export const DraftingMagicPage: React.FC = () => {
                       />
                     </div>
                   ))}
+                  {!includedSources.length && (
+                    <div className="rounded-lg border border-dashed border-gray-300 bg-white p-6 text-sm text-gray-600 md:col-span-2 xl:col-span-5">
+                      No packet documents are currently included. Turn documents back on in the Source Library to add them to this workspace.
+                    </div>
+                  )}
                 </div>
 
                 <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
