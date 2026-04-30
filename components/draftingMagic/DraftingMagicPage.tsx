@@ -158,6 +158,16 @@ const defaultStrategy: DraftingMagicStrategy = {
   citations: 'Attorney checklist',
 };
 
+const sourceDisplayNameByRole: Record<SourceRole, string> = {
+  Trust: 'Revocable living trust',
+  'Pour-over will': 'Pour-over will',
+  'Advance directive': 'Advance health care directive',
+  'Financial POA': 'Durable financial power of attorney',
+  Prenup: 'Prenuptial agreement',
+};
+
+const getSourceDisplayName = (source: Pick<DraftingMagicSource, 'role' | 'name'>) => sourceDisplayNameByRole[source.role] || source.name;
+
 const estateMatterModel = [
   {
     id: 'people-roles',
@@ -794,7 +804,6 @@ export const DraftingMagicPage: React.FC = () => {
           source.id === sourceId
             ? {
                 ...source,
-                name: file.name.replace(/\.[^.]+$/, '') || source.name,
                 format: extracted.format,
                 sections: extractedText ? estimateSections(extractedText) : source.sections,
                 words: extractedText ? countWords(extractedText) : source.words,
@@ -851,11 +860,9 @@ export const DraftingMagicPage: React.FC = () => {
 
       replacementCount += count;
       changedSourceCount += 1;
-      const renamed = replaceInstructionText(source.name, replacement.from, replacement.to).nextText;
 
       return {
         ...source,
-        name: renamed || source.name,
         excerpt: nextText,
         inputMode: 'edited' as const,
         sections: estimateSections(nextText),
@@ -869,11 +876,11 @@ export const DraftingMagicPage: React.FC = () => {
         (source) => targetIds.has(source.id) && getSourceText(source).toLowerCase().includes(replacement.to.toLowerCase())
       );
       if (replacementAlreadyPresent) {
-        setInstructionResult(`"${replacement.to}" is already present in ${scope === 'active' ? activeSource.name : 'the included packet'}.`);
+        setInstructionResult(`"${replacement.to}" is already present in ${scope === 'active' ? getSourceDisplayName(activeSource) : 'the included packet'}.`);
         return;
       }
 
-      setInstructionError(`No matches for "${replacement.from}" in ${scope === 'active' ? activeSource.name : 'the included packet'}.`);
+      setInstructionError(`No matches for "${replacement.from}" in ${scope === 'active' ? getSourceDisplayName(activeSource) : 'the included packet'}.`);
       return;
     }
 
@@ -920,7 +927,7 @@ export const DraftingMagicPage: React.FC = () => {
       citations: addField(strategy.citations),
     };
     const sourceIndexes = sources.map((source) => ({
-      name: addField(source.name),
+      name: addField(getSourceDisplayName(source)),
       text: addField(source.excerpt?.trim() || source.description),
       description: addField(source.description),
     }));
@@ -967,7 +974,7 @@ export const DraftingMagicPage: React.FC = () => {
       const fieldIndexes = sourceIndexes[index];
       sanitizedSources.push({
         id: source.id,
-        name: sanitizedFields[fieldIndexes.name],
+        name: getSourceDisplayName({ ...source, name: sanitizedFields[fieldIndexes.name] }),
         role: source.role,
         included: source.included,
         base: source.base,
@@ -1314,7 +1321,7 @@ export const DraftingMagicPage: React.FC = () => {
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <div className="truncate text-sm font-semibold text-gray-950">{source.name}</div>
+                      <div className="truncate text-sm font-semibold text-gray-950">{getSourceDisplayName(source)}</div>
                       <div className="mt-1 flex flex-wrap items-center gap-1">
                         <Badge>{source.role}</Badge>
                         {source.base && <Badge tone="info">Base</Badge>}
@@ -1331,7 +1338,7 @@ export const DraftingMagicPage: React.FC = () => {
                       className={`h-6 w-10 rounded-full border p-0.5 transition ${
                         source.included ? 'border-emerald-200 bg-emerald-100' : 'border-gray-200 bg-gray-100'
                       }`}
-                      aria-label={`${source.included ? 'Exclude' : 'Include'} ${source.name}`}
+                      aria-label={`${source.included ? 'Exclude' : 'Include'} ${getSourceDisplayName(source)}`}
                     >
                       <span
                         className={`block h-4 w-4 rounded-full bg-white shadow transition ${source.included ? 'translate-x-4' : 'translate-x-0'}`}
@@ -1493,7 +1500,7 @@ export const DraftingMagicPage: React.FC = () => {
                         </button>
                         {source.base && <CheckCircle2 size={18} className="text-pink-500" />}
                       </div>
-                      <h3 className="mt-4 text-sm font-semibold text-gray-950">{source.name}</h3>
+                      <h3 className="mt-4 text-sm font-semibold text-gray-950">{getSourceDisplayName(source)}</h3>
                       <p className="mt-2 text-xs leading-5 text-gray-600">
                         {source.description}
                       </p>
@@ -1594,7 +1601,7 @@ export const DraftingMagicPage: React.FC = () => {
                   <div className="rounded-lg border border-pink-100 bg-pink-50 p-4">
                     <div className="text-sm font-semibold text-pink-950">Active packet item</div>
                     <div className="mt-3 rounded-md bg-white/70 p-3">
-                      <div className="text-sm font-semibold text-gray-950">{activeSource.name}</div>
+                      <div className="text-sm font-semibold text-gray-950">{getSourceDisplayName(activeSource)}</div>
                       <p className="mt-2 text-xs leading-5 text-gray-700">{activeSource.description}</p>
                       <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
                         <div>

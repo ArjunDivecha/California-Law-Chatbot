@@ -114,6 +114,43 @@ const confidenceFor = (...snippets: string[]): 'High' | 'Medium' | 'Low' => {
   return 'Low';
 };
 
+const extractTrustDates = (text: string) => {
+  const dates = new Set<string>();
+  const datePattern =
+    /\b(?:dated|date(?:d)?\s+as\s+of)\s+((?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2},\s+\d{4})\b/gi;
+  let match = datePattern.exec(text);
+
+  while (match) {
+    dates.add(match[1].replace(/\s+/g, ' '));
+    match = datePattern.exec(text);
+  }
+
+  return Array.from(dates);
+};
+
+const detectTrustIdentityMismatch = (
+  trust: DraftingMagicSourceForExtraction | undefined,
+  will: DraftingMagicSourceForExtraction | undefined
+) => {
+  if (!trust?.included || !will?.included) {
+    return null;
+  }
+
+  const trustDates = extractTrustDates(getSourceText(trust));
+  const willDates = extractTrustDates(getSourceText(will));
+  const mismatchedDate = trustDates.length > 0 && willDates.length > 0 && !willDates.some((date) => trustDates.includes(date));
+
+  if (!mismatchedDate) {
+    return null;
+  }
+
+  return {
+    trustDates,
+    willDates,
+    summary: `The pour-over will references ${willDates.join(', ')}, while the trust document references ${trustDates.join(', ')}.`,
+  };
+};
+
 export const extractDraftingUnits = (source: DraftingMagicSourceForExtraction): ExtractedDraftingUnit[] => {
   const text = getSourceText(source);
   const sentences = sentenceSplit(text);
@@ -179,6 +216,7 @@ export const buildPacketComparisonRows = (
   const willIdentity = snippetFor(will, ['trust dated', 'residue', 'later amendments', 'pour-over'], 'No pour-over trust identity language detected.');
   const trustIdentity = snippetFor(trust, ['trust', 'restatement', 'dated', 'amendment'], 'No trust identity language detected.');
   const prenupTransfer = snippetFor(prenup, ['transfer', 'separate property', 'community'], 'No prenup transfer constraint detected.');
+  const trustIdentityMismatch = detectTrustIdentityMismatch(trust, will);
 
   const ahcdAuthority = snippetFor(ahcd, ['health care', 'treatment', 'privacy', 'hipaa', 'end-of-life'], 'No AHCD authority language detected.');
   const poaAuthority = snippetFor(poa, ['insurance', 'benefits', 'medical', 'health', 'agent'], 'No financial POA authority language detected.');
@@ -233,8 +271,8 @@ export const buildPacketComparisonRows = (
     },
     {
       id: 'pour-over-alignment',
-      issue: 'Pour-over residuary alignment',
-      rowType: 'Cross-document consistency',
+      issue: trustIdentityMismatch ? 'Trust date mismatch' : 'Pour-over residuary alignment',
+      rowType: trustIdentityMismatch ? 'Cross-document conflict' : 'Cross-document consistency',
       sourceALabel: 'Pour-over will',
       sourceA: willIdentity,
       sourceBLabel: 'Trust',
@@ -242,13 +280,17 @@ export const buildPacketComparisonRows = (
       sourceCLabel: 'Prenup',
       sourceC: prenupTransfer,
       newLawImpact: updateImpact(
-        'Use one trust identity across the will, trust, signing memo, and funding instructions.',
+        trustIdentityMismatch
+          ? `${trustIdentityMismatch.summary} Use one trust identity across the will, trust, signing memo, and funding instructions.`
+          : 'Use one trust identity across the will, trust, signing memo, and funding instructions.',
         ['trust identity', 'pour-over', 'will', 'normalize']
       ),
-      recommendation: 'Keep',
-      rationale: 'The pour-over structure can usually remain, but the trust name/date and any prenup carveouts should be normalized before export.',
+      recommendation: trustIdentityMismatch ? 'Revise' : 'Keep',
+      rationale: trustIdentityMismatch
+        ? 'Do not treat the pour-over reference as ready for drafting until the attorney confirms the operative trust name and date.'
+        : 'The pour-over structure can usually remain, but the trust name/date and any prenup carveouts should be normalized before export.',
       confidence: confidenceFor(willIdentity, trustIdentity, prenupTransfer),
-      approved: true,
+      approved: !trustIdentityMismatch,
     },
     {
       id: 'healthcare-authority',
