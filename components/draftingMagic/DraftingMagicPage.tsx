@@ -62,7 +62,7 @@ type SourceRole =
   | 'Regional confirmation'
   | 'Non-regional confirmation'
   | 'Known donor contract'
-  | 'Donor document package';
+  | 'Donor clearance letter';
 type RowRecommendation = 'Keep' | 'Revise' | 'Discard' | 'Add' | 'Review';
 type SourceInputMode = 'sample' | 'uploaded' | 'pasted' | 'edited';
 type DraftGenerationStatus = 'idle' | 'sanitizing' | 'generating';
@@ -192,7 +192,7 @@ const sourceDisplayNameByRole: Record<SourceRole, string> = {
   'Regional confirmation': 'Regional confirmation adoption',
   'Non-regional confirmation': 'Non-regional confirmation adoption',
   'Known donor contract': 'Known donor contract',
-  'Donor document package': 'Donor clearance letter',
+  'Donor clearance letter': 'Donor clearance letter',
 };
 
 const getSourceDisplayName = (source: Pick<DraftingMagicSource, 'role' | 'name'>) => sourceDisplayNameByRole[source.role] || source.name;
@@ -488,7 +488,7 @@ const familyKnownDonorSources: DraftingMagicSource[] = [
     sections: 8,
     words: '0',
   }),
-  makeSource('donor-clearance-letter', 'Donor clearance letter', 'Donor document package', 'Donor clearance letter and related clearance requirements for review.', {
+  makeSource('donor-clearance-letter', 'Donor clearance letter', 'Donor clearance letter', 'Donor clearance letter and related clearance requirements for review.', {
     sections: 5,
     words: '0',
   }),
@@ -547,6 +547,21 @@ const packetTemplates: PacketTemplate[] = [
 ];
 
 const packetTemplatesById = new Map(packetTemplates.map((template) => [template.id, template]));
+
+const normalizeDraftingSources = (items: DraftingMagicSource[]) =>
+  items.map((source) => {
+    if (source.id === 'donor-document-package' || source.id === 'donor-clearance-letter' || source.name === 'Donor clearance letter') {
+      return {
+        ...source,
+        id: 'donor-clearance-letter',
+        name: 'Donor clearance letter',
+        role: 'Donor clearance letter' as SourceRole,
+        description: 'Donor clearance letter and related clearance requirements for review.',
+      };
+    }
+
+    return source;
+  });
 
 const initialRows: ComparisonRow[] = [
   {
@@ -853,13 +868,14 @@ export const DraftingMagicPage: React.FC = () => {
         return;
       }
 
+      const restoredSources = normalizeDraftingSources(parsed.sources);
       setActiveTab(parsed.activeTab || 'inputs');
       setPracticePathway(parsed.practicePathway || 'estate-planning');
       setPacketTemplateId(parsed.packetTemplateId || 'estate-couple');
-      setSources(parsed.sources);
+      setSources(restoredSources);
       setRows(parsed.rows);
       setSelectedRowId(parsed.selectedRowId || parsed.rows[0]?.id || initialRows[0].id);
-      setActiveSourceId(parsed.activeSourceId || parsed.sources[0]?.id || initialSources[0].id);
+      setActiveSourceId(parsed.activeSourceId === 'donor-document-package' ? 'donor-clearance-letter' : parsed.activeSourceId || restoredSources[0]?.id || initialSources[0].id);
       setAttorneyUpdate(parsed.attorneyUpdate || defaultAttorneyUpdate);
       setAnalysisFresh(Boolean(parsed.analysisFresh));
       setStrategy(parsed.strategy || defaultStrategy);
@@ -944,7 +960,7 @@ export const DraftingMagicPage: React.FC = () => {
       return;
     }
 
-    const nextSources = template.sources.map((source) => ({ ...source }));
+    const nextSources = normalizeDraftingSources(template.sources.map((source) => ({ ...source })));
     setPracticePathway(template.pathway);
     setPacketTemplateId(template.id);
     setSources(nextSources);
@@ -1621,6 +1637,36 @@ export const DraftingMagicPage: React.FC = () => {
                     </button>
                   </div>
 
+                  <div className="mt-2 grid grid-cols-2 gap-2">
+                    <label
+                      htmlFor={`drafting-magic-sidebar-upload-${source.id}`}
+                      className="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-md border border-gray-200 bg-white px-2 py-1.5 text-[11px] font-semibold text-gray-700 hover:border-pink-300 hover:bg-pink-50 hover:text-pink-700"
+                    >
+                      <Upload size={13} />
+                      Upload
+                    </label>
+                    <input
+                      id={`drafting-magic-sidebar-upload-${source.id}`}
+                      type="file"
+                      className="sr-only"
+                      accept=".txt,.md,.doc,.docx,.pdf"
+                      onChange={(event) => {
+                        void handleSourceFile(source.id, event.currentTarget.files?.[0]);
+                        event.currentTarget.value = '';
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveSourceId(source.id);
+                        setActiveTab('inputs');
+                      }}
+                      className="rounded-md border border-gray-200 bg-white px-2 py-1.5 text-[11px] font-semibold text-gray-700 hover:border-pink-300 hover:bg-pink-50 hover:text-pink-700"
+                    >
+                      Open
+                    </button>
+                  </div>
+
                   {source.warning && (
                     <div className="mt-2 flex items-start gap-2 rounded-md bg-amber-50 px-2 py-2 text-xs text-amber-800">
                       <AlertTriangle size={14} className="mt-0.5 shrink-0" />
@@ -1867,6 +1913,23 @@ export const DraftingMagicPage: React.FC = () => {
                           <div className="font-semibold text-gray-800">{activeSource.words}</div>
                         </div>
                       </div>
+                      <label
+                        htmlFor={`drafting-magic-active-upload-${activeSource.id}`}
+                        className="mt-3 inline-flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-md border border-pink-200 bg-white px-2.5 py-2 text-xs font-semibold text-pink-700 hover:border-pink-300 hover:bg-pink-50"
+                      >
+                        <Upload size={14} />
+                        Upload source document
+                      </label>
+                      <input
+                        id={`drafting-magic-active-upload-${activeSource.id}`}
+                        type="file"
+                        className="sr-only"
+                        accept=".txt,.md,.doc,.docx,.pdf"
+                        onChange={(event) => {
+                          void handleSourceFile(activeSource.id, event.currentTarget.files?.[0]);
+                          event.currentTarget.value = '';
+                        }}
+                      />
                       <div className="mt-3 rounded-md border border-pink-100 bg-white px-3 py-2">
                         <div className="flex flex-wrap items-center justify-between gap-2">
                           <div className="text-xs font-semibold text-gray-600">Source preview</div>
