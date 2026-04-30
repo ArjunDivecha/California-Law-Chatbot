@@ -1411,11 +1411,16 @@ export const DraftingMagicPage: React.FC = () => {
                 <div className="mb-4 grid gap-3 xl:grid-cols-[minmax(0,1fr)_340px]">
                   <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
                     <div className="flex flex-wrap items-center justify-between gap-2">
-                      <div className="flex items-center gap-2 text-sm font-semibold text-gray-950">
-                        <UsersRound size={16} />
-                        Matter model
+                      <div>
+                        <div className="flex items-center gap-2 text-sm font-semibold text-gray-950">
+                          <UsersRound size={16} />
+                          Issues Drafting Magic will check
+                        </div>
+                        <p className="mt-1 text-xs leading-5 text-gray-600">
+                          These are the estate-packet issues the comparison step will look for across the included documents.
+                        </p>
                       </div>
-                      <Badge tone="info">Built before drafting</Badge>
+                      <Badge tone="info">Click Generate comparison</Badge>
                     </div>
                     <div className="mt-3 grid gap-2 md:grid-cols-2 2xl:grid-cols-3">
                       {estateMatterModel.map((item) => (
@@ -1435,6 +1440,19 @@ export const DraftingMagicPage: React.FC = () => {
                           <div className="mt-2 text-[11px] font-semibold leading-4 text-pink-700">{item.signal}</div>
                         </button>
                       ))}
+                    </div>
+                    <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-md border border-gray-100 bg-gray-50 px-3 py-2">
+                      <span className="text-xs leading-5 text-gray-600">
+                        Use this as the pre-draft issue checklist. The actual decisions are made in the comparison matrix.
+                      </span>
+                      <button
+                        type="button"
+                        onClick={generateComparison}
+                        className="inline-flex items-center gap-1.5 rounded-md bg-gray-950 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-gray-800"
+                      >
+                        <Wand2 size={13} />
+                        Build issue matrix
+                      </button>
                     </div>
                   </div>
 
