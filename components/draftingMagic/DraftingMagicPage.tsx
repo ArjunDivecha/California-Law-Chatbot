@@ -759,6 +759,34 @@ function SectionHeader({ icon, title, meta }: { icon: React.ReactNode; title: st
   );
 }
 
+function FileUploadControl({
+  label,
+  onFile,
+  className,
+  iconSize = 14,
+}: {
+  label: string;
+  onFile: (file?: File) => void;
+  className: string;
+  iconSize?: number;
+}) {
+  return (
+    <label className={`relative overflow-hidden ${className}`}>
+      <Upload size={iconSize} />
+      {label}
+      <input
+        type="file"
+        className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+        accept=".txt,.md,.doc,.docx,.pdf"
+        onChange={(event) => {
+          onFile(event.currentTarget.files?.[0]);
+          event.currentTarget.value = '';
+        }}
+      />
+    </label>
+  );
+}
+
 export const DraftingMagicPage: React.FC = () => {
   const { ready: sanitizerReady, unlocked: sanitizerUnlocked, tokenCount, daemonStatus } = useSanitizer();
   const [activeTab, setActiveTab] = useState<WorkflowTab>('inputs');
@@ -1638,22 +1666,13 @@ export const DraftingMagicPage: React.FC = () => {
                   </div>
 
                   <div className="mt-2 grid grid-cols-2 gap-2">
-                    <label
-                      htmlFor={`drafting-magic-sidebar-upload-${source.id}`}
-                      className="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-md border border-gray-200 bg-white px-2 py-1.5 text-[11px] font-semibold text-gray-700 hover:border-pink-300 hover:bg-pink-50 hover:text-pink-700"
-                    >
-                      <Upload size={13} />
-                      Upload
-                    </label>
-                    <input
-                      id={`drafting-magic-sidebar-upload-${source.id}`}
-                      type="file"
-                      className="sr-only"
-                      accept=".txt,.md,.doc,.docx,.pdf"
-                      onChange={(event) => {
-                        void handleSourceFile(source.id, event.currentTarget.files?.[0]);
-                        event.currentTarget.value = '';
+                    <FileUploadControl
+                      label="Upload"
+                      iconSize={13}
+                      onFile={(file) => {
+                        void handleSourceFile(source.id, file);
                       }}
+                      className="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-md border border-gray-200 bg-white px-2 py-1.5 text-[11px] font-semibold text-gray-700 hover:border-pink-300 hover:bg-pink-50 hover:text-pink-700"
                     />
                     <button
                       type="button"
@@ -1804,22 +1823,12 @@ export const DraftingMagicPage: React.FC = () => {
                         <Badge tone={source.status === 'Ready' ? 'success' : 'warn'}>{source.status}</Badge>
                       </div>
                       <div className="mt-3 flex flex-wrap gap-2">
-                        <label
-                          htmlFor={`drafting-magic-upload-${source.id}`}
-                          className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-gray-200 bg-white px-2.5 py-2 text-xs font-semibold text-gray-700 hover:border-pink-300 hover:bg-pink-50 hover:text-pink-700"
-                        >
-                          <Upload size={14} />
-                          Upload
-                        </label>
-                        <input
-                          id={`drafting-magic-upload-${source.id}`}
-                          type="file"
-                          className="sr-only"
-                          accept=".txt,.md,.doc,.docx,.pdf"
-                          onChange={(event) => {
-                            void handleSourceFile(source.id, event.currentTarget.files?.[0]);
-                            event.currentTarget.value = '';
+                        <FileUploadControl
+                          label="Upload"
+                          onFile={(file) => {
+                            void handleSourceFile(source.id, file);
                           }}
+                          className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-gray-200 bg-white px-2.5 py-2 text-xs font-semibold text-gray-700 hover:border-pink-300 hover:bg-pink-50 hover:text-pink-700"
                         />
                         <button
                           type="button"
@@ -1913,22 +1922,12 @@ export const DraftingMagicPage: React.FC = () => {
                           <div className="font-semibold text-gray-800">{activeSource.words}</div>
                         </div>
                       </div>
-                      <label
-                        htmlFor={`drafting-magic-active-upload-${activeSource.id}`}
-                        className="mt-3 inline-flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-md border border-pink-200 bg-white px-2.5 py-2 text-xs font-semibold text-pink-700 hover:border-pink-300 hover:bg-pink-50"
-                      >
-                        <Upload size={14} />
-                        Upload source document
-                      </label>
-                      <input
-                        id={`drafting-magic-active-upload-${activeSource.id}`}
-                        type="file"
-                        className="sr-only"
-                        accept=".txt,.md,.doc,.docx,.pdf"
-                        onChange={(event) => {
-                          void handleSourceFile(activeSource.id, event.currentTarget.files?.[0]);
-                          event.currentTarget.value = '';
+                      <FileUploadControl
+                        label="Upload source document"
+                        onFile={(file) => {
+                          void handleSourceFile(activeSource.id, file);
                         }}
+                        className="mt-3 inline-flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-md border border-pink-200 bg-white px-2.5 py-2 text-xs font-semibold text-pink-700 hover:border-pink-300 hover:bg-pink-50"
                       />
                       <div className="mt-3 rounded-md border border-pink-100 bg-white px-3 py-2">
                         <div className="flex flex-wrap items-center justify-between gap-2">
