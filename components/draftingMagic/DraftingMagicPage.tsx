@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertTriangle,
   ArrowRight,
@@ -770,20 +770,34 @@ function FileUploadControl({
   className: string;
   iconSize?: number;
 }) {
+  const inputRef = useRef<HTMLInputElement>(null);
+
   return (
-    <label className={`relative overflow-hidden ${className}`}>
-      <Upload size={iconSize} />
-      {label}
+    <>
+      <button
+        type="button"
+        className={className}
+        onClick={(event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          inputRef.current?.click();
+        }}
+      >
+        <Upload size={iconSize} />
+        {label}
+      </button>
       <input
+        ref={inputRef}
         type="file"
-        className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+        className="hidden"
         accept=".txt,.md,.doc,.docx,.pdf"
         onChange={(event) => {
-          onFile(event.currentTarget.files?.[0]);
+          const file = event.currentTarget.files?.[0];
           event.currentTarget.value = '';
+          onFile(file);
         }}
       />
-    </label>
+    </>
   );
 }
 
