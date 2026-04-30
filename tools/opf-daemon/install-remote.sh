@@ -3,15 +3,16 @@
 # femme & femme LLP — Privacy Filter daemon installer (macOS)
 #
 # Run this once in Terminal:
-#   curl -fsSL https://raw.githubusercontent.com/ArjunDivecha/California-Law-Chatbot/codex/bedrock-confidentiality-migration/tools/opf-daemon/install-remote.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/ArjunDivecha/California-Law-Chatbot/codex/drafting-magic/tools/opf-daemon/install-remote.sh | bash
 #
 # What it does:
 #   1. Checks macOS + Python 3.10+
 #   2. Creates a virtualenv at ~/.opf-daemon/venv
 #   3. Clones openai/privacy-filter and installs the opf package
 #   4. Downloads the daemon script from GitHub
-#   5. Registers it as a launchd agent so it starts automatically at login
-#   6. Probes the health endpoint to confirm it's running
+#   5. Creates a local HTTPS certificate trusted by macOS/Safari
+#   6. Registers it as a launchd agent so it starts automatically at login
+#   7. Probes the HTTPS health endpoint to confirm it's running
 #
 # Uninstall:
 #   launchctl unload ~/Library/LaunchAgents/com.fflp.opf-daemon.plist
@@ -20,20 +21,140 @@
 set -euo pipefail
 
 LABEL="com.fflp.opf-daemon"
+BRANCH="${OPF_INSTALL_BRANCH:-codex/drafting-magic}"
 PORT="47821"
+HTTPS_PORT="47822"
 ROOT="$HOME/.opf-daemon"
 VENV="$ROOT/venv"
 REPO="$ROOT/repo"
 DAEMON_PY="$ROOT/opf_daemon.py"
 LOG_DIR="$ROOT/logs"
+CERT_DIR="$ROOT/certs"
+CA_KEY="$CERT_DIR/fflp-opf-local-ca.key.pem"
+CA_CERT="$CERT_DIR/fflp-opf-local-ca.crt.pem"
+SERVER_KEY="$CERT_DIR/localhost.key.pem"
+SERVER_CERT="$CERT_DIR/localhost.crt.pem"
+SERVER_CHAIN="$CERT_DIR/localhost-chain.crt.pem"
+SERVER_CSR="$CERT_DIR/localhost.csr.pem"
 PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
 
-DAEMON_URL="https://raw.githubusercontent.com/ArjunDivecha/California-Law-Chatbot/codex/bedrock-confidentiality-migration/tools/opf-daemon/opf_daemon.py"
+DAEMON_URL="${OPF_DAEMON_SCRIPT_URL:-https://raw.githubusercontent.com/ArjunDivecha/California-Law-Chatbot/$BRANCH/tools/opf-daemon/opf_daemon.py}"
 
 bold() { printf "\033[1m%s\033[0m\n" "$*"; }
 info() { printf "  %s\n" "$*"; }
 warn() { printf "\033[33m  warn: %s\033[0m\n" "$*"; }
 err()  { printf "\033[31m  error: %s\033[0m\n" "$*" >&2; }
+
+run_with_timeout() {
+  local timeout_s="$1"
+  shift
+  "$@" &
+  local pid=$!
+  local elapsed=0
+  while kill -0 "$pid" 2>/dev/null; do
+    if [[ "$elapsed" -ge "$timeout_s" ]]; then
+      kill "$pid" 2>/dev/null || true
+      wait "$pid" 2>/dev/null || true
+      return 124
+    fi
+    sleep 1
+    elapsed=$((elapsed + 1))
+  done
+  wait "$pid"
+}
+
+ensure_https_cert() {
+  mkdir -p "$CERT_DIR"
+  chmod 700 "$CERT_DIR"
+
+  if [[ ! -f "$CA_CERT" || ! -f "$CA_KEY" ]]; then
+    info "creating local HTTPS certificate authority for Safari"
+    cat > "$CERT_DIR/ca.cnf" <<'CERT_EOF'
+[req]
+prompt = no
+distinguished_name = dn
+x509_extensions = v3_ca
+
+[dn]
+CN = femme and femme LLP OPF Local Privacy Filter CA
+O = femme and femme LLP
+
+[v3_ca]
+subjectKeyIdentifier = hash
+authorityKeyIdentifier = keyid:always,issuer
+basicConstraints = critical,CA:true,pathlen:0
+keyUsage = critical,keyCertSign,cRLSign
+CERT_EOF
+    openssl req -x509 -newkey rsa:2048 -nodes -days 3650 \
+      -keyout "$CA_KEY" \
+      -out "$CA_CERT" \
+      -config "$CERT_DIR/ca.cnf" >/dev/null 2>&1
+  fi
+
+  if [[ ! -f "$SERVER_CERT" || ! -f "$SERVER_KEY" ]] || \
+     ! openssl x509 -checkend 2592000 -noout -in "$SERVER_CERT" >/dev/null 2>&1; then
+    info "creating localhost HTTPS certificate"
+    cat > "$CERT_DIR/server-req.cnf" <<'CERT_EOF'
+[req]
+prompt = no
+distinguished_name = dn
+req_extensions = v3_req
+
+[dn]
+CN = localhost
+O = femme and femme LLP
+
+[v3_req]
+subjectAltName = @alt_names
+
+[alt_names]
+DNS.1 = localhost
+IP.1 = 127.0.0.1
+IP.2 = ::1
+CERT_EOF
+    cat > "$CERT_DIR/server-ext.cnf" <<'CERT_EOF'
+[v3_server]
+subjectAltName = @alt_names
+basicConstraints = critical,CA:false
+keyUsage = critical,digitalSignature,keyEncipherment
+extendedKeyUsage = serverAuth
+subjectKeyIdentifier = hash
+authorityKeyIdentifier = keyid,issuer
+
+[alt_names]
+DNS.1 = localhost
+IP.1 = 127.0.0.1
+IP.2 = ::1
+CERT_EOF
+    openssl req -new -newkey rsa:2048 -nodes \
+      -keyout "$SERVER_KEY" \
+      -out "$SERVER_CSR" \
+      -config "$CERT_DIR/server-req.cnf" >/dev/null 2>&1
+    openssl x509 -req \
+      -in "$SERVER_CSR" \
+      -CA "$CA_CERT" \
+      -CAkey "$CA_KEY" \
+      -CAcreateserial \
+      -out "$SERVER_CERT" \
+      -days 397 \
+      -sha256 \
+      -extfile "$CERT_DIR/server-ext.cnf" \
+      -extensions v3_server >/dev/null 2>&1
+  fi
+
+  cat "$SERVER_CERT" "$CA_CERT" > "$SERVER_CHAIN"
+  chmod 600 "$CA_KEY" "$SERVER_KEY"
+
+  local keychain="$HOME/Library/Keychains/login.keychain-db"
+  if [[ ! -f "$keychain" ]]; then
+    keychain="$HOME/Library/Keychains/login.keychain"
+  fi
+  info "trusting local HTTPS certificate in macOS Keychain"
+  local trust_timeout="${OPF_CERT_TRUST_TIMEOUT_SECONDS:-60}"
+  if ! run_with_timeout "$trust_timeout" security add-trusted-cert -r trustRoot -p ssl -s localhost -k "$keychain" "$CA_CERT" >/dev/null 2>&1; then
+    warn "macOS did not automatically trust the local certificate; Safari will not connect until it is trusted"
+  fi
+}
 
 bold "femme & femme LLP — Privacy Filter installer"
 echo
@@ -90,7 +211,10 @@ info "downloading daemon from GitHub..."
 curl -fsSL "$DAEMON_URL" -o "$DAEMON_PY"
 chmod +x "$DAEMON_PY"
 
-# ── 6. launchd plist ─────────────────────────────────────────────────────────
+# ── 6. HTTPS certificate for Safari/WebKit ───────────────────────────────────
+ensure_https_cert
+
+# ── 7. launchd plist ─────────────────────────────────────────────────────────
 info "registering daemon with macOS launchd..."
 mkdir -p "$(dirname "$PLIST")"
 cat > "$PLIST" <<EOF
@@ -108,6 +232,12 @@ cat > "$PLIST" <<EOF
     <string>127.0.0.1</string>
     <string>--port</string>
     <string>$PORT</string>
+    <string>--https-port</string>
+    <string>$HTTPS_PORT</string>
+    <string>--cert-file</string>
+    <string>$SERVER_CHAIN</string>
+    <string>--key-file</string>
+    <string>$SERVER_KEY</string>
   </array>
   <key>RunAtLoad</key>
   <true/>
@@ -133,22 +263,20 @@ cat > "$PLIST" <<EOF
 </plist>
 EOF
 
-# ── 7. load the agent ────────────────────────────────────────────────────────
+# ── 8. load the agent ────────────────────────────────────────────────────────
 if launchctl list 2>/dev/null | grep -q "$LABEL"; then
   launchctl unload "$PLIST" 2>/dev/null || true
 fi
 launchctl load -w "$PLIST"
 
-# ── 8. health check ──────────────────────────────────────────────────────────
+# ── 9. health check ──────────────────────────────────────────────────────────
 info "waiting for daemon to start..."
 for i in $(seq 1 15); do
-  if curl -sS -m 1 "http://127.0.0.1:$PORT/v1/health" >/tmp/opf-health.json 2>/dev/null; then
+  if curl -sS -m 1 "https://localhost:$HTTPS_PORT/v1/health" >/tmp/opf-health.json 2>/dev/null; then
     echo
-    bold "✓ Privacy filter is running"
+    bold "✓ Privacy filter is running and Safari-ready"
     echo
-    info "You can now use the femme & femme LLP chatbot at:"
-    info "  https://california-law-chatbot-git-c996e5-arjundivecha-gmailcoms-projects.vercel.app"
-    echo
+    info "You can now return to the chatbot."
     info "The privacy filter starts automatically when you log in."
     info "Logs: $LOG_DIR/daemon.err.log"
     echo
@@ -159,6 +287,12 @@ for i in $(seq 1 15); do
   fi
   sleep 1
 done
+
+if curl -sS -m 1 "http://127.0.0.1:$PORT/v1/health" >/tmp/opf-health.json 2>/dev/null; then
+  err "Daemon responded over HTTP, but Safari HTTPS trust is not working yet."
+  err "Check the certificate trust prompt or logs: $LOG_DIR/daemon.err.log"
+  exit 1
+fi
 
 err "Daemon did not start within 15 seconds."
 err "Check logs: $LOG_DIR/daemon.err.log"

@@ -37,13 +37,25 @@ if (!PROMPT) {
 // ---------------------------------------------------------------------------
 
 async function detectViaOpf(text) {
-  const res = await fetch('http://127.0.0.1:47821/v1/detect', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ text }),
-  });
-  if (!res.ok) throw new Error(`OPF daemon HTTP ${res.status}`);
-  return res.json();
+  const urls = [
+    'https://localhost:47822/v1/detect',
+    'http://127.0.0.1:47821/v1/detect',
+  ];
+  let lastError;
+  for (const url of urls) {
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text }),
+      });
+      if (!res.ok) throw new Error(`OPF daemon HTTP ${res.status}`);
+      return res.json();
+    } catch (err) {
+      lastError = err;
+    }
+  }
+  throw lastError;
 }
 
 // ---------------------------------------------------------------------------

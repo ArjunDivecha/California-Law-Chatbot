@@ -14,7 +14,8 @@
 #   4. Copies opf_daemon.py to ~/.opf-daemon/opf_daemon.py.
 #   5. Writes ~/Library/LaunchAgents/com.fflp.opf-daemon.plist.
 #   6. Loads the agent (kickstarts the daemon).
-#   7. Probes http://127.0.0.1:47821/v1/health and prints the response.
+#   7. Creates a local HTTPS certificate trusted by macOS/Safari.
+#   8. Probes https://localhost:47822/v1/health and prints the response.
 #
 # Uninstall: see uninstall.sh.
 
@@ -22,11 +23,19 @@ set -euo pipefail
 
 LABEL="com.fflp.opf-daemon"
 PORT="${OPF_DAEMON_PORT:-47821}"
+HTTPS_PORT="${OPF_DAEMON_HTTPS_PORT:-47822}"
 ROOT="$HOME/.opf-daemon"
 VENV="$ROOT/venv"
 REPO="$ROOT/repo"
 DAEMON_PY="$ROOT/opf_daemon.py"
 LOG_DIR="$ROOT/logs"
+CERT_DIR="$ROOT/certs"
+CA_KEY="$CERT_DIR/fflp-opf-local-ca.key.pem"
+CA_CERT="$CERT_DIR/fflp-opf-local-ca.crt.pem"
+SERVER_KEY="$CERT_DIR/localhost.key.pem"
+SERVER_CERT="$CERT_DIR/localhost.crt.pem"
+SERVER_CHAIN="$CERT_DIR/localhost-chain.crt.pem"
+SERVER_CSR="$CERT_DIR/localhost.csr.pem"
 PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
@@ -34,6 +43,117 @@ bold() { printf "\033[1m%s\033[0m\n" "$*"; }
 info() { printf "  %s\n" "$*"; }
 warn() { printf "\033[33m  warn: %s\033[0m\n" "$*"; }
 err()  { printf "\033[31m  error: %s\033[0m\n" "$*" >&2; }
+
+run_with_timeout() {
+  local timeout_s="$1"
+  shift
+  "$@" &
+  local pid=$!
+  local elapsed=0
+  while kill -0 "$pid" 2>/dev/null; do
+    if [[ "$elapsed" -ge "$timeout_s" ]]; then
+      kill "$pid" 2>/dev/null || true
+      wait "$pid" 2>/dev/null || true
+      return 124
+    fi
+    sleep 1
+    elapsed=$((elapsed + 1))
+  done
+  wait "$pid"
+}
+
+ensure_https_cert() {
+  mkdir -p "$CERT_DIR"
+  chmod 700 "$CERT_DIR"
+
+  if [[ ! -f "$CA_CERT" || ! -f "$CA_KEY" ]]; then
+    info "creating local HTTPS certificate authority for Safari"
+    cat > "$CERT_DIR/ca.cnf" <<'CERT_EOF'
+[req]
+prompt = no
+distinguished_name = dn
+x509_extensions = v3_ca
+
+[dn]
+CN = femme and femme LLP OPF Local Privacy Filter CA
+O = femme and femme LLP
+
+[v3_ca]
+subjectKeyIdentifier = hash
+authorityKeyIdentifier = keyid:always,issuer
+basicConstraints = critical,CA:true,pathlen:0
+keyUsage = critical,keyCertSign,cRLSign
+CERT_EOF
+    openssl req -x509 -newkey rsa:2048 -nodes -days 3650 \
+      -keyout "$CA_KEY" \
+      -out "$CA_CERT" \
+      -config "$CERT_DIR/ca.cnf" >/dev/null 2>&1
+  fi
+
+  if [[ ! -f "$SERVER_CERT" || ! -f "$SERVER_KEY" ]] || \
+     ! openssl x509 -checkend 2592000 -noout -in "$SERVER_CERT" >/dev/null 2>&1; then
+    info "creating localhost HTTPS certificate"
+    cat > "$CERT_DIR/server-req.cnf" <<'CERT_EOF'
+[req]
+prompt = no
+distinguished_name = dn
+req_extensions = v3_req
+
+[dn]
+CN = localhost
+O = femme and femme LLP
+
+[v3_req]
+subjectAltName = @alt_names
+
+[alt_names]
+DNS.1 = localhost
+IP.1 = 127.0.0.1
+IP.2 = ::1
+CERT_EOF
+    cat > "$CERT_DIR/server-ext.cnf" <<'CERT_EOF'
+[v3_server]
+subjectAltName = @alt_names
+basicConstraints = critical,CA:false
+keyUsage = critical,digitalSignature,keyEncipherment
+extendedKeyUsage = serverAuth
+subjectKeyIdentifier = hash
+authorityKeyIdentifier = keyid,issuer
+
+[alt_names]
+DNS.1 = localhost
+IP.1 = 127.0.0.1
+IP.2 = ::1
+CERT_EOF
+    openssl req -new -newkey rsa:2048 -nodes \
+      -keyout "$SERVER_KEY" \
+      -out "$SERVER_CSR" \
+      -config "$CERT_DIR/server-req.cnf" >/dev/null 2>&1
+    openssl x509 -req \
+      -in "$SERVER_CSR" \
+      -CA "$CA_CERT" \
+      -CAkey "$CA_KEY" \
+      -CAcreateserial \
+      -out "$SERVER_CERT" \
+      -days 397 \
+      -sha256 \
+      -extfile "$CERT_DIR/server-ext.cnf" \
+      -extensions v3_server >/dev/null 2>&1
+  fi
+
+  cat "$SERVER_CERT" "$CA_CERT" > "$SERVER_CHAIN"
+  chmod 600 "$CA_KEY" "$SERVER_KEY"
+
+  local keychain="$HOME/Library/Keychains/login.keychain-db"
+  if [[ ! -f "$keychain" ]]; then
+    keychain="$HOME/Library/Keychains/login.keychain"
+  fi
+  info "trusting local HTTPS certificate in macOS Keychain"
+  local trust_timeout="${OPF_CERT_TRUST_TIMEOUT_SECONDS:-60}"
+  if ! run_with_timeout "$trust_timeout" security add-trusted-cert -r trustRoot -p ssl -s localhost -k "$keychain" "$CA_CERT" >/dev/null 2>&1; then
+    warn "macOS did not automatically trust the local certificate; Safari will not connect until it is trusted"
+  fi
+}
 
 bold "OPF daemon installer"
 
@@ -85,7 +205,10 @@ info "installing daemon script to $DAEMON_PY"
 cp "$SCRIPT_DIR/opf_daemon.py" "$DAEMON_PY"
 chmod +x "$DAEMON_PY"
 
-# 5. plist
+# 5. HTTPS certificate for Safari/WebKit
+ensure_https_cert
+
+# 6. plist
 info "writing launchd plist to $PLIST"
 mkdir -p "$(dirname "$PLIST")"
 cat > "$PLIST" <<EOF
@@ -103,6 +226,12 @@ cat > "$PLIST" <<EOF
     <string>127.0.0.1</string>
     <string>--port</string>
     <string>$PORT</string>
+    <string>--https-port</string>
+    <string>$HTTPS_PORT</string>
+    <string>--cert-file</string>
+    <string>$SERVER_CHAIN</string>
+    <string>--key-file</string>
+    <string>$SERVER_KEY</string>
   </array>
   <key>RunAtLoad</key>
   <true/>
@@ -128,7 +257,7 @@ cat > "$PLIST" <<EOF
 </plist>
 EOF
 
-# 6. (re)load
+# 7. (re)load
 if launchctl list | grep -q "$LABEL"; then
   info "reloading existing daemon"
   launchctl unload "$PLIST" 2>/dev/null || true
@@ -136,11 +265,11 @@ fi
 launchctl load -w "$PLIST"
 info "launchd loaded $LABEL"
 
-# 7. probe health (give it a moment to bind)
-info "probing http://127.0.0.1:$PORT/v1/health (waiting up to 10s)"
-for i in 1 2 3 4 5 6 7 8 9 10; do
-  if curl -sS -m 1 "http://127.0.0.1:$PORT/v1/health" >/tmp/opf-health.json 2>/dev/null; then
-    bold "✓ daemon alive"
+# 8. probe health (give it a moment to bind)
+info "probing https://localhost:$HTTPS_PORT/v1/health (waiting up to 15s)"
+for i in $(seq 1 15); do
+  if curl -sS -m 1 "https://localhost:$HTTPS_PORT/v1/health" >/tmp/opf-health.json 2>/dev/null; then
+    bold "✓ daemon alive and Safari-ready"
     cat /tmp/opf-health.json
     echo
     info "logs: $LOG_DIR/daemon.{out,err}.log"
@@ -150,6 +279,12 @@ for i in 1 2 3 4 5 6 7 8 9 10; do
   sleep 1
 done
 
-err "daemon did not respond within 10s"
+if curl -sS -m 1 "http://127.0.0.1:$PORT/v1/health" >/tmp/opf-health.json 2>/dev/null; then
+  err "daemon responded over HTTP, but Safari HTTPS trust is not working yet"
+  err "check the certificate trust prompt or logs: $LOG_DIR/daemon.err.log"
+  exit 1
+fi
+
+err "daemon did not respond within 15s"
 err "check logs: $LOG_DIR/daemon.err.log"
 exit 1

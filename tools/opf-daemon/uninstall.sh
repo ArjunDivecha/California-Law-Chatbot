@@ -13,6 +13,7 @@ LABEL="com.fflp.opf-daemon"
 ROOT="$HOME/.opf-daemon"
 PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
 MODEL_DIR="$HOME/.opf/privacy_filter"
+CA_COMMON_NAME="femme and femme LLP OPF Local Privacy Filter CA"
 PURGE_MODEL=0
 
 for arg in "$@"; do
@@ -35,6 +36,15 @@ fi
 if [[ -f "$PLIST" ]]; then
   info "removing $PLIST"
   rm -f "$PLIST"
+fi
+
+keychain="$HOME/Library/Keychains/login.keychain-db"
+if [[ ! -f "$keychain" ]]; then
+  keychain="$HOME/Library/Keychains/login.keychain"
+fi
+if security find-certificate -c "$CA_COMMON_NAME" "$keychain" >/dev/null 2>&1; then
+  info "removing local HTTPS certificate trust from macOS Keychain"
+  security delete-certificate -c "$CA_COMMON_NAME" "$keychain" >/dev/null 2>&1 || true
 fi
 
 if [[ -d "$ROOT" ]]; then

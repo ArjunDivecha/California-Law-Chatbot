@@ -1,6 +1,8 @@
 /**
  * OPF daemon client — talks to the local OpenAI Privacy Filter daemon
- * running on http://127.0.0.1:47821.
+ * running on loopback. Deployed HTTPS pages use the daemon's local HTTPS
+ * endpoint first because Safari/WebKit blocks public HTTPS pages from
+ * calling a plain HTTP localhost service.
  *
  * This module is the SHARED ENTRY POINT for any feature in the app that
  * needs PII detection — the research chat, the drafting magic flow,
@@ -21,9 +23,13 @@
 
 import type { SpanCategory, Span } from '../../api/_shared/sanitization/index.js';
 
-export const OPF_DAEMON_URL = 'http://127.0.0.1:47821';
+export const OPF_DAEMON_URL = 'https://localhost:47822';
 export const OPF_DAEMON_URLS = [
   OPF_DAEMON_URL,
+  'https://127.0.0.1:47822',
+  'https://[::1]:47822',
+  // Backward compatibility for existing Chrome/local-development installs.
+  'http://127.0.0.1:47821',
   'http://localhost:47821',
   'http://[::1]:47821',
 ];

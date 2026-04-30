@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
 """
-OPF Daemon — local HTTP service wrapping OpenAI Privacy Filter.
+OPF Daemon — local loopback service wrapping OpenAI Privacy Filter.
 
 Architecture:
-  - HTTP server bound to 127.0.0.1 only (loopback). Never accessible from the network.
+  - HTTP/HTTPS servers bound to 127.0.0.1 only (loopback). Never accessible
+    from the network.
+  - HTTPS is used by Safari/WebKit when the chatbot itself is served from
+    https://*.vercel.app; HTTP is kept for local development and older installs.
   - Model is NOT loaded at process start. First /v1/detect request triggers a load (~1.4s).
   - A background thread watches idle time. If no requests for IDLE_UNLOAD_SECONDS,
     the model is dereferenced and Python's GC reclaims the memory (~3GB → ~50MB).
@@ -32,6 +35,7 @@ from __future__ import annotations
 
 import json
 import logging
+import ssl
 import sys
 import threading
 import time
@@ -40,6 +44,7 @@ from typing import Any, Optional
 
 VERSION = "0.1.0"
 DEFAULT_PORT = 47821
+DEFAULT_HTTPS_PORT = 47822
 IDLE_UNLOAD_SECONDS = 600  # 10 minutes
 IDLE_CHECK_INTERVAL_SECONDS = 30
 LOAD_TIMEOUT_SECONDS = 60   # cap on model load wall time
@@ -172,6 +177,10 @@ def _idle_watcher(service: OPFService) -> None:
 # HTTP layer
 # ---------------------------------------------------------------------------
 
+class OPFHTTPServer(ThreadingHTTPServer):
+    allow_reuse_address = True
+
+
 class OPFRequestHandler(BaseHTTPRequestHandler):
     server_version = f"opf-daemon/{VERSION}"
 
@@ -261,6 +270,9 @@ def main() -> int:
 
     parser = argparse.ArgumentParser(description="OPF local detection daemon")
     parser.add_argument("--port", type=int, default=DEFAULT_PORT)
+    parser.add_argument("--https-port", type=int, default=DEFAULT_HTTPS_PORT)
+    parser.add_argument("--cert-file", default=None)
+    parser.add_argument("--key-file", default=None)
     parser.add_argument(
         "--host",
         default="127.0.0.1",
@@ -276,8 +288,28 @@ def main() -> int:
         return 2
 
     service = OPFService()
-    server = ThreadingHTTPServer((args.host, args.port), OPFRequestHandler)
+    server = OPFHTTPServer((args.host, args.port), OPFRequestHandler)
     server.opf_service = service  # type: ignore[attr-defined]
+
+    https_server: OPFHTTPServer | None = None
+    https_thread: threading.Thread | None = None
+    if args.cert_file and args.key_file:
+        try:
+            https_server = OPFHTTPServer((args.host, args.https_port), OPFRequestHandler)
+            https_server.opf_service = service  # type: ignore[attr-defined]
+            context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+            if hasattr(ssl, "TLSVersion"):
+                context.minimum_version = ssl.TLSVersion.TLSv1_2
+            context.load_cert_chain(certfile=args.cert_file, keyfile=args.key_file)
+            https_server.socket = context.wrap_socket(
+                https_server.socket,
+                server_side=True,
+            )
+        except Exception as e:
+            logger.exception("failed to initialize HTTPS listener: %s", e)
+            if https_server is not None:
+                https_server.server_close()
+            https_server = None
 
     watcher = threading.Thread(
         target=_idle_watcher, args=(service,), daemon=True, name="idle-watcher"
@@ -291,6 +323,21 @@ def main() -> int:
         args.port,
         IDLE_UNLOAD_SECONDS,
     )
+    if https_server is not None:
+        https_thread = threading.Thread(
+            target=https_server.serve_forever,
+            daemon=True,
+            name="https-server",
+        )
+        https_thread.start()
+        logger.info(
+            "OPF daemon v%s listening on https://%s:%d",
+            VERSION,
+            args.host,
+            args.https_port,
+        )
+    else:
+        logger.info("HTTPS listener disabled — no cert/key supplied")
     logger.info("model NOT loaded — first /v1/detect request will trigger cold start")
 
     try:
@@ -298,6 +345,11 @@ def main() -> int:
     except KeyboardInterrupt:
         logger.info("shutdown requested")
     finally:
+        if https_server is not None:
+            https_server.shutdown()
+            https_server.server_close()
+        if https_thread is not None:
+            https_thread.join(timeout=2)
         server.server_close()
     return 0
 

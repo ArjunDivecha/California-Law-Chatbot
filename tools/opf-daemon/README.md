@@ -1,6 +1,6 @@
 # OPF Daemon
 
-Local HTTP service wrapping [OpenAI Privacy Filter](https://github.com/openai/privacy-filter) so the California Law Chatbot can run client PII detection entirely on-device. The chatbot's browser process calls `http://127.0.0.1:47821/v1/detect` for every payload that's about to leave the device; the daemon returns spans + categories; the chatbot tokenizes locally before any network call.
+Local loopback service wrapping [OpenAI Privacy Filter](https://github.com/openai/privacy-filter) so the California Law Chatbot can run client PII detection entirely on-device. The chatbot's browser process calls `https://localhost:47822/v1/detect` first, with `http://127.0.0.1:47821/v1/detect` kept as a compatibility fallback; the daemon returns spans + categories; the chatbot tokenizes locally before any network call.
 
 Bound to `127.0.0.1` only — never reachable from the network.
 
@@ -16,9 +16,10 @@ The installer:
 2. Creates a venv at `~/.opf-daemon/venv`.
 3. Clones `openai/privacy-filter` into `~/.opf-daemon/repo` and `pip install -e .`'s it.
 4. Copies the daemon script to `~/.opf-daemon/opf_daemon.py`.
-5. Writes a launchd agent at `~/Library/LaunchAgents/com.fflp.opf-daemon.plist`.
-6. Loads the agent (auto-starts at user login from now on).
-7. Probes `/v1/health`.
+5. Creates a local HTTPS certificate and trusts it in the user's macOS Keychain so Safari can reach the loopback daemon from a deployed HTTPS site.
+6. Writes a launchd agent at `~/Library/LaunchAgents/com.fflp.opf-daemon.plist`.
+7. Loads the agent (auto-starts at user login from now on).
+8. Probes `/v1/health`.
 
 The first `/v1/detect` request after a fresh install will trigger a one-time download of the model (~2.8GB) into `~/.opf/privacy_filter/` and a ~1.4s warmup. Subsequent requests are 70–200ms while the model stays loaded; after 10 minutes idle the model unloads and RAM goes back to ~50MB.
 
@@ -73,7 +74,7 @@ Response:
 - **RAM footprint**:
   - Idle (no requests yet, or after idle unload): ~50MB.
   - Loaded (during active use): ~3GB.
-- **Port**: 47821 by default. Override with `OPF_DAEMON_PORT=12345 ./install.sh`. The chatbot hardcodes 47821 — change both if you change one.
+- **Ports**: HTTP uses 47821 and HTTPS uses 47822 by default. Override with `OPF_DAEMON_PORT=12345 OPF_DAEMON_HTTPS_PORT=12346 ./install.sh`. The chatbot probes the hardcoded default ports; change both if you change either one.
 
 ## Troubleshooting
 
@@ -81,6 +82,6 @@ Response:
 
 **`/v1/detect` returns 500 on first call**: probably the model download failed mid-flight. Delete `~/.opf/privacy_filter/` and call `/v1/detect` again to retry. Requires internet for the first call only.
 
-**Browser CORS error**: the daemon sends `Access-Control-Allow-Origin: *` by design (loopback-only, no auth). If you see a CORS error, check that the request method is `POST` and the request URL is exactly `http://127.0.0.1:47821/v1/detect`.
+**Browser CORS or Safari connection error**: the daemon sends `Access-Control-Allow-Origin: *` by design (loopback-only, no auth). Safari requires the HTTPS loopback endpoint when the app is loaded from Vercel. Check `https://localhost:47822/v1/health` first, then `http://127.0.0.1:47821/v1/health` for backward-compatible HTTP.
 
 **Daemon eats RAM forever**: the idle-unload thread should drop the model after 10 minutes. If RAM stays high while idle, check the logs for "idle … unloading OPF model" entries — if absent, the watcher thread crashed; restart the daemon.

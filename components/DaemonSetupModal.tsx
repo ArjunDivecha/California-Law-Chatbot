@@ -12,7 +12,7 @@ import { ShieldCheck, Copy, Check, Loader2 } from 'lucide-react';
 import { getHealth } from '../services/sanitization/opfClient';
 
 const INSTALL_CMD =
-  'curl -fsSL https://raw.githubusercontent.com/ArjunDivecha/California-Law-Chatbot/codex/bedrock-confidentiality-migration/tools/opf-daemon/install-remote.sh | bash';
+  'curl -fsSL https://raw.githubusercontent.com/ArjunDivecha/California-Law-Chatbot/codex/drafting-magic/tools/opf-daemon/install-remote.sh | bash';
 
 interface Props {
   onDismiss: () => void;
@@ -93,7 +93,7 @@ export const DaemonSetupModal: React.FC<Props> = ({ onDismiss }) => {
               <li className="flex gap-3">
                 <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-600 text-white text-xs font-bold flex items-center justify-center">3</span>
                 <span className="text-sm text-slate-700">
-                  Wait for Terminal to say <strong>"Privacy filter is ready"</strong>, then click the button below
+                  If macOS asks to trust the local privacy filter, approve it. Wait for Terminal to say <strong>"Privacy filter is running and Safari-ready"</strong>, then click the button below
                 </span>
               </li>
             </ol>
