@@ -1415,60 +1415,12 @@ export const DraftingMagicPage: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="mb-4 grid gap-3 xl:grid-cols-[minmax(0,1fr)_340px]">
-                  <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <div>
-                        <div className="flex items-center gap-2 text-sm font-semibold text-gray-950">
-                          <UsersRound size={16} />
-                          Issues Drafting Magic will check
-                        </div>
-                        <p className="mt-1 text-xs leading-5 text-gray-600">
-                          These are the estate-packet issues the comparison step will look for across the included documents.
-                        </p>
-                      </div>
-                      <Badge tone="info">Click Generate comparison</Badge>
-                    </div>
-                    <div className="mt-3 grid gap-2 md:grid-cols-2 2xl:grid-cols-3">
-                      {estateMatterModel.map((item) => (
-                        <button
-                          key={item.id}
-                          type="button"
-                          onClick={() => setActiveTab('compare')}
-                          className="rounded-md border border-gray-200 bg-gray-50 p-3 text-left transition hover:border-pink-200 hover:bg-pink-50"
-                        >
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="text-xs font-semibold text-gray-950">{item.label}</div>
-                            <span className="shrink-0 rounded border border-white bg-white px-1.5 py-0.5 text-[10px] font-semibold text-gray-600">
-                              {item.status}
-                            </span>
-                          </div>
-                          <p className="mt-2 line-clamp-2 text-xs leading-5 text-gray-600">{item.detail}</p>
-                          <div className="mt-2 text-[11px] font-semibold leading-4 text-pink-700">{item.signal}</div>
-                        </button>
-                      ))}
-                    </div>
-                    <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-md border border-gray-100 bg-gray-50 px-3 py-2">
-                      <span className="text-xs leading-5 text-gray-600">
-                        Use this as the pre-draft issue checklist. The actual decisions are made in the comparison matrix.
-                      </span>
-                      <button
-                        type="button"
-                        onClick={generateComparison}
-                        className="inline-flex items-center gap-1.5 rounded-md bg-gray-950 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-gray-800"
-                      >
-                        <Wand2 size={13} />
-                        Build issue matrix
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="rounded-lg border border-emerald-100 bg-emerald-50 p-4">
+                <div className="mb-4 rounded-lg border border-emerald-100 bg-emerald-50 p-4">
                     <div className="flex items-center gap-2 text-sm font-semibold text-emerald-950">
                       <ListChecks size={16} />
                       Law impact path
                     </div>
-                    <div className="mt-3 space-y-2">
+                    <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-5">
                       {lawImpactChecklist.map((item, index) => (
                         <div key={item} className="flex items-start gap-2 text-xs leading-5 text-emerald-900">
                           <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-white text-[11px] font-semibold text-emerald-700">
@@ -1478,7 +1430,6 @@ export const DraftingMagicPage: React.FC = () => {
                         </div>
                       ))}
                     </div>
-                  </div>
                 </div>
 
                 <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
@@ -1539,12 +1490,13 @@ export const DraftingMagicPage: React.FC = () => {
                           Base
                         </button>
                       </div>
-                      <textarea
-                        value={source.excerpt || ''}
-                        onChange={(event) => handleSourcePaste(source.id, event.target.value)}
-                        className="mt-3 h-20 w-full resize-none rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-xs leading-5 text-gray-700 outline-none transition placeholder:text-gray-400 focus:border-pink-300 focus:bg-white focus:ring-2 focus:ring-pink-100"
-                        placeholder={`Paste ${source.role.toLowerCase()} text or notes`}
-                      />
+                      <button
+                        type="button"
+                        onClick={() => setActiveSourceId(source.id)}
+                        className="mt-3 inline-flex w-full items-center justify-center rounded-md border border-gray-200 bg-gray-50 px-2.5 py-2 text-xs font-semibold text-gray-700 hover:border-pink-300 hover:bg-pink-50 hover:text-pink-700"
+                      >
+                        View source text
+                      </button>
                     </div>
                   ))}
                   {!includedSources.length && (
@@ -1622,9 +1574,15 @@ export const DraftingMagicPage: React.FC = () => {
                           <div className="text-xs font-semibold text-gray-600">Source preview</div>
                           <Badge tone={activeSource.inputMode === 'sample' ? 'neutral' : 'success'}>{activeSourcePreviewMode}</Badge>
                         </div>
-                        <p className="mt-2 max-h-28 overflow-y-auto whitespace-pre-wrap text-xs leading-5 text-gray-700">
-                          {activeSourcePreview || 'No source text loaded yet. Upload a file or paste text into this packet slot.'}
-                        </p>
+                        <textarea
+                          value={activeSource.excerpt || ''}
+                          onChange={(event) => handleSourcePaste(activeSource.id, event.target.value)}
+                          className="mt-2 h-36 w-full resize-none rounded-md border border-pink-100 bg-white px-3 py-2 text-xs leading-5 text-gray-700 outline-none transition placeholder:text-gray-400 focus:border-pink-300 focus:ring-2 focus:ring-pink-100"
+                          placeholder={`Paste ${activeSource.role.toLowerCase()} text or notes`}
+                        />
+                        {!activeSource.excerpt?.trim() && activeSourcePreview && (
+                          <p className="mt-2 max-h-24 overflow-y-auto whitespace-pre-wrap text-xs leading-5 text-gray-600">{activeSourcePreview}</p>
+                        )}
                       </div>
                     </div>
                     <div className="mt-3 rounded-md bg-white/70 p-3">
@@ -1765,6 +1723,53 @@ export const DraftingMagicPage: React.FC = () => {
                 <div className="mb-4">
                   <h2 className="text-lg font-semibold text-gray-950">Drafting strategy</h2>
                   <p className="mt-1 text-sm text-gray-600">Choose the drafting posture before generating the new document.</p>
+                </div>
+
+                <div className="mb-4 rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <div className="flex items-center gap-2 text-sm font-semibold text-gray-950">
+                        <UsersRound size={16} />
+                        Issues Drafting Magic will check
+                      </div>
+                      <p className="mt-1 text-xs leading-5 text-gray-600">
+                        These checks shape the draft plan after the packet comparison has been generated.
+                      </p>
+                    </div>
+                    <Badge tone={analysisFresh ? 'success' : 'warn'}>{analysisFresh ? 'Matrix current' : 'Generate comparison first'}</Badge>
+                  </div>
+                  <div className="mt-3 grid gap-2 md:grid-cols-2 2xl:grid-cols-5">
+                    {estateMatterModel.map((item) => (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => setActiveTab('compare')}
+                        className="rounded-md border border-gray-200 bg-gray-50 p-3 text-left transition hover:border-pink-200 hover:bg-pink-50"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="text-xs font-semibold text-gray-950">{item.label}</div>
+                          <span className="shrink-0 rounded border border-white bg-white px-1.5 py-0.5 text-[10px] font-semibold text-gray-600">
+                            {item.status}
+                          </span>
+                        </div>
+                        <p className="mt-2 line-clamp-2 text-xs leading-5 text-gray-600">{item.detail}</p>
+                        <div className="mt-2 text-[11px] font-semibold leading-4 text-pink-700">{item.signal}</div>
+                      </button>
+                    ))}
+                  </div>
+                  <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-md border border-gray-100 bg-gray-50 px-3 py-2">
+                    <span className="text-xs leading-5 text-gray-600">
+                      Use this as the pre-draft coverage checklist. The actual decisions stay in the comparison matrix.
+                    </span>
+                    <button
+                      type="button"
+                      onClick={generateComparison}
+                      className="inline-flex items-center gap-1.5 rounded-md bg-gray-950 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-gray-800"
+                    >
+                      <Wand2 size={13} />
+                      Build issue matrix
+                    </button>
+                  </div>
                 </div>
 
                 <div className="grid gap-4 xl:grid-cols-2">
