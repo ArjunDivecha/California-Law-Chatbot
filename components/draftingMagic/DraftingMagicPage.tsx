@@ -44,7 +44,7 @@ import { buildPacketComparisonRows, extractDraftingUnits, getSourceText } from '
 type WorkflowTab = 'inputs' | 'compare' | 'strategy' | 'draft' | 'review';
 type SourceRole = 'Trust' | 'Pour-over will' | 'Advance directive' | 'Financial POA' | 'Prenup';
 type RowRecommendation = 'Keep' | 'Revise' | 'Discard' | 'Add' | 'Review';
-type SourceInputMode = 'sample' | 'uploaded' | 'pasted';
+type SourceInputMode = 'sample' | 'uploaded' | 'pasted' | 'edited';
 type DraftGenerationStatus = 'idle' | 'sanitizing' | 'generating';
 type DraftSanitizationMethod = 'opf' | 'heuristic' | 'mixed';
 type DraftExportStatus = 'idle' | 'exporting';
@@ -220,6 +220,52 @@ const estimateSections = (text: string) => {
 const getFileFormat = (fileName: string) => {
   const extension = fileName.split('.').pop();
   return extension ? extension.toUpperCase() : 'File';
+};
+
+const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+const cleanInstructionTerm = (value: string) =>
+  value
+    .trim()
+    .replace(/^["'“”‘’]+|["'“”‘’.,;:!?]+$/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+const parseReplacementInstruction = (instruction: string): { from: string; to: string } | null => {
+  const cleaned = instruction.replace(/[“”]/g, '"').replace(/[‘’]/g, "'").trim();
+  const replacementPatterns: Array<{ regex: RegExp; reverse?: boolean }> = [
+    { regex: /\b(?:replace|swap)\s+(.+?)\s+(?:with|for)\s+(.+?)(?:[.!?])?$/i },
+    { regex: /\b(?:change|rename)\s+(.+?)\s+to\s+(.+?)(?:[.!?])?$/i },
+    { regex: /\b(?:use|insert|put|inserting)\s+(.+?)\s+(?:instead\s+of|insetad\s+of|instaed\s+of|insted\s+of|in\s+place\s+of)\s+(.+?)(?:[.!?])?$/i, reverse: true },
+  ];
+
+  for (const pattern of replacementPatterns) {
+    const match = cleaned.match(pattern.regex);
+    if (!match) continue;
+
+    const first = cleanInstructionTerm(match[1] || '');
+    const second = cleanInstructionTerm(match[2] || '');
+    const from = pattern.reverse ? second : first;
+    const to = pattern.reverse ? first : second;
+    const vagueReplacement = /^(?:a\s+)?(?:new\s+)?name$|^(?:someone|client|person)$/i;
+
+    if (from.length > 1 && to.length > 1 && !vagueReplacement.test(to)) {
+      return { from, to };
+    }
+  }
+
+  return null;
+};
+
+const replaceInstructionText = (text: string, from: string, to: string) => {
+  const expression = new RegExp(escapeRegExp(from), 'gi');
+  let count = 0;
+  const nextText = text.replace(expression, () => {
+    count += 1;
+    return to;
+  });
+
+  return { nextText, count };
 };
 
 const initialSources: DraftingMagicSource[] = [
@@ -513,6 +559,8 @@ export const DraftingMagicPage: React.FC = () => {
   const [draftExportError, setDraftExportError] = useState<string | null>(null);
   const [lastDocxExportedAt, setLastDocxExportedAt] = useState<string | null>(null);
   const [regeneratingSectionId, setRegeneratingSectionId] = useState<string | null>(null);
+  const [instructionResult, setInstructionResult] = useState<string | null>(null);
+  const [instructionError, setInstructionError] = useState<string | null>(null);
 
   const selectedRow = rows.find((row) => row.id === selectedRowId) || rows[0];
   const selectedSection = draftSections.find((section) => section.id === selectedSectionId) || draftSections[0] || initialDraftSections[0];
@@ -523,7 +571,9 @@ export const DraftingMagicPage: React.FC = () => {
       ? `Extracted from ${activeSource.uploadedFileName || 'uploaded file'}`
       : activeSource.inputMode === 'pasted'
         ? 'Pasted source text'
-        : 'Built-in sample text';
+        : activeSource.inputMode === 'edited'
+          ? 'Locally edited source text'
+          : 'Built-in sample text';
   const activeSourceUnits = useMemo(() => extractDraftingUnits(activeSource), [activeSource]);
   const extractedUnitCount = useMemo(
     () => sources.reduce((count, source) => (source.included ? count + extractDraftingUnits(source).length : count), 0),
@@ -767,6 +817,67 @@ export const DraftingMagicPage: React.FC = () => {
         )
       );
     }
+  };
+
+  const applyAttorneyInstruction = (scope: 'active' | 'packet') => {
+    const replacement = parseReplacementInstruction(attorneyUpdate);
+    setInstructionResult(null);
+    setInstructionError(null);
+
+    if (!replacement) {
+      setInstructionError('Try a concrete edit like: Replace Maya Chen with Rachel Stone.');
+      return;
+    }
+
+    const targetIds = new Set(scope === 'active' ? [activeSourceId] : sources.filter((source) => source.included).map((source) => source.id));
+    let replacementCount = 0;
+    let changedSourceCount = 0;
+
+    const nextSources = sources.map((source) => {
+      if (!targetIds.has(source.id)) {
+        return source;
+      }
+
+      const { nextText, count } = replaceInstructionText(getSourceText(source), replacement.from, replacement.to);
+      if (!count) {
+        return source;
+      }
+
+      replacementCount += count;
+      changedSourceCount += 1;
+      const renamed = replaceInstructionText(source.name, replacement.from, replacement.to).nextText;
+
+      return {
+        ...source,
+        name: renamed || source.name,
+        excerpt: nextText,
+        inputMode: 'edited' as const,
+        sections: estimateSections(nextText),
+        words: countWords(nextText),
+        status: 'Ready' as const,
+      };
+    });
+
+    if (!replacementCount) {
+      const replacementAlreadyPresent = sources.some(
+        (source) => targetIds.has(source.id) && getSourceText(source).toLowerCase().includes(replacement.to.toLowerCase())
+      );
+      if (replacementAlreadyPresent) {
+        setInstructionResult(`"${replacement.to}" is already present in ${scope === 'active' ? activeSource.name : 'the included packet'}.`);
+        return;
+      }
+
+      setInstructionError(`No matches for "${replacement.from}" in ${scope === 'active' ? activeSource.name : 'the included packet'}.`);
+      return;
+    }
+
+    setSources(nextSources);
+    markAnalysisStale();
+    setInstructionResult(
+      `Applied ${replacementCount} replacement${replacementCount === 1 ? '' : 's'} in ${changedSourceCount} document${
+        changedSourceCount === 1 ? '' : 's'
+      }. Regenerate the comparison before drafting.`
+    );
   };
 
   const toggleApproval = (rowId: string) => {
@@ -1203,7 +1314,7 @@ export const DraftingMagicPage: React.FC = () => {
                         {source.base && <Badge tone="info">Base</Badge>}
                         {source.inputMode !== 'sample' && (
                           <Badge tone={source.inputMode === 'uploaded' ? 'success' : 'info'}>
-                            {source.inputMode === 'uploaded' ? 'Uploaded' : 'Pasted'}
+                            {source.inputMode === 'uploaded' ? 'Uploaded' : source.inputMode === 'edited' ? 'Edited' : 'Pasted'}
                           </Badge>
                         )}
                       </div>
@@ -1409,21 +1520,46 @@ export const DraftingMagicPage: React.FC = () => {
 
                 <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
                   <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-                    <div className="flex items-center justify-between gap-3">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
                       <div className="flex items-center gap-2 text-sm font-semibold text-gray-950">
                         <PencilLine size={16} />
                         Attorney update or new law
                       </div>
-                      <Badge tone={analysisFresh ? 'success' : 'warn'}>{analysisFresh ? 'Matrix current' : 'Needs comparison refresh'}</Badge>
+                      <div className="flex flex-wrap items-center justify-end gap-2">
+                        <Badge tone={analysisFresh ? 'success' : 'warn'}>{analysisFresh ? 'Matrix current' : 'Needs comparison refresh'}</Badge>
+                        <button
+                          type="button"
+                          onClick={() => applyAttorneyInstruction('active')}
+                          className="inline-flex items-center gap-1.5 rounded-md border border-gray-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-gray-700 hover:border-pink-300 hover:bg-pink-50 hover:text-pink-700"
+                        >
+                          <Wand2 size={13} />
+                          Apply to active
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => applyAttorneyInstruction('packet')}
+                          className="inline-flex items-center gap-1.5 rounded-md bg-gray-950 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-gray-800"
+                        >
+                          <Wand2 size={13} />
+                          Apply to packet
+                        </button>
+                      </div>
                     </div>
                     <textarea
                       value={attorneyUpdate}
                       onChange={(event) => {
                         setAttorneyUpdate(event.target.value);
+                        setInstructionResult(null);
+                        setInstructionError(null);
                         markAnalysisStale();
                       }}
                       className="mt-3 h-28 w-full resize-none rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm leading-6 text-gray-700 outline-none transition focus:border-pink-300 focus:bg-white focus:ring-2 focus:ring-pink-100"
                     />
+                    <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+                      <span className="rounded-md bg-gray-50 px-2 py-1 text-gray-500">Try: Replace Maya Chen with Rachel Stone</span>
+                      {instructionResult && <span className="rounded-md bg-emerald-50 px-2 py-1 font-semibold text-emerald-700">{instructionResult}</span>}
+                      {instructionError && <span className="rounded-md bg-amber-50 px-2 py-1 font-semibold text-amber-800">{instructionError}</span>}
+                    </div>
                   </div>
 
                   <div className="rounded-lg border border-pink-100 bg-pink-50 p-4">
