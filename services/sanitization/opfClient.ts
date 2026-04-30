@@ -22,9 +22,15 @@
 import type { SpanCategory, Span } from '../../api/_shared/sanitization/index.js';
 
 export const OPF_DAEMON_URL = 'http://127.0.0.1:47821';
+export const OPF_DAEMON_URLS = [
+  OPF_DAEMON_URL,
+  'http://localhost:47821',
+  'http://[::1]:47821',
+];
 
-const DETECT_TIMEOUT_MS = 10_000;
+const DETECT_TIMEOUT_MS = 30_000;
 const HEALTH_TIMEOUT_MS = 1_500;
+let preferredDaemonUrl: string | null = null;
 
 // ---------------------------------------------------------------------------
 // Label mapping: OPF labels → our SpanCategory taxonomy
@@ -83,39 +89,70 @@ export type DaemonStatus =
   | { state: 'healthy'; health: DaemonHealth }
   | { state: 'unreachable'; error: string };
 
+function daemonUrlCandidates(): string[] {
+  const candidates = preferredDaemonUrl
+    ? [preferredDaemonUrl, ...OPF_DAEMON_URLS]
+    : OPF_DAEMON_URLS;
+  return [...new Set(candidates)];
+}
+
+async function fetchFromDaemon(
+  path: string,
+  init: RequestInit,
+  timeoutMs: number
+): Promise<Response> {
+  let lastError: unknown = null;
+
+  for (const baseUrl of daemonUrlCandidates()) {
+    const ctrl = new AbortController();
+    const timer = globalThis.setTimeout(() => ctrl.abort(), timeoutMs);
+    try {
+      const res = await fetch(`${baseUrl}${path}`, {
+        ...init,
+        cache: 'no-store',
+        mode: 'cors',
+        signal: ctrl.signal,
+      });
+      if (!res.ok) {
+        throw new Error(`${baseUrl}${path} http ${res.status}`);
+      }
+      preferredDaemonUrl = baseUrl;
+      return res;
+    } catch (err) {
+      lastError = err;
+    } finally {
+      globalThis.clearTimeout(timer);
+    }
+  }
+
+  throw new Error(
+    `OPF daemon unreachable on loopback (${daemonUrlCandidates().join(', ')}): ${
+      lastError instanceof Error ? lastError.message : String(lastError)
+    }`
+  );
+}
+
 /**
  * Lightweight health probe. Returns within ~1.5s or rejects.
  */
 export async function getHealth(): Promise<DaemonHealth> {
-  const ctrl = new AbortController();
-  const timer = globalThis.setTimeout(() => ctrl.abort(), HEALTH_TIMEOUT_MS);
-  try {
-    const res = await fetch(`${OPF_DAEMON_URL}/v1/health`, {
-      method: 'GET',
-      signal: ctrl.signal,
-    });
-    if (!res.ok) {
-      throw new Error(`health http ${res.status}`);
-    }
-    const data = (await res.json()) as {
-      ok: boolean;
-      model_loaded: boolean;
-      uptime_s: number;
-      last_request_age_s: number | null;
-      idle_unload_seconds: number;
-      version: string;
-    };
-    return {
-      ok: data.ok,
-      modelLoaded: data.model_loaded,
-      uptimeS: data.uptime_s,
-      lastRequestAgeS: data.last_request_age_s,
-      idleUnloadSeconds: data.idle_unload_seconds,
-      version: data.version,
-    };
-  } finally {
-    globalThis.clearTimeout(timer);
-  }
+  const res = await fetchFromDaemon('/v1/health', { method: 'GET' }, HEALTH_TIMEOUT_MS);
+  const data = (await res.json()) as {
+    ok: boolean;
+    model_loaded: boolean;
+    uptime_s: number;
+    last_request_age_s: number | null;
+    idle_unload_seconds: number;
+    version: string;
+  };
+  return {
+    ok: data.ok,
+    modelLoaded: data.model_loaded,
+    uptimeS: data.uptime_s,
+    lastRequestAgeS: data.last_request_age_s,
+    idleUnloadSeconds: data.idle_unload_seconds,
+    version: data.version,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -163,41 +200,32 @@ export async function detectSpans(
   text: string,
   opts: DetectOptions = {}
 ): Promise<DetectResult> {
-  const ctrl = new AbortController();
-  const timer = globalThis.setTimeout(
-    () => ctrl.abort(),
-    opts.timeoutMs ?? DETECT_TIMEOUT_MS
-  );
-  try {
-    const res = await fetch(`${OPF_DAEMON_URL}/v1/detect`, {
+  const res = await fetchFromDaemon(
+    '/v1/detect',
+    {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ text }),
-      signal: ctrl.signal,
-    });
-    if (!res.ok) {
-      throw new Error(`detect http ${res.status}`);
-    }
-    const data = (await res.json()) as OpfDetectResponse;
-    if (opts.warmupOnly) {
-      return { spans: [], elapsedMs: data.elapsed_ms, modelLoaded: data.model_loaded };
-    }
-    const spans: Span[] = [];
-    for (const raw of data.spans) {
-      const category = opfLabelToCategory(raw.label);
-      if (!category) continue;
-      spans.push({
-        start: raw.start,
-        end: raw.end,
-        category,
-        raw: raw.text,
-        label: `opf:${raw.label}`,
-      });
-    }
-    return { spans, elapsedMs: data.elapsed_ms, modelLoaded: data.model_loaded };
-  } finally {
-    globalThis.clearTimeout(timer);
+    },
+    opts.timeoutMs ?? DETECT_TIMEOUT_MS
+  );
+  const data = (await res.json()) as OpfDetectResponse;
+  if (opts.warmupOnly) {
+    return { spans: [], elapsedMs: data.elapsed_ms, modelLoaded: data.model_loaded };
   }
+  const spans: Span[] = [];
+  for (const raw of data.spans) {
+    const category = opfLabelToCategory(raw.label);
+    if (!category) continue;
+    spans.push({
+      start: raw.start,
+      end: raw.end,
+      category,
+      raw: raw.text,
+      label: `opf:${raw.label}`,
+    });
+  }
+  return { spans, elapsedMs: data.elapsed_ms, modelLoaded: data.model_loaded };
 }
 
 /**

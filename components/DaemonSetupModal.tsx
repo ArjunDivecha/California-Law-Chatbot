@@ -9,6 +9,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { ShieldCheck, Copy, Check, Loader2 } from 'lucide-react';
+import { getHealth } from '../services/sanitization/opfClient';
 
 const INSTALL_CMD =
   'curl -fsSL https://raw.githubusercontent.com/ArjunDivecha/California-Law-Chatbot/codex/bedrock-confidentiality-migration/tools/opf-daemon/install-remote.sh | bash';
@@ -30,15 +31,18 @@ export const DaemonSetupModal: React.FC<Props> = ({ onDismiss }) => {
 
   const handleDone = () => {
     setStep('waiting');
-    intervalRef.current = setInterval(async () => {
+    if (intervalRef.current) clearInterval(intervalRef.current);
+
+    const probe = async () => {
       try {
-        const res = await fetch('http://127.0.0.1:47821/v1/health', { signal: AbortSignal.timeout(1500) });
-        if (res.ok) {
-          clearInterval(intervalRef.current!);
-          onDismiss();
-        }
+        await getHealth();
+        if (intervalRef.current) clearInterval(intervalRef.current);
+        onDismiss();
       } catch { /* not running yet */ }
-    }, 3000);
+    };
+
+    void probe();
+    intervalRef.current = setInterval(() => { void probe(); }, 3000);
   };
 
   useEffect(() => () => { if (intervalRef.current) clearInterval(intervalRef.current); }, []);

@@ -489,7 +489,7 @@ function SectionHeader({ icon, title, meta }: { icon: React.ReactNode; title: st
 }
 
 export const DraftingMagicPage: React.FC = () => {
-  const { ready: sanitizerReady, unlocked: sanitizerUnlocked, tokenCount } = useSanitizer();
+  const { ready: sanitizerReady, unlocked: sanitizerUnlocked, tokenCount, daemonStatus } = useSanitizer();
   const [activeTab, setActiveTab] = useState<WorkflowTab>('inputs');
   const [sources, setSources] = useState<DraftingMagicSource[]>(initialSources);
   const [rows, setRows] = useState<ComparisonRow[]>(initialRows);
@@ -529,6 +529,7 @@ export const DraftingMagicPage: React.FC = () => {
   const reviewNeededCount = sources.filter((source) => source.status === 'Needs review').length;
   const isGeneratingDraft = generationStatus !== 'idle';
   const isExportingDocx = draftExportStatus !== 'idle';
+  const privacyFilterReady = sanitizerReady && sanitizerUnlocked && daemonStatus.state === 'healthy';
   const lockedSectionCount = draftSections.filter((section) => section.locked).length;
   const lastDraftedLabel = lastDraftedAt
     ? new Date(lastDraftedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
@@ -815,6 +816,9 @@ export const DraftingMagicPage: React.FC = () => {
     const markers = rawFields.map((_, index) => `@@DM_FIELD_${String(index).padStart(4, '0')}@@`);
     const combined = rawFields.map((value, index) => `${markers[index]}\n${value}`).join('\n');
     const tokenizedPacket = await tokenizeForWire(combined);
+    if (!tokenizedPacket.usedOpf) {
+      throw new Error('The local privacy filter did not run, so Drafting Magic blocked the cloud draft. Start the privacy filter and try again.');
+    }
     const sanitizedFields = rawFields.map((value, index) => {
       const marker = markers[index];
       const start = tokenizedPacket.sanitized.indexOf(marker);
@@ -913,8 +917,8 @@ export const DraftingMagicPage: React.FC = () => {
   };
 
   const generateDraft = async () => {
-    if (!sanitizerReady || !sanitizerUnlocked) {
-      setGenerationError('Sanitization is not ready on this device yet. Wait for the banner to unlock before generating a cloud draft.');
+    if (!privacyFilterReady) {
+      setGenerationError('The local privacy filter is not connected, so Drafting Magic blocked the cloud draft. Start the privacy filter and try again.');
       setActiveTab('draft');
       return;
     }
@@ -966,8 +970,8 @@ export const DraftingMagicPage: React.FC = () => {
       setActiveTab('draft');
       return;
     }
-    if (!sanitizerReady || !sanitizerUnlocked) {
-      setGenerationError('Sanitization is not ready on this device yet. Wait for the banner to unlock before regenerating a section.');
+    if (!privacyFilterReady) {
+      setGenerationError('The local privacy filter is not connected, so Drafting Magic blocked section regeneration. Start the privacy filter and try again.');
       setActiveTab('draft');
       return;
     }
@@ -1116,6 +1120,9 @@ export const DraftingMagicPage: React.FC = () => {
               </span>
               <Badge tone={saveError ? 'warn' : 'success'}>{saveError || `Saved locally ${lastSavedLabel}`}</Badge>
               <span className="text-gray-500">Cloud drafting receives tokenized packet text; rehydration stays in this browser.</span>
+              <Badge tone={privacyFilterReady ? 'success' : 'warn'}>
+                {privacyFilterReady ? 'Privacy filter connected' : 'Cloud draft blocked until privacy filter connects'}
+              </Badge>
               {lastDraftedLabel && <Badge tone="info">Cloud draft {lastDraftedLabel}</Badge>}
               {lastDraftMethod && <Badge tone={lastDraftMethod === 'opf' ? 'success' : 'warn'}>{lastDraftMethod.toUpperCase()} sanitized</Badge>}
               {lastDocxExportedLabel && <Badge tone="success">DOCX exported {lastDocxExportedLabel}</Badge>}
@@ -1616,7 +1623,7 @@ export const DraftingMagicPage: React.FC = () => {
                     <button
                       type="button"
                       onClick={generateDraft}
-                      disabled={isGeneratingDraft || !sanitizerReady || !sanitizerUnlocked}
+                      disabled={isGeneratingDraft || !privacyFilterReady}
                       className="inline-flex items-center gap-2 rounded-md bg-pink-500 px-3 py-2 text-xs font-semibold text-white hover:bg-pink-600 disabled:cursor-not-allowed disabled:bg-gray-300"
                     >
                       {isGeneratingDraft ? (
@@ -1658,7 +1665,7 @@ export const DraftingMagicPage: React.FC = () => {
                     <button
                       type="button"
                       onClick={generateDraft}
-                      disabled={isGeneratingDraft || !sanitizerReady || !sanitizerUnlocked}
+                      disabled={isGeneratingDraft || !privacyFilterReady}
                       className="inline-flex items-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400"
                     >
                       {isGeneratingDraft ? (
@@ -1784,7 +1791,7 @@ export const DraftingMagicPage: React.FC = () => {
                                 event.stopPropagation();
                                 void regenerateDraftSection(section.id);
                               }}
-                              disabled={isGeneratingDraft || Boolean(section.locked)}
+                              disabled={isGeneratingDraft || Boolean(section.locked) || !privacyFilterReady}
                               className="inline-flex items-center gap-1.5 rounded-md border border-gray-200 bg-white px-2.5 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400"
                             >
                               {isRegeneratingThis ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
@@ -1961,7 +1968,7 @@ export const DraftingMagicPage: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => void regenerateDraftSection(selectedSection.id)}
-                    disabled={isGeneratingDraft || Boolean(selectedSection.locked)}
+                    disabled={isGeneratingDraft || Boolean(selectedSection.locked) || !privacyFilterReady}
                     className="inline-flex items-center gap-1.5 rounded-md border border-gray-200 bg-white px-2.5 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400"
                   >
                     {regeneratingSectionId === selectedSection.id ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
