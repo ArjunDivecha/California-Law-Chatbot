@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   AlertTriangle,
   ArrowRight,
@@ -762,34 +762,22 @@ function SectionHeader({ icon, title, meta }: { icon: React.ReactNode; title: st
 function FileUploadControl({
   label,
   onFile,
-  className,
   iconSize = 14,
 }: {
   label: string;
   onFile: (file?: File) => void;
-  className: string;
   iconSize?: number;
 }) {
-  const inputRef = useRef<HTMLInputElement>(null);
-
   return (
-    <>
-      <button
-        type="button"
-        className={className}
-        onClick={(event) => {
-          event.preventDefault();
-          event.stopPropagation();
-          inputRef.current?.click();
-        }}
-      >
+    <div className="min-w-0">
+      <div className="mb-1 flex items-center gap-1.5 text-[11px] font-semibold text-gray-600">
         <Upload size={iconSize} />
         {label}
-      </button>
+      </div>
       <input
-        ref={inputRef}
         type="file"
-        className="hidden"
+        aria-label={label}
+        className="block w-full cursor-pointer rounded-md border border-gray-200 bg-white text-[11px] text-gray-700 file:mr-2 file:cursor-pointer file:border-0 file:bg-gray-950 file:px-2 file:py-1.5 file:text-[11px] file:font-semibold file:text-white hover:border-pink-300"
         accept=".txt,.md,.doc,.docx,.pdf"
         onChange={(event) => {
           const file = event.currentTarget.files?.[0];
@@ -797,7 +785,7 @@ function FileUploadControl({
           onFile(file);
         }}
       />
-    </>
+    </div>
   );
 }
 
@@ -1686,7 +1674,6 @@ export const DraftingMagicPage: React.FC = () => {
                       onFile={(file) => {
                         void handleSourceFile(source.id, file);
                       }}
-                      className="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-md border border-gray-200 bg-white px-2 py-1.5 text-[11px] font-semibold text-gray-700 hover:border-pink-300 hover:bg-pink-50 hover:text-pink-700"
                     />
                     <button
                       type="button"
@@ -1842,7 +1829,6 @@ export const DraftingMagicPage: React.FC = () => {
                           onFile={(file) => {
                             void handleSourceFile(source.id, file);
                           }}
-                          className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-gray-200 bg-white px-2.5 py-2 text-xs font-semibold text-gray-700 hover:border-pink-300 hover:bg-pink-50 hover:text-pink-700"
                         />
                         <button
                           type="button"
@@ -1941,7 +1927,6 @@ export const DraftingMagicPage: React.FC = () => {
                         onFile={(file) => {
                           void handleSourceFile(activeSource.id, file);
                         }}
-                        className="mt-3 inline-flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-md border border-pink-200 bg-white px-2.5 py-2 text-xs font-semibold text-pink-700 hover:border-pink-300 hover:bg-pink-50"
                       />
                       <div className="mt-3 rounded-md border border-pink-100 bg-white px-3 py-2">
                         <div className="flex flex-wrap items-center justify-between gap-2">
