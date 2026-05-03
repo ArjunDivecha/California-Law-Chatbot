@@ -132,8 +132,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         kv.set(metaKey(id), JSON.stringify(meta)),
         kv.zadd(userKey(userId), { score: now, member: id }),
       ]);
-      const verify = await kv.get(metaKey(id));
-      console.log(`[chats] POST id=${id} userId=${userId} verifyStored=${verify ? 'YES' : 'NO'}`);
       return res.status(201).json(meta);
     }
 
@@ -179,28 +177,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       } catch (e: any) {
         console.error('[chats] GET blob read failed:', e);
       }
-      console.log(`[chats] GET id=${chatId} metaBlobUrl=${meta.blobUrl ?? 'none'} attempts=${JSON.stringify(attempts)}`);
-      return res.status(200).json({ ...meta, messages, _debug: { hasBlobUrl: !!meta.blobUrl, attempts } });
+      const payload: Record<string, unknown> = { ...meta, messages };
+      if (process.env.VERCEL_ENV !== 'production') {
+        payload._debug = { hasBlobUrl: !!meta.blobUrl, attempts };
+      }
+      return res.status(200).json(payload);
     }
 
-    // ── SAVE (upsert) ─────────────────────────────────────────────────────────
+    // ── SAVE ──────────────────────────────────────────────────────────────────
     if (req.method === 'PUT') {
-      const { messages, title } = req.body ?? {};
-      console.log(`[chats] PUT id=${chatId} msgCount=${Array.isArray(messages) ? messages.length : 'not-array'} title=${title}`);
+      const { messages } = req.body ?? {};
       if (!Array.isArray(messages)) return res.status(400).json({ error: 'messages array required' });
 
       const existing = await getMeta(kv, chatId);
-      // Ownership guard only applies if meta already exists; missing meta = auto-create
-      if (existing && existing.userId !== userId) {
-        return res.status(403).json({ error: 'Forbidden' });
-      }
+      // Chat must already exist (created via POST). PUT does not create.
+      if (!existing) return res.status(404).json({ error: 'Not found' });
+      if (existing.userId !== userId) return res.status(403).json({ error: 'Forbidden' });
 
       const now = Date.now();
-      const base: ChatMeta = existing ?? {
-        id: chatId, userId,
-        title: title ?? 'New chat',
-        createdAt: now, updatedAt: now, messageCount: 0,
-      };
+      const base = existing;
       const path = blobPath(userId, chatId);
       let blobResult;
       try {
@@ -215,12 +210,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           access: 'private', contentType: 'application/json', addRandomSuffix: false,
         });
       }
-      const updated: ChatMeta = { ...base, title: title ?? base.title, updatedAt: now, messageCount: messages.length, blobUrl: blobResult.url };
+      // Auto-title only on the first save (transitioning from 0 → N messages).
+      // Subsequent PUTs never touch title; renames go through PATCH.
+      let nextTitle = base.title;
+      if (base.messageCount === 0 && messages.length > 0) {
+        const firstUser = messages.find(m => m.role === 'user');
+        if (firstUser?.text) {
+          const t = firstUser.text.trim();
+          nextTitle = t.length > 60 ? t.slice(0, 60) + '…' : t;
+        }
+      }
+
+      const updated: ChatMeta = {
+        ...base,
+        title: nextTitle,
+        updatedAt: now,
+        messageCount: messages.length,
+        blobUrl: blobResult.url,
+      };
       await Promise.all([
         kv.set(metaKey(chatId), JSON.stringify(updated)),
         kv.zadd(userKey(userId), { score: now, member: chatId }),
       ]);
-      console.log(`[chats] PUT saved ok id=${chatId} msgCount=${messages.length} upsert=${!existing}`);
 
       // ── Prune oldest chats if user exceeds cap ─────────────────────────────
       const MAX_CHATS = 100;
@@ -234,7 +245,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             ...oldest.map(id => kv.del(metaKey(id))),
             ...oldest.map(id => del(blobPath(userId, id)).catch(() => {})),
           ]);
-          console.log(`[chats] pruned ${oldest.length} old chats for user ${userId}`);
         }
       }
 

@@ -130,7 +130,6 @@ export const useChat = (chatId?: string) => {
       })
       .then(data => {
         if (cancelled) return;
-        console.log('[useChat] GET', { chatId, messagesLen: data.messages?.length ?? 0, _debug: data._debug });
         const loaded: ChatMessage[] = data.messages ?? [];
         const localDraft = readLocalDraft(chatId);
         const remoteUpdatedAt = typeof data.updatedAt === 'number' ? data.updatedAt : 0;
@@ -167,39 +166,37 @@ export const useChat = (chatId?: string) => {
   // -------------------------------------------------------------------------
   // Persist messages to backend (debounced)
   // -------------------------------------------------------------------------
-  const scheduleSave = useCallback((updatedMessages: ChatMessage[], title?: string) => {
-    console.log('[scheduleSave] called', { id: currentChatIdRef.current, msgCount: updatedMessages.length });
-    if (!currentChatIdRef.current) { console.warn('[scheduleSave] no chatId, skipping'); return; }
+  const scheduleSave = useCallback((updatedMessages: ChatMessage[]) => {
+    if (!currentChatIdRef.current) return;
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
 
     saveTimerRef.current = setTimeout(async () => {
       const id = currentChatIdRef.current;
-      console.log('[scheduleSave] timer fired', { id, msgCount: updatedMessages.length });
-      if (!id) { console.warn('[scheduleSave] timer fired but no id'); return; }
-      writeLocalDraft(id, updatedMessages, title);
+      if (!id) return;
+      writeLocalDraft(id, updatedMessages);
       try {
-        console.log('[scheduleSave] calling authFetch PUT...');
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => { controller.abort(); console.error('[scheduleSave] authFetch timed out after 15s'); }, 15000);
+        const timeoutId = setTimeout(() => controller.abort(), 15000);
         const res = await authFetch(`/api/chats?id=${id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ messages: updatedMessages, title }),
+          body: JSON.stringify({ messages: updatedMessages }),
           signal: controller.signal,
         });
         clearTimeout(timeoutId);
-        console.log('[scheduleSave] PUT response', res.status);
         if (!res.ok) {
           const body = await res.text().catch(() => '');
           console.error('[scheduleSave] PUT failed:', res.status, body);
           return;
         }
         clearLocalDraft(id);
-        console.log('[scheduleSave] PUT ok, local draft cleared');
-        // Notify sidebar so it can update the title in-place without a full re-fetch
-        if (title) {
-          window.dispatchEvent(new CustomEvent('chat-saved', { detail: { id, title } }));
-        }
+        // Notify sidebar of the server-canonical title (server may have auto-titled on first save)
+        try {
+          const meta = await res.json();
+          if (meta?.title) {
+            window.dispatchEvent(new CustomEvent('chat-saved', { detail: { id, title: meta.title } }));
+          }
+        } catch { /* response parse is best-effort */ }
       } catch (err: any) {
         console.error('[scheduleSave] PUT error:', err?.message ?? err);
       }
@@ -307,7 +304,6 @@ export const useChat = (chatId?: string) => {
           );
         },
         onVerificationComplete: (response: any) => {
-          console.log('[onVerificationComplete] fired', { chatId: currentChatIdRef.current });
           setMessages(prev => {
             const updated = prev.map(msg =>
               msg.id === botMessageId
@@ -319,13 +315,7 @@ export const useChat = (chatId?: string) => {
                   }
                 : msg
             );
-            // Determine title from first user message
-            const firstUser = updated.find(m => m.role === MessageRole.USER);
-            const title = firstUser
-              ? firstUser.text.slice(0, 60) + (firstUser.text.length > 60 ? '…' : '')
-              : undefined;
-            // Schedule save outside the updater via a microtask
-            setTimeout(() => scheduleSave(updated, title), 0);
+            setTimeout(() => scheduleSave(updated), 0);
             return updated;
           });
         },
@@ -361,14 +351,9 @@ export const useChat = (chatId?: string) => {
             }
           : msg
       );
-      // Get updated messages outside state updater, then save
       setMessages(prev => {
         const updated = finalMessages(prev);
-        const firstUser = updated.find(m => m.role === MessageRole.USER);
-        const title = firstUser
-          ? firstUser.text.slice(0, 60) + (firstUser.text.length > 60 ? '…' : '')
-          : undefined;
-        setTimeout(() => scheduleSave(updated, title), 0);
+        setTimeout(() => scheduleSave(updated), 0);
         return updated;
       });
     } catch (error: any) {
@@ -386,12 +371,8 @@ export const useChat = (chatId?: string) => {
               }
             : msg
         );
-        const firstUser = updated.find(m => m.role === MessageRole.USER);
-        const title = firstUser
-          ? firstUser.text.slice(0, 60) + (firstUser.text.length > 60 ? '…' : '')
-          : undefined;
         // Save even on error so the user message is persisted
-        setTimeout(() => scheduleSave(updated, title), 0);
+        setTimeout(() => scheduleSave(updated), 0);
         return updated;
       });
     } finally {

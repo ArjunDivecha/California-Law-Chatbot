@@ -20,7 +20,6 @@
     "@upstash/redis": "^1.37.0",
     "@upstash/vector": "^1.1.5",
     "@vercel/blob": "^2.3.3",
-    "@vercel/kv": "^3.0.0",
     "docx": "^9.5.1",
     "dotenv": "^17.2.3",
     "jspdf": "^4.0.0",
