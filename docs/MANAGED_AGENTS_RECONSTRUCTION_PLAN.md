@@ -14,7 +14,9 @@ The chatbot currently runs an OpenRouter dual-model pipeline (Gemini generator +
 
 **Why now:** ZDR/BAA/SOC 2 paperwork is in flight separately and gates only Phase 5 cutover. Phases 1–4 may run against staging/non-confidential data while paperwork closes.
 
-**Intended outcome:** Delete ~7,800 lines of orchestration. Replace with one Managed Agent + one verifier sub-agent + a thin Vercel proxy (~400 lines) + tool callback handlers for the existing legal-data endpoints. Keep the existing CEB RAG, CourtListener/legislative integrations, sanitization layer, and drafting UI. Net result: lower maintenance burden, cleaner audit trail, and no in-house orchestration code in the malpractice critical path.
+**Intended outcome:** Delete ~7,800 lines of orchestration. Replace with one Managed Agent + one verifier sub-agent + a thin Vercel proxy (~400 lines of shared helpers + 5 thin route files) + tool callback handlers for the existing legal-data endpoints. Keep the existing CEB RAG, CourtListener/legislative integrations, sanitization layer, and drafting UI. Net result: lower maintenance burden, cleaner audit trail, and no in-house orchestration code in the malpractice critical path.
+
+**Supersedes:** This plan supersedes the in-flight `utils/googleGenAI.ts` Google GenAI direct migration referenced in `CLAUDE.md`. That untracked file and its branch will not merge. The stale `CLAUDE.md` reference is scrubbed in Phase 5.
 
 ---
 
@@ -37,7 +39,7 @@ The chatbot currently runs an OpenRouter dual-model pipeline (Gemini generator +
 
 | File / dir | Lines | Disposition |
 |---|---|---|
-| `gemini/chatService.ts` | 3,085 | Shrinks to ~300-line session client (creates session, streams events, displays answer) |
+| `gemini/chatService.ts` | 3,085 | Shrinks to ~300–600 lines (final number is a Phase 1 deliverable to be measured, not asserted up front). Bundles session bootstrap, polling loop, event reconciliation against the Upstash mirror, sanitization-confidence UI state, source-mode advanced toggle, CEB badge rendering. |
 | `agents/` (8 files) | 2,521 | **Deleted** — Anthropic runs the agent loop |
 | `api/orchestrate-document.ts` | 1,239 | Deleted — agent runs the drafting loop in one session |
 | `api/gemini-chat.ts` | 327 | Deleted — generator collapses into the agent |
@@ -46,7 +48,13 @@ The chatbot currently runs an OpenRouter dual-model pipeline (Gemini generator +
 | `services/verifierService.ts` | 447 | Deleted — verifier sub-agent replaces it |
 | **Net deletion** | **~7,800 lines** |
 
-**Kept and rewired:** `api/ceb-search.ts` (266), `api/courtlistener-search.ts`, `api/legislative-search.ts`, `api/legislative-billtext.ts`, `api/verify-citations.ts` (266), `api/serper-scholar.ts`, `services/confidenceGating.ts` (149), `services/guardrailsService.ts` (247), `services/retrievalPruner.ts` (171), `gemini/cebIntegration.ts`, `components/drafting/*` (per §10).
+**Kept and rewired:** `api/ceb-search.ts` (582), `api/courtlistener-search.ts`, `api/legislative-search.ts`, `api/legislative-billtext.ts`, `api/verify-citations.ts` (266), `api/serper-scholar.ts`, `services/confidenceGating.ts` (149), `services/guardrailsService.ts` (247), `services/retrievalPruner.ts` (171), `gemini/cebIntegration.ts`, `components/drafting/*` (per §10).
+
+**Other API endpoints (not touched by this migration, listed for completeness):** `api/chats.ts` (276) — chat history persistence, required for §N in-flight chat compatibility; `api/templates.ts` (522) — drafting template CRUD, drives Phase 2 template selection; `api/export-document.ts` (670) — Word/PDF export, called from drafting UI; `api/config.ts` (15) — client-side config; `api/debug.ts` (38) — env diagnostic. All kept; none rewired.
+
+**Empty stub to delete during cleanup:** `services/geminiService.ts` (0 lines on main).
+
+**Ground-truth correction:** Of the 8 files in `agents/`, all but `agents/citationAgent.ts` (279 lines) call OpenRouter directly. `citationAgent.ts` is regex- and tool-driven via `verifyCitationTool` from `tools.ts`. Doesn't change deletion math — all 8 still go.
 
 ---
 
@@ -109,10 +117,16 @@ Runs in parallel with Phase 1 design; gates only Phase 5 cutover.
 
 **Goal:** Prove one Managed Agent with `ceb_search` and `courtlistener_search` tools beats the current `chatService.ts` pipeline on a 50-question gold set.
 
-**Build:**
+**Phase 1 first gate (Day 0–1, before any other Phase 1 work): SDK capability audit.**
+
+Verify that the installed `@anthropic-ai/sdk` (0.68.0 today, or latest) actually exposes Managed Agents primitives — `beta.agents.create`, `beta.sessions.create`, tool-callback streaming, session resumption. If the SDK does not expose what this plan assumes, the entire architecture from §A onward is invalidated and **Phase 1 immediately becomes the Agent SDK self-hosted fallback (§P)**, not the Managed Agents path. This audit must be the first deliverable; all other Phase 1 work waits on it.
+
+This is not a 0.5-day chore in a long open-items list — it is the single biggest unverified premise in the plan. Time-boxed: 1 day max. Output: written go/no-go on Managed Agents vs Agent SDK fallback, posted before any agent-proxy code is written.
+
+**Build (after SDK audit passes):**
 - One Managed Agent, Opus 4.7, system prompt for California legal research
 - `ceb_search` and `courtlistener_search` as custom tools (LegiScan / OpenStates added in Phase 2)
-- `api/agent-proxy.ts` with polling event endpoint (per §C below)
+- The five `/api/agent/*` route files + `api/_lib/agentProxy.ts` (per §A)
 - App-side event mirror in Upstash KV (per §D below)
 - Test harness: run all 50 questions through both the current pipeline and the new agent
 
@@ -150,7 +164,7 @@ Runs in parallel with Phase 1 design; gates only Phase 5 cutover.
 - Agent generates all sections in one session — no 5-phase pipeline, no four sub-agents
 - Tool set: research tools (Phase 1) + LegiScan + OpenStates + citation_verify
 - Stream sections as they're generated via the polling endpoint
-- Existing Word/PDF export code (in the drafting UI) reused as-is
+- Existing Word/PDF export endpoint (`api/export-document.ts`, 670 lines) reused as-is; drafting UI calls into it unchanged
 
 **Go / no-go:** All 4 templates produce complete drafts with verified citations; word count within ±50% of target; zero hallucinated cases on a 10-document spot-check.
 
@@ -234,7 +248,19 @@ Inserted between Phase 4 and Phase 5.
 
 ### A. Two agents, one Vercel proxy
 
-`api/agent-proxy.ts` (~400 lines):
+Vercel uses file-system routing, so the five endpoints below live as separate files under `api/agent/` with shared logic factored into `api/_lib/agentProxy.ts` (~400 lines of shared helpers: session create, mirror, sanitize, rehydrate, tool dispatch). Each route file is a thin handler that imports from the shared lib.
+
+```
+api/agent/sessions.ts                              POST  /api/agent/sessions
+api/agent/sessions/[id]/events.ts                  GET   /api/agent/sessions/:id/events
+api/agent/sessions/[id]/tools/[tool_call_id].ts    POST  /api/agent/sessions/:id/tools/:tool_call_id
+api/agent/draft.ts                                 POST  /api/agent/draft
+api/agent/verify.ts                                POST  /api/agent/verify
+api/_lib/agentProxy.ts                             shared helpers
+```
+
+Endpoint behaviors:
+
 - `POST /api/agent/sessions` — sanitize input, create Managed Agent session, return `{session_id, mirror_id}`
 - `GET /api/agent/sessions/:id/events?after=:event_id` — poll for new events from Anthropic, mirror to Upstash KV, return events to client (with privileged tokens rehydrated for the client view)
 - `POST /api/agent/sessions/:id/tools/:tool_call_id` — internal tool-callback handler; dispatched to the tool endpoints below
@@ -506,10 +532,12 @@ Most malpractice policies have a UPL (Unauthorized Practice of Law) exclusion. I
 
 | Action | Files |
 |---|---|
-| **Delete entirely** | `agents/` (8 files, 2,521 lines), `api/orchestrate-document.ts` (1,239), `api/gemini-chat.ts` (327), `api/claude-chat.ts` (197), `services/verifierService.ts` (447) |
-| **Replace with thin client** | `gemini/chatService.ts` (3,085 → ~300), `api/anthropic-chat.ts` (85 → ~400, renamed `api/agent-proxy.ts`) |
+| **Delete entirely** | `agents/` (8 files, 2,521 lines), `api/orchestrate-document.ts` (1,239), `api/gemini-chat.ts` (327), `api/claude-chat.ts` (197), `services/verifierService.ts` (447), `services/geminiService.ts` (0, empty stub) |
+| **Replace with thin client** | `gemini/chatService.ts` (3,085 → ~300–600, measured at Phase 1), `api/anthropic-chat.ts` (85 → folded into the new `api/agent/*` route files; helpers in `api/_lib/agentProxy.ts`) |
+| **New** | `api/agent/sessions.ts`, `api/agent/sessions/[id]/events.ts`, `api/agent/sessions/[id]/tools/[tool_call_id].ts`, `api/agent/draft.ts`, `api/agent/verify.ts`, `api/_lib/agentProxy.ts` (~400 lines shared) |
 | **Keep, rewire** | `components/drafting/*` (per Phase 4 audit), `gemini/cebIntegration.ts`, `services/confidenceGating.ts`, `services/guardrailsService.ts`, `services/retrievalPruner.ts` |
-| **Keep as tool callback targets** | `api/ceb-search.ts`, `api/courtlistener-search.ts`, `api/legislative-search.ts`, `api/legislative-billtext.ts`, `api/verify-citations.ts`, `api/serper-scholar.ts` |
+| **Keep as tool callback targets** | `api/ceb-search.ts` (582), `api/courtlistener-search.ts`, `api/legislative-search.ts`, `api/legislative-billtext.ts`, `api/verify-citations.ts` (266), `api/serper-scholar.ts` |
+| **Keep, untouched by migration** | `api/chats.ts` (276, chat history), `api/templates.ts` (522, drafting templates), `api/export-document.ts` (670, Word/PDF), `api/config.ts` (15), `api/debug.ts` (38) |
 | **Env updates** | Drop `OPENROUTER_API_KEY`. Keep `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `UPSTASH_*`, `COURTLISTENER_API_KEY`, `OPENSTATES_API_KEY`, `LEGISCAN_API_KEY` |
 | **Dependencies** | Drop `@google/genai`. `@anthropic-ai/sdk` upgraded if needed for Managed Agents beta methods. |
 | **CLAUDE.md** | Remove stale `utils/googleGenAI.ts` reference; document new architecture |
@@ -535,16 +563,17 @@ The plan-revision phase is not code-verified. The next gate is **Phase 1 spike c
 
 1. **Sanitization branch audit** — pull `codex/drafting-magic-sanitized`, inventory `services/sanitization/`, confirm contents before relying on them in §E and §F
 2. **Self-administered privilege smoke test** (§0.b) — author 30 traps, run against sanitization, fix obvious leaks
-3. **SDK capability audit** — verify `@anthropic-ai/sdk@0.68.0` (or latest) exposes Managed Agents `beta.agents`/`beta.sessions`; identify upgrade path
-4. **Upstash KV mirror schema** — schema for §D, write-pattern load test
-5. **Tool-callback latency baseline** — measure current `chatService.ts` round-trips for Phase 1 comparison
+3. **Upstash KV mirror schema** — schema for §D, write-pattern load test
+4. **Tool-callback latency baseline** — measure current `chatService.ts` round-trips for Phase 1 comparison
+
+(SDK capability audit was previously in this list; promoted to Phase 1's first gate — see "Phase 1 — Spike" §"Phase 1 first gate".)
 
 **User decisions (Arjun):**
 
-6. **ZDR / BAA / SOC 2 status** — closing separately; gates Phase 5
-7. **Malpractice carrier UPL review** — written confirmation required before Phase 5
-8. **Gold question set source** — sanitized F&F query logs vs newly constructed; affects Phase 1 timeline
+5. **ZDR / BAA / SOC 2 status** — closing separately; gates Phase 5
+6. **Malpractice carrier UPL review** — written confirmation required before Phase 5
+7. **Gold question set source** — sanitized F&F query logs vs newly constructed; affects Phase 1 timeline
 
 **Deferred to post-Phase-5:**
 
-9. **Embeddings re-evaluation (Voyage vs OpenAI)** — separate project after migration is stable
+8. **Embeddings re-evaluation (Voyage vs OpenAI)** — separate project after migration is stable
