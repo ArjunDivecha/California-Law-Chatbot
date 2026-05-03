@@ -117,7 +117,7 @@ Runs in parallel with Phase 1 design; gates only Phase 5 cutover.
 
 **Goal:** Prove one Managed Agent with `ceb_search` and `courtlistener_search` tools beats the current `chatService.ts` pipeline on a 50-question gold set.
 
-**Phase 1 first gate (Day 0–1, before any other Phase 1 work): SDK capability audit.**
+**Phase 1 first gate (Day 0–1, before any other Phase 1 work): SDK capability audit. ✅ COMPLETED 2026-05-03 — see `docs/phase-1-sdk-audit.md`. Result: GO with two architecture corrections (already applied to this plan).**
 
 Verify that the installed `@anthropic-ai/sdk` (0.68.0 today, or latest) actually exposes the Managed Agents primitives this plan depends on. Specifically the audit must confirm **all** of the following:
 
@@ -132,9 +132,11 @@ If any of points 1–4 fail, the entire architecture from §A onward is invalida
 This is not a 0.5-day chore in a long open-items list — it is the single biggest unverified premise in the plan. Time-boxed: 1 day max. Output: written go/no-go on Managed Agents vs Agent SDK fallback, posted before any agent-proxy code is written. Each of points 1–5 has an explicit pass/fail in the audit memo.
 
 **Build (after SDK audit passes):**
+- **Upgrade `@anthropic-ai/sdk` from `0.68.0` → `0.92.0` (or latest)** — `0.68.0` has no Managed Agents at all. Smoke test against beta endpoint.
+- **Create two Environments** (`env-allowlisted`, `env-open`) per §B.1; persist their IDs in Vercel env vars and snapshot config to audit log
 - One Managed Agent, Opus 4.7, system prompt for California legal research
 - `ceb_search` and `courtlistener_search` as custom tools (LegiScan / OpenStates added in Phase 2)
-- The five `/api/agent/*` route files + `api/_lib/agentProxy.ts` (per §A)
+- The four `/api/agent/*` route files + `api/_lib/agentProxy.ts` (per §A — note: no `tools/[tool_call_id]` route; tool dispatch is pull-model from inside the events handler)
 - App-side event mirror in Upstash KV (per §D below)
 - Test harness: run all 50 questions through both the current pipeline and the new agent
 
@@ -278,19 +280,26 @@ Vercel uses file-system routing, so the five endpoints below live as separate fi
 ```
 api/agent/sessions.ts                              POST  /api/agent/sessions
 api/agent/sessions/[id]/events.ts                  GET   /api/agent/sessions/:id/events
-api/agent/sessions/[id]/tools/[tool_call_id].ts    POST  /api/agent/sessions/:id/tools/:tool_call_id
 api/agent/draft.ts                                 POST  /api/agent/draft
 api/agent/verify.ts                                POST  /api/agent/verify
-api/_lib/agentProxy.ts                             shared helpers
+api/_lib/agentProxy.ts                             shared helpers (incl. tool dispatcher invoked from events handler)
 ```
 
 Endpoint behaviors:
 
 - `POST /api/agent/sessions` — sanitize input, create Managed Agent session, return `{session_id, mirror_id}`
 - `GET /api/agent/sessions/:id/events?after=:event_id` — poll for new events from Anthropic, mirror to Upstash KV, return events to client (with privileged tokens rehydrated for the client view)
-- `POST /api/agent/sessions/:id/tools/:tool_call_id` — internal tool-callback handler; dispatched to the tool endpoints below
 - `POST /api/agent/draft` — same shape, drafting system prompt
 - `POST /api/agent/verify` — verifier sub-agent session, sees only the final answer + sources
+
+**Tool execution is pull-model, not callback.** Per the SDK audit (`docs/phase-1-sdk-audit.md`, point 4), Anthropic does NOT POST inbound to our endpoints when the agent calls a tool. Instead:
+
+1. Agent emits `BetaManagedAgentsAgentCustomToolUseEvent` in the session event stream
+2. Our `events.ts` handler (or a worker polling `events.list()`) reads the event
+3. We execute the tool locally by calling our existing legal-data endpoints
+4. We POST the result back to Anthropic via `events.send({events: [{type: 'user_custom_tool_result', ...}]})`
+
+There is no `/api/agent/sessions/:id/tools/:tool_call_id` route. Earlier plan drafts assumed a callback model and described that endpoint; it does not exist and should not be created. Tool dispatch lives in `api/_lib/agentProxy.ts` and is invoked from inside the events stream handler.
 
 ### A.1 Route protection & CORS
 
@@ -303,7 +312,7 @@ The existing repo's `api/*` handlers ship `Access-Control-Allow-Origin: *`. **Th
 | Authentication | All `/api/agent/*` routes require a valid Clerk JWT in `Authorization: Bearer <token>`. Unauthenticated requests → 401, no body leaked. |
 | Authorization (session ownership) | `GET /api/agent/sessions/:id/events` and any session-scoped route must verify the calling user owns the `session_id` (via the meta record in Upstash KV, per §D). Cross-user access → 403. |
 | CORS allowlist | `Access-Control-Allow-Origin` set explicitly to `https://<production-domain>` (and the Vercel preview domain during Phase 4). No wildcards. Credentials enabled only for first-party origins. |
-| Internal tool-callback protection | `POST /api/agent/sessions/:id/tools/:tool_call_id` must verify the request originates from Anthropic's Managed Agents callback (signature header or pre-shared secret per Anthropic's documented mechanism). External POSTs to that route → 403. |
+| ~~Internal tool-callback protection~~ | **Removed per SDK audit.** Anthropic does not POST inbound to us; tool execution is pull-model via `events.list()` / `events.stream()`. No inbound endpoint to protect. See §A and `docs/phase-1-sdk-audit.md` point 4. |
 | Method allowlist | Each route registers its allowed methods explicitly; everything else → 405. |
 | Rate limiting | Per-user rate limit on `POST /api/agent/sessions` (e.g. 60/min) to prevent runaway billing. |
 | Request size cap | `1 MB` body limit on session/draft/verify routes; tool-callback routes sized to Anthropic's max event payload. |
@@ -332,10 +341,25 @@ Tool definitions registered with the Managed Agent:
 
 Tool permissions (default-deny):
 - All custom tools: allow, log
-- `web_search` / `web_fetch` (built-in): allow + log; **blocked** when any privileged marker is present in the session
-- `bash` (built-in): require explicit lawyer confirmation
+- `web_search` / `web_fetch` (built-in): allow + log in non-privileged sessions; in privileged sessions, agent runs in a **network-restricted Environment** so the container cannot reach the open internet (see Environments below)
+- `bash` (built-in): require explicit lawyer confirmation via `permission_policy: 'always_ask'` and our event handler returning a `BetaManagedAgentsUserToolConfirmationEvent` only after lawyer approval
 - `file_read` / `file_write`: allow within session workspace; cross-session blocked
 - `file_delete`: never allowed
+
+### B.1 Environments — privilege-aware container network controls
+
+`SessionCreateParams` requires `environment_id` — every session runs in an Anthropic-managed Environment (Firecracker microVM). The SDK exposes `BetaLimitedNetworkParams` for outbound network controls, which is the **mechanism for the privilege boundary** (see SDK audit point 3 workaround B).
+
+Two Environments are pre-created and pinned in app config:
+
+| Environment | Use | Network config |
+|---|---|---|
+| `env-allowlisted` | Privileged sessions (sanitization-flagged input) | `networking: {type: 'limited', allow_mcp_servers: false, allow_package_managers: false, allowed_hosts: ['courtlistener.com', 'www.courtlistener.com', 'openstates.org', 'legiscan.com', 'leginfo.legislature.ca.gov']}` |
+| `env-open` | Non-privileged sessions | `networking: undefined` (defaults to unrestricted) — `web_search` / `web_fetch` available with normal tool permissions |
+
+At session create, the proxy passes `environment_id: privileged ? env-allowlisted-id : env-open-id`. Even if the agent attempts a `web_search` call inside the allowlisted environment, the container's outbound TCP is blocked at the network layer for any host not in the list. This is a **stronger boundary than tool-disabling** because it survives misconfiguration.
+
+Environment IDs are stored in Vercel env vars and snapshotted to the audit log on every session create.
 
 ### C. Connection / streaming model
 
@@ -383,7 +407,7 @@ Sanitization runs in the Vercel proxy *before* any input reaches the Managed Age
 - Token map held in app memory + encrypted Upstash entry, never sent to Anthropic
 - **Privilege hold-back:** if `confidence < 0.98`, the request is queued for mandatory human review with a UI banner; user must explicitly approve sanitized form OR rewrite. Default-deny on ambiguity.
 - **Compound-query defense:** beyond per-token detection, sanitizer runs an n-gram entity-correlation pass; combinations seeded from F&F matter index. Adversarial smoke test (§0.b) and formal review (§0.c) are the empirical checks.
-- **When sanitization is active, web_search and web_fetch are blocked** — we cannot risk client facts leaking into a search query.
+- **When sanitization is active, the agent runs in a network-restricted Environment** — we cannot risk client facts leaking into a search query. The Anthropic-managed container's outbound traffic is allowlisted to legal-data hosts only (`courtlistener.com`, `openstates.org`, `legiscan.com`, `leginfo.legislature.ca.gov`). Even if `web_search` or `web_fetch` is invoked, the container cannot reach the open internet. See §B for Environment configuration. (The earlier plan wording said "tools blocked" — the SDK doesn't support per-session tool toggling; per-session Environment switch is the correct mechanism. See `docs/phase-1-sdk-audit.md` point 3 workaround B.)
 - Audit log records every redaction decision: input hash, redacted spans, replacement tokens, confidence, timestamp, *combination* that triggered a flag (not just individual tokens).
 
 **Token-map retention policy (resolves the audit/discovery vs minimization tension):**
@@ -408,7 +432,7 @@ The earlier "deleted on session end" wording was wrong — corrected here. Phase
 | `statute_lookup` | Code + section identifiers | (lookup args are public refs) |
 | `legiscan_search` / `openstates_search` | Bill numbers, generic policy terms | Client-identifying terms |
 | `citation_verify` | Citation strings | Surrounding privileged context |
-| `web_search` / `web_fetch` | Sanitized queries / public URLs | **Blocked** when privileged marker present |
+| `web_search` / `web_fetch` | Sanitized queries / public URLs | **Network-restricted Environment** when privileged marker present (allowlist: legal-data hosts only). Container-level egress block, not tool-level. See §B and SDK audit. |
 | `bash` | Synthetic / derived data | Client-originated content |
 | `file_read` / `file_write` | Session workspace | Cross-session access |
 
