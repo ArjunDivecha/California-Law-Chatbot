@@ -589,6 +589,70 @@ Most malpractice policies have a UPL (Unauthorized Practice of Law) exclusion. I
 - **Insurance review** — Phase 0 deliverable confirms in writing that the policy covers AI-summarized non-CA authority
 - **Audit:** every cross-jurisdictional response logged with its jurisdiction tag
 
+### Y. Per-session compliance attestation (Phase 6 — post-cutover)
+
+The audit log (§G) and retention matrix (§I) preserve every primitive a court would need. But primitives are not an artifact a lawyer can attach to a filing. §Y adds a generator that produces, on demand, a court-quality record of what the system did during a single chat session or drafting matter.
+
+**Purpose:** Give the firm one signed file per session that proves, with cryptographically verifiable evidence, that the AI operated under documented controls when producing a specific output. Designed for malpractice defense, bar inquiries, and discovery production.
+
+**Trigger:**
+- Lawyer-initiated from chat UI: "Export compliance record" button on any saved session or generated document
+- Automatic on every session end (stored in audit log; emitted as artifact only on request)
+- Bulk-export by date range or matter ID for litigation-hold response
+
+**Contents (signed JSON sidecar; the legally-binding artifact):**
+
+| Field | Source |
+|---|---|
+| `session_id`, `user_id`, `timestamp_start`, `timestamp_end` | Session metadata |
+| `agent_config_sha` | §H — the SHA of the agent definition that produced the response |
+| `agent_config_full` | Inlined or referenced via SHA — system prompt, tool list, model, temperature |
+| `sanitization` | `{confidence, redacted_spans_count, manual_review_triggered}` — never the actual privileged content |
+| `tool_call_log` | Per-call: tool name, timestamp, input hash, output hash, latency. Inputs/outputs themselves stored separately under privilege controls. |
+| `sources_retrieved` | CEB passages, CourtListener cases, statutes — by ID and citation, not full text |
+| `verification_report` | Per-claim: citation resolves Y/N, proposition fidelity (full/partial/none), authority level |
+| `upl_flags` | List of jurisdictions invoked + whether banner was emitted |
+| `final_output_hash` | SHA-256 of the rehydrated output the lawyer saw |
+| `audit_log_anchor` | Block of audit-log entry IDs + their hash-chain prior-hashes that bracket this session |
+| `attestation_signature` | Ed25519 signature over the entire JSON, signed by the daily compliance key |
+
+**Format:**
+- **JSON** is the legally-binding artifact (machine-verifiable, chain-of-custody friendly)
+- **PDF** is generated from the JSON for human readability — embeds the signature in metadata, reproduces the JSON contents in a readable layout
+
+**Signing:**
+- Daily Ed25519 key pair, private key in 1Password vault scoped to compliance
+- Public key published on a stable URL and pinned in the firm's records-retention policy
+- Key rotation logged in the audit chain itself
+
+**Verification:**
+- Standalone CLI tool `verify-attestation <file.json>` packaged with the firm's records and provided to opposing counsel on request
+- Verifier checks: (1) Ed25519 signature against published public key, (2) every referenced audit-log entry's hash-chain link, (3) `agent_config_sha` resolves to a retrievable definition, (4) `final_output_hash` matches the rehydrated output if the firm chooses to disclose it
+- Pass = the artifact is authentic and the underlying records have not been tampered with since signature time
+
+**What it proves (and doesn't):**
+
+| Provable | Not provable |
+|---|---|
+| The exact AI configuration that produced this output | That the legal analysis was correct |
+| What sources the AI consulted | That the lawyer's judgment was sound |
+| That citations resolve to real authorities | That the lawyer reviewed the output before relying on it |
+| That privileged content was sanitized at confidence X | That privileged content wasn't leaked through some other channel |
+| That logs are intact since signing time | That the lawyer interpreted the output competently |
+
+The boundary is intentional and documented in the artifact. F&F's competence rule (CA RPC 1.1 + Comment [1]) puts independent professional judgment on the lawyer; this attestation handles the AI tool's portion of the chain of custody.
+
+**Lawyer-side companion (separate workstream, not in this plan):** A "review attestation" UI where the lawyer explicitly marks "I reviewed this AI output before relying on it" with timestamp. Combined with §Y, the two artifacts together cover both halves of CA RPC 1.1 — competent supervision of the tool, and independent professional judgment by the lawyer.
+
+**Retention:** Attestation files are 7 years (matches §I). Underlying audit-log entries referenced by an attestation are flagged for the same retention floor — even if the standard sweep would otherwise expire them, anything referenced by a live attestation cannot be deleted.
+
+**Phase 6 deliverables (~2 weeks after Phase 5b):**
+- Attestation generator endpoint (`POST /api/attestations` — generates and returns signed JSON + PDF)
+- Daily Ed25519 key rotation cron + audit-log entry on rotation
+- Standalone `verify-attestation` CLI tool with documented usage for opposing counsel
+- Bulk-export endpoint for litigation-hold response
+- Phase 6 acceptance test: generate an attestation for a Phase 1 spike session and verify the standalone tool validates it cleanly
+
 ---
 
 ## Files that change at implementation time
