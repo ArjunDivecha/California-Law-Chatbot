@@ -119,9 +119,17 @@ Runs in parallel with Phase 1 design; gates only Phase 5 cutover.
 
 **Phase 1 first gate (Day 0–1, before any other Phase 1 work): SDK capability audit.**
 
-Verify that the installed `@anthropic-ai/sdk` (0.68.0 today, or latest) actually exposes Managed Agents primitives — `beta.agents.create`, `beta.sessions.create`, tool-callback streaming, session resumption. If the SDK does not expose what this plan assumes, the entire architecture from §A onward is invalidated and **Phase 1 immediately becomes the Agent SDK self-hosted fallback (§P)**, not the Managed Agents path. This audit must be the first deliverable; all other Phase 1 work waits on it.
+Verify that the installed `@anthropic-ai/sdk` (0.68.0 today, or latest) actually exposes the Managed Agents primitives this plan depends on. Specifically the audit must confirm **all** of the following:
 
-This is not a 0.5-day chore in a long open-items list — it is the single biggest unverified premise in the plan. Time-boxed: 1 day max. Output: written go/no-go on Managed Agents vs Agent SDK fallback, posted before any agent-proxy code is written.
+1. **Core agent loop:** `beta.agents.create`, `beta.sessions.create`, tool-callback streaming, session resumption with `last_event_id`.
+2. **Custom tool registration:** the six tools in §B (`ceb_search`, `courtlistener_search`, `statute_lookup`, `legiscan_search`, `openstates_search`, `citation_verify`) can be registered with the agent and called back into our Vercel proxy.
+3. **Built-in tool dynamic gating (critical for §E privilege boundary):** `web_search` and `web_fetch` can be **toggled per-session** based on whether sanitization marked the input as containing privileged facts. If the SDK only allows static per-agent-version tool registration, the plan's "blocked when privileged marker present" boundary is unenforceable — and we must instead either (a) register two separate agent versions (privileged / non-privileged) and route per session, or (b) drop built-in web tools entirely and expose app-owned search tools that we can gate ourselves.
+4. **Tool-callback authentication:** Anthropic provides a documented signature or pre-shared-secret mechanism so we can verify tool callbacks aren't forged (per §A.1 internal-only protection). If not, switch to a per-session callback URL with a session-scoped HMAC.
+5. **Session retention window:** Anthropic's session retention duration is long enough for the "Anthropic API outage mid-session → resume on recovery" failure mode in §D.
+
+If any of points 1–4 fail, the entire architecture from §A onward is invalidated and **Phase 1 immediately becomes the Agent SDK self-hosted fallback (§P)**, not the Managed Agents path. Point 5 failing is recoverable — bound the failure-mode window in §D to whatever Anthropic actually provides.
+
+This is not a 0.5-day chore in a long open-items list — it is the single biggest unverified premise in the plan. Time-boxed: 1 day max. Output: written go/no-go on Managed Agents vs Agent SDK fallback, posted before any agent-proxy code is written. Each of points 1–5 has an explicit pass/fail in the audit memo.
 
 **Build (after SDK audit passes):**
 - One Managed Agent, Opus 4.7, system prompt for California legal research
@@ -219,28 +227,45 @@ Sanitization UI from `codex/drafting-magic-sanitized` audited and merged in this
 
 ## Phase 4.5 — Shadow run (1 week)
 
-Inserted between Phase 4 and Phase 5.
+Inserted between Phase 4 and Phase 5. **Phase 4.5 sends every production query through the new system, even though only the legacy answer is shown to the user. That is real client-confidential traffic. Therefore Phase 0 compliance gates apply at the start of Phase 4.5, not just at Phase 5 cutover.**
 
+**Hard gates before Phase 4.5 starts:**
+- Phase 0.a paperwork: signed Anthropic ZDR DPA + BAA + current SOC 2 Type II report
+- Phase 0.c formal privilege review passed (zero leaks across 100 traps)
+- Malpractice carrier UPL written confirmation in hand
+
+**During Phase 4.5:**
 - Both old and new systems receive every production query
 - Only old-system response shown to the user
 - New-system response logged with full trace (tools called, sources, citations, verification report)
 - Daily diff report: response divergence rate, citation overlap, latency comparison
 - Lawyers spot-check 10 divergences/day with structured feedback
-- **Cutover gate:** ≤ 20% material divergence on a representative sample, no critical hallucinations in the new system, formal privilege review (§0.c) passed
+- **Cutover gate to Phase 5a:** ≤ 20% material divergence on a representative sample, no critical hallucinations in the new system
 
 ---
 
-## Phase 5 — Cutover (1 week)
+## Phase 5a — Cutover (1 week)
 
-- Phase 0 paperwork all signed
-- Phase 0.c formal privilege review passed
+Phase 5 is split into two sub-phases. **Phase 5a deploys the new stack behind a feature flag without removing any legacy code.** Phase 5b is the legacy teardown after a 30-day clean window.
+
+**Phase 5a deliverables:**
 - Deploy to Vercel preview, full Playwright run on all 6 workflows
 - Deploy to production behind a single feature flag (`USE_LEGACY_PIPELINE` defaults `false`)
-- Legacy stack kept hot for 30 days; rollback by flipping the flag (~3 min redeploy)
-- Delete: `agents/`, `api/orchestrate-document.ts`, `api/gemini-chat.ts`, `api/claude-chat.ts`, `services/verifierService.ts`
-- Replace with thin client: `gemini/chatService.ts` (3,085 → ~300), `api/anthropic-chat.ts` → renamed `api/agent-proxy.ts` (~400)
-- Drop `OPENROUTER_API_KEY` and `@google/genai`
-- Update `CLAUDE.md`
+- All legacy files (`agents/`, `api/orchestrate-document.ts`, `api/gemini-chat.ts`, `api/claude-chat.ts`, `services/verifierService.ts`, `api/anthropic-chat.ts`) **remain in the repo and on production** — flag-gated, not deleted
+- All legacy env vars (`OPENROUTER_API_KEY`, `@google/genai` dep) **remain configured** so the flag can flip back instantly
+- Rollback by flipping `USE_LEGACY_PIPELINE=true` and redeploying (~3 min)
+- 30-day observation window with rollback triggers per §M
+
+## Phase 5b — Legacy teardown (1 day, after 30 clean days)
+
+**Hard gate:** 30 consecutive days in production on the new stack with **none** of the §M rollback triggers fired. If any trigger fires inside the window, the clock resets after remediation.
+
+**Phase 5b deliverables:**
+- Delete: `agents/` (8 files), `api/orchestrate-document.ts`, `api/gemini-chat.ts`, `api/claude-chat.ts`, `services/verifierService.ts`, `services/geminiService.ts` (empty stub)
+- Replace with thin client: `gemini/chatService.ts` (3,085 → ~300–600), `api/anthropic-chat.ts` folded into the new `api/agent/*` routes
+- Drop `OPENROUTER_API_KEY` and `@google/genai` dependency
+- Remove `USE_LEGACY_PIPELINE` flag and all legacy code paths
+- Update `CLAUDE.md` (scrub `utils/googleGenAI.ts` reference, document new architecture)
 
 ---
 
@@ -266,6 +291,31 @@ Endpoint behaviors:
 - `POST /api/agent/sessions/:id/tools/:tool_call_id` — internal tool-callback handler; dispatched to the tool endpoints below
 - `POST /api/agent/draft` — same shape, drafting system prompt
 - `POST /api/agent/verify` — verifier sub-agent session, sees only the final answer + sources
+
+### A.1 Route protection & CORS
+
+The existing repo's `api/*` handlers ship `Access-Control-Allow-Origin: *`. **That is unacceptable for the new agent surface.** Every new `/api/agent/*` route enforces the controls below; the existing tool-callback targets (`api/ceb-search.ts`, etc.) tighten their CORS to the same allowlist when used as agent callbacks.
+
+**Required controls per route:**
+
+| Control | Rule |
+|---|---|
+| Authentication | All `/api/agent/*` routes require a valid Clerk JWT in `Authorization: Bearer <token>`. Unauthenticated requests → 401, no body leaked. |
+| Authorization (session ownership) | `GET /api/agent/sessions/:id/events` and any session-scoped route must verify the calling user owns the `session_id` (via the meta record in Upstash KV, per §D). Cross-user access → 403. |
+| CORS allowlist | `Access-Control-Allow-Origin` set explicitly to `https://<production-domain>` (and the Vercel preview domain during Phase 4). No wildcards. Credentials enabled only for first-party origins. |
+| Internal tool-callback protection | `POST /api/agent/sessions/:id/tools/:tool_call_id` must verify the request originates from Anthropic's Managed Agents callback (signature header or pre-shared secret per Anthropic's documented mechanism). External POSTs to that route → 403. |
+| Method allowlist | Each route registers its allowed methods explicitly; everything else → 405. |
+| Rate limiting | Per-user rate limit on `POST /api/agent/sessions` (e.g. 60/min) to prevent runaway billing. |
+| Request size cap | `1 MB` body limit on session/draft/verify routes; tool-callback routes sized to Anthropic's max event payload. |
+
+**Required CI tests (added to §S regression suite):**
+- Unauthenticated POST to each `/api/agent/*` route → 401
+- Authenticated user A attempts to GET user B's session events → 403
+- Forged origin header on a session-create POST → 403 / blocked by CORS
+- Direct external POST to `/api/agent/sessions/:id/tools/:id` without Anthropic signature → 403
+- Method mismatch (GET on POST-only route, etc.) → 405
+
+**Tightening pass on existing routes** (Phase 4 deliverable): audit `api/ceb-search.ts`, `api/courtlistener-search.ts`, `api/legislative-search.ts`, `api/legislative-billtext.ts`, `api/verify-citations.ts`, `api/serper-scholar.ts`, `api/chats.ts`, `api/templates.ts`, `api/export-document.ts` — replace `Access-Control-Allow-Origin: *` with the production-domain allowlist. These routes are still hit by the browser (chat-history, drafting UI) so CORS must still allow first-party origin, but only first-party.
 
 ### B. Tool layer — what Anthropic calls back into
 
@@ -305,7 +355,7 @@ Default to polling. Promote to streaming only if Phase 1 latency benchmarks show
 |---|---|---|
 | Live conversation + tool-call log | **Anthropic** | Managed Agent session, addressed by `session_id` |
 | Event mirror (every Anthropic event echoed to our store) | **App** | Upstash KV append-only list keyed by `session_id` |
-| Sanitization token map | **App** | Encrypted Upstash entry, scoped to session, deleted on session end |
+| Sanitization token map | **App** | Envelope-encrypted Upstash entry (KEK in 1Password, DEK in KV), retained 7 years for audit reconstruction; break-glass access only. See §E retention policy. |
 | Final agent output | **App** | Audit log + chat-history store |
 | Agent config snapshot | **App** | Tamper-evident audit log per §G |
 
@@ -335,6 +385,19 @@ Sanitization runs in the Vercel proxy *before* any input reaches the Managed Age
 - **Compound-query defense:** beyond per-token detection, sanitizer runs an n-gram entity-correlation pass; combinations seeded from F&F matter index. Adversarial smoke test (§0.b) and formal review (§0.c) are the empirical checks.
 - **When sanitization is active, web_search and web_fetch are blocked** — we cannot risk client facts leaking into a search query.
 - Audit log records every redaction decision: input hash, redacted spans, replacement tokens, confidence, timestamp, *combination* that triggered a flag (not just individual tokens).
+
+**Token-map retention policy (resolves the audit/discovery vs minimization tension):**
+
+| Artifact | Retention | Encryption | Access |
+|---|---|---|---|
+| Token map (active session) | Session lifetime + 1 hour | AES-256, per-session key in app memory | Vercel proxy only |
+| Token map (after session end, for 7-year audit window) | 7 years | AES-256-GCM with envelope encryption; KEK in 1Password vault, DEK in Upstash KV | Break-glass legal/audit access only, logged per §U |
+| Final rehydrated output (what the user saw) | 7 years | At-rest encryption only | Standard chat-history access |
+| Sanitized prompt (what Anthropic saw) | 7 years | At-rest encryption only | Standard audit access |
+
+**Reasoning:** Final rehydrated outputs alone are *not* sufficient for litigation reconstruction. A subpoena could ask "what exactly did the AI see when it produced this answer?" — and we need to be able to prove the sanitized prompt corresponds to the user's actual privileged input. That requires retaining the token map. Storing it under envelope encryption with logged break-glass access protects the privileged content while preserving evidentiary reconstructability.
+
+The earlier "deleted on session end" wording was wrong — corrected here. Phase 4 implementer: ensure no code path deletes the encrypted token-map entry; expiry is governed by the 7-year retention sweep only.
 
 ### F. Data-classification per tool
 
