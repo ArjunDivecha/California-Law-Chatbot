@@ -684,6 +684,24 @@ The plan-revision phase is not code-verified. The next gate is **Phase 1 spike c
 
 ---
 
+## Parked branches (do not merge until the phase that needs them)
+
+Three remote branches contain work that is needed later but should **not** merge into `main` now. Merging early invites conflicts with new managed-agents code and ships changes ahead of their gating phase.
+
+| Branch | Contents | When to merge | Archive tag |
+|---|---|---|---|
+| `codex/drafting-magic-sanitized` | Drafting UI (`components/drafting/*`, 2,991 lines) + sanitization layer (`services/sanitization/*`, ~1,600 lines) + sanitization tests + OPF daemon | **Phase 0.b** — pull at the start of Phase 0 so the privilege smoke test has something to run against. Drafting UI rewires in Phase 4. | `archive/drafting-magic-sanitized-2026-05-03` |
+| `codex/drafting-magic` | Identical to `drafting-magic-sanitized` (verified by `git diff` — 0 commits between them) | Same as above; pick one and delete the other after merge | `archive/drafting-magic-2026-05-03` |
+| `codex/bedrock-confidentiality-migration` | Same sanitization core (older snapshot) + Bedrock SDK switch + speed-mode passthrough + OPF auto-install UX | **Only if Phase 0 fails** (ZDR/BAA/SOC 2 paperwork doesn't close). Reference implementation for the Phase 0 fallback path. | `archive/bedrock-confidentiality-2026-05-03` |
+
+**Tags are immutable archive points** so the branches can be found again even if they're force-pushed or deleted later. Created `2026-05-03`.
+
+**Cleanup once managed-agents migration ships and stabilizes (post-Phase-5b):**
+- If Bedrock fallback was not needed: archive `codex/bedrock-confidentiality-migration` (delete remote branch; tag survives as historical reference)
+- After Phase 4 merges sanitization+drafting: delete `codex/drafting-magic` and `codex/drafting-magic-sanitized` (tags survive)
+
+---
+
 ## Open Items
 
 **Pre-Phase-1 engineering (each ~0.5 day, all owned by Arjun):**
