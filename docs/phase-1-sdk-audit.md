@@ -186,3 +186,37 @@ If we'd been wrong about Managed Agents existing, this would have triggered the 
 ## Time spent
 
 Audit took ~30 minutes (target was 1 day max). Findings are conclusive enough to proceed with plan corrections immediately. No further investigation needed before Phase 1 build starts.
+
+---
+
+## Corrigendum — 2026-05-10: ZDR scope kills the Managed Agents path
+
+This audit's "GO" conclusion was valid on its narrow scope (SDK capabilities) but missed a deeper compliance question that surfaced one week later.
+
+**Finding:** Anthropic's official platform docs explicitly state that **Managed Agents is not covered by Zero Data Retention**. Verbatim:
+
+> "Claude Managed Agents: Claude Managed Agents is a stateful resource. You can delete session transcripts, but there is no automatic deletion."
+
+ZDR is a hard requirement for F&F's privileged-content workflow. Therefore the Managed Agents path — regardless of how well its SDK capabilities matched the original plan — cannot be used for this project. This is a permanent block, not a paperwork question.
+
+**Path forward:** The plan pivots to the **Anthropic Agent SDK self-hosted on the direct Messages API**, which is GA and ZDR-eligible under enterprise terms. The agent loop runs in our Vercel function (`api/_lib/agentLoop.ts`), session state lives entirely in Upstash KV under our keys, tool dispatch is an in-process function call, and the privilege boundary is enforced by conditionally omitting `web_search` from the `tools` array at request-construction time.
+
+**Consequences for the audit findings above:**
+
+| Original audit point | Status under the new path |
+|---|---|
+| 1. Core agent loop (`beta.agents.*`, `beta.sessions.*`) | **N/A.** We don't use these primitives. We use `messages.create()` / `messages.stream()` plus a hand-rolled tool-use loop. |
+| 2. Custom tool registration via `BetaManagedAgentsCustomToolParams` | **N/A.** Tools are passed as the `tools` parameter to `messages.create()`, with the standard `{name, description, input_schema}` shape. Same six tools, same JSON Schemas. |
+| 3. Per-session `web_search` gating (Environments workaround) | **Replaced by code-level gating.** The `tools` array is built per-request; `web_search` is simply omitted when sanitization flags the input as privileged. This is the simpler mechanism the original audit reached for as a fallback ("(b) drop built-in web tools entirely and expose app-owned search tools we can gate ourselves"). |
+| 4. Tool-callback authentication | **N/A.** No inbound webhook exists; tool dispatch is in-process. |
+| 5. Session retention window | **N/A.** Our app owns session state in Upstash KV; retention is governed by §I retention matrix. |
+
+**Other Managed-Agents-specific findings dropped:**
+- Environments (`env-allowlisted` / `env-open`) — not provisioned.
+- `vaults` / `memory-stores` / `user-profiles` beta resources — not used.
+- `BetaManagedAgentsModel` enum constraint — replaced by Messages API model IDs (Opus 4.7, Sonnet 4.6, Haiku 4.5 as supported).
+- `anthropic-beta: managed-agents-*` header — removed.
+
+**Replacement gate.** The new Phase 1 first gate is a much smaller Messages API loop smoke test (5 checks: tool-use loop semantics, parallel tool calls, streaming, error semantics, token-usage reporting). Time-boxed: 0.5 day. See `docs/MANAGED_AGENTS_RECONSTRUCTION_PLAN.md` §"Phase 1 — Spike" for the spec.
+
+This corrigendum supersedes the GO/no-go conclusion above for the Managed Agents path. The Messages API smoke test will produce its own GO/no-go for the Agent SDK path.

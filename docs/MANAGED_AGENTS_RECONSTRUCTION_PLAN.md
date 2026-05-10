@@ -1,20 +1,45 @@
-# Managed Agents Reconstruction Plan
+# Chatbot Reconstruction Plan — Anthropic Agent SDK on Messages API
 
-**Plan file destination:** `/Users/arjundivecha/Dropbox/AAA Backup/A Working/California-Law-Chatbot/docs/MANAGED_AGENTS_RECONSTRUCTION_PLAN.md`
-**Date:** 2026-05-03
-**Status:** Final, post Opus + Codex (3 rounds, approved) + Ultraplan + Council review.
+**Plan file destination:** `/Users/arjundivecha/Dropbox/AAA Backup/A Working/California-Law-Chatbot/docs/MANAGED_AGENTS_RECONSTRUCTION_PLAN.md` *(filename kept for git continuity; contents now describe the Agent SDK path)*
+**Date:** 2026-05-03 (original), **2026-05-10 architecture pivot**
+**Status:** Final, post Opus + Codex (3 rounds, approved) + Ultraplan + Council review + ZDR scope verification.
+
+---
+
+## 2026-05-10 Architecture Pivot — Managed Agents removed from the plan
+
+**Finding:** Anthropic's official platform docs explicitly state Managed Agents is NOT covered by ZDR: *"Claude Managed Agents is a stateful resource. You can delete session transcripts, but there is no automatic deletion."* This is incompatible with F&F's ZDR requirement for privileged content. Managed Agents is therefore **permanently off the table** for this project — not a fallback, not a future option.
+
+**Pivot:** The agent runtime is now **Anthropic Agent SDK self-hosted on the Messages API**. The Messages API is GA and ZDR-eligible under enterprise terms (Phase 0 paperwork). We own the agent loop, session state, tool dispatch, and event mirror — Anthropic only handles inference.
+
+**What changes in this plan:**
+- No `beta.agents.*` / `beta.sessions.*` / Environments — those are Managed-Agents-only primitives
+- Agent loop runs in our Vercel function: `messages.create({tools, messages})` → execute tool_use → append `tool_result` → loop until `stop_reason: 'end_turn'`
+- App fully owns conversation state in Upstash KV (no remote "session" to mirror — there's only one copy)
+- Per-tool privilege gating happens in our code at the request-construction site (no Environment switch needed)
+- Beta-API churn risk (§J) drops to ~zero — Messages API breaking changes are years apart, not quarterly
+- Beta header `anthropic-beta: managed-agents-*` is removed entirely
+
+**What stays identical:**
+- All of Phase 0 (compliance paperwork, privilege smoke test, formal privilege review gate)
+- All of Phases 2–6 (drafting workflows, verifier sub-agent, UI integration, shadow run, cutover, attestation generator)
+- Deletion math (~7,800 lines): the OpenRouter proxies, custom orchestrator under `agents/`, `orchestrate-document.ts`, `verifierService.ts`, and the bulk of `chatService.ts` all go regardless of which Anthropic runtime we use
+- Tool layer (§B), sanitization (§E with mechanism change), audit log (§G), versioning (§H), retention (§I), evidentiary controls (§W), UPL (§X), per-session attestation (§Y)
+- Bedrock remains the deeper compliance fallback **if Phase 0 Anthropic ZDR paperwork doesn't close** (same Agent SDK loop, different inference endpoint)
+
+A corrigendum is added to `docs/phase-1-sdk-audit.md` recording the ZDR-scope finding that invalidated the Managed Agents path.
 
 ---
 
 ## Context
 
-The chatbot currently runs an OpenRouter dual-model pipeline (Gemini generator + Claude verifier) plus a custom 4-agent orchestrator under `agents/` for document drafting. Combined orchestration footprint: ~7,800 lines that exist purely to manage what Anthropic Managed Agents now manages natively (agent loop, session state, tool-call sequencing, streaming).
+The chatbot currently runs an OpenRouter dual-model pipeline (Gemini generator + Claude verifier) plus a custom 4-agent orchestrator under `agents/` for document drafting. Combined orchestration footprint: ~7,800 lines.
 
-**This plan migrates to Anthropic Managed Agents as the sole production runtime.** Anthropic owns the agent loop and session; we own the legal-data tool endpoints, the sanitization boundary, the audit mirror, and the UI. If Managed Agents fails Phase 1 (latency, reliability, or beta-API behavior), the explicit fallback is the Anthropic Agent SDK self-hosted loop — but that is a fallback, not a hedge.
+**This plan migrates to the Anthropic Agent SDK self-hosted on the direct Messages API.** Anthropic only provides inference; we own the agent loop, session state, tool dispatch, and audit trail in a thin Vercel proxy. Two model roles (workbench + verifier) talk to the same Messages API endpoint with different system prompts and tool sets.
 
 **Why now:** ZDR/BAA/SOC 2 paperwork is in flight separately and gates only Phase 5 cutover. Phases 1–4 may run against staging/non-confidential data while paperwork closes.
 
-**Intended outcome:** Delete ~7,800 lines of orchestration. Replace with one Managed Agent + one verifier sub-agent + a thin Vercel proxy (~400 lines of shared helpers + 5 thin route files) + tool callback handlers for the existing legal-data endpoints. Keep the existing CEB RAG, CourtListener/legislative integrations, sanitization layer, and drafting UI. Net result: lower maintenance burden, cleaner audit trail, and no in-house orchestration code in the malpractice critical path.
+**Intended outcome:** Delete ~7,800 lines of orchestration. Replace with one shared agent loop (~250 lines in `api/_lib/agentLoop.ts`) + a thin Vercel proxy (~400 lines of shared helpers + 5 thin route files) + the existing legal-data endpoints used as tools. Keep the existing CEB RAG, CourtListener/legislative integrations, sanitization layer, and drafting UI. Net result: lower maintenance burden, cleaner audit trail, and no in-house orchestration code in the malpractice critical path.
 
 **Supersedes:** This plan supersedes the in-flight `utils/googleGenAI.ts` Google GenAI direct migration referenced in `CLAUDE.md`. That untracked file and its branch will not merge. The stale `CLAUDE.md` reference is scrubbed in Phase 5.
 
@@ -32,7 +57,7 @@ The chatbot currently runs an OpenRouter dual-model pipeline (Gemini generator +
 | `components/drafting/` | **9 files, 2,991 lines on branch** — working DocumentPreview/OrchestrationModal/VariableInputPanel flow |
 | `services/sanitization/` | Lives on `codex/drafting-magic-sanitized` branch, not main |
 | `api/ceb-search.ts` | OpenAI native embeddings (line 527), not OpenRouter; queries Upstash Vector across 5 CEB namespaces |
-| `@anthropic-ai/sdk@0.68.0` | Confirmed; Managed Agents beta methods to be verified pre-Phase-1 |
+| `@anthropic-ai/sdk@0.68.0` | Confirmed; upgrade to latest pre-Phase-1 (typed tool-use helpers and current Messages API model IDs). |
 | `vercel.json` | `maxDuration: 300` for heavy endpoints; Pro plan ceiling is higher and not yet configured |
 
 ### Deletion target
@@ -40,8 +65,8 @@ The chatbot currently runs an OpenRouter dual-model pipeline (Gemini generator +
 | File / dir | Lines | Disposition |
 |---|---|---|
 | `gemini/chatService.ts` | 3,085 | Shrinks to ~300–600 lines (final number is a Phase 1 deliverable to be measured, not asserted up front). Bundles session bootstrap, polling loop, event reconciliation against the Upstash mirror, sanitization-confidence UI state, source-mode advanced toggle, CEB badge rendering. |
-| `agents/` (8 files) | 2,521 | **Deleted** — Anthropic runs the agent loop |
-| `api/orchestrate-document.ts` | 1,239 | Deleted — agent runs the drafting loop in one session |
+| `agents/` (8 files) | 2,521 | **Deleted** — one shared `agentLoop.ts` (~250 lines) replaces the custom 4-agent orchestrator |
+| `api/orchestrate-document.ts` | 1,239 | Deleted — model handles drafting in one loop with the drafting system prompt |
 | `api/gemini-chat.ts` | 327 | Deleted — generator collapses into the agent |
 | `api/claude-chat.ts` | 197 | Deleted — verifier collapses into the agent |
 | `api/anthropic-chat.ts` | 85 | Folded into a single `api/agent-proxy.ts` |
@@ -67,21 +92,24 @@ BEFORE:
   UI → DraftingMode → api/orchestrate-document (1,239)
      → agents/{research,drafter,citation,verifier} (2,521) → OpenRouter
 
-AFTER (Managed Agents):
+AFTER (Agent SDK on Messages API):
   UI → chatService thin (~300)
-     → api/agent-proxy (~400)
-     → Anthropic Managed Agent (loop + session state on Anthropic)
-                                  ↑ tool callbacks
-                              api/ceb-search, api/courtlistener-search,
-                              api/legislative-*, api/verify-citations
+     → api/agent/* routes (thin handlers)
+     → api/_lib/agentLoop.ts (~250 lines: the loop)
+        ├── messages.create({tools, messages}) → Anthropic Messages API (inference only, ZDR-eligible)
+        ├── on tool_use → dispatch to api/ceb-search, courtlistener-search,
+        │                 legislative-*, verify-citations (in-process call)
+        ├── append tool_result, loop
+        └── on stop_reason 'end_turn' → return final message + audit trail
+     → Upstash KV (full conversation state, owned by us)
 ```
 
-**Two agents, separate sessions:**
+**Two model roles, same loop, separate conversations:**
 
-- **Workbench Agent (Opus 4.7):** handles research, drafting, citing, self-review. One agent, different system prompts for the workflows in §11 below.
-- **Verifier Agent (Sonnet 4.6):** runs after the workbench finishes. Sees only the final answer + sources, not the workbench's reasoning. Adversarial check: every citation must (a) resolve to a real authority and (b) the proposition stated by the agent must match an exact-or-near-exact quote from that authority.
+- **Workbench (Opus 4.7):** handles research, drafting, citing, self-review. Different system prompts for the workflows in §11.
+- **Verifier (Sonnet 4.6):** runs after the workbench finishes, in a fresh conversation. Sees only the final answer + sources, not the workbench's reasoning. Adversarial check: every citation must (a) resolve to a real authority and (b) the proposition stated by the agent must match an exact-or-near-exact quote from that authority.
 
-**One Vercel proxy:** `api/agent-proxy.ts` creates sessions, mirrors events to Upstash KV, answers tool callbacks, returns events to the client.
+**One Vercel proxy:** five thin route files under `api/agent/*` import `api/_lib/agentLoop.ts`. The loop is the only code that talks to `messages.create()`. Tool dispatch is an in-process function call — no inbound webhooks, no remote session, no Environments. Conversation state lives entirely in Upstash KV under our keys.
 
 ---
 
@@ -109,36 +137,38 @@ Runs in parallel with Phase 1 design; gates only Phase 5 cutover.
 - This is the formal gate; the Phase 0.b smoke test is just to catch obvious bugs early
 - If the review surfaces a real leak, cutover is paused until the boundary is fixed
 
-**Phase 0 fallback:** If Anthropic enterprise terms don't close, fall back to AWS Bedrock with the Anthropic Agent SDK self-hosted loop (Bedrock does not offer Managed Agents). Smaller deletion win — `agents/` still goes, `chatService.ts` shrinks less. Document this contingency; do not return to OpenRouter.
+**Phase 0 fallback:** If Anthropic enterprise terms (ZDR/BAA/SOC 2) don't close, fall back to AWS Bedrock with the same Agent SDK self-hosted loop swapped to call Bedrock's Messages-compatible Claude endpoint. Deletion math is identical — only the inference endpoint changes. AWS BAA covers the same controls F&F needs. Document this contingency; do not return to OpenRouter.
 
 ---
 
 ## Phase 1 — Spike (2 weeks)
 
-**Goal:** Prove one Managed Agent with `ceb_search` and `courtlistener_search` tools beats the current `chatService.ts` pipeline on a 50-question gold set.
+**Goal:** Prove one Agent SDK loop (Opus 4.7, Messages API) with `ceb_search` and `courtlistener_search` tools beats the current `chatService.ts` pipeline on a 50-question gold set.
 
-**Phase 1 first gate (Day 0–1, before any other Phase 1 work): SDK capability audit. ✅ COMPLETED 2026-05-03 — see `docs/phase-1-sdk-audit.md`. Result: GO with two architecture corrections (already applied to this plan).**
+**Phase 1 first gate (Day 0–1, before any other Phase 1 work): Messages API loop smoke test.**
 
-Verify that the installed `@anthropic-ai/sdk` (0.68.0 today, or latest) actually exposes the Managed Agents primitives this plan depends on. Specifically the audit must confirm **all** of the following:
+The original Managed Agents SDK capability audit (`docs/phase-1-sdk-audit.md`, 2026-05-03) is superseded by the 2026-05-10 ZDR-scope finding — see the corrigendum at the bottom of that file. The Managed Agents primitives audited there (`beta.agents.*`, `beta.sessions.*`, Environments, event streaming) are no longer used by this plan.
 
-1. **Core agent loop:** `beta.agents.create`, `beta.sessions.create`, tool-callback streaming, session resumption with `last_event_id`.
-2. **Custom tool registration:** the six tools in §B (`ceb_search`, `courtlistener_search`, `statute_lookup`, `legiscan_search`, `openstates_search`, `citation_verify`) can be registered with the agent and called back into our Vercel proxy.
-3. **Built-in tool dynamic gating (critical for §E privilege boundary):** `web_search` and `web_fetch` can be **toggled per-session** based on whether sanitization marked the input as containing privileged facts. If the SDK only allows static per-agent-version tool registration, the plan's "blocked when privileged marker present" boundary is unenforceable — and we must instead either (a) register two separate agent versions (privileged / non-privileged) and route per session, or (b) drop built-in web tools entirely and expose app-owned search tools that we can gate ourselves.
-4. **Tool-callback authentication:** Anthropic provides a documented signature or pre-shared-secret mechanism so we can verify tool callbacks aren't forged (per §A.1 internal-only protection). If not, switch to a per-session callback URL with a session-scoped HMAC.
-5. **Session retention window:** Anthropic's session retention duration is long enough for the "Anthropic API outage mid-session → resume on recovery" failure mode in §D.
+The Messages API smoke test is much smaller; the API is GA and well-documented. It must confirm:
 
-If any of points 1–4 fail, the entire architecture from §A onward is invalidated and **Phase 1 immediately becomes the Agent SDK self-hosted fallback (§P)**, not the Managed Agents path. Point 5 failing is recoverable — bound the failure-mode window in §D to whatever Anthropic actually provides.
+1. **Tool-use loop semantics:** `messages.create({tools, messages})` returns `stop_reason: 'tool_use'` with `content` containing one or more `tool_use` blocks. Appending matching `tool_result` blocks (by `tool_use_id`) and calling `messages.create()` again continues the conversation. Loop terminates on `stop_reason: 'end_turn'`. Validated by a 10-line script with one fake tool.
+2. **Parallel tool calls:** When the model emits multiple `tool_use` blocks in one assistant turn, we can dispatch them in parallel and assemble one user message with all `tool_result` blocks. Validated by a test prompt asking for two simultaneous lookups.
+3. **Streaming:** `messages.stream({tools, messages})` yields `content_block_start` / `content_block_delta` / `content_block_stop` events including for `tool_use` blocks; we can render the assistant's prose token-by-token while tool calls are forming. Validated against a streaming smoke test.
+4. **Error semantics:** Rate-limit (429), overload (529), and transient 5xx responses are surfaced with retry-after metadata so our loop can back-off rather than fail-fast. Validated by forcing a 429 in dev.
+5. **Token-usage and stop reasons:** every loop iteration reports `usage.input_tokens` / `usage.output_tokens`; we can record these against the audit log for the per-session attestation (§Y).
 
-This is not a 0.5-day chore in a long open-items list — it is the single biggest unverified premise in the plan. Time-boxed: 1 day max. Output: written go/no-go on Managed Agents vs Agent SDK fallback, posted before any agent-proxy code is written. Each of points 1–5 has an explicit pass/fail in the audit memo.
+If any of 1–3 fail, the plan is broken at a deeper level than runtime choice and would require a re-think; that is not expected — these are basic Messages API behaviors used by every Anthropic-tool-use customer.
 
-**Build (after SDK audit passes):**
-- **Upgrade `@anthropic-ai/sdk` from `0.68.0` → `0.92.0` (or latest)** — `0.68.0` has no Managed Agents at all. Smoke test against beta endpoint.
-- **Create two Environments** (`env-allowlisted`, `env-open`) per §B.1; persist their IDs in Vercel env vars and snapshot config to audit log
-- One Managed Agent, Opus 4.7, system prompt for California legal research
-- `ceb_search` and `courtlistener_search` as custom tools (LegiScan / OpenStates added in Phase 2)
-- The four `/api/agent/*` route files + `api/_lib/agentProxy.ts` (per §A — note: no `tools/[tool_call_id]` route; tool dispatch is pull-model from inside the events handler)
-- App-side event mirror in Upstash KV (per §D below)
-- Test harness: run all 50 questions through both the current pipeline and the new agent
+Time-boxed: 0.5 day. Output: signed-off smoke-test note appended to `docs/phase-1-sdk-audit.md` recording all five points as pass/fail.
+
+**Build (after smoke test passes):**
+- **Upgrade `@anthropic-ai/sdk` from `0.68.0` → latest** — current version pre-dates the typed `messages.create` tool-use helpers we want; pin a known-good version.
+- One agent loop module `api/_lib/agentLoop.ts` (~250 lines) implementing: build `tools` array (with privilege-aware inclusion of `web_search`), invoke `messages.create()` / `messages.stream()`, dispatch `tool_use` blocks to handler map, append `tool_result` blocks, loop until `end_turn` (or hit max-iterations safety cap), persist every step to Upstash KV + audit log.
+- Opus 4.7 model, system prompt for California legal research.
+- `ceb_search` and `courtlistener_search` registered in the handler map (LegiScan / OpenStates / citation_verify added in Phase 2).
+- The four `/api/agent/*` route files import `agentLoop.ts`.
+- Full conversation state in Upstash KV under `session:{id}:messages` (an append-only list of `{role, content}` blocks).
+- Test harness: run all 50 questions through both the current pipeline and the new loop.
 
 **Evaluate:**
 - 50 gold questions drawn from sanitized F&F query history + CEB topic distribution
@@ -166,14 +196,14 @@ This is not a 0.5-day chore in a long open-items list — it is the single bigge
 
 ## Phase 2 — Drafting workflows (1 week)
 
-**Goal:** Replace `api/orchestrate-document.ts` with the same Managed Agent using a drafting system prompt.
+**Goal:** Replace `api/orchestrate-document.ts` with the same agent loop using a drafting system prompt.
 
 - Drafting system prompt variant per template (legal_memo, demand_letter, motion_compel, client_letter)
 - `POST /api/agent/draft` endpoint
 - Structured template variables passed as the first user message
-- Agent generates all sections in one session — no 5-phase pipeline, no four sub-agents
+- Agent generates all sections in one loop — no 5-phase pipeline, no four sub-agents
 - Tool set: research tools (Phase 1) + LegiScan + OpenStates + citation_verify
-- Stream sections as they're generated via the polling endpoint
+- Stream sections as they're generated using `messages.stream()` directly to the client (Server-Sent Events through `/api/agent/draft`)
 - Existing Word/PDF export endpoint (`api/export-document.ts`, 670 lines) reused as-is; drafting UI calls into it unchanged
 
 **Go / no-go:** All 4 templates produce complete drafts with verified citations; word count within ±50% of target; zero hallucinated cases on a 10-document spot-check.
@@ -182,9 +212,9 @@ This is not a 0.5-day chore in a long open-items list — it is the single bigge
 
 ## Phase 3 — Verifier sub-agent (1 week)
 
-**Goal:** Adversarial verification as a separate Managed Agent session.
+**Goal:** Adversarial verification as a separate agent-loop invocation.
 
-- Separate agent, separate session per verification run, no shared context with workbench
+- Separate conversation per verification run, fresh `messages` array, no shared context with workbench
 - System prompt: extract every citation + the proposition the workbench attached to it; verify each via tools; output a structured report
 - Tools: `citation_verify`, `courtlistener_search`, `statute_lookup`, `ceb_search` (cross-reference)
 - Output schema: per-claim verification status (verified / partially_verified / unsupported) with exact quote evidence
@@ -214,7 +244,7 @@ Source mode becomes an advanced toggle; agent picks sources by default.
 | Component | Lines | Action |
 |---|---|---|
 | `DraftingMode.tsx` | 472 | Keep, rewire endpoint |
-| `OrchestrationModal.tsx` | 603 | Keep, simplify (drop 5-phase progress UI; agent runs one session) |
+| `OrchestrationModal.tsx` | 603 | Keep, simplify (drop 5-phase progress UI; one loop, streamed) |
 | `OrchestrationVisual.tsx` | 652 | Audit — likely coupled to deleted phase semantics; reduce or remove |
 | `DocumentPreview.tsx` | 565 | Keep |
 | `VariableInputPanel.tsx` | 187 | Keep |
@@ -273,33 +303,35 @@ Phase 5 is split into two sub-phases. **Phase 5a deploys the new stack behind a 
 
 ## Architecture details
 
-### A. Two agents, one Vercel proxy
+### A. Routes and the agent loop
 
-Vercel uses file-system routing, so the five endpoints below live as separate files under `api/agent/` with shared logic factored into `api/_lib/agentProxy.ts` (~400 lines of shared helpers: session create, mirror, sanitize, rehydrate, tool dispatch). Each route file is a thin handler that imports from the shared lib.
+Vercel file-system routing — five files under `api/agent/`, shared logic in `api/_lib/`. Total new code: ~650 lines (loop + shared helpers + four thin handlers).
 
 ```
-api/agent/sessions.ts                              POST  /api/agent/sessions
-api/agent/sessions/[id]/events.ts                  GET   /api/agent/sessions/:id/events
-api/agent/draft.ts                                 POST  /api/agent/draft
-api/agent/verify.ts                                POST  /api/agent/verify
-api/_lib/agentProxy.ts                             shared helpers (incl. tool dispatcher invoked from events handler)
+api/agent/sessions.ts                              POST  /api/agent/sessions       (start a conversation, optional first user message)
+api/agent/sessions/[id]/turn.ts                    POST  /api/agent/sessions/:id/turn   (send the next user message, streams the assistant turn)
+api/agent/draft.ts                                 POST  /api/agent/draft          (one-shot drafting workflow, streamed)
+api/agent/verify.ts                                POST  /api/agent/verify         (verifier in a fresh conversation, streamed)
+api/_lib/agentLoop.ts                              ~250 lines — the tool-use loop (the only file that calls messages.create / messages.stream)
+api/_lib/agentProxy.ts                             ~400 lines — sanitize, rehydrate, KV reads/writes, tool dispatcher map, audit-log writes
 ```
 
 Endpoint behaviors:
 
-- `POST /api/agent/sessions` — sanitize input, create Managed Agent session, return `{session_id, mirror_id}`
-- `GET /api/agent/sessions/:id/events?after=:event_id` — poll for new events from Anthropic, mirror to Upstash KV, return events to client (with privileged tokens rehydrated for the client view)
-- `POST /api/agent/draft` — same shape, drafting system prompt
-- `POST /api/agent/verify` — verifier sub-agent session, sees only the final answer + sources
+- `POST /api/agent/sessions` — sanitize first user message, create session record in KV, return `{session_id}`. Conversation state is just an empty `messages` array keyed by `session_id`.
+- `POST /api/agent/sessions/:id/turn` — sanitize new user message, append to KV-stored `messages`, hand to `agentLoop.run()`, stream assistant turn + tool dispatches back via SSE. On `end_turn`, the full assistant turn (including all interleaved `tool_use` / `tool_result` blocks) is appended to the KV `messages` list.
+- `POST /api/agent/draft` — same loop, drafting system prompt, drafting tool set.
+- `POST /api/agent/verify` — same loop, verifier system prompt, verification tool set, fresh `messages` array.
 
-**Tool execution is pull-model, not callback.** Per the SDK audit (`docs/phase-1-sdk-audit.md`, point 4), Anthropic does NOT POST inbound to our endpoints when the agent calls a tool. Instead:
+**Tool execution is an in-process function call.** When `messages.create()` returns `stop_reason: 'tool_use'`, the loop:
 
-1. Agent emits `BetaManagedAgentsAgentCustomToolUseEvent` in the session event stream
-2. Our `events.ts` handler (or a worker polling `events.list()`) reads the event
-3. We execute the tool locally by calling our existing legal-data endpoints
-4. We POST the result back to Anthropic via `events.send({events: [{type: 'user_custom_tool_result', ...}]})`
+1. Reads the `tool_use` blocks from the response `content`
+2. Dispatches each to the corresponding handler in the tool dispatcher map (a switch on `tool_use.name` → call into `api/ceb-search.ts` / `api/courtlistener-search.ts` / etc. as in-process imports, not HTTP calls)
+3. Builds a user message with one `tool_result` block per `tool_use_id`, in the same order
+4. Appends to `messages`, calls `messages.create()` again
+5. Repeats until `stop_reason: 'end_turn'` (or hits a max-iteration safety cap, default 12, which writes an error to the audit log and surfaces "agent stopped" to the UI)
 
-There is no `/api/agent/sessions/:id/tools/:tool_call_id` route. Earlier plan drafts assumed a callback model and described that endpoint; it does not exist and should not be created. Tool dispatch lives in `api/_lib/agentProxy.ts` and is invoked from inside the events stream handler.
+There is no inbound webhook from Anthropic, no remote session to poll, no event stream to mirror. Tool dispatch is a JavaScript function call inside the same Vercel request that holds the Messages API stream open. The earlier Managed Agents-era language about pull-model event streams (`events.list()` / `events.send()`) does not apply.
 
 ### A.1 Route protection & CORS
 
@@ -310,9 +342,9 @@ The existing repo's `api/*` handlers ship `Access-Control-Allow-Origin: *`. **Th
 | Control | Rule |
 |---|---|
 | Authentication | All `/api/agent/*` routes require a valid Clerk JWT in `Authorization: Bearer <token>`. Unauthenticated requests → 401, no body leaked. |
-| Authorization (session ownership) | `GET /api/agent/sessions/:id/events` and any session-scoped route must verify the calling user owns the `session_id` (via the meta record in Upstash KV, per §D). Cross-user access → 403. |
+| Authorization (session ownership) | `POST /api/agent/sessions/:id/turn` and any session-scoped route must verify the calling user owns the `session_id` (via the meta record in Upstash KV, per §D). Cross-user access → 403. |
 | CORS allowlist | `Access-Control-Allow-Origin` set explicitly to `https://<production-domain>` (and the Vercel preview domain during Phase 4). No wildcards. Credentials enabled only for first-party origins. |
-| ~~Internal tool-callback protection~~ | **Removed per SDK audit.** Anthropic does not POST inbound to us; tool execution is pull-model via `events.list()` / `events.stream()`. No inbound endpoint to protect. See §A and `docs/phase-1-sdk-audit.md` point 4. |
+| ~~Internal tool-callback protection~~ | **Not applicable on the Agent SDK / Messages API path.** Tools are dispatched as in-process function calls from the loop; there is no inbound HTTP endpoint for Anthropic to call back into. |
 | Method allowlist | Each route registers its allowed methods explicitly; everything else → 405. |
 | Rate limiting | Per-user rate limit on `POST /api/agent/sessions` (e.g. 60/min) to prevent runaway billing. |
 | Request size cap | `1 MB` body limit on session/draft/verify routes; tool-callback routes sized to Anthropic's max event payload. |
@@ -321,94 +353,84 @@ The existing repo's `api/*` handlers ship `Access-Control-Allow-Origin: *`. **Th
 - Unauthenticated POST to each `/api/agent/*` route → 401
 - Authenticated user A attempts to GET user B's session events → 403
 - Forged origin header on a session-create POST → 403 / blocked by CORS
-- Direct external POST to `/api/agent/sessions/:id/tools/:id` without Anthropic signature → 403
 - Method mismatch (GET on POST-only route, etc.) → 405
 
 **Tightening pass on existing routes** (Phase 4 deliverable): audit `api/ceb-search.ts`, `api/courtlistener-search.ts`, `api/legislative-search.ts`, `api/legislative-billtext.ts`, `api/verify-citations.ts`, `api/serper-scholar.ts`, `api/chats.ts`, `api/templates.ts`, `api/export-document.ts` — replace `Access-Control-Allow-Origin: *` with the production-domain allowlist. These routes are still hit by the browser (chat-history, drafting UI) so CORS must still allow first-party origin, but only first-party.
 
-### B. Tool layer — what Anthropic calls back into
+### B. Tool layer — what the loop dispatches
 
-Tool definitions registered with the Managed Agent:
+Tool definitions passed in the `tools` array of every `messages.create()` call:
 
 | Tool | Backend | Notes |
 |---|---|---|
-| `ceb_search` | Upstash Vector via `api/ceb-search.ts` | OpenAI embeddings (kept for now per §6) |
+| `ceb_search` | Upstash Vector via `api/ceb-search.ts` (in-process import) | OpenAI embeddings (kept for now per §6) |
 | `courtlistener_search` | CourtListener v4 REST | |
 | `statute_lookup` | leginfo.legislature.ca.gov | |
 | `legiscan_search` | LegiScan API | |
 | `openstates_search` | OpenStates API | |
-| `citation_verify` | CourtListener citation lookup | Used by verifier sub-agent |
+| `citation_verify` | CourtListener citation lookup | Used by verifier loop |
+| `web_search` | Anthropic-hosted built-in tool | **Conditionally included.** Only added to the `tools` array when the request is not privileged (per §E). Anthropic executes this server-side; tool definition is just the name. |
 
-Tool permissions (default-deny):
+Tool permissions (default-deny, enforced in the loop):
 - All custom tools: allow, log
-- `web_search` / `web_fetch` (built-in): allow + log in non-privileged sessions; in privileged sessions, agent runs in a **network-restricted Environment** so the container cannot reach the open internet (see Environments below)
-- `bash` (built-in): require explicit lawyer confirmation via `permission_policy: 'always_ask'` and our event handler returning a `BetaManagedAgentsUserToolConfirmationEvent` only after lawyer approval
-- `file_read` / `file_write`: allow within session workspace; cross-session blocked
-- `file_delete`: never allowed
+- `web_search` (built-in, Anthropic-hosted): **omitted from the `tools` array entirely** when the input is sanitization-flagged as privileged. The model literally cannot call a tool that isn't in its tool list. See §E for the privilege boundary mechanism.
+- No `bash`, `file_read`, `file_write`, `file_delete` — we're on the Messages API, not a sandboxed agent runtime, so those primitives don't exist. If the drafting workflow needs to read uploaded files, we read them in our handler and pass the content as a user message; we don't expose a filesystem tool.
 
-### B.1 Environments — privilege-aware container network controls
+### B.1 Environments — N/A on this path
 
-`SessionCreateParams` requires `environment_id` — every session runs in an Anthropic-managed Environment (Firecracker microVM). The SDK exposes `BetaLimitedNetworkParams` for outbound network controls, which is the **mechanism for the privilege boundary** (see SDK audit point 3 workaround B).
+The Managed-Agents-only concept of `environment_id` and Anthropic-managed Firecracker microVMs does not apply to the Messages API. There is no remote container to provision or constrain. Privilege control is enforced in our code at the moment the `tools` array is built (see §E), not at a container-network layer.
 
-Two Environments are pre-created and pinned in app config:
-
-| Environment | Use | Network config |
-|---|---|---|
-| `env-allowlisted` | Privileged sessions (sanitization-flagged input) | `networking: {type: 'limited', allow_mcp_servers: false, allow_package_managers: false, allowed_hosts: ['courtlistener.com', 'www.courtlistener.com', 'openstates.org', 'legiscan.com', 'leginfo.legislature.ca.gov']}` |
-| `env-open` | Non-privileged sessions | `networking: undefined` (defaults to unrestricted) — `web_search` / `web_fetch` available with normal tool permissions |
-
-At session create, the proxy passes `environment_id: privileged ? env-allowlisted-id : env-open-id`. Even if the agent attempts a `web_search` call inside the allowlisted environment, the container's outbound TCP is blocked at the network layer for any host not in the list. This is a **stronger boundary than tool-disabling** because it survives misconfiguration.
-
-Environment IDs are stored in Vercel env vars and snapshotted to the audit log on every session create.
+The previously-drafted Environment configuration (`env-allowlisted`, `env-open`) is dropped from the plan. No Environment creation or env-var pinning is needed.
 
 ### C. Connection / streaming model
 
-Managed Agent sessions can run for many minutes. Vercel function timeouts force a split between the long-lived agent session (on Anthropic) and the short-lived HTTP requests our proxy handles.
+A single agent turn (user message → tool-use rounds → final assistant message) runs inside one Vercel function invocation. The function holds an SSE stream open to the client and a `messages.stream()` connection open to Anthropic; tool calls between rounds happen inline as in-process function calls.
 
-| Option | When | Cost |
+| Bound | Limit | Headroom |
 |---|---|---|
-| **Polling (Phase 1 default)** | Latency budget allows ≥ 2s tick | $0 — Vercel Pro |
-| Vercel Pro streaming function (raise `maxDuration` to 800s) | Sessions < 13 min, single-region | already on Pro |
-| Cloudflare Worker streaming proxy | Sessions > 13 min or multi-region | ~$5/month |
+| Vercel Pro default function timeout | 300s | Covers typical research turns (≤ 60s) and ~all drafting turns (≤ 180s). |
+| Vercel Pro streaming function with `maxDuration: 800` | 800s (~13 min) | For unusually long drafting turns. Raise selectively on `/api/agent/draft`. |
+| Beyond 13 min | requires async/queue split | Not anticipated for Phase 1–3. If hit, split the loop into a queue worker (Vercel Queues or QStash) and a polling endpoint, per the original §11 async-queue note. |
 
-Default to polling. Promote to streaming only if Phase 1 latency benchmarks show polling adds > 3s perceived delay.
+No need for the earlier "polling" architecture — that was forced by the Managed Agents long-lived remote session. On the Messages API, every turn is bounded by our Vercel function lifetime, and `messages.stream()` events flow straight through to the client SSE stream.
 
-### D. Session durability — Managed Agents ownership model
+### D. Session durability — app owns everything
 
 | State | Owner | Storage |
 |---|---|---|
-| Live conversation + tool-call log | **Anthropic** | Managed Agent session, addressed by `session_id` |
-| Event mirror (every Anthropic event echoed to our store) | **App** | Upstash KV append-only list keyed by `session_id` |
+| Conversation `messages` array (the canonical state) | **App** | Upstash KV append-only list under `session:{id}:messages`. Every assistant turn (including its `tool_use` and the matching `tool_result` blocks) is appended atomically when the turn ends. |
 | Sanitization token map | **App** | Envelope-encrypted Upstash entry (KEK in 1Password, DEK in KV), retained 7 years for audit reconstruction; break-glass access only. See §E retention policy. |
 | Final agent output | **App** | Audit log + chat-history store |
-| Agent config snapshot | **App** | Tamper-evident audit log per §G |
+| Agent config snapshot (system prompt + tool list + model + temp) | **App** | Tamper-evident audit log per §G, content-addressed by SHA-256 |
+| Per-iteration token usage | **App** | Recorded alongside each turn for §Y attestation |
 
-The mirror exists for two reasons: (1) audit/discovery — every event must be reconstructable from our own store, not Anthropic's; (2) outage recovery — if Anthropic drops the session, the mirror lets us re-create context and start a fresh session.
+The conversation is just an array of role+content blocks under our keys. There is no remote session to mirror — there's only one copy of the state, and we own it.
 
 **Failure modes:**
 
 | Failure | Behavior |
 |---|---|
-| Browser close mid-session | Anthropic preserves session; client reload sends `session_id`, resumes from last event |
-| Network flap | Polling client reconnects with `session_id` + `last_event_id`; missed events replayed from mirror |
-| Vercel function cold-start | Function is stateless; nothing to recover |
-| Tool execution timeout | Tool handler returns `{error: "timeout"}` to agent; agent decides retry/report |
-| Anthropic API outage mid-session | Mirror lets us surface "service interrupted" with full transcript-to-date; resume when API recovers (within retention window) |
-| Anthropic session expiry | Mirror replayed into a fresh session |
-| Tool callback fails after partial work | Idempotency key on tool_call_id ensures safe retry |
+| Browser close mid-turn | Function continues to completion; assistant turn appended to KV; client on reload reads `messages` and re-renders. If the user clicks away before the function returns, the turn still finishes server-side. |
+| Network flap | Client reconnects via SSE `Last-Event-ID`; server replays buffered events from this turn. If the turn already finished, client just reads the new `messages` list. |
+| Vercel function cold-start | Function is stateless; KV is the truth. |
+| Tool execution failure | Loop catches the thrown error, builds a `tool_result` block with `is_error: true` and the error message, appends, lets the model decide whether to retry or report. |
+| Anthropic API rate-limit (429) | Loop reads the `retry-after` header and backs off; if retries exhausted, persists the partial turn and surfaces "service throttled" to the UI. User can resume the same turn later by sending a new user message. |
+| Anthropic API outage | Loop fails fast; partial turn already in KV; UI shows error with retry button that resumes from the existing `messages` list. |
+| Vercel function timeout (300s / 800s) | Streaming gracefully ends; partial turn (whatever blocks have been received and tool calls have completed) is persisted to KV; UI shows truncation and a "continue" affordance. |
+| Tool call partial work | Each tool handler is idempotent; if a retry happens, the duplicate `tool_result` is detected (matching `tool_use_id`) and the second one is discarded. |
 
-**Phase 1 deliverable additions:** mirror schema in Upstash KV, idempotency keys on every tool callback, client-side `session_id` URL persistence, recovery UX.
+**Phase 1 deliverable additions:** Upstash KV schema for `session:{id}:messages`, idempotent tool handlers keyed by `tool_use_id`, client-side `session_id` URL persistence, SSE reconnect / Last-Event-ID handling, recovery UX.
 
 ### E. Sanitization & privilege boundary
 
-Sanitization runs in the Vercel proxy *before* any input reaches the Managed Agent.
+Sanitization runs in the Vercel proxy *before* any input reaches the Messages API.
 
 - Per-input output: `{sanitized_text, token_map, privileged: bool, confidence: 0..1}`
 - Token map held in app memory + encrypted Upstash entry, never sent to Anthropic
 - **Privilege hold-back:** if `confidence < 0.98`, the request is queued for mandatory human review with a UI banner; user must explicitly approve sanitized form OR rewrite. Default-deny on ambiguity.
 - **Compound-query defense:** beyond per-token detection, sanitizer runs an n-gram entity-correlation pass; combinations seeded from F&F matter index. Adversarial smoke test (§0.b) and formal review (§0.c) are the empirical checks.
-- **When sanitization is active, the agent runs in a network-restricted Environment** — we cannot risk client facts leaking into a search query. The Anthropic-managed container's outbound traffic is allowlisted to legal-data hosts only (`courtlistener.com`, `openstates.org`, `legiscan.com`, `leginfo.legislature.ca.gov`). Even if `web_search` or `web_fetch` is invoked, the container cannot reach the open internet. See §B for Environment configuration. (The earlier plan wording said "tools blocked" — the SDK doesn't support per-session tool toggling; per-session Environment switch is the correct mechanism. See `docs/phase-1-sdk-audit.md` point 3 workaround B.)
-- Audit log records every redaction decision: input hash, redacted spans, replacement tokens, confidence, timestamp, *combination* that triggered a flag (not just individual tokens).
+- **Privilege boundary mechanism — per-tool gating in code.** When the loop builds the `tools` array for `messages.create()`, it conditionally omits any tool whose backend reaches outside our allowlisted legal-data hosts. Concretely: `web_search` (Anthropic-hosted, can reach arbitrary domains) is **not included in the `tools` array at all** when the input is sanitization-flagged as privileged. The model cannot call a tool it doesn't see. This is enforced in `api/_lib/agentLoop.ts` at the request-construction site and verified by a CI test in §S (a privileged-flagged prompt produces a `messages.create` call whose `tools` array does not contain `web_search`). The Managed-Agents-era "network-restricted Environment" mechanism is moot — there is no remote container in the loop.
+- Audit log records every redaction decision: input hash, redacted spans, replacement tokens, confidence, timestamp, *combination* that triggered a flag (not just individual tokens). Audit log also records the exact `tools` array passed to each `messages.create()` call, so the privilege boundary is verifiable after the fact.
 
 **Token-map retention policy (resolves the audit/discovery vs minimization tension):**
 
@@ -432,9 +454,8 @@ The earlier "deleted on session end" wording was wrong — corrected here. Phase
 | `statute_lookup` | Code + section identifiers | (lookup args are public refs) |
 | `legiscan_search` / `openstates_search` | Bill numbers, generic policy terms | Client-identifying terms |
 | `citation_verify` | Citation strings | Surrounding privileged context |
-| `web_search` / `web_fetch` | Sanitized queries / public URLs | **Network-restricted Environment** when privileged marker present (allowlist: legal-data hosts only). Container-level egress block, not tool-level. See §B and SDK audit. |
-| `bash` | Synthetic / derived data | Client-originated content |
-| `file_read` / `file_write` | Session workspace | Cross-session access |
+| `web_search` | Sanitized queries (non-privileged sessions only) | **Omitted from the `tools` array entirely** when the privileged marker is present. Tool-list construction is the enforcement point; no container-network controls available on this path. |
+| ~~`web_fetch`, `bash`, `file_read`, `file_write`~~ | N/A | Not available on the Messages API path; rows removed. |
 
 Agent receives only `privileged: false` content. Privileged terms held in app-boundary token map; rehydrated only into the final response shown to the user.
 
@@ -467,13 +488,14 @@ Agent receives only `privileged: false` content. Privileged terms held in app-bo
 
 All production retention: tamper-evident storage with daily clock-synced timestamps and SHA-256 chain-of-custody.
 
-### J. Beta API churn
+### J. API stability
 
-Managed Agents are gated by `anthropic-beta: managed-agents-2026-04-01` (or current). Anthropic ships breaking-change beta versions ~quarterly.
+We're on the **Messages API (GA)**, not a beta surface. No `anthropic-beta` header required. Breaking changes on Messages are years apart (the tool-use shape has been stable since 2024), so the quarterly re-validation budget the original plan called out for Managed Agents is no longer needed.
 
 | Risk | Likelihood | Impact | Mitigation |
 |---|---|---|---|
-| Beta API breaking change | High | Medium | Pin `anthropic-beta` header explicitly; subscribe to Anthropic changelog; budget 0.5 engineer-day/quarter for re-validation; never auto-upgrade in production |
+| Messages API breaking change | Low | Medium | Pin `@anthropic-ai/sdk` to a known-good version in `package.json`; subscribe to Anthropic changelog; treat any breaking change as a normal dependency upgrade with a CI re-run of §S + §T |
+| Model deprecation | Medium (annual cadence) | Low | Plan tracks current model IDs in `CLAUDE.md`; model rotation is a one-line config change in `agentLoop.ts`. Run §S regression suite before flipping. |
 
 ### K. Memory stores — dropped
 
@@ -490,7 +512,7 @@ Steady-state monthly at F&F volume (~800 sessions/month):
 | Line item | Estimate |
 |---|---|
 | Anthropic API tokens (Opus 4.7 + Sonnet 4.6 mix) | $80–200 |
-| Managed Agent session-hours ($0.08/hr × ~200hrs) | $16 |
+| ~~Managed Agent session-hours~~ | $0 — no Managed Agents in this plan; inference-only on Messages API has no session/container charge |
 | Vercel Pro | already paid |
 | Upstash Vector + KV | $40–100 |
 | Clerk | $25 |
@@ -529,16 +551,17 @@ Objective rollback triggers (any one fires → roll back):
 ### P. Phase 1 failure fallback
 
 If the Phase 1 spike fails the gold set or latency budget:
-1. Diagnose where the agent underperforms
-2. Tool-layer issues → one more 2-week iteration with bundled-call tool design
-3. Agent-quality issues → fall back to **Anthropic Agent SDK self-hosted loop** (still deletes ~3,500 lines, no beta-API dependency). Plan continues from Phase 2 against Agent SDK; only the orchestration runtime changes.
-4. **Hard stop:** maximum two Phase 1 iterations. If both fail and Agent SDK fallback is also unviable, the migration is dead.
+1. Diagnose where the loop underperforms (model choice, system prompt, tool design)
+2. Tool-layer issues → one more 2-week iteration with bundled-call tool design and parallel-tool-call optimization
+3. Model-quality issues → swap Opus 4.7 ↔ Sonnet 4.6 (one line change in `agentLoop.ts`); re-run gold set
+4. ZDR/BAA paperwork doesn't close → **swap inference endpoint to AWS Bedrock** (same `agentLoop.ts`, different Anthropic-on-Bedrock client). AWS BAA covers the same controls; deletion math is identical. Plan continues from Phase 2.
+5. **Hard stop:** maximum two Phase 1 iterations. If both fail and Bedrock fallback is also unviable, the migration is dead.
 
 ### Q. F&F communication memo (sent before Phase 5)
 
 > "We are migrating the chatbot's AI infrastructure from AWS Bedrock to direct Anthropic API. The original Bedrock choice was driven by a specific compliance posture — zero Anthropic operator access to inference. Anthropic's current enterprise terms (Zero Data Retention agreement, signed BAA, SOC 2 Type II report) now provide equivalent posture. Signed copies of all three are on file."
 >
-> "The migration replaces our custom orchestration layer with Anthropic Managed Agents and reduces our internal codebase by approximately 7,800 lines. There is no change to data residency, retention, or access controls visible to clients. The change is internal-architecture only. Effective date: [DATE]."
+> "The migration replaces our custom orchestration layer with the Anthropic Agent SDK running against the direct Messages API, and reduces our internal codebase by approximately 7,800 lines. We chose the Agent SDK over Anthropic's hosted Managed Agents product because Managed Agents is explicitly not covered by Zero Data Retention; the Messages API is ZDR-eligible under the enterprise agreement. There is no change to data residency, retention, or access controls visible to clients. The change is internal-architecture only. Effective date: [DATE]."
 
 ### R. Incident response drill (before Phase 5)
 
@@ -553,9 +576,9 @@ For each: detection mechanism, response steps, notification path (F&F partners, 
 ### S. Prompt & guardrail regression tests (CI)
 
 - Confidentiality: agent never echoes back sanitized tokens
-- No-external-search-with-client-facts: when sanitization active, `web_search` and `web_fetch` blocked
+- No-external-search-with-client-facts: when sanitization active, `web_search` is **not present in the `tools` array** passed to `messages.create()` (verified by inspecting the loop's outbound request)
 - Fail-closed: when any guardrail check throws, request returns error (not partial response)
-- Privilege markers: privileged-tagged inputs never appear in outbound tool calls
+- Privilege markers: privileged-tagged inputs never appear in outbound tool-use blocks
 - Refusal preservation: jurisdictional refusals ("not licensed in [state]") remain intact
 - UPL banner: every response involving non-CA authority wrapped with "for reference only — confirm with [jurisdiction]-licensed counsel"
 
@@ -685,12 +708,12 @@ The boundary is intentional and documented in the artifact. F&F's competence rul
 |---|---|
 | **Delete entirely** | `agents/` (8 files, 2,521 lines), `api/orchestrate-document.ts` (1,239), `api/gemini-chat.ts` (327), `api/claude-chat.ts` (197), `services/verifierService.ts` (447), `services/geminiService.ts` (0, empty stub) |
 | **Replace with thin client** | `gemini/chatService.ts` (3,085 → ~300–600, measured at Phase 1), `api/anthropic-chat.ts` (85 → folded into the new `api/agent/*` route files; helpers in `api/_lib/agentProxy.ts`) |
-| **New** | `api/agent/sessions.ts`, `api/agent/sessions/[id]/events.ts`, `api/agent/sessions/[id]/tools/[tool_call_id].ts`, `api/agent/draft.ts`, `api/agent/verify.ts`, `api/_lib/agentProxy.ts` (~400 lines shared) |
+| **New** | `api/agent/sessions.ts`, `api/agent/sessions/[id]/turn.ts`, `api/agent/draft.ts`, `api/agent/verify.ts`, `api/_lib/agentLoop.ts` (~250 lines, the only file that calls `messages.create` / `messages.stream`), `api/_lib/agentProxy.ts` (~400 lines: sanitize/rehydrate/KV/audit) |
 | **Keep, rewire** | `components/drafting/*` (per Phase 4 audit), `gemini/cebIntegration.ts`, `services/confidenceGating.ts`, `services/guardrailsService.ts`, `services/retrievalPruner.ts` |
 | **Keep as tool callback targets** | `api/ceb-search.ts` (582), `api/courtlistener-search.ts`, `api/legislative-search.ts`, `api/legislative-billtext.ts`, `api/verify-citations.ts` (266), `api/serper-scholar.ts` |
 | **Keep, untouched by migration** | `api/chats.ts` (276, chat history), `api/templates.ts` (522, drafting templates), `api/export-document.ts` (670, Word/PDF), `api/config.ts` (15), `api/debug.ts` (38) |
 | **Env updates** | Drop `OPENROUTER_API_KEY`. Keep `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `UPSTASH_*`, `COURTLISTENER_API_KEY`, `OPENSTATES_API_KEY`, `LEGISCAN_API_KEY` |
-| **Dependencies** | Drop `@google/genai`. `@anthropic-ai/sdk` upgraded if needed for Managed Agents beta methods. |
+| **Dependencies** | Drop `@google/genai`. `@anthropic-ai/sdk` upgraded to latest stable for current Messages API model IDs and typed tool-use helpers. No beta SDK channel needed. |
 | **CLAUDE.md** | Remove stale `utils/googleGenAI.ts` reference; document new architecture |
 
 ---
@@ -710,7 +733,7 @@ The plan-revision phase is not code-verified. The next gate is **Phase 1 spike c
 
 ## Parked branches (do not merge until the phase that needs them)
 
-Three remote branches contain work that is needed later but should **not** merge into `main` now. Merging early invites conflicts with new managed-agents code and ships changes ahead of their gating phase.
+Three remote branches contain work that is needed later but should **not** merge into `main` now. Merging early invites conflicts with new agent-loop code and ships changes ahead of their gating phase.
 
 | Branch | Contents | When to merge | Archive tag |
 |---|---|---|---|
@@ -720,7 +743,7 @@ Three remote branches contain work that is needed later but should **not** merge
 
 **Tags are immutable archive points** so the branches can be found again even if they're force-pushed or deleted later. Created `2026-05-03`.
 
-**Cleanup once managed-agents migration ships and stabilizes (post-Phase-5b):**
+**Cleanup once the agent-loop migration ships and stabilizes (post-Phase-5b):**
 - If Bedrock fallback was not needed: archive `codex/bedrock-confidentiality-migration` (delete remote branch; tag survives as historical reference)
 - After Phase 4 merges sanitization+drafting: delete `codex/drafting-magic` and `codex/drafting-magic-sanitized` (tags survive)
 
@@ -732,10 +755,10 @@ Three remote branches contain work that is needed later but should **not** merge
 
 1. **Sanitization branch audit** — pull `codex/drafting-magic-sanitized`, inventory `services/sanitization/`, confirm contents before relying on them in §E and §F
 2. **Self-administered privilege smoke test** (§0.b) — author 30 traps, run against sanitization, fix obvious leaks
-3. **Upstash KV mirror schema** — schema for §D, write-pattern load test
-4. **Tool-callback latency baseline** — measure current `chatService.ts` round-trips for Phase 1 comparison
+3. **Upstash KV conversation schema** — schema for §D `session:{id}:messages`, write-pattern load test
+4. **Tool-call latency baseline** — measure current `chatService.ts` round-trips for Phase 1 comparison
 
-(SDK capability audit was previously in this list; promoted to Phase 1's first gate — see "Phase 1 — Spike" §"Phase 1 first gate".)
+(The original Managed Agents SDK capability audit was completed 2026-05-03 and then superseded 2026-05-10 by the ZDR-scope finding — see corrigendum in `docs/phase-1-sdk-audit.md`. The replacement gate is the Messages API smoke test described under "Phase 1 first gate" above.)
 
 **User decisions (Arjun):**
 
