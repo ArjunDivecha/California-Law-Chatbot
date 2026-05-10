@@ -25,7 +25,7 @@
 - All of Phases 2–6 (drafting workflows, verifier sub-agent, UI integration, shadow run, cutover, attestation generator)
 - Deletion math (~7,800 lines): the OpenRouter proxies, custom orchestrator under `agents/`, `orchestrate-document.ts`, `verifierService.ts`, and the bulk of `chatService.ts` all go regardless of which Anthropic runtime we use
 - Tool layer (§B), sanitization (§E with mechanism change), audit log (§G), versioning (§H), retention (§I), evidentiary controls (§W), UPL (§X), per-session attestation (§Y)
-- Bedrock remains the deeper compliance fallback **if Phase 0 Anthropic ZDR paperwork doesn't close** (same Agent SDK loop, different inference endpoint)
+- **No fallback inference provider.** Direct Anthropic subscription is the only path. Bedrock and OpenRouter are explicitly out of scope for this and any future phase of this project. If Anthropic ZDR/BAA paperwork doesn't close, that is a project-level block to be resolved with Anthropic — not an architectural pivot.
 
 A corrigendum is added to `docs/phase-1-sdk-audit.md` recording the ZDR-scope finding that invalidated the Managed Agents path.
 
@@ -122,7 +122,7 @@ Runs in parallel with Phase 1 design; gates only Phase 5 cutover.
 - BAA, signed
 - SOC 2 Type II report, current
 - Malpractice carrier UPL review: written confirmation that AI-summarized non-CA authority is covered, and that the policy doesn't exclude AI-assisted legal work
-- F&F two-paragraph memo (§17) explaining Bedrock → direct Anthropic API pivot
+- F&F two-paragraph memo (§Q) explaining the direct Anthropic subscription choice
 
 **0.b — Engineering smoke test (Arjun, ~1 day):**
 - Author ~30 compound-query "privilege traps" — innocuous-looking queries that combine to identify a hypothetical client (e.g., "$4.3M claim, Marin County, tech founder")
@@ -137,7 +137,7 @@ Runs in parallel with Phase 1 design; gates only Phase 5 cutover.
 - This is the formal gate; the Phase 0.b smoke test is just to catch obvious bugs early
 - If the review surfaces a real leak, cutover is paused until the boundary is fixed
 
-**Phase 0 fallback:** If Anthropic enterprise terms (ZDR/BAA/SOC 2) don't close, fall back to AWS Bedrock with the same Agent SDK self-hosted loop swapped to call Bedrock's Messages-compatible Claude endpoint. Deletion math is identical — only the inference endpoint changes. AWS BAA covers the same controls F&F needs. Document this contingency; do not return to OpenRouter.
+**No Phase 0 architectural fallback.** Direct Anthropic subscription is the only inference path for this project. Bedrock and OpenRouter are out of scope, permanently. If ZDR/BAA/SOC 2 paperwork does not close on Anthropic's side, escalate with Anthropic; do not switch providers.
 
 ---
 
@@ -550,16 +550,15 @@ Objective rollback triggers (any one fires → roll back):
 
 ### P. Phase 1 failure fallback
 
-If the Phase 1 spike fails the gold set or latency budget:
+Direct Anthropic subscription is the only inference path; there is no provider-level fallback. If Phase 1 fails:
 1. Diagnose where the loop underperforms (model choice, system prompt, tool design)
 2. Tool-layer issues → one more 2-week iteration with bundled-call tool design and parallel-tool-call optimization
 3. Model-quality issues → swap Opus 4.7 ↔ Sonnet 4.6 (one line change in `agentLoop.ts`); re-run gold set
-4. ZDR/BAA paperwork doesn't close → **swap inference endpoint to AWS Bedrock** (same `agentLoop.ts`, different Anthropic-on-Bedrock client). AWS BAA covers the same controls; deletion math is identical. Plan continues from Phase 2.
-5. **Hard stop:** maximum two Phase 1 iterations. If both fail and Bedrock fallback is also unviable, the migration is dead.
+4. **Hard stop:** maximum two Phase 1 iterations. If both fail, the migration is dead — but the current OpenRouter pipeline keeps running until then, so there is no production-availability risk.
 
 ### Q. F&F communication memo (sent before Phase 5)
 
-> "We are migrating the chatbot's AI infrastructure from AWS Bedrock to direct Anthropic API. The original Bedrock choice was driven by a specific compliance posture — zero Anthropic operator access to inference. Anthropic's current enterprise terms (Zero Data Retention agreement, signed BAA, SOC 2 Type II report) now provide equivalent posture. Signed copies of all three are on file."
+> "We are migrating the chatbot's AI infrastructure to a direct Anthropic enterprise subscription. The compliance posture is Anthropic's enterprise Zero Data Retention agreement, signed BAA, and current SOC 2 Type II report. Signed copies of all three are on file."
 >
 > "The migration replaces our custom orchestration layer with the Anthropic Agent SDK running against the direct Messages API, and reduces our internal codebase by approximately 7,800 lines. We chose the Agent SDK over Anthropic's hosted Managed Agents product because Managed Agents is explicitly not covered by Zero Data Retention; the Messages API is ZDR-eligible under the enterprise agreement. There is no change to data residency, retention, or access controls visible to clients. The change is internal-architecture only. Effective date: [DATE]."
 
@@ -739,12 +738,12 @@ Three remote branches contain work that is needed later but should **not** merge
 |---|---|---|---|
 | `codex/drafting-magic-sanitized` | Drafting UI (`components/drafting/*`, 2,991 lines) + sanitization layer (`services/sanitization/*`, ~1,600 lines) + sanitization tests + OPF daemon | **Phase 0.b** — pull at the start of Phase 0 so the privilege smoke test has something to run against. Drafting UI rewires in Phase 4. | `archive/drafting-magic-sanitized-2026-05-03` |
 | `codex/drafting-magic` | Identical to `drafting-magic-sanitized` (verified by `git diff` — 0 commits between them) | Same as above; pick one and delete the other after merge | `archive/drafting-magic-2026-05-03` |
-| `codex/bedrock-confidentiality-migration` | Same sanitization core (older snapshot) + Bedrock SDK switch + speed-mode passthrough + OPF auto-install UX | **Only if Phase 0 fails** (ZDR/BAA/SOC 2 paperwork doesn't close). Reference implementation for the Phase 0 fallback path. | `archive/bedrock-confidentiality-2026-05-03` |
+| ~~`codex/bedrock-confidentiality-migration`~~ | Bedrock SDK switch + sanitization core + speed-mode + OPF auto-install UX | **Will not be merged.** Bedrock is permanently out of scope. Branch is kept only because the tag `archive/bedrock-confidentiality-2026-05-03` may be useful historical reference for the sanitization layer (which exists in identical form on `codex/drafting-magic-sanitized`, the path actually used). Safe to delete the remote branch; the tag persists. | `archive/bedrock-confidentiality-2026-05-03` |
 
 **Tags are immutable archive points** so the branches can be found again even if they're force-pushed or deleted later. Created `2026-05-03`.
 
 **Cleanup once the agent-loop migration ships and stabilizes (post-Phase-5b):**
-- If Bedrock fallback was not needed: archive `codex/bedrock-confidentiality-migration` (delete remote branch; tag survives as historical reference)
+- Bedrock is not used; archive `codex/bedrock-confidentiality-migration` (delete remote branch; tag survives as historical reference)
 - After Phase 4 merges sanitization+drafting: delete `codex/drafting-magic` and `codex/drafting-magic-sanitized` (tags survive)
 
 ---
