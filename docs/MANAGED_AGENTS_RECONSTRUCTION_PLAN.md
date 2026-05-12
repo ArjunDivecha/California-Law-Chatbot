@@ -1,8 +1,51 @@
 # Chatbot Reconstruction Plan — Anthropic Agent SDK on Messages API
 
 **Plan file destination:** `/Users/arjundivecha/Dropbox/AAA Backup/A Working/California-Law-Chatbot/docs/MANAGED_AGENTS_RECONSTRUCTION_PLAN.md` *(filename kept for git continuity; contents now describe the Agent SDK path)*
-**Date:** 2026-05-03 (original), **2026-05-10 architecture pivot**, **2026-05-10 ZDR-removal addendum**, **2026-05-12 token-map retention addendum (tentative — pending F&F partner review)**
-**Status:** Final, post Opus + Codex (3 rounds, approved) + Ultraplan + Council review + ZDR scope verification, + 2026-05-10 plan-level pivot to Anthropic Team plan (no ZDR). The 2026-05-12 third addendum below is **tentative pending F&F partner sign-off**.
+**Date:** 2026-05-03 (original), **2026-05-10 architecture pivot**, **2026-05-10 ZDR-removal addendum**, **2026-05-12 token-map retention addendum (tentative — pending F&F partner review)**, **2026-05-12 Managed-Agents revisit (scope clarification, not reversal)**
+**Status:** Final, post Opus + Codex (3 rounds, approved) + Ultraplan + Council review + ZDR scope verification, + 2026-05-10 plan-level pivot to Anthropic Team plan (no ZDR). The 2026-05-12 third addendum below is **tentative pending F&F partner sign-off**; the 2026-05-12 fourth addendum below corrects the reasoning of the 2026-05-10 first addendum without reversing its conclusion.
+
+---
+
+## 2026-05-12 (fourth addendum) — Managed Agents revisit: scope clarification, not reversal
+
+**Finding:** The 2026-05-10 first addendum rejected Managed Agents on the grounds that "Managed Agents is NOT covered by ZDR ... incompatible with F&F's ZDR requirement for privileged content." The 2026-05-10 second addendum then removed ZDR from the project's compliance posture entirely (F&F stays on Team plan; ZDR/BAA/SOC 2 paperwork permanently off the table). This left the first addendum's rejection logically dependent on a premise that no longer holds. The original conclusion is correct, but the original reasoning isn't — the issue is broader than ZDR.
+
+Triggered by Anthropic's 2026-05-12 legal-industry launch ([`claude.com/blog/claude-for-the-legal-industry`](https://claude.com/blog/claude-for-the-legal-industry)) and the open-source [`anthropics/claude-for-legal`](https://github.com/anthropics/claude-for-legal) repository, which together position Managed Agents as the preferred deployment surface for the 12 practice-area plugins. Reconsidered the decision; concluded the rejection stands but the reasoning needs correction and the absolutist wording needs softening.
+
+**Actual current reasoning for staying on Messages API (replaces the obsolete ZDR-implies-everything reasoning of the first addendum):**
+
+1. **ZDR-eligibility asymmetry across Anthropic surfaces** — per `platform.claude.com/docs/en/agents-and-tools/mcp-connector` and `docs/api-and-data-retention` as of 2026-05-12:
+   - **Messages API: ZDR-eligible** under enterprise paperwork. Presently moot for F&F (Team plan, no ZDR) but preserves optionality if F&F's posture or Anthropic's pricing ever shifts.
+   - **Managed Agents: not ZDR-eligible**, ever. MA is a stateful resource with manual-delete semantics — structurally outside the ZDR shape.
+   - **MCP connector: not ZDR-eligible** under any tier. The moment a `mcp_servers` parameter is included on `messages.create()`, that specific call falls outside ZDR. Privilege-gated tool inclusion (omit MCP toolsets when input is privileged) protects this.
+   - **Claude Skills (runtime): not ZDR-eligible**. Skills delivered as system-prompt text content via `messages.create()` remain ZDR-eligible because they're indistinguishable from any other system prompt.
+
+2. **Auto-delete vs manual-delete retention shape** — under current Team-plan posture (no ZDR for any surface), Messages API auto-deletes after the trust-and-safety retention window (~30 days). Managed Agents persist on Anthropic infrastructure until manually deleted. Even without ZDR, the auto-delete window is shorter and more deterministic than the manual-delete obligation V2 would take on with MA. A forgotten cleanup process on MA = unbounded retention = a discovery target.
+
+3. **Audit-trail control** — `api/_lib/agentLoop.ts` writes audit records at every step (every tool dispatch, every model invocation, every span detection) to `api/_shared/auditLog.ts` and ultimately to `audit:YYYY-MM-DD` lists in Upstash KV. Managed Agents dispatches tools server-side; we'd consume audit via an API callback rather than logging at the dispatch site. Defensibility under a litigation hold is meaningfully easier when V2 logs at its own wire, with HMAC-stable references back to the sanitized prompt of record.
+
+4. **Switching cost** — V2's Phase 1 spike (commits `8401011` through `f2a4971`) is ~1,600 lines of working, gated, audited code. Switching runtime to MA would rewrite ~1,200 of those lines (`agentLoop.ts`, `sessionStore.ts`, parts of `agentProxy.ts`). Bad ROI when ~90% of MA's value (Skills content, MCP connectors, sub-agent patterns) is reachable from Messages API today via `mcp_servers` parameter and inlined-Skill-content system prompts.
+
+**What this changes:**
+
+| Item | 2026-05-10 first addendum (original) | 2026-05-12 fourth addendum (corrected) |
+|---|---|---|
+| Wording | "Permanently off the table — not a fallback, not a future option" | **Off the table for privileged / client-confidential workflows under Anthropic's current ZDR scope.** Revisit if (a) Anthropic ships ZDR-eligible Managed Agents, (b) F&F adopts a separate non-confidential product surface (internal marketing review, public-FAQ generation) where Team-plan retention is acceptable, or (c) F&F's roadmap grows to include the scheduled-agent workflows the 2026-05-12 announcement positions on MA (`docket-watcher`, `renewal-tracker`, `regulatory-monitor`). |
+| Reasoning | "Not ZDR-eligible, incompatible with F&F's ZDR posture" (premise invalidated by 2026-05-10 second addendum) | (a) ZDR-eligibility asymmetry preserves future optionality; (b) auto-delete vs manual-delete is a real Team-plan retention difference; (c) audit-trail control favors self-hosted; (d) switching cost is real. |
+| Sandbox track | Not mentioned | **Allowed:** synthetic-data evaluation of the Apache-2.0 `anthropics/claude-for-legal` plugins on MA. Pattern study only — borrow agent structure, reviewer-note conventions, source-tag schema, handoff patterns, worker isolation. **No real F&F matters, no privileged drafts, no production attorney prompts.** |
+
+**V2 portability principle (newly explicit):**
+
+To keep the cost of a future runtime swap manageable, V2's agent definitions should adopt a shape close enough to Anthropic's plugin format that migration would be a runtime swap, not a product rewrite. Phase 1 follow-up work (not blocking, but should land before Phase 5 cutover):
+
+- **Extract the hardcoded system prompt** in `agentLoop.ts` (`DEFAULT_SYSTEM_PROMPT`) into one or more `agents/california-legal/skills/<name>.md` files with the same frontmatter shape as Anthropic's Skill files (`name`, `description`, `user-invocable`, `argument-hint` per the `claude-for-legal` repo).
+- **Extract agent config** (model, max_tokens, tool list, max-iterations cap, default system prompt id) into `agents/california-legal/agent.yaml` with field names matching Anthropic's plugin schema.
+- **Define a `source` block schema** for tool results so retrieval provenance is structured the same way Anthropic's plugins surface it (e.g. `{ source_type: 'ceb' | 'courtlistener' | 'web', title, citation, url, retrieved_at }`). Tools return structured `source` arrays alongside content; the model is prompted to cite via `source_id`.
+- **Keep the privilege-gated tool-array construction** (`buildToolsArray(privileged)`) and the sanitization-first proxy regardless of runtime. Those are the V2 wedge and don't change.
+
+If MA later becomes ZDR-eligible (or if F&F adopts a non-confidential product surface), the migration is then a runtime swap that consumes the same `agent.yaml`, `skills/*.md`, and `source` schema we've been using — not a rewrite of attorney-facing product behavior.
+
+**Plan supersession order:** this 2026-05-12 fourth addendum supersedes the **wording** of the 2026-05-10 first addendum (specifically the "permanently off the table — not a fallback, not a future option" line). The original **conclusion** (Messages API is V2's runtime) stands; the **reasoning** is replaced as above. The 2026-05-10 first addendum's other content (Managed Agents' specific incompatibilities — `beta.agents.*` / `beta.sessions.*` / Environments) remains accurate as a historical description of the alternative we declined.
 
 ---
 
@@ -102,7 +145,9 @@ Option C trades the ability to rehydrate the verbatim privileged input years lat
 
 ## 2026-05-10 (first addendum) — Architecture Pivot — Managed Agents removed from the plan
 
-**Finding:** Anthropic's official platform docs explicitly state Managed Agents is NOT covered by ZDR: *"Claude Managed Agents is a stateful resource. You can delete session transcripts, but there is no automatic deletion."* This is incompatible with F&F's ZDR requirement for privileged content. Managed Agents is therefore **permanently off the table** for this project — not a fallback, not a future option.
+> ℹ️ **Wording revised 2026-05-12** — see the fourth addendum at the top of this document. The "permanently off the table" framing below was based on F&F having a ZDR requirement; the 2026-05-10 second addendum subsequently removed ZDR from the project's posture, invalidating the original premise. The conclusion (MA stays out of V2's runtime) is unchanged; the reasoning has been corrected and the absolutist language has been softened to "off the table for privileged / client-confidential workflows under current ZDR scope."
+
+**Finding (original 2026-05-10 wording — preserved for historical record):** Anthropic's official platform docs explicitly state Managed Agents is NOT covered by ZDR: *"Claude Managed Agents is a stateful resource. You can delete session transcripts, but there is no automatic deletion."* This is incompatible with F&F's ZDR requirement for privileged content. Managed Agents is therefore **permanently off the table** for this project — not a fallback, not a future option.
 
 **Pivot:** The agent runtime is now **Anthropic Agent SDK self-hosted on the Messages API**. The Messages API is GA and ZDR-eligible under enterprise terms (Phase 0 paperwork). We own the agent loop, session state, tool dispatch, and event mirror — Anthropic only handles inference.
 
@@ -866,6 +911,13 @@ Three remote branches contain work that is needed later but should **not** merge
 10. **F&F partner sign-off on Option C retention** (2026-05-12 third addendum) — open. Required before Phase 1's audit-record-writer is finalized.
 11. **Gemini-grounding replacement acceptance criterion for Phase 1** — tracked informally, not pinned. Replacement is Anthropic `web_search_20250305` with privilege gating (omit tool when input is privileged). `services/confidenceGating.ts` to be rewired from Gemini grounding-metadata shape to Anthropic citations.
 
+**Phase 1 follow-ups (forward-compat with 2026-05-12 fourth addendum's V2 Portability Principle):**
+
+12. **Extract system prompt to `agents/california-legal/skills/*.md`** — currently a hardcoded string constant in `api/_lib/agentLoop.ts` (`DEFAULT_SYSTEM_PROMPT`). Move to one or more Skill markdown files matching `anthropics/claude-for-legal` frontmatter (`name`, `description`, `user-invocable`, `argument-hint`). Should land before Phase 5 cutover so the runtime swap path remains cheap.
+13. **Extract agent config to `agents/california-legal/agent.yaml`** — model, max_tokens, tool list, max-iterations cap as data, not code. Field names should mirror Anthropic's plugin schema.
+14. **Define `source` block schema for tool results** — `{ source_type, title, citation, url, retrieved_at }`. Tools return `sources[]` alongside content; system prompt directs the model to cite by `source_id`. Matches Anthropic's plugin source-provenance contract.
+15. **Synthetic-data sandbox track on Managed Agents** — Apache-2.0 `anthropics/claude-for-legal` plugins evaluated with fake matters only. No real F&F data, no production prompts. Purpose: pattern study (agent structure, reviewer-note conventions, handoff shapes) so V2 stays aligned with Anthropic's design choices without taking on MA's retention shape in production.
+
 **Deferred to post-Phase-5:**
 
-12. **Embeddings re-evaluation (Voyage vs OpenAI)** — separate project after migration is stable
+16. **Embeddings re-evaluation (Voyage vs OpenAI)** — separate project after migration is stable

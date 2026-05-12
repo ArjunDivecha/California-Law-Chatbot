@@ -63,6 +63,7 @@ a720572  Sanitization audit fixes (May 11, V1 mechanical fixes for audit §8 4-7
 
 1. **F&F partner sign-off** on `docs/MANAGED_AGENTS_RECONSTRUCTION_PLAN.md` 2026-05-12 third addendum (Option C retention). The addendum is binding only after counsel ratifies; until then, the `audit_record_envelope:*` keys in `docs/upstash-kv-schema-v1.md` remain a draft schema.
 2. **Gemini-grounding replacement acceptance criterion** for Phase 1 — tracked informally in conversation, not yet pinned in the plan. The replacement is `web_search_20250305` Anthropic tool with privilege gating (omit from `tools` array when input is privileged). `services/confidenceGating.ts` needs rewiring from Gemini grounding-metadata shape to Anthropic citations.
+3. **V2 Portability Principle work** (2026-05-12 fourth addendum) — extract `DEFAULT_SYSTEM_PROMPT` from `agentLoop.ts` into `agents/california-legal/skills/*.md`, agent config into `agents/california-legal/agent.yaml`, define `source` block schema for tool results. Phase 1 follow-up; should land before Phase 5 cutover so a future Managed-Agents-or-equivalent runtime swap stays cheap.
 
 ### How to verify status reproducibly
 
