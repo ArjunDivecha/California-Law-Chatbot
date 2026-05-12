@@ -1,0 +1,241 @@
+/**
+ * Session store for the V2 agent loop. Wraps Upstash Redis (REST) per
+ * the schema documented in docs/upstash-kv-schema-v1.md (v1.0).
+ *
+ * Owners + key shapes:
+ *   session:{id}:messages          List (RPUSH) of JSON-stringified Anthropic-shape messages
+ *   session:{id}:meta              Hash   user_id, created_at, last_active_at, model, etc.
+ *   session:{id}:toolresult:{id}   String (JSON) idempotency cache, 24h TTL
+ *   session:{id}:lock              String (epoch ms) single-flight lock, 30s auto-expire
+ *
+ * The agent loop calls this module — it does not talk to Upstash
+ * directly. Tests mock the underlying Redis client via setSessionRedis.
+ */
+
+import { Redis } from '@upstash/redis';
+
+// ---------------------------------------------------------------------------
+// Redis client — injectable for tests
+// ---------------------------------------------------------------------------
+
+export interface SessionRedis {
+  // Subset of @upstash/redis methods we actually use.
+  rpush(key: string, ...values: string[]): Promise<number>;
+  lrange(key: string, start: number, end: number): Promise<string[]>;
+  hset(key: string, value: Record<string, unknown>): Promise<number>;
+  hgetall<T = Record<string, string>>(key: string): Promise<T | null>;
+  set(
+    key: string,
+    value: string,
+    opts?: { ex?: number; nx?: boolean },
+  ): Promise<unknown>;
+  get(key: string): Promise<string | null>;
+  del(key: string): Promise<number>;
+  expire(key: string, seconds: number): Promise<unknown>;
+}
+
+let injected: SessionRedis | null = null;
+let cached: SessionRedis | null = null;
+
+/** Test-only — inject a mock Redis. Pass null to restore env-driven default. */
+export function setSessionRedis(redis: SessionRedis | null): void {
+  injected = redis;
+  cached = null;
+}
+
+function resolveRedis(): SessionRedis {
+  if (injected) return injected;
+  if (cached) return cached;
+  const url = process.env.UPSTASH_REDIS_REST_URL;
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+  if (!url || !token) {
+    throw new Error(
+      'sessionStore: UPSTASH_REDIS_REST_URL / TOKEN not configured',
+    );
+  }
+  cached = new Redis({ url, token }) as unknown as SessionRedis;
+  return cached;
+}
+
+// ---------------------------------------------------------------------------
+// Key builders
+// ---------------------------------------------------------------------------
+
+function messagesKey(sessionId: string): string {
+  return `session:${sessionId}:messages`;
+}
+function metaKey(sessionId: string): string {
+  return `session:${sessionId}:meta`;
+}
+function toolResultKey(sessionId: string, toolUseId: string): string {
+  return `session:${sessionId}:toolresult:${toolUseId}`;
+}
+function lockKey(sessionId: string): string {
+  return `session:${sessionId}:lock`;
+}
+
+const TOOL_RESULT_TTL_SECONDS = 60 * 60 * 24;
+const LOCK_TTL_SECONDS = 30;
+
+// ---------------------------------------------------------------------------
+// Message log (append-only)
+// ---------------------------------------------------------------------------
+
+/**
+ * Anthropic-shaped message. The agent loop appends one per role per
+ * turn (so a multi-tool turn produces multiple entries).
+ */
+export interface SessionMessage {
+  role: 'user' | 'assistant';
+  /** Anthropic content-block array — text, tool_use, tool_result, etc. */
+  content: unknown;
+  /** App-generated stable id for this turn. Required for audit. */
+  turn_id: string;
+  /** Monotone-within-session sequence number. */
+  sequence: number;
+  /** ISO-8601 append timestamp. */
+  appended_at: string;
+  /** Sanitization attestation snapshot for this turn (input role only). */
+  sanitization?: {
+    privileged: boolean;
+    compound_risk_buckets: number;
+    redactions_count: number;
+    by_category: Record<string, number>;
+  };
+}
+
+export async function appendMessage(
+  sessionId: string,
+  msg: SessionMessage,
+): Promise<void> {
+  const redis = resolveRedis();
+  await redis.rpush(messagesKey(sessionId), JSON.stringify(msg));
+}
+
+export async function readMessages(
+  sessionId: string,
+): Promise<SessionMessage[]> {
+  const redis = resolveRedis();
+  const raw = await redis.lrange(messagesKey(sessionId), 0, -1);
+  // @upstash/redis auto-deserializes JSON-shaped values on read. Strings
+  // that happen NOT to be JSON come back as strings — handle both.
+  return raw.map((entry) => {
+    if (typeof entry === 'string') {
+      try {
+        return JSON.parse(entry) as SessionMessage;
+      } catch {
+        return entry as unknown as SessionMessage;
+      }
+    }
+    return entry as unknown as SessionMessage;
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Session meta
+// ---------------------------------------------------------------------------
+
+export interface SessionMeta {
+  user_id: string;
+  created_at: string;
+  last_active_at: string;
+  schema_version: number;
+  model: string;
+  system_prompt_sha256?: string;
+  agent_config_sha256?: string;
+  title?: string;
+}
+
+export async function readMeta(sessionId: string): Promise<SessionMeta | null> {
+  const redis = resolveRedis();
+  const hash = await redis.hgetall<Record<string, string>>(metaKey(sessionId));
+  if (!hash || Object.keys(hash).length === 0) return null;
+  return {
+    user_id: hash.user_id,
+    created_at: hash.created_at,
+    last_active_at: hash.last_active_at,
+    schema_version: Number(hash.schema_version ?? '1'),
+    model: hash.model,
+    system_prompt_sha256: hash.system_prompt_sha256,
+    agent_config_sha256: hash.agent_config_sha256,
+    title: hash.title,
+  };
+}
+
+export async function writeMeta(
+  sessionId: string,
+  meta: Partial<SessionMeta>,
+): Promise<void> {
+  const redis = resolveRedis();
+  // Upstash hset accepts a flat object.
+  const fields: Record<string, string> = {};
+  for (const [k, v] of Object.entries(meta)) {
+    if (v == null) continue;
+    fields[k] = String(v);
+  }
+  if (Object.keys(fields).length === 0) return;
+  await redis.hset(metaKey(sessionId), fields);
+}
+
+export async function touchLastActive(sessionId: string): Promise<void> {
+  await writeMeta(sessionId, { last_active_at: new Date().toISOString() });
+}
+
+// ---------------------------------------------------------------------------
+// Tool-result idempotency cache (24h)
+// ---------------------------------------------------------------------------
+
+export interface CachedToolResult {
+  tool_use_id: string;
+  name: string;
+  input: unknown;
+  result: unknown;
+  hash: string;
+  written_at: string;
+}
+
+export async function readToolResult(
+  sessionId: string,
+  toolUseId: string,
+): Promise<CachedToolResult | null> {
+  const redis = resolveRedis();
+  const raw = await redis.get(toolResultKey(sessionId, toolUseId));
+  if (!raw) return null;
+  return JSON.parse(raw) as CachedToolResult;
+}
+
+export async function writeToolResult(
+  sessionId: string,
+  rec: CachedToolResult,
+): Promise<void> {
+  const redis = resolveRedis();
+  await redis.set(
+    toolResultKey(sessionId, rec.tool_use_id),
+    JSON.stringify(rec),
+    { ex: TOOL_RESULT_TTL_SECONDS },
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Single-flight lock
+// ---------------------------------------------------------------------------
+
+/**
+ * Try to acquire a single-flight lock on a session. Returns true if
+ * acquired, false if another turn is already in-flight. Auto-expires
+ * after 30s so a crashed turn-handler can't permanently lock a session.
+ */
+export async function acquireLock(sessionId: string): Promise<boolean> {
+  const redis = resolveRedis();
+  const result = await redis.set(
+    lockKey(sessionId),
+    Date.now().toString(),
+    { ex: LOCK_TTL_SECONDS, nx: true },
+  );
+  return result !== null;
+}
+
+export async function releaseLock(sessionId: string): Promise<void> {
+  const redis = resolveRedis();
+  await redis.del(lockKey(sessionId));
+}

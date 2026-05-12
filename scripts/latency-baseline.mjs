@@ -73,11 +73,16 @@ function loadEnvFallback() {
     const [, k, vRaw] = m;
     if (process.env[k]) continue;
     let v = vRaw.trim();
-    if (
-      (v.startsWith('"') && v.endsWith('"')) ||
-      (v.startsWith("'") && v.endsWith("'"))
-    ) {
-      v = v.slice(1, -1);
+    // Handle "value" #trailing-comment OR value #comment OR plain "value".
+    if (v.startsWith('"')) {
+      const close = v.indexOf('"', 1);
+      v = close > 0 ? v.slice(1, close) : v.slice(1);
+    } else if (v.startsWith("'")) {
+      const close = v.indexOf("'", 1);
+      v = close > 0 ? v.slice(1, close) : v.slice(1);
+    } else {
+      const cut = v.search(/\s|#/);
+      if (cut >= 0) v = v.slice(0, cut);
     }
     process.env[k] = v;
   }
