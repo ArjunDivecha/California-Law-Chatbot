@@ -11,7 +11,8 @@
     "preview": "vite preview",
     "test:verification": "node test-verification-system.js",
     "test:openrouter": "node test-comprehensive.js",
-    "test:sanitization": "tsx tests/sanitization.test.mjs"
+    "test:sanitization": "tsx tests/sanitization.test.mjs",
+    "test:traps": "tsx tests/traps/runTraps.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.95.2",
