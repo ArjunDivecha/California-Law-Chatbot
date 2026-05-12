@@ -9,9 +9,51 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import { readFileSync } from 'node:fs';
 
 dotenv.config(); // loads .env
 dotenv.config({ path: '.env.local', override: true }); // loads .env.local (overrides .env)
+
+// Fallback: load any still-missing keys from ~/Dropbox/AAA Backup/.env.txt
+// per the global CLAUDE.md convention. Matches the env-loader the test
+// scripts use (latency-baseline.mjs, agent-loop-smoke.mjs). Local dev-only
+// — Vercel production loads env vars through the platform.
+(function loadFallbackEnv() {
+  const required = [
+    'ANTHROPIC_API_KEY',
+    'OPENAI_API_KEY',
+    'UPSTASH_VECTOR_REST_URL',
+    'UPSTASH_VECTOR_REST_TOKEN',
+    'UPSTASH_REDIS_REST_URL',
+    'UPSTASH_REDIS_REST_TOKEN',
+    'COURTLISTENER_API_KEY',
+  ];
+  if (required.every((k) => process.env[k])) return;
+  let text;
+  try {
+    text = readFileSync('/Users/arjundivecha/Dropbox/AAA Backup/.env.txt', 'utf8');
+  } catch {
+    return; // file not readable — leave keys missing, caller will report
+  }
+  for (const line of text.split('\n')) {
+    const m = line.match(/^\s*([A-Z][A-Z_0-9]*)\s*=\s*(.*)$/);
+    if (!m) continue;
+    const [, k, vRaw] = m;
+    if (process.env[k]) continue;
+    let v = vRaw.trim();
+    if (v.startsWith('"')) {
+      const close = v.indexOf('"', 1);
+      v = close > 0 ? v.slice(1, close) : v.slice(1);
+    } else if (v.startsWith("'")) {
+      const close = v.indexOf("'", 1);
+      v = close > 0 ? v.slice(1, close) : v.slice(1);
+    } else {
+      const cut = v.search(/\s|#/);
+      if (cut >= 0) v = v.slice(0, cut);
+    }
+    process.env[k] = v;
+  }
+})();
 
 const app = express();
 app.use(cors());
@@ -92,6 +134,17 @@ app.all('/api/serper-scholar', async (req, res) => {
 // Chat history routes (single flat file, uses ?id= query param)
 app.all('/api/chats', async (req, res) => {
   const handler = await loadHandler('./api/chats.ts');
+  await handler(req, res);
+});
+
+// V2 agent loop — non-streaming + streaming endpoints
+app.all('/api/agent/turn', async (req, res) => {
+  const handler = await loadHandler('./api/agent/turn.ts');
+  await handler(req, res);
+});
+
+app.all('/api/agent/turn-stream', async (req, res) => {
+  const handler = await loadHandler('./api/agent/turn-stream.ts');
   await handler(req, res);
 });
 

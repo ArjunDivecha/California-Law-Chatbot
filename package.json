@@ -5,8 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "dev:api": "node dev-server.js",
-    "dev:full": "node dev-server.js & sleep 2 && vite",
+    "dev:api": "tsx dev-server.js",
+    "dev:full": "tsx dev-server.js & sleep 2 && vite",
     "build": "vite build",
     "preview": "vite preview",
     "test:verification": "node test-verification-system.js",
