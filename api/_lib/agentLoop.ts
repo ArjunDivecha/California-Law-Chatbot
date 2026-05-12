@@ -21,7 +21,12 @@
  */
 
 import Anthropic from '@anthropic-ai/sdk';
-import { buildToolsArray, dispatchTool, type ToolUseBlock } from './tools/index.js';
+import {
+  buildToolsArray,
+  buildMcpServers,
+  dispatchTool,
+  type ToolUseBlock,
+} from './tools/index.js';
 import {
   appendMessage,
   readMessages,
@@ -47,6 +52,9 @@ import { buildSystemPrompt } from './skills.js';
 const DEFAULT_MODEL = 'claude-opus-4-7';
 const DEFAULT_MAX_TOKENS = 4096;
 const MAX_ITERATIONS = 8; // safety cap on tool-use rounds within one turn
+
+/** Beta header for the MCP connector — 2026-05-12 fifth addendum. */
+const MCP_BETA_HEADER = 'mcp-client-2025-11-20';
 
 // ---------------------------------------------------------------------------
 // Tool-output sanitization wrapper (audit §8 #8 / second addendum compliance)
@@ -301,6 +309,63 @@ function simpleHash(s: string): string {
   return h.toString(16);
 }
 
+// ---------------------------------------------------------------------------
+// Beta-call wrapper — routes to client.beta.messages.{create,stream} with
+// the MCP beta header when at least one mcp_server is in the spec; uses the
+// stable client.messages.{create,stream} surface otherwise.
+//
+// Per Codex review of the fifth addendum: don't jam mcp_servers into the
+// stable call (it would be rejected as an unknown parameter). The two
+// call paths share the same parameter prefix; only the suffix
+// (mcp_servers + betas) is conditional.
+// ---------------------------------------------------------------------------
+
+interface BaseMessagesParams {
+  model: string;
+  max_tokens: number;
+  system: string;
+  messages: Anthropic.Messages.MessageParam[];
+  tools: Anthropic.Messages.Tool[];
+}
+
+type McpServerEntry = ReturnType<typeof buildMcpServers>[number];
+
+function callMessagesCreate(
+  client: Anthropic,
+  params: BaseMessagesParams,
+  mcpServers: McpServerEntry[],
+): Promise<Anthropic.Messages.Message> {
+  if (mcpServers.length === 0) {
+    return client.messages.create(params);
+  }
+  // Beta surface — types diverge in the SDK between stable and beta, so
+  // we cast at the wire. Functionally equivalent for our parameter set.
+  return client.beta.messages.create({
+    ...params,
+    mcp_servers: mcpServers,
+    betas: [MCP_BETA_HEADER],
+  } as unknown as Anthropic.Beta.Messages.MessageCreateParamsNonStreaming) as unknown as Promise<
+    Anthropic.Messages.Message
+  >;
+}
+
+function callMessagesStream(
+  client: Anthropic,
+  params: BaseMessagesParams,
+  mcpServers: McpServerEntry[],
+): Anthropic.Messages.MessageStream {
+  if (mcpServers.length === 0) {
+    return client.messages.stream(params);
+  }
+  // Beta stream — same return shape (async iterable + finalMessage()),
+  // type-erased at the boundary.
+  return client.beta.messages.stream({
+    ...params,
+    mcp_servers: mcpServers,
+    betas: [MCP_BETA_HEADER],
+  } as unknown as Anthropic.Beta.Messages.MessageStreamParams) as unknown as Anthropic.Messages.MessageStream;
+}
+
 /**
  * Run ONE turn (user message → assistant final answer). Handles any
  * number of tool-use rounds internally up to MAX_ITERATIONS. Returns
@@ -331,8 +396,11 @@ export async function runTurn(opts: RunTurnOptions): Promise<RunTurnResult> {
   };
   await appendMessage(opts.session_id, userMessage);
 
-  // ── 2. Build the tools array (privilege-gated web_search).
+  // ── 2. Build the tools array (privilege-gated web_search + MCP toolsets)
+  //       and the parallel mcp_servers spec (empty unless V2_MCP_ENABLED
+  //       and a server is opted in via its per-server env flag).
   const tools = buildToolsArray(opts.privileged) as unknown as Anthropic.Messages.Tool[];
+  const mcpServers = buildMcpServers(opts.privileged);
 
   // ── 3. Loop: call messages.create → if assistant emitted tool_use,
   //       dispatch and append tool_result, loop again. Cap at
@@ -352,13 +420,17 @@ export async function runTurn(opts: RunTurnOptions): Promise<RunTurnResult> {
 
   for (let iter = 0; iter < MAX_ITERATIONS; iter += 1) {
     const messages = toAnthropicMessages(history);
-    const response = await client.messages.create({
-      model,
-      max_tokens: DEFAULT_MAX_TOKENS,
-      system: systemPrompt,
-      messages,
-      tools,
-    });
+    const response = await callMessagesCreate(
+      client,
+      {
+        model,
+        max_tokens: DEFAULT_MAX_TOKENS,
+        system: systemPrompt,
+        messages,
+        tools,
+      },
+      mcpServers,
+    );
 
     if (response.usage) {
       totalTokens +=
@@ -479,7 +551,17 @@ export async function runTurn(opts: RunTurnOptions): Promise<RunTurnResult> {
  */
 export type TurnStreamEvent =
   | { kind: 'token'; text: string }
-  | { kind: 'tool_use_start'; tool_use_id: string; name: string; round: number }
+  | {
+      kind: 'tool_use_start';
+      tool_use_id: string;
+      name: string;
+      round: number;
+      /** True when this is an Anthropic-server-side MCP tool dispatch
+       *  (mcp_tool_use content block) rather than an in-process tool. */
+      is_mcp?: boolean;
+      /** MCP server name when is_mcp=true. */
+      mcp_server_name?: string;
+    }
   | { kind: 'tool_use_input'; tool_use_id: string; input: unknown }
   | {
       kind: 'tool_result';
@@ -492,6 +574,13 @@ export type TurnStreamEvent =
       output_redactions_count?: number;
       /** Compound-risk buckets detected in this tool's output. */
       output_compound_risk_buckets?: number;
+      /** True when this corresponds to an mcp_tool_result block —
+       *  server-side dispatch by Anthropic; not sanitized at our wire
+       *  (data already flowed through Anthropic per Team-plan retention
+       *  per the fifth addendum's MCP-not-ZDR-eligible note). */
+      is_mcp?: boolean;
+      /** MCP server name when is_mcp=true. */
+      mcp_server_name?: string;
     }
   | { kind: 'iteration'; round: number }
   | { kind: 'done'; result: RunTurnResult }
@@ -538,6 +627,7 @@ export async function* runTurnStream(
   await appendMessage(opts.session_id, userMessage);
 
   const tools = buildToolsArray(opts.privileged) as unknown as Anthropic.Messages.Tool[];
+  const mcpServers = buildMcpServers(opts.privileged);
 
   let totalTokens = 0;
   let toolRounds = 0;
@@ -548,6 +638,9 @@ export async function* runTurnStream(
   let toolOutputRedactions = 0;
   const toolOutputByCategory: Record<string, number> = {};
   let toolOutputsPrivilegedCount = 0;
+  // MCP activity accumulator (Anthropic-dispatched, server-side; we just
+  // observe via stream events).
+  let mcpToolUses = 0;
   let history: SessionMessage[] = [...existing, userMessage];
 
   try {
@@ -555,13 +648,17 @@ export async function* runTurnStream(
       yield { kind: 'iteration', round: iter + 1 };
 
       const messages = toAnthropicMessages(history);
-      const stream = client.messages.stream({
-        model,
-        max_tokens: DEFAULT_MAX_TOKENS,
-        system: systemPrompt,
-        messages,
-        tools,
-      });
+      const stream = callMessagesStream(
+        client,
+        {
+          model,
+          max_tokens: DEFAULT_MAX_TOKENS,
+          system: systemPrompt,
+          messages,
+          tools,
+        },
+        mcpServers,
+      );
 
       // Track tool_use blocks as they're announced via content_block_start
       // so the UI can render an affordance immediately, before the full
@@ -580,6 +677,46 @@ export async function* runTurnStream(
             tool_use_id: tu.id,
             name: tu.name,
             round: iter + 1,
+          };
+        } else if (
+          event.type === 'content_block_start' &&
+          (event.content_block as { type?: string })?.type === 'mcp_tool_use'
+        ) {
+          // MCP tool use — Anthropic dispatches server-side; we observe.
+          // Surface as a tool_use_start with is_mcp=true so the UI can
+          // paint an MCP-specific affordance.
+          const mcpUse = event.content_block as unknown as {
+            id: string;
+            name: string;
+            server_name?: string;
+          };
+          mcpToolUses += 1;
+          yield {
+            kind: 'tool_use_start',
+            tool_use_id: mcpUse.id,
+            name: mcpUse.name,
+            round: iter + 1,
+            is_mcp: true,
+            mcp_server_name: mcpUse.server_name,
+          };
+        } else if (
+          event.type === 'content_block_start' &&
+          (event.content_block as { type?: string })?.type === 'mcp_tool_result'
+        ) {
+          // MCP tool result — server-side dispatch already produced this;
+          // we emit a tool_result event for UI symmetry. elapsed_ms is
+          // unknown to us (Anthropic dispatched it); set to 0.
+          const mcpRes = event.content_block as unknown as {
+            tool_use_id: string;
+            is_error?: boolean;
+          };
+          yield {
+            kind: 'tool_result',
+            tool_use_id: mcpRes.tool_use_id,
+            name: '(mcp)',
+            is_error: Boolean(mcpRes.is_error),
+            elapsed_ms: 0,
+            is_mcp: true,
           };
         } else if (
           event.type === 'content_block_delta' &&
@@ -700,6 +837,9 @@ export async function* runTurnStream(
     }
     if (toolOutputsPrivilegedCount > 0) {
       auditWarnings.push(`tool_outputs_privileged:${toolOutputsPrivilegedCount}`);
+    }
+    if (mcpToolUses > 0) {
+      auditWarnings.push(`mcp_tool_uses:${mcpToolUses}`);
     }
     await writeAuditRecord(
       buildAuditRecord({

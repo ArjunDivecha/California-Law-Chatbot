@@ -27,8 +27,10 @@ import {
   courtlistenerSearch,
   type CourtListenerSearchInput,
 } from './courtlistenerSearch.js';
+import { buildMcpServerSpec, hasMcpToolsets } from './mcpRegistry.js';
+export { hasMcpToolsets };
 
-/** Anthropic tool definition shape (server-side or custom). */
+/** Anthropic tool definition shape (server-side, custom, or MCP toolset). */
 export type ToolDefinition =
   | typeof CEB_SEARCH_TOOL_DEFINITION
   | typeof COURTLISTENER_SEARCH_TOOL_DEFINITION
@@ -36,6 +38,10 @@ export type ToolDefinition =
       type: 'web_search_20250305';
       name: 'web_search';
       max_uses: number;
+    }
+  | {
+      type: 'mcp_toolset';
+      mcp_server_name: string;
     };
 
 const WEB_SEARCH_TOOL: ToolDefinition = {
@@ -62,7 +68,23 @@ export function buildToolsArray(privileged: boolean): ToolDefinition[] {
   if (!privileged) {
     tools.push(WEB_SEARCH_TOOL);
   }
+  // MCP toolsets (per 2026-05-12 fifth addendum). Each MCP entry in the
+  // registry has its own privilege_gate flag; servers with privilege_gate
+  // = true are omitted when privileged=true, parity with web_search.
+  const { mcp_toolsets } = buildMcpServerSpec(privileged);
+  for (const t of mcp_toolsets) tools.push(t);
   return tools;
+}
+
+/**
+ * Get the `mcp_servers` parameter spec for the current privilege state.
+ * Used by the agent loop to decide whether to call the beta surface
+ * (`client.beta.messages.{create,stream}`) and what `mcp_servers` to
+ * pass alongside it. Empty array → no MCP this turn → use stable
+ * surface.
+ */
+export function buildMcpServers(privileged: boolean) {
+  return buildMcpServerSpec(privileged).mcp_servers;
 }
 
 // ---------------------------------------------------------------------------

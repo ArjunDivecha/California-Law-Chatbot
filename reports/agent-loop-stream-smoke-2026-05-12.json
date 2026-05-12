@@ -1,198 +1,225 @@
 {
-  "ran_at": "2026-05-12T23:14:07.534Z",
+  "ran_at": "2026-05-12T23:23:05.424Z",
   "results": [
     {
       "scenario": "public_research (privileged=false expected)",
-      "session_id": "stream_smoke_1778627647534_xnev",
+      "session_id": "stream_smoke_1778628185424_em4s",
       "ok": true,
       "privileged_expected": false,
       "privileged_actual": false,
       "privilege_match": true,
       "compound_risk_buckets": 0,
-      "ttfb_ms": 1123.3385,
-      "ttft_ms": 2682.1346670000003,
-      "e2e_ms": 27314.753459,
+      "ttfb_ms": 2261.386334,
+      "ttft_ms": 3734.8792919999996,
+      "e2e_ms": 33920.491708,
       "iteration_count": 2,
       "tool_events": [
         {
           "kind": "start",
           "name": "ceb_search",
-          "t_ms": 3056.957875
-        },
-        {
-          "kind": "start",
-          "name": "courtlistener_search",
-          "t_ms": 3894.219708
+          "t_ms": 4518.619375
         },
         {
           "kind": "input",
-          "tool_use_id": "toolu_01HXFjGtNZh4HRo5T32LkmNh",
+          "tool_use_id": "toolu_012uu8gEQUD3jt9PUmNWpYxp",
           "input": {
-            "query": "California Rule of Court 2.550 motion to seal records requirements"
+            "query": "motion to seal court records Rule 2.550 findings",
+            "category": "business_litigation"
           },
-          "t_ms": 4019.8260830000004
-        },
-        {
-          "kind": "input",
-          "tool_use_id": "toolu_01YH5LoFjRYTVgjSLQuSRSyQ",
-          "input": {
-            "query": "California Rules of Court 2.550 sealed records findings requirements"
-          },
-          "t_ms": 4019.8341670000004
+          "t_ms": 5215.089292000001
         },
         {
           "kind": "result",
           "name": "ceb_search",
           "is_error": false,
-          "elapsed_ms": 1230.0679999999993,
-          "t_ms": 5249.921332999999,
-          "output_redactions_count": 33,
+          "elapsed_ms": 1133.665,
+          "t_ms": 6348.807625,
+          "output_redactions_count": 32,
           "output_compound_risk_buckets": 0
-        },
-        {
-          "kind": "result",
-          "name": "courtlistener_search",
-          "is_error": false,
-          "elapsed_ms": 2673.1398750000008,
-          "t_ms": 7923.112708
         }
       ],
-      "final_text_preview": "I'll search for the current text and requirements of California Rule of Court 2.550.# California Rule of Court 2.550 — Requirements for Sealing Court Records\n\n## Background and Scope\n\nRule 2.550 codifies the constitutional standards announced in *NBC Subsidiary (KNBC-TV), Inc. v. Superior Court* (1999) 20 Cal.4th 1178. In NBC Subsidiary (KNBC-TV), Inc. v Superior Court (1999) 20 C4th 1178, the Cal",
-      "final_text_length": 5306,
+      "final_text_preview": "I'll look up the specific text of California Rule of Court 2.550, which governs sealing of court records.# California Rule of Court 2.550 — Requirements for Sealing Court Records\n\n## Background and Presumption of Openness\n\nRule 2.550, together with Rule 2.551, codifies the standard the California Supreme Court articulated in *NBC Subsidiary (KNBC-TV), Inc. v. Superior Court* (1999) 20 Cal.4th 1178",
+      "final_text_length": 6990,
       "tool_rounds": 1,
-      "total_tokens": 17921,
+      "total_tokens": 35554,
       "stop_reason": "end_turn"
     },
     {
       "scenario": "compound_risk (privileged=true expected, no direct PII)",
-      "session_id": "stream_smoke_1778627676010_gisb",
+      "session_id": "stream_smoke_1778628221646_p2g6",
       "ok": true,
       "privileged_expected": true,
       "privileged_actual": true,
       "privilege_match": true,
       "compound_risk_buckets": 5,
-      "ttfb_ms": 1937.1874580000003,
-      "ttft_ms": 4826.232749999996,
-      "e2e_ms": 32815.050040999995,
-      "iteration_count": 2,
-      "tool_events": [
-        {
-          "kind": "start",
-          "name": "ceb_search",
-          "t_ms": 6069.369915999996
-        },
-        {
-          "kind": "start",
-          "name": "ceb_search",
-          "t_ms": 6771.840833000002
-        },
-        {
-          "kind": "input",
-          "tool_use_id": "toolu_01SajJhBp2oBQ3kn3pZAZMaP",
-          "input": {
-            "query": "forms required to commence probate administration decedent",
-            "category": "trusts_estates"
-          },
-          "t_ms": 7304.418749999997
-        },
-        {
-          "kind": "input",
-          "tool_use_id": "toolu_01WVmXjmY4ae9Zh78uXyW6WS",
-          "input": {
-            "query": "petition for probate Judicial Council form DE-111 checklist",
-            "category": "trusts_estates"
-          },
-          "t_ms": 7304.427540999997
-        },
-        {
-          "kind": "result",
-          "name": "ceb_search",
-          "is_error": false,
-          "elapsed_ms": 1481.0406249999942,
-          "t_ms": 8785.513290999996,
-          "output_redactions_count": 60,
-          "output_compound_risk_buckets": 1
-        },
-        {
-          "kind": "result",
-          "name": "ceb_search",
-          "is_error": false,
-          "elapsed_ms": 998.4333340000012,
-          "t_ms": 9784.032207999997,
-          "output_redactions_count": 27,
-          "output_compound_risk_buckets": 0
-        }
-      ],
-      "final_text_preview": "To point you to the right forms, I need to clarify a few things — but let me first pull up the standard CEB checklist for opening a California probate so we're on the same page about the core filings.Before I give you a definitive forms list, a few threshold questions I need answered — the right package depends on them:\n\n## Threshold questions\n\n1. **Who died?** Your description identifies the *liv",
-      "final_text_length": 4990,
-      "tool_rounds": 1,
-      "total_tokens": 15121,
-      "stop_reason": "end_turn"
-    },
-    {
-      "scenario": "direct_pii (privileged=true expected, explicit name+phone)",
-      "session_id": "stream_smoke_1778627710800_8mpr",
-      "ok": true,
-      "privileged_expected": true,
-      "privileged_actual": true,
-      "privilege_match": true,
-      "compound_risk_buckets": 0,
-      "ttfb_ms": 2191.9927499999903,
-      "ttft_ms": 3534.129375000004,
-      "e2e_ms": 26106.767458000002,
+      "ttfb_ms": 2148.942916,
+      "ttft_ms": 3863.6922080000004,
+      "e2e_ms": 43843.87562499999,
       "iteration_count": 3,
       "tool_events": [
         {
           "kind": "start",
           "name": "ceb_search",
-          "t_ms": 5055.698999999993
+          "t_ms": 4633.359375
+        },
+        {
+          "kind": "start",
+          "name": "ceb_search",
+          "t_ms": 5065.348833000004
         },
         {
           "kind": "input",
-          "tool_use_id": "toolu_019fE3oV7NVhGAHtSmVACshS",
+          "tool_use_id": "toolu_01CcjxSHeMDAnEzy6MHF6Kjp",
           "input": {
-            "query": "motion to compel further responses standard requirements",
-            "category": "business_litigation"
+            "query": "forms to commence probate petition decedent's estate",
+            "category": "trusts_estates"
           },
-          "t_ms": 5448.614667000002
+          "t_ms": 6598.375790999999
+        },
+        {
+          "kind": "input",
+          "tool_use_id": "toolu_01W3dDyW8PEhnY6Uj9DtW1cU",
+          "input": {
+            "query": "Judicial Council probate forms checklist opening estate administration",
+            "category": "trusts_estates"
+          },
+          "t_ms": 6598.380375000001
         },
         {
           "kind": "result",
           "name": "ceb_search",
           "is_error": false,
-          "elapsed_ms": 927.6170839999977,
-          "t_ms": 6376.248707999999,
+          "elapsed_ms": 1466.6271669999987,
+          "t_ms": 8065.059458000003,
+          "output_redactions_count": 63,
+          "output_compound_risk_buckets": 2
+        },
+        {
+          "kind": "result",
+          "name": "ceb_search",
+          "is_error": false,
+          "elapsed_ms": 834.3791249999995,
+          "t_ms": 8899.563708000001,
+          "output_redactions_count": 65,
+          "output_compound_risk_buckets": 1
+        },
+        {
+          "kind": "start",
+          "name": "ceb_search",
+          "t_ms": 11603.329916000002
+        },
+        {
+          "kind": "start",
+          "name": "ceb_search",
+          "t_ms": 12380.421957999999
+        },
+        {
+          "kind": "input",
+          "tool_use_id": "toolu_01J2RVVXtumC8KGBzPUPQd1P",
+          "input": {
+            "query": "Duties and Liabilities of Personal Representative DE-147 letters bond",
+            "category": "trusts_estates"
+          },
+          "t_ms": 13128.658374999999
+        },
+        {
+          "kind": "input",
+          "tool_use_id": "toolu_01Uo3ZAoDuedtCSLQgzCq3gv",
+          "input": {
+            "query": "small estate affidavit spousal property petition surviving spouse alternatives to probate",
+            "category": "trusts_estates"
+          },
+          "t_ms": 13128.662416
+        },
+        {
+          "kind": "result",
+          "name": "ceb_search",
+          "is_error": false,
+          "elapsed_ms": 1049.434874999999,
+          "t_ms": 14178.105958,
+          "output_redactions_count": 72,
+          "output_compound_risk_buckets": 0
+        },
+        {
+          "kind": "result",
+          "name": "ceb_search",
+          "is_error": false,
+          "elapsed_ms": 1006.8572500000009,
+          "t_ms": 15185.023333000005,
+          "output_redactions_count": 110,
+          "output_compound_risk_buckets": 1
+        }
+      ],
+      "final_text_preview": "I'll search CEB for the California probate forms required to commence a probate proceeding.Let me also check on the Duties & Liabilities form and any small-estate alternatives that might apply, since this client's situation may permit a streamlined approach.# Probate Forms to Open the Estate — San Francisco Superior Court\n\nBefore pulling forms, one important threshold question: **whose estate are ",
+      "final_text_length": 6298,
+      "tool_rounds": 2,
+      "total_tokens": 41113,
+      "stop_reason": "end_turn"
+    },
+    {
+      "scenario": "direct_pii (privileged=true expected, explicit name+phone)",
+      "session_id": "stream_smoke_1778628267675_bo48",
+      "ok": true,
+      "privileged_expected": true,
+      "privileged_actual": true,
+      "privilege_match": true,
+      "compound_risk_buckets": 0,
+      "ttfb_ms": 1951.8367919999873,
+      "ttft_ms": 3398.4997079999885,
+      "e2e_ms": 26079.342542,
+      "iteration_count": 3,
+      "tool_events": [
+        {
+          "kind": "start",
+          "name": "ceb_search",
+          "t_ms": 3808.2079169999924
+        },
+        {
+          "kind": "input",
+          "tool_use_id": "toolu_01Ah5GFe9Tr2ugEw8KAiBkbk",
+          "input": {
+            "query": "motion to compel further responses standard requirements",
+            "category": "business_litigation"
+          },
+          "t_ms": 4415.456082999997
+        },
+        {
+          "kind": "result",
+          "name": "ceb_search",
+          "is_error": false,
+          "elapsed_ms": 3246.6126249999943,
+          "t_ms": 7662.08245799999,
           "output_redactions_count": 27,
           "output_compound_risk_buckets": 0
         },
         {
           "kind": "start",
           "name": "ceb_search",
-          "t_ms": 8439.906667000003
+          "t_ms": 9287.302791999988
         },
         {
           "kind": "input",
-          "tool_use_id": "toolu_01FTQbDBMbrWxxG6n5eBktaz",
+          "tool_use_id": "toolu_01Xu7fNHjZD55cPURRZSy9W2",
           "input": {
-            "query": "meet and confer 45 day deadline motion compel further",
+            "query": "meet and confer requirement motion to compel further deadline 45 days",
             "category": "business_litigation"
           },
-          "t_ms": 8868.300707999995
+          "t_ms": 9724.30183299999
         },
         {
           "kind": "result",
           "name": "ceb_search",
           "is_error": false,
-          "elapsed_ms": 858.3226250000007,
-          "t_ms": 9726.632874999996,
-          "output_redactions_count": 51,
-          "output_compound_risk_buckets": 1
+          "elapsed_ms": 1190.4554579999967,
+          "t_ms": 10914.775541999988,
+          "output_redactions_count": 31,
+          "output_compound_risk_buckets": 0
         }
       ],
-      "final_text_preview": "I'll look up the standard for a motion to compel further responses to discovery in California state court.\n\n(Side note: there's no need to share the client's phone number with me — I don't need personal contact information to answer legal research questions, and it's better practice to keep that out of research queries.)I have enough to give a solid answer. Let me compile the standard.\n\n# Motion t",
-      "final_text_length": 4483,
+      "final_text_preview": "I'll look up the standard for a motion to compel further responses to discovery in California state court.Here's a summary of the standard for a noticed motion to compel further responses in California state court, drawn from the CEB practice guide.\n\n## When a Motion to Compel Further Responses Is Proper\n\nA motion to compel **further** responses (as distinguished from a motion to compel an initial",
+      "final_text_length": 4260,
       "tool_rounds": 2,
-      "total_tokens": 27382,
+      "total_tokens": 28118,
       "stop_reason": "end_turn"
     }
   ]

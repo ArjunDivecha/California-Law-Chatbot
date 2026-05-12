@@ -1058,6 +1058,142 @@ await test('compound-risk parity: detectPii best-effort fallback also reports co
 });
 
 // ---------------------------------------------------------------------------
+// MCP toolset plumbing (fifth addendum) — feature-flag gating + privilege
+// gating + registry shape verification. Does NOT exercise real MCP traffic
+// (that's the #5 pilot work, gated on the FLP endpoint becoming available).
+// ---------------------------------------------------------------------------
+const toolsMod = await import('../api/_lib/tools/index.ts');
+const mcpRegMod = await import('../api/_lib/tools/mcpRegistry.ts');
+const { buildToolsArray, buildMcpServers, hasMcpToolsets } = toolsMod;
+const { MCP_SERVER_REGISTRY, activeServers, buildMcpServerSpec } = mcpRegMod;
+
+await test('mcp: registry has the expected free_law_project entry shape', () => {
+  const flp = MCP_SERVER_REGISTRY.find((s) => s.name === 'free_law_project');
+  assert.ok(flp, 'free_law_project entry exists in registry');
+  assert.ok(flp.url.startsWith('https://'), 'URL is HTTPS (MCP requires it)');
+  assert.equal(flp.privilege_gate, true, 'public-research MCP is privilege-gated');
+  assert.equal(flp.enable_env, 'V2_MCP_FREE_LAW_PROJECT');
+  assert.equal(flp.auth_token_env, 'COURTLISTENER_API_KEY');
+});
+
+await test('mcp: V2_MCP_ENABLED off → no servers active, regardless of per-server flag', () => {
+  const prev = process.env.V2_MCP_ENABLED;
+  const prevFlp = process.env.V2_MCP_FREE_LAW_PROJECT;
+  delete process.env.V2_MCP_ENABLED;
+  process.env.V2_MCP_FREE_LAW_PROJECT = 'true'; // attempt to enable a server
+  try {
+    assert.deepEqual(activeServers(), [], 'master flag off → no servers');
+    assert.equal(hasMcpToolsets(false), false);
+    assert.equal(hasMcpToolsets(true), false);
+    const spec = buildMcpServerSpec(false);
+    assert.deepEqual(spec.mcp_servers, []);
+    assert.deepEqual(spec.mcp_toolsets, []);
+  } finally {
+    if (prev !== undefined) process.env.V2_MCP_ENABLED = prev;
+    if (prevFlp !== undefined) process.env.V2_MCP_FREE_LAW_PROJECT = prevFlp;
+    else delete process.env.V2_MCP_FREE_LAW_PROJECT;
+  }
+});
+
+await test('mcp: master flag on + per-server flag on → server is active', () => {
+  const prev = process.env.V2_MCP_ENABLED;
+  const prevFlp = process.env.V2_MCP_FREE_LAW_PROJECT;
+  process.env.V2_MCP_ENABLED = 'true';
+  process.env.V2_MCP_FREE_LAW_PROJECT = 'true';
+  try {
+    const active = activeServers();
+    assert.equal(active.length, 1, 'one server active');
+    assert.equal(active[0].name, 'free_law_project');
+    assert.equal(hasMcpToolsets(false), true);
+  } finally {
+    if (prev !== undefined) process.env.V2_MCP_ENABLED = prev;
+    else delete process.env.V2_MCP_ENABLED;
+    if (prevFlp !== undefined) process.env.V2_MCP_FREE_LAW_PROJECT = prevFlp;
+    else delete process.env.V2_MCP_FREE_LAW_PROJECT;
+  }
+});
+
+await test('mcp: privilege gating — privileged=true OMITS privilege-gated MCP servers (parity with web_search)', () => {
+  const prev = process.env.V2_MCP_ENABLED;
+  const prevFlp = process.env.V2_MCP_FREE_LAW_PROJECT;
+  process.env.V2_MCP_ENABLED = 'true';
+  process.env.V2_MCP_FREE_LAW_PROJECT = 'true';
+  try {
+    const specPublic = buildMcpServerSpec(false);
+    assert.equal(specPublic.mcp_servers.length, 1, 'public input → MCP included');
+    assert.equal(specPublic.mcp_toolsets.length, 1);
+
+    const specPrivileged = buildMcpServerSpec(true);
+    assert.equal(specPrivileged.mcp_servers.length, 0, 'privileged input → MCP omitted');
+    assert.equal(specPrivileged.mcp_toolsets.length, 0);
+
+    // buildMcpServers convenience accessor
+    assert.equal(buildMcpServers(false).length, 1);
+    assert.equal(buildMcpServers(true).length, 0);
+  } finally {
+    if (prev !== undefined) process.env.V2_MCP_ENABLED = prev;
+    else delete process.env.V2_MCP_ENABLED;
+    if (prevFlp !== undefined) process.env.V2_MCP_FREE_LAW_PROJECT = prevFlp;
+    else delete process.env.V2_MCP_FREE_LAW_PROJECT;
+  }
+});
+
+await test('mcp: buildToolsArray includes mcp_toolset entries for active+non-privileged servers', () => {
+  const prev = process.env.V2_MCP_ENABLED;
+  const prevFlp = process.env.V2_MCP_FREE_LAW_PROJECT;
+  process.env.V2_MCP_ENABLED = 'true';
+  process.env.V2_MCP_FREE_LAW_PROJECT = 'true';
+  try {
+    const publicTools = buildToolsArray(false);
+    const mcpEntries = publicTools.filter((t) => t.type === 'mcp_toolset');
+    assert.equal(mcpEntries.length, 1, 'one MCP toolset emitted on public input');
+    assert.equal(mcpEntries[0].mcp_server_name, 'free_law_project');
+
+    const privTools = buildToolsArray(true);
+    const privMcp = privTools.filter((t) => t.type === 'mcp_toolset');
+    assert.equal(privMcp.length, 0, 'no MCP toolsets on privileged input');
+    // web_search also omitted on privileged
+    assert.equal(
+      privTools.filter((t) => t.type === 'web_search_20250305').length,
+      0,
+    );
+  } finally {
+    if (prev !== undefined) process.env.V2_MCP_ENABLED = prev;
+    else delete process.env.V2_MCP_ENABLED;
+    if (prevFlp !== undefined) process.env.V2_MCP_FREE_LAW_PROJECT = prevFlp;
+    else delete process.env.V2_MCP_FREE_LAW_PROJECT;
+  }
+});
+
+await test('mcp: authorization_token included when env var is set, omitted when empty', () => {
+  const prev = process.env.V2_MCP_ENABLED;
+  const prevFlp = process.env.V2_MCP_FREE_LAW_PROJECT;
+  const prevAuth = process.env.COURTLISTENER_API_KEY;
+  process.env.V2_MCP_ENABLED = 'true';
+  process.env.V2_MCP_FREE_LAW_PROJECT = 'true';
+  try {
+    process.env.COURTLISTENER_API_KEY = 'test-token-123';
+    let spec = buildMcpServerSpec(false);
+    assert.equal(spec.mcp_servers[0].authorization_token, 'test-token-123');
+
+    delete process.env.COURTLISTENER_API_KEY;
+    spec = buildMcpServerSpec(false);
+    assert.equal(
+      spec.mcp_servers[0].authorization_token,
+      undefined,
+      'no token when env var missing',
+    );
+  } finally {
+    if (prev !== undefined) process.env.V2_MCP_ENABLED = prev;
+    else delete process.env.V2_MCP_ENABLED;
+    if (prevFlp !== undefined) process.env.V2_MCP_FREE_LAW_PROJECT = prevFlp;
+    else delete process.env.V2_MCP_FREE_LAW_PROJECT;
+    if (prevAuth !== undefined) process.env.COURTLISTENER_API_KEY = prevAuth;
+    else delete process.env.COURTLISTENER_API_KEY;
+  }
+});
+
+// ---------------------------------------------------------------------------
 // Skill loader (V2 portability principle — fourth + fifth addendum)
 // Workflow-aware system-prompt composition, not concatenation.
 // ---------------------------------------------------------------------------
