@@ -56,15 +56,24 @@ export interface McpServerConfig {
 export const MCP_SERVER_REGISTRY: ReadonlyArray<McpServerConfig> = [
   {
     name: 'free_law_project',
-    // PLACEHOLDER URL — the official Free Law Project MCP endpoint /
-    // auth shape is not yet cleanly documented in their public-facing
-    // materials as of 2026-05-12 (per fifth addendum). Update to the
-    // confirmed URL when available; in the meantime this entry is
-    // DISABLED by default (enable_env not set in any deployment until
-    // the URL is verified).
+    // FLP MCP server confirmed up at https://mcp.courtlistener.com/ as of
+    // 2026-05-12 (HTTP 200, x-powered-by: uvicorn). Landing page links
+    // to wiki docs at https://wiki.free.law/c/courtlistener/help/api/mcp
+    // but the actual MCP transport path is NOT yet publicly documented —
+    // probed /sse /mcp /messages /v1/sse /v1/mcp /.well-known/mcp /api/mcp
+    // 2026-05-12 23:26 UTC, all returned 404. Wiki docs say "OAuth"
+    // for custom installations but auth header shape not specified for
+    // the hosted endpoint.
+    //
+    // URL below is the SSE-transport convention pending FLP's official
+    // path disclosure. Keep DISABLED until: (a) FLP publishes the
+    // transport path + auth header format on their wiki, or (b) we
+    // obtain confirmation directly from FLP. Per fifth addendum P1 #5:
+    // pilot deterministic public server FIRST; FLP only after path is
+    // verified.
     url: 'https://mcp.courtlistener.com/sse',
     description:
-      'Free Law Project CourtListener MCP — case law, PACER dockets, judge profiles, oral arguments. Privilege-gated.',
+      'Free Law Project CourtListener MCP — case law, PACER dockets, judge profiles, oral arguments. Privilege-gated. ENDPOINT PATH UNCONFIRMED 2026-05-12 — see comment.',
     auth_token_env: 'COURTLISTENER_API_KEY',
     privilege_gate: true,
     enable_env: 'V2_MCP_FREE_LAW_PROJECT',
