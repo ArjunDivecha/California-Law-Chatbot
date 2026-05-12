@@ -341,6 +341,18 @@ export interface DetectOptions {
 }
 
 /**
+ * Test-only override for detectSpans. When set, replaces the network
+ * call with the provided async function. Used by tests to exercise the
+ * OPF-success branch of detectionPipeline without needing a running
+ * daemon. Pass `null` to restore default network behavior.
+ */
+type DetectSpansOverride = (text: string, opts?: DetectOptions) => Promise<DetectResult>;
+let detectSpansOverride: DetectSpansOverride | null = null;
+export function setDetectSpansOverride(fn: DetectSpansOverride | null): void {
+  detectSpansOverride = fn;
+}
+
+/**
  * Send `text` to the daemon and return spans mapped into our taxonomy.
  * Throws on network error, non-2xx response, or timeout. The caller
  * decides whether to fail-closed (block sends) or fall back to the
@@ -350,6 +362,9 @@ export async function detectSpans(
   text: string,
   opts: DetectOptions = {}
 ): Promise<DetectResult> {
+  if (detectSpansOverride) {
+    return detectSpansOverride(text, opts);
+  }
   const res = await fetchFromDaemon(
     '/v1/detect',
     {

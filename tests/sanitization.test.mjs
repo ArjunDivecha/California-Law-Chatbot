@@ -997,6 +997,67 @@ await test('components/Sidebar.tsx rehydrates fetched and event-driven titles', 
 });
 
 // ---------------------------------------------------------------------------
+// Compound-risk parity: analyze() vs detectPii() (Codex regression catch)
+//
+// The OPF-success branch of detectPii() originally computed `privileged`
+// only from HIGH_RISK_CATEGORIES spans, missing the compound-risk OR-
+// condition. The heuristic path (analyzeHeuristic in fallback) already
+// had compound-risk, so there was a parity gap between the two entry
+// points. Caught externally by Codex on 2026-05-12 and patched in
+// services/sanitization/detectionPipeline.ts. These tests lock in the
+// fix so future refactors can't re-introduce the same regression.
+// ---------------------------------------------------------------------------
+// `analyze` is already imported earlier in this file (line ~378).
+const pipelineMod = await import('../services/sanitization/detectionPipeline.ts');
+const { detectPii } = pipelineMod;
+const opfMod = await import('../services/sanitization/opfClient.ts');
+const { setDetectSpansOverride } = opfMod;
+
+const COMPOUND_RISK_PROMPT =
+  "Cantonese-speaking widower in Sunset District whose only son is a third-year radiology resident at UCSF.";
+
+await test('compound-risk parity: analyze() returns privileged=true with compoundRiskBuckets', () => {
+  const r = analyze(COMPOUND_RISK_PROMPT);
+  assert.equal(r.privileged, true, 'analyze() must flag compound risk as privileged');
+  assert.ok((r.compoundRiskBuckets ?? 0) >= 3, `compoundRiskBuckets >= 3 (got ${r.compoundRiskBuckets})`);
+});
+
+await test('compound-risk parity: detectPii OPF-success path returns privileged=true', async () => {
+  // Inject a mock OPF that returns ZERO spans — the exact pre-patch
+  // failure mode Codex reproduced. Without the fix, privileged would
+  // be false here.
+  setDetectSpansOverride(async () => ({ spans: [], elapsedMs: 1, modelLoaded: true }));
+  try {
+    const r = await detectPii(COMPOUND_RISK_PROMPT, 'strict');
+    assert.equal(r.usedOpf, true, 'should have taken the OPF-success path');
+    assert.equal(r.privileged, true, 'OPF-success path must OR compound-risk into privileged');
+    assert.ok((r.compoundRiskBuckets ?? 0) >= 3, `compoundRiskBuckets >= 3 (got ${r.compoundRiskBuckets})`);
+  } finally {
+    setDetectSpansOverride(null);
+  }
+});
+
+await test('compound-risk parity: detectPii best-effort fallback also reports compoundRiskBuckets', async () => {
+  // Force the OPF call to throw → fallback path. analyzeHeuristic
+  // already has compound-risk; this test just confirms the field is
+  // surfaced consistently with the OPF-success path.
+  setDetectSpansOverride(async () => {
+    throw new Error('forced fallback');
+  });
+  try {
+    const r = await detectPii(COMPOUND_RISK_PROMPT, 'best-effort');
+    assert.equal(r.usedOpf, false, 'should have fallen back to heuristic');
+    assert.equal(r.privileged, true, 'heuristic fallback must also fire compound-risk');
+    assert.ok(
+      (r.compoundRiskBuckets ?? 0) >= 3,
+      `fallback compoundRiskBuckets >= 3 (got ${r.compoundRiskBuckets})`,
+    );
+  } finally {
+    setDetectSpansOverride(null);
+  }
+});
+
+// ---------------------------------------------------------------------------
 // Audit log (Day 5)
 // ---------------------------------------------------------------------------
 const auditMod = await import('../api/_shared/auditLog.ts');

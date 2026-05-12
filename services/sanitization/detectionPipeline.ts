@@ -37,6 +37,10 @@ import {
 } from '../../api/_shared/sanitization/allowlist.js';
 import { runPatterns } from '../../api/_shared/sanitization/patterns.js';
 import { detectNames } from '../../api/_shared/sanitization/detectNames.js';
+import {
+  detectCompoundRisk,
+  COMPOUND_RISK_BUCKET_THRESHOLD,
+} from '../../api/_shared/sanitization/compoundRisk.js';
 import { detectSpans, type DetectResult } from './opfClient.js';
 import { getUserAllowlistLower } from './userAllowlist.js';
 
@@ -369,6 +373,7 @@ export async function detectPii(
       suppressedByAllowlist: 0,
       privileged: false,
       confidence: 1.0,
+      compoundRiskBuckets: 0,
       usedOpf: false,
       opfElapsedMs: null,
     };
@@ -439,7 +444,19 @@ export async function detectPii(
   // OPF spans don't carry heuristic signal labels, so confidence is
   // modelled as 1.0 for the OPF path. The heuristic fallback path uses
   // computeConfidence() which applies signal-specific floors.
-  const privileged = merged.some((s) => HIGH_RISK_CATEGORIES.has(s.category));
+  //
+  // Compound-risk (W1 mechanism, audit §8 item #3) MUST be OR'd into
+  // privileged here even when OPF returns spans, because OPF on its own
+  // does not detect compound identifiers (e.g. "Cantonese-speaking
+  // widower in Sunset District + son a radiology resident at UCSF" has
+  // no explicit-PII spans but is still a privilege risk). The heuristic
+  // fallback path inherits compound-risk via analyzeHeuristic(); this
+  // ensures the OPF-success path has parity with analyze() from index.ts.
+  const compoundRisk = detectCompoundRisk(text);
+  const compoundRiskBuckets = compoundRisk.bucketsHit;
+  const privileged =
+    merged.some((s) => HIGH_RISK_CATEGORIES.has(s.category)) ||
+    compoundRiskBuckets >= COMPOUND_RISK_BUCKET_THRESHOLD;
   const confidence = computeConfidence(merged); // will be 1.0 unless heuristic supplements fired
 
   return {
@@ -447,6 +464,7 @@ export async function detectPii(
     suppressedByAllowlist,
     privileged,
     confidence,
+    compoundRiskBuckets,
     usedOpf: true,
     opfElapsedMs: opfResult.elapsedMs,
   };
