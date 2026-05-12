@@ -302,3 +302,241 @@ export async function runTurn(opts: RunTurnOptions): Promise<RunTurnResult> {
     exhausted_iterations: exhausted,
   };
 }
+
+// ---------------------------------------------------------------------------
+// Streaming variant — async generator that yields events as they happen
+// ---------------------------------------------------------------------------
+
+/**
+ * Events emitted by runTurnStream. The SSE route serializes these to
+ * `event: <kind>\ndata: <json>\n\n` lines on the wire. Headless callers
+ * just iterate the generator.
+ */
+export type TurnStreamEvent =
+  | { kind: 'token'; text: string }
+  | { kind: 'tool_use_start'; tool_use_id: string; name: string; round: number }
+  | { kind: 'tool_use_input'; tool_use_id: string; input: unknown }
+  | {
+      kind: 'tool_result';
+      tool_use_id: string;
+      name: string;
+      is_error: boolean;
+      elapsed_ms: number;
+    }
+  | { kind: 'iteration'; round: number }
+  | { kind: 'done'; result: RunTurnResult }
+  | { kind: 'error'; code: string; message: string };
+
+/**
+ * Same contract as runTurn but yields events as they arrive. The model's
+ * text deltas surface immediately as 'token' events so the UI can paint
+ * partial output during the multi-second inference. Tool dispatch happens
+ * between iteration boundaries; tool events surface as `tool_use_start`
+ * (with name) → `tool_result` (with timing) so the UI can render a
+ * "Searching CEB…" affordance.
+ *
+ * Keeps runTurn (non-streaming) as a separate function so headless
+ * integrations don't have to consume an async generator. Persistence,
+ * audit, and dispatch logic are deliberately duplicated rather than
+ * abstracted — both functions are small and readable side-by-side.
+ */
+export async function* runTurnStream(
+  opts: RunTurnOptions,
+): AsyncGenerator<TurnStreamEvent, void, void> {
+  const t0 = performance.now();
+  const turnId = opts.turn_id ?? newTurnId();
+  const model = opts.model ?? DEFAULT_MODEL;
+  const systemPrompt = opts.system_prompt ?? DEFAULT_SYSTEM_PROMPT;
+  const client =
+    opts.anthropic_client ??
+    new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY ?? undefined });
+
+  const existing = await readMessages(opts.session_id).catch(
+    () => [] as SessionMessage[],
+  );
+  const nextSequence = existing.length;
+
+  const userMessage: SessionMessage = {
+    role: 'user',
+    content: opts.user_text,
+    turn_id: turnId,
+    sequence: nextSequence,
+    appended_at: new Date().toISOString(),
+    sanitization: opts.sanitization,
+  };
+  await appendMessage(opts.session_id, userMessage);
+
+  const tools = buildToolsArray(opts.privileged) as unknown as Anthropic.Messages.Tool[];
+
+  let totalTokens = 0;
+  let toolRounds = 0;
+  let stopReason = 'unknown';
+  let finalText = '';
+  let exhausted = false;
+  let history: SessionMessage[] = [...existing, userMessage];
+
+  try {
+    for (let iter = 0; iter < MAX_ITERATIONS; iter += 1) {
+      yield { kind: 'iteration', round: iter + 1 };
+
+      const messages = toAnthropicMessages(history);
+      const stream = client.messages.stream({
+        model,
+        max_tokens: DEFAULT_MAX_TOKENS,
+        system: systemPrompt,
+        messages,
+        tools,
+      });
+
+      // Track tool_use blocks as they're announced via content_block_start
+      // so the UI can render an affordance immediately, before the full
+      // input JSON has been built up.
+      const announcedToolUses = new Map<number, { id: string; name: string }>();
+
+      for await (const event of stream) {
+        if (
+          event.type === 'content_block_start' &&
+          event.content_block?.type === 'tool_use'
+        ) {
+          const tu = event.content_block;
+          announcedToolUses.set(event.index, { id: tu.id, name: tu.name });
+          yield {
+            kind: 'tool_use_start',
+            tool_use_id: tu.id,
+            name: tu.name,
+            round: iter + 1,
+          };
+        } else if (
+          event.type === 'content_block_delta' &&
+          event.delta?.type === 'text_delta'
+        ) {
+          if (event.delta.text) {
+            yield { kind: 'token', text: event.delta.text };
+          }
+        }
+      }
+
+      const finalMsg = await stream.finalMessage();
+      if (finalMsg.usage) {
+        totalTokens +=
+          (finalMsg.usage.input_tokens ?? 0) +
+          (finalMsg.usage.output_tokens ?? 0);
+      }
+      stopReason = finalMsg.stop_reason ?? 'unknown';
+
+      // Persist this assistant turn (full content block array).
+      const assistantMessage: SessionMessage = {
+        role: 'assistant',
+        content: finalMsg.content,
+        turn_id: turnId,
+        sequence: nextSequence + 1 + 2 * iter,
+        appended_at: new Date().toISOString(),
+      };
+      await appendMessage(opts.session_id, assistantMessage);
+      history = [...history, assistantMessage];
+
+      const toolUses = extractToolUses(finalMsg.content);
+      if (toolUses.length === 0) {
+        finalText = extractTextFromAssistantBlocks(finalMsg.content);
+        break;
+      }
+
+      toolRounds += 1;
+
+      // Emit the now-resolved tool_use inputs (after stream finalization
+      // we have the full input JSON, not just the partial deltas).
+      for (const use of toolUses) {
+        yield {
+          kind: 'tool_use_input',
+          tool_use_id: use.id,
+          input: use.input,
+        };
+      }
+
+      // Dispatch each tool with timing for the per-tool result event.
+      const dispatched: Array<{
+        tool_use_id: string;
+        name: string;
+        content: string;
+        is_error?: boolean;
+        elapsed_ms: number;
+      }> = [];
+      for (const use of toolUses) {
+        const dt0 = performance.now();
+        const result = await dispatchWithCache(opts.session_id, use);
+        const elapsed = performance.now() - dt0;
+        yield {
+          kind: 'tool_result',
+          tool_use_id: result.tool_use_id,
+          name: use.name,
+          is_error: Boolean(result.is_error),
+          elapsed_ms: elapsed,
+        };
+        dispatched.push({
+          tool_use_id: result.tool_use_id,
+          name: use.name,
+          content: result.content,
+          is_error: result.is_error,
+          elapsed_ms: elapsed,
+        });
+      }
+
+      const toolResultUserMessage: SessionMessage = {
+        role: 'user',
+        content: dispatched.map((tr) => ({
+          type: 'tool_result',
+          tool_use_id: tr.tool_use_id,
+          content: tr.content,
+          ...(tr.is_error ? { is_error: true } : {}),
+        })),
+        turn_id: turnId,
+        sequence: nextSequence + 2 + 2 * iter,
+        appended_at: new Date().toISOString(),
+      };
+      await appendMessage(opts.session_id, toolResultUserMessage);
+      history = [...history, toolResultUserMessage];
+
+      if (iter === MAX_ITERATIONS - 1) exhausted = true;
+    }
+
+    if (!finalText && exhausted) {
+      finalText =
+        'I reached the maximum number of tool-use rounds without converging on an answer. Try narrowing the question or asking again.';
+    }
+
+    await touchLastActive(opts.session_id).catch(() => {
+      /* non-fatal */
+    });
+
+    const elapsedMs = performance.now() - t0;
+    await writeAuditRecord(
+      buildAuditRecord({
+        route: 'agent_loop_stream',
+        sanitizedPrompt: opts.user_text,
+        flowType: opts.privileged ? 'accuracy_client' : 'public_research',
+        userId: opts.user_id ?? null,
+        model,
+        sourceProviders: tools
+          .map((t: { name?: string }) => t.name)
+          .filter((n): n is string => typeof n === 'string'),
+        latencyMs: Math.round(elapsedMs),
+        statusCode: 200,
+      }),
+    );
+
+    yield {
+      kind: 'done',
+      result: {
+        final_text: finalText,
+        tool_rounds: toolRounds,
+        total_tokens: totalTokens,
+        elapsed_ms: elapsedMs,
+        stop_reason: stopReason,
+        exhausted_iterations: exhausted,
+      },
+    };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    yield { kind: 'error', code: 'inference_error', message };
+  }
+}

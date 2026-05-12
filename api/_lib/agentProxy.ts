@@ -24,7 +24,12 @@
  */
 
 import { detectPii, OpfUnavailableError } from '../../services/sanitization/detectionPipeline.js';
-import { runTurn, type RunTurnResult } from './agentLoop.js';
+import {
+  runTurn,
+  runTurnStream,
+  type RunTurnResult,
+  type TurnStreamEvent,
+} from './agentLoop.js';
 import { buildAuditRecord, writeAuditRecord } from '../_shared/auditLog.js';
 
 export interface AgentProxyRequest {
@@ -122,6 +127,118 @@ export async function runAgentProxy(req: AgentProxyRequest): Promise<AgentProxyR
       502,
       req,
     );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Streaming variant — same sanitization gate, yields events
+// ---------------------------------------------------------------------------
+
+/**
+ * Top-of-stream event that surfaces the proxy's sanitization decision
+ * (privileged flag + compound-risk bucket count) before any inference
+ * tokens arrive. UI uses this to display the privilege indicator
+ * immediately rather than waiting for the model.
+ */
+export type ProxyStreamEvent =
+  | { kind: 'sanitization'; privileged: boolean; compound_risk_buckets: number; redactions_count: number }
+  | TurnStreamEvent
+  | { kind: 'proxy_error'; code: AgentProxyError['code']; message: string; status_code: number };
+
+/**
+ * Streaming variant of runAgentProxy. Same fail-closed sanitization gate
+ * (strict mode, blocks if OPF unavailable), same privileged-flag logic,
+ * then yields events from runTurnStream. Surfaces sanitization decisions
+ * at the top of the stream so the UI can paint the privilege indicator
+ * before inference starts.
+ */
+export async function* runAgentProxyStream(
+  req: AgentProxyRequest,
+): AsyncGenerator<ProxyStreamEvent, void, void> {
+  const sessionId = (req.session_id ?? '').trim();
+  const userText = req.user_text ?? '';
+  if (!sessionId) {
+    yield {
+      kind: 'proxy_error',
+      code: 'invalid_input',
+      message: 'session_id is required',
+      status_code: 400,
+    };
+    return;
+  }
+  if (typeof userText !== 'string' || userText.trim().length === 0) {
+    yield {
+      kind: 'proxy_error',
+      code: 'invalid_input',
+      message: 'user_text must be a non-empty string',
+      status_code: 400,
+    };
+    return;
+  }
+
+  let detection;
+  try {
+    detection = await detectPii(userText, STRICT_DETECTION_MODE);
+  } catch (err) {
+    if (err instanceof OpfUnavailableError) {
+      yield {
+        kind: 'proxy_error',
+        code: 'sanitizer_unavailable',
+        message:
+          'Sanitization service is unavailable; request blocked to prevent unprotected send.',
+        status_code: 503,
+      };
+      void writeAuditRecord(
+        buildAuditRecord({
+          route: 'agent_proxy_stream',
+          sanitizedPrompt: userText,
+          userId: req.user_id ?? null,
+          statusCode: 503,
+          warningFlags: ['sanitizer_unavailable'],
+        }),
+      ).catch(() => {});
+      return;
+    }
+    yield {
+      kind: 'proxy_error',
+      code: 'internal_error',
+      message: err instanceof Error ? err.message : String(err),
+      status_code: 500,
+    };
+    return;
+  }
+
+  const privileged = detection.privileged;
+  const compoundRiskBuckets = detection.compoundRiskBuckets ?? 0;
+  const byCategory: Record<string, number> = {};
+  for (const span of detection.spans) {
+    byCategory[span.category] = (byCategory[span.category] ?? 0) + 1;
+  }
+
+  yield {
+    kind: 'sanitization',
+    privileged,
+    compound_risk_buckets: compoundRiskBuckets,
+    redactions_count: detection.spans.length,
+  };
+
+  const sanitization = {
+    privileged,
+    compound_risk_buckets: compoundRiskBuckets,
+    redactions_count: detection.spans.length,
+    by_category: byCategory,
+  };
+
+  for await (const event of runTurnStream({
+    session_id: sessionId,
+    user_text: userText,
+    privileged,
+    sanitization,
+    model: req.model,
+    system_prompt: req.system_prompt,
+    user_id: req.user_id ?? null,
+  })) {
+    yield event;
   }
 }
 

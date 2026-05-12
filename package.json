@@ -14,7 +14,8 @@
     "test:sanitization": "tsx tests/sanitization.test.mjs",
     "test:traps": "tsx tests/traps/runTraps.mjs",
     "latency:baseline": "node scripts/latency-baseline.mjs",
-    "agent:smoke": "tsx scripts/agent-loop-smoke.mjs"
+    "agent:smoke": "tsx scripts/agent-loop-smoke.mjs",
+    "agent:smoke-stream": "tsx scripts/agent-loop-stream-smoke.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.95.2",
