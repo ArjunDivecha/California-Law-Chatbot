@@ -328,5 +328,16 @@ The threat-model + 100-trap deliverable must explicitly include:
 | Step 2 trap-set requirements derived | ✅ |
 | Test suite re-run on V2 | ✅ 72 pass, 10 pre-existing failures (2026-05-11) |
 | Plan-doc addendum #3 (retention model) | ✏️ drafted 2026-05-12 (Option C tentative, pending F&F partner sign-off) — see `docs/MANAGED_AGENTS_RECONSTRUCTION_PLAN.md` 2026-05-12 third addendum |
+| Step 2 trap manifest authored (synthetic v1, 100 traps) | ✅ 2026-05-12 — `tests/traps/manifest-v1.json` |
+| Step 2 trap runner harness | ✅ 2026-05-12 — `tests/traps/runTraps.mjs`, `yarn test:traps` |
+| Step 3 HARD GATE: 2 consecutive zero-leak runs of 100 traps | ✅ 2026-05-12 — `reports/traps-baseline-2026-05-12.json` (100/100 × 2) |
+| Step 4 Upstash KV schema design | ✅ 2026-05-12 — `docs/upstash-kv-schema-v1.md` |
+| Step 4 Anthropic-stack latency baseline | ✅ 2026-05-12 — `reports/latency-baseline-2026-05-12.json` |
+| §8 audit items resolved through Step 3 iteration |  |
+| ├── #1 `privileged: bool` full implementation | ✅ wired in `analyze()`; HIGH_RISK_CATEGORIES expanded to include `credit_card` and `client_matter`; compound-risk OR-condition added |
+| ├── #2 `confidence: 0..1` exposure | ✅ wired in `analyze()`; new `single_subject_verb` signal added at floor 0.65 |
+| ├── #3 Compound-query / n-gram correlation pass (W1) | ✅ minimum-viable implementation in `api/_shared/sanitization/compoundRisk.ts` (8-bucket signal dictionary; threshold ≥3); F&F-matter seed list deferred per 2026-05-12 Arjun decision |
+| ├── #11 Pin OPF daemon version | ❌ deferred — relevant when OPF integration ships |
+| └── #12 Drop plain-HTTP OPF fallback | ❌ deferred — same |
 
-**Next**: F&F partner review of the 2026-05-12 third addendum (Option C ratification or counter-decision), then resolve items 1/2/3 design questions, then start Step 2 trap authoring.
+**Next**: Phase 1 (V2 agent loop) is now fully unblocked. F&F partner sign-off on the 2026-05-12 third addendum (Option C retention) remains the only social-process dependency on the critical path.

@@ -1,5 +1,7 @@
 # Privacy and Confidentiality Guidelines
 
+> ⚠️ **V1 architecture document.** Parts of this guidance reflect the OpenRouter-routed Gemini+Claude pipeline used in V1 production. The V2 migration (in progress on branch `V2`) rewires inference to the direct Anthropic Messages API on the Team plan with a sanitization-first architecture (no ZDR — sanitization is the only line of defense). See `README.md` § **V2 Status**, `docs/MANAGED_AGENTS_RECONSTRUCTION_PLAN.md`, and `docs/sanitization-audit-2026-05-10.md` for current state. The 2026-05-10 ZDR-removal addendum supersedes any ZDR/BAA/SOC 2 claims that appear in V1 docs.
+
 **Date:** December 2024  
 **Purpose:** Guidance for safe use of California Law Chatbot in compliance with attorney professional responsibility obligations
 

@@ -1,5 +1,7 @@
 # Compliance Implementation Summary
 
+> ⚠️ **V1 architecture document.** Records implementation state of V1 production. The V2 migration (branch `V2`) has different compliance posture (Team plan, sanitization-only defense, no ZDR/BAA/SOC 2). See `README.md` § **V2 Status** and the 2026-05-10 (second addendum) in `docs/MANAGED_AGENTS_RECONSTRUCTION_PLAN.md`.
+
 **Date:** December 2024  
 **Objective:** Bring California Law Chatbot into compliance with California State Bar's Practical Guidance for Generative AI
 

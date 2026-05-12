@@ -844,21 +844,28 @@ Three remote branches contain work that is needed later but should **not** merge
 
 ## Open Items
 
-**Pre-Phase-1 engineering (each ~0.5 day, all owned by Arjun):**
+**Pre-Phase-1 critical path — STATUS as of 2026-05-12 (closed sequence):**
 
-1. **Sanitization branch audit** — pull `codex/drafting-magic-sanitized`, inventory `services/sanitization/`, confirm contents before relying on them in §E and §F
-2. **Self-administered privilege smoke test** (§0.b) — author 30 traps, run against sanitization, fix obvious leaks
-3. **Upstash KV conversation schema** — schema for §D `session:{id}:messages`, write-pattern load test
-4. **Tool-call latency baseline** — measure current `chatService.ts` round-trips for Phase 1 comparison
+1. ✅ **Sanitization branch audit** — pulled `codex/drafting-magic-sanitized`, full audit completed in `docs/sanitization-audit-2026-05-10.md`. Mechanical fixes from §8 items 4–7 + 10 committed in `a720572`; design-heavy §8 items 1, 2, 3 resolved through Step 3 iteration (commit `06eb445`).
+2. ✅ **Self-administered privilege smoke test (Step 3 in 2026-05-10 addendum re-sequencing)** — formalized as 100-trap manifest, NOT the original 30. Two consecutive zero-leak runs achieved 2026-05-12 — HARD GATE met. Artifacts: `tests/traps/manifest-v1.json`, `tests/traps/runTraps.mjs`, `reports/traps-baseline-2026-05-12.json`.
+3. ✅ **Upstash KV conversation schema** — design doc `docs/upstash-kv-schema-v1.md`. Phase 1 implements against this.
+4. ✅ **Tool-call latency baseline** — Anthropic-stack baseline (Gemini path intentionally excluded — being deleted in Phase 5). `reports/latency-baseline-2026-05-12.json`, `scripts/latency-baseline.mjs`. Numbers in README's V2 Status section.
 
-(The original Managed Agents SDK capability audit was completed 2026-05-03 and then superseded 2026-05-10 by the ZDR-scope finding — see corrigendum in `docs/phase-1-sdk-audit.md`. The replacement gate is the Messages API smoke test described under "Phase 1 first gate" above.)
+**Additional pre-Phase-1 items introduced by the 2026-05-10 ZDR-removal addendum:**
+
+5. ✅ **Step 0 — SDK upgrade** `@anthropic-ai/sdk` 0.68.0 → 0.95.2 (commit `58dec1e`). Done.
+6. ✅ **Step 1c — §6 token-map retention reconciliation** — addendum #3 (this doc, 2026-05-12 third addendum) proposes Option C. ⏸ Tentative, **pending F&F partner sign-off** — only social-process dependency on the critical path.
+
+(The original Managed Agents SDK capability audit was completed 2026-05-03 and then superseded 2026-05-10 by the ZDR-scope finding — see corrigendum in `docs/phase-1-sdk-audit.md`. The replacement gate is the 100-trap zero-leak gate described above.)
 
 **User decisions (Arjun):**
 
-5. **ZDR / BAA / SOC 2 status** — closing separately; gates Phase 5
-6. **Malpractice carrier UPL review** — written confirmation required before Phase 5
-7. **Gold question set source** — sanitized F&F query logs vs newly constructed; affects Phase 1 timeline
+7. ~~ZDR / BAA / SOC 2 status~~ — **resolved 2026-05-10**: F&F remains on Anthropic Team plan; ZDR/BAA/SOC 2 paperwork is permanently off the plan. See 2026-05-10 (second addendum) above. Sanitization is the only line of defense.
+8. **Malpractice carrier UPL review** — written confirmation still required before Phase 5
+9. **Gold question set source** — sanitized F&F query logs vs newly constructed: **decided 2026-05-12** — newly constructed (synthetic), all 100. F&F-matter half deferred to v2 of the trap manifest if attorney input becomes available.
+10. **F&F partner sign-off on Option C retention** (2026-05-12 third addendum) — open. Required before Phase 1's audit-record-writer is finalized.
+11. **Gemini-grounding replacement acceptance criterion for Phase 1** — tracked informally, not pinned. Replacement is Anthropic `web_search_20250305` with privilege gating (omit tool when input is privileged). `services/confidenceGating.ts` to be rewired from Gemini grounding-metadata shape to Anthropic citations.
 
 **Deferred to post-Phase-5:**
 
-8. **Embeddings re-evaluation (Voyage vs OpenAI)** — separate project after migration is stable
+12. **Embeddings re-evaluation (Voyage vs OpenAI)** — separate project after migration is stable

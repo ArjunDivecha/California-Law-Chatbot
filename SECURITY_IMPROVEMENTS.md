@@ -1,5 +1,7 @@
 # SECURITY IMPROVEMENTS NEEDED
 
+> ⚠️ **V1 document.** Describes the V1 production stack (Gemini API key in client bundle). The V2 migration (branch `V2`) does not ship the Gemini client path at all — Gemini, the OpenRouter proxy, and the agent orchestrator are scheduled for deletion in Phase 5 (~7,800 lines). The V2 worker auth posture: Anthropic API key server-side only; no client-bundle secrets. See `README.md` § **V2 Status**.
+
 ## Critical Security Issue: API Key Exposure
 
 **Current Status:** The Gemini API key is currently exposed to client-side code via `vite.config.ts`. This is a security risk because anyone can view the API key in the browser's developer tools or bundled JavaScript.

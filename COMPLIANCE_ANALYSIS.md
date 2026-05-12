@@ -1,5 +1,7 @@
 # California State Bar Generative AI Compliance Analysis
 
+> ⚠️ **V1 architecture document — partial-supersession notice.** Compliance claims tied to ZDR / BAA / SOC 2 that may appear below are overridden by the 2026-05-10 ZDR-removal addendum in `docs/MANAGED_AGENTS_RECONSTRUCTION_PLAN.md`. F&F operates on Anthropic's Team plan; sanitization (`docs/sanitization-audit-2026-05-10.md`, 100-trap zero-leak gate met 2026-05-12) is the contractual privilege boundary, not ZDR. The §Q F&F communication memo and §W discovery-defensibility argument in the plan reflect the post-pivot reality. See `README.md` § **V2 Status**.
+
 **Date:** December 2024  
 **Reference:** [California State Bar Practical Guidance](https://www.calbar.ca.gov/Portals/0/documents/ethics/Generative-AI-Practical-Guidance.pdf)
 

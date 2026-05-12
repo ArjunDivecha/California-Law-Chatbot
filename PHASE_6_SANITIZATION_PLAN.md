@@ -1,5 +1,7 @@
 # Phase 6 — Client-Side Sanitization Plan
 
+> ⚠️ **Superseded in part by V2.** This document was the original (pre-2026-05-10) sanitization plan written when the project was targeting the Bedrock confidentiality migration. The 2026-05-10 architectural pivot moved inference to direct Anthropic Messages API (no Bedrock) and the 2026-05-10 ZDR-removal addendum made sanitization the sole privilege defense. The current V2 sanitization spec lives in `docs/sanitization-audit-2026-05-10.md` and `docs/MANAGED_AGENTS_RECONSTRUCTION_PLAN.md` §E. The 100-trap zero-leak gate met 2026-05-12 (commit `06eb445`) is the current go/no-go criterion. See `README.md` § **V2 Status** for the live status table.
+
 **Date:** April 24, 2026
 **Branch:** `codex/bedrock-confidentiality-migration`
 **Status:** Locked. Build starts on "go" from Arjun. One open question (§12).
