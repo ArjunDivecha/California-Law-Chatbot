@@ -1,12 +1,106 @@
 # Chatbot Reconstruction Plan — Anthropic Agent SDK on Messages API
 
 **Plan file destination:** `/Users/arjundivecha/Dropbox/AAA Backup/A Working/California-Law-Chatbot/docs/MANAGED_AGENTS_RECONSTRUCTION_PLAN.md` *(filename kept for git continuity; contents now describe the Agent SDK path)*
-**Date:** 2026-05-03 (original), **2026-05-10 architecture pivot**
-**Status:** Final, post Opus + Codex (3 rounds, approved) + Ultraplan + Council review + ZDR scope verification.
+**Date:** 2026-05-03 (original), **2026-05-10 architecture pivot**, **2026-05-10 ZDR-removal addendum**, **2026-05-12 token-map retention addendum (tentative — pending F&F partner review)**
+**Status:** Final, post Opus + Codex (3 rounds, approved) + Ultraplan + Council review + ZDR scope verification, + 2026-05-10 plan-level pivot to Anthropic Team plan (no ZDR). The 2026-05-12 third addendum below is **tentative pending F&F partner sign-off**.
 
 ---
 
-## 2026-05-10 Architecture Pivot — Managed Agents removed from the plan
+## 2026-05-12 (third addendum, TENTATIVE — pending F&F partner review) — Token-map retention model: hybrid (Option C)
+
+> ⚠️ **Status: NOT YET BINDING.** This addendum is Arjun's working decision based on the sanitization audit (`docs/sanitization-audit-2026-05-10.md` §6). It must be reviewed and signed off by F&F partners before it supersedes the §E retention table. The key open question for counsel is restated in **Required F&F counsel input** below. Do not merge to `main` and do not treat as the binding plan until that sign-off is recorded here.
+
+**Finding:** The 2026-05-10 sanitization audit (§6) surfaced an unresolved conflict between two parts of the codebase:
+
+- Plan §E specifies a **server-side envelope-encrypted token map**: AES-256-GCM, DEK in Upstash KV, KEK in 1Password vault, 7-year retention for litigation reconstruction.
+- The imported sanitization layer (`codex/drafting-magic-sanitized` → V2) implements a **client-side per-attorney passphrase-encrypted IndexedDB token store**: privileged content never leaves the device.
+
+These two models are mutually exclusive. The audit drafted three options (A client-only, B server envelope-encrypted, C hybrid metadata-only audit record). Audit recommendation: **Option C**.
+
+**Decision (tentative):** **Option C — hybrid.** Client-side IndexedDB carries the live token map for the duration of an attorney's active session; the server stores only an envelope-encrypted, metadata-only audit record per redaction event. Privileged ciphertext does not leave the attorney's device.
+
+**Why C and not B (the original §E choice):** The original §E argument for full server-side ciphertext rested on "we may be subpoenaed to prove the sanitized prompt corresponds to the user's actual privileged input" (§E line 483 in pre-2026-05-12 form). The 2026-05-10 no-ZDR pivot changes this argument's weight in two ways:
+1. Anthropic itself retains the sanitized form for ~30 days under Team-plan trust-and-safety policy. For *recent* matters, the "what did Anthropic see?" question is independently answerable from Anthropic's own records — F&F does not need to be the sole custodian.
+2. The 7-year window is only load-bearing for malpractice or discovery actions referring to a specific *historical* query. Option B answering that need means F&F's own infrastructure carries privileged ciphertext for 7 years, which is itself a discovery target and a new attack surface (compromised Upstash + compromised 1Password = full historical privileged content disclosure).
+
+Option C trades the ability to rehydrate the verbatim privileged input years later for an attestable record that the redaction happened, with hashed evidence of the input and the sanitized form, plus categorical and counted metadata. This covers most realistic deposition lines ("did you redact client names in matter X?" → yes, with timestamp, count, category, and hash matching the sanitized prompt of record) without storing privileged ciphertext on F&F infrastructure.
+
+**Required F&F counsel input (this is what must be answered before this addendum is binding):**
+
+> *In a plausible malpractice or discovery scenario 5+ years out, will F&F's defense ever need to rehydrate the exact privileged input verbatim, or is "we can prove the redaction happened, when, by category, and that the sanitized prompt of record matches a specific hash of the original input" sufficient?*
+
+- If **sufficient** → ratify Option C; this addendum lands as binding.
+- If **insufficient** → revert to Option B (server envelope-encrypted full ciphertext); F&F accepts Upstash as a sub-processor of privileged ciphertext and a 7-year retention obligation on F&F-controlled infrastructure.
+- If **counsel asks for a middle ground** (e.g., shorter retention, different cipher boundary, named-custodian access logging) → record their preference here and draft addendum #4.
+
+**What this changes (if ratified):**
+
+| Item | Before (plan §E as-written) | After (Option C ratified) |
+|---|---|---|
+| Token-map storage (live session) | Server-side Upstash KV, envelope-encrypted | **Client-side IndexedDB on attorney device, passphrase-encrypted** (per imported sanitization layer) |
+| Token-map retention | 7 years on Upstash, AES-256-GCM, KEK in 1Password | **Not retained server-side at all.** Lives on attorney device for the active session; cleared per attorney workflow |
+| Server-side audit record per redaction event | (not specified separately) | **New artifact:** envelope-encrypted record per redaction event containing `{session_id, attorney_id, input_sha256, sanitized_sha256, redaction_decisions_count, by_category_counts, confidence, privileged_bool, timestamp}`. No plaintext, no ciphertext of privileged content. 7-year retention, AES-256-GCM, KEK in 1Password, DEK in Upstash KV. Break-glass access logged per §U. |
+| Litigation reconstruction capability | Verbatim rehydration via break-glass | **Attestable redaction events** (proof a redaction occurred, by category, with hash binding to sanitized prompt of record). No verbatim rehydration after attorney session ends. |
+| Privileged ciphertext on Upstash? | Yes (encrypted) | **No.** Only metadata/hashes. |
+| Single-point-of-failure scope | Full Upstash + 1Password compromise = all-history privileged content | One attorney's laptop + their passphrase = one attorney's *active session* matters only |
+| Attorney workflow burden | Transparent (server holds it) | Must safeguard passphrase + device; passphrase recovery story must be defined (see Open implementation items below) |
+
+**Plan supersession order:** if and only if ratified by F&F partner sign-off, this 2026-05-12 third addendum supersedes the retention rows of the §E table and the supporting reasoning paragraph in §E. The rest of §E (sanitization runs in the Vercel proxy *before* any input reaches the Messages API; agent receives `privileged: false` content; envelope-encryption semantics for the surviving server-side audit record) is unchanged. The §G audit log + §Y attestation generator gain a new artifact type (the per-redaction audit record) and must be updated correspondingly when Phase 1 design begins.
+
+**Open implementation items (must be resolved during Phase 1 if Option C ratifies):**
+1. **Passphrase recovery story.** If an attorney forgets the IndexedDB passphrase, the active-session token map is lost — they cannot rehydrate any in-flight sanitized prompts. Define: who issues recovery passphrases, how device migration works, what happens on attorney offboarding.
+2. **IndexedDB durability story.** Browser-cleared IndexedDB = lost live token map. Define: backup cadence (encrypted export to attorney-controlled storage?), browser-clear warning UX.
+3. **Audit-record schema lock.** The per-redaction record schema above is a draft. Finalize fields, hash algorithm version field, schema version field before Phase 1.
+4. **§Y attestation update.** The per-session attestation generator must reference the new audit-record artifact and confirm its integrity. Spec update required.
+5. **CI assertion (§S) update.** The "final sanitization check" still scans outbound `messages.create()` payloads against the live (now client-side) token map. Mechanism is unchanged because that check runs inside the same browser/proxy session where the live map exists. Document the call site for clarity.
+
+**Implications for in-flight work:**
+- The committed mechanical fixes from audit §8 (commit `a720572`) are unaffected by this choice — they sit at the detection layer, not retention.
+- Audit §8 item #9 ("Architectural reconciliation of §6 retention model") becomes ✅ pending F&F sign-off — `docs/sanitization-audit-2026-05-10.md` §10 status table updated correspondingly.
+- The 100-trap authoring work (Step 2) does not depend on the retention choice and can proceed in parallel.
+
+---
+
+## 2026-05-10 (second addendum) — No ZDR. Sanitization is the only line of defense.
+
+**Finding:** F&F remains on Anthropic's **Team plan**, not the enterprise plan that confers ZDR. ZDR/BAA/SOC 2 paperwork (Phase 0.a) is **permanently off the table** for this project — not a fallback, not a future option, not paperwork-in-flight.
+
+**What this changes:**
+
+| Item | Before (assumed ZDR) | After (no ZDR) |
+|---|---|---|
+| Defense posture | Sanitization redacts privileged content; ZDR ensures Anthropic does not retain whatever leaks through | **Sanitization is the only line of defense.** Anything that reaches `api.anthropic.com` is retained under Team-plan policy (~30-day trust-and-safety retention, longer if flagged, accessible by Anthropic staff for trust-and-safety review). A sanitization miss is a privilege breach. |
+| Phase 0.a paperwork | Required gate for Phase 4.5 + Phase 5 | **Removed from plan.** No DPA, no BAA, no SOC 2 dependency. |
+| Phase 0.b (engineering smoke test) | Pre-flight bug-catcher | Folded into the formal gate below; stops being a separate item. |
+| Phase 0.c (formal privilege review) | Pre-cutover gate, 100 traps, zero leaks | **Promoted to the single hardest gate in the project.** 100 traps remain (per Arjun decision 2026-05-10); criterion is zero leaks across two consecutive full-suite runs. **If the sanitization layer cannot reach zero on the trap set, the migration stops here** — there is no second net. |
+| Sanitization scope (§E) | Inputs only | **Inputs AND tool outputs.** Per Arjun decision 2026-05-10. Every `tool_result` block is run through the same sanitizer before being appended to `messages`, in case a public-record tool surfaces a term that, in context, re-identifies a client. Trade-off (possible false-positive redactions degrading answer quality) accepted. |
+| §Q F&F communication memo | "Direct enterprise subscription, signed ZDR DPA + BAA + SOC 2" | **Rewrite required before Phase 5.** Honest framing: Team plan, sanitization layer is the contractual privilege boundary, Anthropic privacy controls (training opt-out, abuse-monitoring posture) documented, trust-and-safety retention disclosed. Draft owned by Arjun + F&F partners. |
+| §Y attestation generator | Attests "ZDR + BAA + SOC 2 on file" alongside sanitization + audit chain | Attests **only** sanitization decisions, audit-chain integrity, agent-config SHA, tool-call traces, verification report. The attestation cannot claim non-retention by Anthropic. The §Y JSON schema gains an explicit `inference_provider_retention_policy` field stating Team-plan terms verbatim. |
+| §W evidentiary discovery hardening | "ZDR" claim defensible in deposition | Deposition answer to "what does Anthropic see and retain?" is now "the sanitized form, retained ~30 days under Team-plan trust-and-safety policy, accessible to Anthropic staff." F&F partners must be briefed on this before Phase 5. |
+| §X UPL exposure controls | Unchanged structurally | Unchanged. |
+| §M rollback triggers | Unchanged | Unchanged, but **a single confirmed sanitization failure in production triggers immediate rollback** (already in §M as "any privacy/sanitization failure, immediate, no threshold" — re-emphasized here). |
+| §U key management | 6 keys including OpenRouter | OpenRouter dropped per 2026-05-10 first addendum; no change here. |
+
+**Defense-in-depth still available on Team plan (must be configured before Phase 1 sends real-format traffic):**
+- Console → Workspace → Privacy: opt out of training-data use.
+- Per-API-key tagging so a leak can be scoped + revoked quickly.
+- Egress allowlist (§U) keeps blast radius small if a key is exfiltrated.
+- The `tools`-array privilege gating for `web_search` (§E) still works exactly as designed and remains in scope.
+
+**Pre-flight critical path is now sanitization-first.** The four open-items at the bottom of this doc are re-ordered:
+
+1. **Sanitization branch import + deep audit** (was item 1): pull `codex/drafting-magic-sanitized` into V2, document every redaction rule, NER pass, n-gram entity-correlation pass, confidence scorer. Deliverable: `docs/sanitization-audit-2026-05-XX.md` including a "known weaknesses" section.
+2. **Threat model + 100-trap authoring** (new): formalize the threat classes (direct PII, compound identifiers, adversarial prompts, indirect leakage via tool inputs, verifier-loop cross-contamination). Half the traps drawn from sanitized F&F matter patterns; the other half synthetic.
+3. **Privilege smoke test + iterate sanitization to zero** (was §0.b + §0.c): run all 100 traps, patch every failure, re-run the whole suite, repeat until two consecutive full-suite zero-leak runs. **Hard gate. No Anthropic traffic until this passes.**
+4. KV schema + tool-call latency baseline (was items 3 + 4): unchanged, can run in parallel with sanitization iteration.
+
+**CI assertion added (§S):** every `messages.create()` call in dev/CI runs through a "final sanitization check" that scans the outbound payload for any string in the privileged token map. Belt-and-suspenders for what is now a single point of failure.
+
+**Plan supersession order:** this 2026-05-10 second addendum supersedes any prior wording in §0.a, §0.b, §0.c, §Q, §Y, and §W that assumed ZDR. Other sections unaffected except where called out in the table above.
+
+---
+
+## 2026-05-10 (first addendum) — Architecture Pivot — Managed Agents removed from the plan
 
 **Finding:** Anthropic's official platform docs explicitly state Managed Agents is NOT covered by ZDR: *"Claude Managed Agents is a stateful resource. You can delete session transcripts, but there is no automatic deletion."* This is incompatible with F&F's ZDR requirement for privileged content. Managed Agents is therefore **permanently off the table** for this project — not a fallback, not a future option.
 
