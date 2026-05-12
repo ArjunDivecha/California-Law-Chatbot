@@ -23,17 +23,17 @@ This section is the canonical place to find out where the V2 migration stands. O
 | 4a | Upstash KV schema design | ✅ done | `docs/upstash-kv-schema-v1.md` |
 | 4b | Anthropic-stack latency baseline | ✅ done | `reports/latency-baseline-2026-05-12.json`, `scripts/latency-baseline.mjs` |
 
-### Latency baseline summary (2026-05-12, `claude-sonnet-4-6`, 5 queries per endpoint)
+### Latency baseline summary (2026-05-12, `claude-opus-4-7`, 5 queries per endpoint)
 
 | Endpoint | success | e2e p50 (ms) | e2e p95 (ms) | TTFB p50 | TTFT p50 |
 |---|---|---|---|---|---|
-| `anthropic.messages.create` | 5/5 | 11716 | 12296 | — | — |
-| `anthropic.messages.stream` | 5/5 | 10559 | 12613 | 1088 | 1088 |
-| `anthropic.messages.stream + web_search` | 5/5 | 23927 | 27710 | 1621 | 6854 |
-| `ceb_search` (embed + 5-namespace Upstash Vector) | 5/5 | 5180 | 6357 | — | — |
-| `courtlistener_search` | 5/5 | 1292 | 5546 | — | — |
+| `anthropic.messages.create` | 5/5 | 8247 | 9193 | — | — |
+| `anthropic.messages.stream` | 5/5 | 7576 | 8277 | 1522 | 1523 |
+| `anthropic.messages.stream + web_search` | 5/5 | 16904 | 18772 | 1681 | 1691 |
+| `ceb_search` (embed + 5-namespace Upstash Vector) | 5/5 | 921 | 1122 | — | — |
+| `courtlistener_search` | 5/5 | 2285 | 3299 | — | — |
 
-These numbers are the comparison floor Phase 1 measures against. The `+ web_search` row is the Gemini-grounding replacement.
+These numbers are the comparison floor Phase 1 measures against. The `+ web_search` row is the Gemini-grounding replacement. The pre-bump Sonnet 4.6 numbers (2026-05-12 morning run) were `messages.create` p50 11716ms, `messages.stream` p50 10559ms, `+ web_search` p50 23927ms — Opus 4.7 came in measurably faster across all three Anthropic-side endpoints, likely a function of inference-side capacity rather than the model itself.
 
 ### Phase status
 

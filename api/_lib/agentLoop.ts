@@ -38,7 +38,12 @@ import {
 } from '../_shared/sanitization/index.js';
 import { COMPOUND_RISK_BUCKET_THRESHOLD } from '../_shared/sanitization/compoundRisk.js';
 
-const DEFAULT_MODEL = 'claude-sonnet-4-6';
+// Anthropic's 2026-05-12 legal-industry launch cites Opus 4.7 as their
+// flagship legal-reasoning model (90.9% on Harvey's BigLaw Bench). V2
+// adopts it as the workbench default per the fifth addendum. Sonnet 4.6
+// remains the right model for a future tier-route (fifth addendum cost-
+// impact note, decision deferred to Arjun pre-Phase-4.5 shadow run).
+const DEFAULT_MODEL = 'claude-opus-4-7';
 const DEFAULT_MAX_TOKENS = 4096;
 const MAX_ITERATIONS = 8; // safety cap on tool-use rounds within one turn
 

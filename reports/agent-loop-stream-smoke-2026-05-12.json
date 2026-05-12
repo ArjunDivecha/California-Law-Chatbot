@@ -1,261 +1,132 @@
 {
-  "ran_at": "2026-05-12T22:59:46.084Z",
+  "ran_at": "2026-05-12T23:04:42.672Z",
   "results": [
     {
       "scenario": "public_research (privileged=false expected)",
-      "session_id": "stream_smoke_1778626786084_x2og",
+      "session_id": "stream_smoke_1778627082672_d3yo",
       "ok": true,
       "privileged_expected": false,
       "privileged_actual": false,
       "privilege_match": true,
       "compound_risk_buckets": 0,
-      "ttfb_ms": 13746.528333,
-      "ttft_ms": 20141.104583,
-      "e2e_ms": 32420.657290999996,
+      "ttfb_ms": 1535.9072919999999,
+      "ttft_ms": 3188.449709,
+      "e2e_ms": 31808.084958,
       "iteration_count": 2,
       "tool_events": [
         {
           "kind": "start",
           "name": "ceb_search",
-          "t_ms": 15166.883082999999
+          "t_ms": 3927.916959
         },
         {
           "kind": "input",
-          "tool_use_id": "toolu_01UtzihKckELSVbRmAsBuuZf",
+          "tool_use_id": "toolu_01TQzBvnEvhdb9bLWAfLG5NT",
           "input": {
-            "query": "motion to seal court records California Rule of Court 2.550",
+            "query": "California Rule of Court 2.550 motion to seal records requirements",
             "category": "business_litigation"
           },
-          "t_ms": 16055.5055
+          "t_ms": 4629.839667
         },
         {
           "kind": "result",
           "name": "ceb_search",
           "is_error": false,
-          "elapsed_ms": 2000.6461660000004,
-          "t_ms": 18056.189083
+          "elapsed_ms": 975.4527079999998,
+          "t_ms": 5605.3207090000005,
+          "output_redactions_count": 33,
+          "output_compound_risk_buckets": 0
         }
       ],
-      "final_text_preview": "Here is a comprehensive summary of what California Rule of Court 2.550 (together with its companion Rule 2.551) requires for a motion to seal court records:\n\n---\n\n## California Rule of Court 2.550 — Sealing Court Records\n\n### Origin and Purpose\n\nRule 2.550 and Rule 2.551 together provide a standard and procedures for courts to use when a request is made to seal a record. The standard is based on *",
-      "final_text_length": 5574,
+      "final_text_preview": "I'll search for the specific requirements of California Rule of Court 2.550 regarding sealing court records.# California Rule of Court 2.550: Requirements for Sealing Court Records\n\nRule 2.550 governs the substantive standard a California trial court must apply before ordering a record sealed. It works in tandem with Rule 2.551, which sets out the procedural mechanics.\n\n## Background and Scope\n\nRu",
+      "final_text_length": 7079,
       "tool_rounds": 1,
-      "total_tokens": 24632,
+      "total_tokens": 36078,
       "stop_reason": "end_turn"
     },
     {
       "scenario": "compound_risk (privileged=true expected, no direct PII)",
-      "session_id": "stream_smoke_1778626832292_2u50",
+      "session_id": "stream_smoke_1778627116052_fvsx",
       "ok": true,
       "privileged_expected": true,
       "privileged_actual": true,
       "privilege_match": true,
       "compound_risk_buckets": 5,
-      "ttfb_ms": 1505.054333,
-      "ttft_ms": 2137.152083000001,
-      "e2e_ms": 70238.729708,
-      "iteration_count": 3,
-      "tool_events": [
-        {
-          "kind": "start",
-          "name": "ceb_search",
-          "t_ms": 3005.599374999998
-        },
-        {
-          "kind": "start",
-          "name": "ceb_search",
-          "t_ms": 3988.885000000002
-        },
-        {
-          "kind": "input",
-          "tool_use_id": "toolu_01EhAiYFazNs1LGVmBAeruLp",
-          "input": {
-            "query": "California probate petition opening estate required forms",
-            "category": "trusts_estates",
-            "top_k": 8
-          },
-          "t_ms": 4798.081417000001
-        },
-        {
-          "kind": "input",
-          "tool_use_id": "toolu_01XMMwCUBgitdToNCYFhyxKc",
-          "input": {
-            "query": "intestate succession surviving spouse children California",
-            "category": "trusts_estates",
-            "top_k": 5
-          },
-          "t_ms": 4798.0925419999985
-        },
-        {
-          "kind": "result",
-          "name": "ceb_search",
-          "is_error": false,
-          "elapsed_ms": 1794.864416999997,
-          "t_ms": 6592.981583000001
-        },
-        {
-          "kind": "result",
-          "name": "ceb_search",
-          "is_error": false,
-          "elapsed_ms": 1148.8922079999975,
-          "t_ms": 7741.922583
-        },
-        {
-          "kind": "start",
-          "name": "ceb_search",
-          "t_ms": 10142.145958000001
-        },
-        {
-          "kind": "start",
-          "name": "ceb_search",
-          "t_ms": 10918.984958000001
-        },
-        {
-          "kind": "start",
-          "name": "ceb_search",
-          "t_ms": 11693.886167000004
-        },
-        {
-          "kind": "input",
-          "tool_use_id": "toolu_01Y2UJuBiG8f11JiYZWJtFCL",
-          "input": {
-            "query": "Notice of Petition to Administer Estate publication posting DE-121",
-            "category": "trusts_estates",
-            "top_k": 5
-          },
-          "t_ms": 12171.434249999998
-        },
-        {
-          "kind": "input",
-          "tool_use_id": "toolu_01NNc6b3ntzpPAP4jRnWFofJ",
-          "input": {
-            "query": "inventory appraisal DE-160 probate referee appointment",
-            "category": "trusts_estates",
-            "top_k": 5
-          },
-          "t_ms": 12171.440583000003
-        },
-        {
-          "kind": "input",
-          "tool_use_id": "toolu_016xiFzCfb2zsnsSvv8Z7HBm",
-          "input": {
-            "query": "San Francisco Superior Court local probate rules filing requirements",
-            "category": "trusts_estates",
-            "top_k": 5
-          },
-          "t_ms": 12171.442292
-        },
-        {
-          "kind": "result",
-          "name": "ceb_search",
-          "is_error": false,
-          "elapsed_ms": 1190.013791999998,
-          "t_ms": 13361.465417
-        },
-        {
-          "kind": "result",
-          "name": "ceb_search",
-          "is_error": false,
-          "elapsed_ms": 1023.9669589999976,
-          "t_ms": 14385.474416999998
-        },
-        {
-          "kind": "result",
-          "name": "ceb_search",
-          "is_error": false,
-          "elapsed_ms": 902.1805420000019,
-          "t_ms": 15287.694333
-        }
-      ],
-      "final_text_preview": "Let me pull the relevant California probate procedure guidance from our CEB library right away.Now let me pull the specific notice and inventory forms, and San Francisco local probate rules.Excellent — I now have everything needed for a thorough, jurisdiction-specific answer. Here is a complete, organized briefing.\n\n---\n\n# Opening a California Probate Estate — City & County of San Francisco\n### Cl",
-      "final_text_length": 9873,
-      "tool_rounds": 2,
-      "total_tokens": 46074,
+      "ttfb_ms": 1337.4977919999947,
+      "ttft_ms": 2554.9462920000005,
+      "e2e_ms": 9935.886041000005,
+      "iteration_count": 1,
+      "tool_events": [],
+      "final_text_preview": "To point you to the right forms, I need to clarify what you're actually trying to accomplish — the facts you've given me describe the client and his family, but not the legal posture. A few possibilities:\n\n1. **The widower died** and the son (your client?) wants to open probate of the father's estate.\n2. **The widower's wife died** (he's a widower) and you're cleaning up her estate now — possibly ",
+      "final_text_length": 1664,
+      "tool_rounds": 0,
+      "total_tokens": 2375,
       "stop_reason": "end_turn"
     },
     {
       "scenario": "direct_pii (privileged=true expected, explicit name+phone)",
-      "session_id": "stream_smoke_1778626904072_kjp7",
+      "session_id": "stream_smoke_1778627127362_2m9r",
       "ok": true,
       "privileged_expected": true,
       "privileged_actual": true,
       "privilege_match": true,
       "compound_risk_buckets": 0,
-      "ttfb_ms": 1378.175000000003,
-      "ttft_ms": 10993.813957999999,
-      "e2e_ms": 42594.602792000005,
-      "iteration_count": 3,
+      "ttfb_ms": 1884.2126250000001,
+      "ttft_ms": 3345.4788750000007,
+      "e2e_ms": 30583.505042000004,
+      "iteration_count": 2,
       "tool_events": [
         {
           "kind": "start",
           "name": "ceb_search",
-          "t_ms": 2527.671374999991
-        },
-        {
-          "kind": "input",
-          "tool_use_id": "toolu_01ULmmM9NvtrfENTMsY2NfDc",
-          "input": {
-            "query": "noticed motion to compel further responses California state court",
-            "category": "business_litigation",
-            "top_k": 7
-          },
-          "t_ms": 3091.816166999997
-        },
-        {
-          "kind": "result",
-          "name": "ceb_search",
-          "is_error": false,
-          "elapsed_ms": 1391.7512500000012,
-          "t_ms": 4483.579541999992
+          "t_ms": 7064.414375
         },
         {
           "kind": "start",
           "name": "ceb_search",
-          "t_ms": 6250.6706669999985
-        },
-        {
-          "kind": "start",
-          "name": "courtlistener_search",
-          "t_ms": 7010.517374999996
+          "t_ms": 7489.250500000002
         },
         {
           "kind": "input",
-          "tool_use_id": "toolu_01H9anFsRq7AYGWigVPHQrRy",
+          "tool_use_id": "toolu_01XzPVb3ikLuhvbCBxZtYPNw",
           "input": {
-            "query": "motion to compel further responses meet and confer separate statement deadline",
-            "category": "business_litigation",
-            "top_k": 7
+            "query": "motion to compel further responses requirements",
+            "category": "business_litigation"
           },
-          "t_ms": 7528.280541999993
+          "t_ms": 8117.369458000001
         },
         {
           "kind": "input",
-          "tool_use_id": "toolu_01VQTAnEaXRJuXuBHeJQhtKQ",
+          "tool_use_id": "toolu_011bhpGQmRPFYTuvNQ3BJ3iv",
           "input": {
-            "query": "motion to compel further discovery responses standard California",
-            "california_only": true,
-            "limit": 5
+            "query": "separate statement meet and confer 45 day deadline",
+            "category": "business_litigation"
           },
-          "t_ms": 7528.311541999996
+          "t_ms": 8117.377166999999
         },
         {
           "kind": "result",
           "name": "ceb_search",
           "is_error": false,
-          "elapsed_ms": 869.1271249999991,
-          "t_ms": 8397.453832999992
+          "elapsed_ms": 1050.7111250000016,
+          "t_ms": 9168.120958,
+          "output_redactions_count": 31,
+          "output_compound_risk_buckets": 0
         },
         {
           "kind": "result",
-          "name": "courtlistener_search",
+          "name": "ceb_search",
           "is_error": false,
-          "elapsed_ms": 1615.5390000000043,
-          "t_ms": 10013.051749999999
+          "elapsed_ms": 2118.801542000001,
+          "t_ms": 11287.003917000002,
+          "output_redactions_count": 41,
+          "output_compound_risk_buckets": 1
         }
       ],
-      "final_text_preview": "> ⚠️ **Privacy Notice — Action Required**\n> The phone number you included in your message (415-555-0148) has been automatically redacted from our system logs and will not be used in any research output. Please avoid including client contact details, personal identifiers, or other PII in research requests — use a client matter number or initials instead.\n\n---\n\n## Standard for a Noticed Motion to Co",
-      "final_text_length": 5602,
-      "tool_rounds": 2,
-      "total_tokens": 27423,
+      "final_text_preview": "# Motion to Compel Further Responses — California State Court Standard\n\n## Statutory Framework\n\nMotions to compel **further** responses (as distinct from motions to compel initial responses where no response was served) are governed by discovery-method-specific statutes:\n\n- **Interrogatories:** Code Civ. Proc. § 2030.300\n- **Requests for Production:** Code Civ. Proc. § 2031.310\n- **Requests for Ad",
+      "final_text_length": 4917,
+      "tool_rounds": 1,
+      "total_tokens": 19794,
       "stop_reason": "end_turn"
     }
   ]

@@ -106,7 +106,10 @@ const QUERIES = [
   'What are the elements of a wrongful eviction claim in California?',
 ];
 
-const MODEL = 'claude-sonnet-4-6';
+// Tracks DEFAULT_MODEL in api/_lib/agentLoop.ts. Bumped to Opus 4.7 per
+// the 2026-05-12 fifth addendum (Anthropic's flagship legal-reasoning
+// model).
+const MODEL = 'claude-opus-4-7';
 
 // ---------------------------------------------------------------------------
 // Endpoint measurement primitives
