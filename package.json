@@ -12,7 +12,8 @@
     "test:verification": "node test-verification-system.js",
     "test:openrouter": "node test-comprehensive.js",
     "test:sanitization": "tsx tests/sanitization.test.mjs",
-    "test:traps": "tsx tests/traps/runTraps.mjs"
+    "test:traps": "tsx tests/traps/runTraps.mjs",
+    "latency:baseline": "node scripts/latency-baseline.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.95.2",

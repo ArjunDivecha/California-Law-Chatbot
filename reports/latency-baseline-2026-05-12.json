@@ -1,0 +1,398 @@
+{
+  "ran_at": "2026-05-12T20:37:38.633Z",
+  "model": "claude-sonnet-4-6",
+  "queries": [
+    "What's the leading California case law on condo-association lien priority?",
+    "Explain CRC 3.1320 — motion to seal requirements.",
+    "Recent California Court of Appeal opinions on premises liability for slip-and-fall at grocery stores.",
+    "California Probate Code section 15610 — conservator standard.",
+    "What are the elements of a wrongful eviction claim in California?"
+  ],
+  "runs": {
+    "anthropic.messages.create": [
+      {
+        "query": "What's the leading California case law on condo-association lien priority?",
+        "ok": true,
+        "e2e_ms": 11755.193125,
+        "input_tokens": 23,
+        "output_tokens": 512
+      },
+      {
+        "query": "Explain CRC 3.1320 — motion to seal requirements.",
+        "ok": true,
+        "e2e_ms": 11716.351792,
+        "input_tokens": 23,
+        "output_tokens": 512
+      },
+      {
+        "query": "Recent California Court of Appeal opinions on premises liability for slip-and-fall at grocery stores.",
+        "ok": true,
+        "e2e_ms": 12295.741875000003,
+        "input_tokens": 26,
+        "output_tokens": 512
+      },
+      {
+        "query": "California Probate Code section 15610 — conservator standard.",
+        "ok": true,
+        "e2e_ms": 10413.498292000004,
+        "input_tokens": 22,
+        "output_tokens": 512
+      },
+      {
+        "query": "What are the elements of a wrongful eviction claim in California?",
+        "ok": true,
+        "e2e_ms": 10142.558417,
+        "input_tokens": 21,
+        "output_tokens": 512
+      }
+    ],
+    "anthropic.messages.stream": [
+      {
+        "query": "What's the leading California case law on condo-association lien priority?",
+        "ok": true,
+        "e2e_ms": 12613.280833999997,
+        "ttfb_ms": 1321.036791999999,
+        "ttft_ms": 1323.6107919999995,
+        "input_tokens": 23,
+        "output_tokens": 512
+      },
+      {
+        "query": "Explain CRC 3.1320 — motion to seal requirements.",
+        "ok": true,
+        "e2e_ms": 10397.018832999995,
+        "ttfb_ms": 1087.5084999999963,
+        "ttft_ms": 1087.6601660000015,
+        "input_tokens": 23,
+        "output_tokens": 512
+      },
+      {
+        "query": "Recent California Court of Appeal opinions on premises liability for slip-and-fall at grocery stores.",
+        "ok": true,
+        "e2e_ms": 12252.486000000004,
+        "ttfb_ms": 595.4177080000081,
+        "ttft_ms": 595.4460830000025,
+        "input_tokens": 26,
+        "output_tokens": 512
+      },
+      {
+        "query": "California Probate Code section 15610 — conservator standard.",
+        "ok": true,
+        "e2e_ms": 8652.409,
+        "ttfb_ms": 1577.2043330000015,
+        "ttft_ms": 1670.6808750000055,
+        "input_tokens": 22,
+        "output_tokens": 359
+      },
+      {
+        "query": "What are the elements of a wrongful eviction claim in California?",
+        "ok": true,
+        "e2e_ms": 10558.764666999996,
+        "ttfb_ms": 760.2258330000041,
+        "ttft_ms": 760.2935419999994,
+        "input_tokens": 21,
+        "output_tokens": 512
+      }
+    ],
+    "anthropic.messages.stream + web_search": [
+      {
+        "query": "What's the leading California case law on condo-association lien priority?",
+        "ok": true,
+        "e2e_ms": 27710.49966599999,
+        "ttfb_ms": 1937.809832999992,
+        "ttft_ms": 7597.179165999987,
+        "tool_uses": 2,
+        "input_tokens": 47382,
+        "output_tokens": 1165
+      },
+      {
+        "query": "Explain CRC 3.1320 — motion to seal requirements.",
+        "ok": true,
+        "e2e_ms": 23841.04583400002,
+        "ttfb_ms": 1650.3528750000114,
+        "ttft_ms": 6918.5895420000015,
+        "tool_uses": 2,
+        "input_tokens": 47453,
+        "output_tokens": 1163
+      },
+      {
+        "query": "Recent California Court of Appeal opinions on premises liability for slip-and-fall at grocery stores.",
+        "ok": true,
+        "e2e_ms": 26569.75787500001,
+        "ttfb_ms": 1621.4013750000158,
+        "ttft_ms": 6853.588334,
+        "tool_uses": 3,
+        "input_tokens": 65885,
+        "output_tokens": 1216
+      },
+      {
+        "query": "California Probate Code section 15610 — conservator standard.",
+        "ok": true,
+        "e2e_ms": 23927.267083000013,
+        "ttfb_ms": 1600.1043749999953,
+        "ttft_ms": 6356.707708000002,
+        "tool_uses": 2,
+        "input_tokens": 33641,
+        "output_tokens": 1154
+      },
+      {
+        "query": "What are the elements of a wrongful eviction claim in California?",
+        "ok": true,
+        "e2e_ms": 19393.25899999999,
+        "ttfb_ms": 1501.3538750000007,
+        "ttft_ms": 3220.5232909999904,
+        "tool_uses": 1,
+        "input_tokens": 18545,
+        "output_tokens": 1085
+      }
+    ],
+    "ceb_search (embed + Upstash Vector)": [
+      {
+        "query": "What's the leading California case law on condo-association lien priority?",
+        "ok": true,
+        "e2e_ms": 6357.122833000001,
+        "embed_ms": 2061.5075420000067,
+        "vector_ms": 4295.077166999981,
+        "ns_result_counts": [
+          -1,
+          -1,
+          -1,
+          -1,
+          -1
+        ],
+        "total_results": 0
+      },
+      {
+        "query": "Explain CRC 3.1320 — motion to seal requirements.",
+        "ok": true,
+        "e2e_ms": 4841.2336249999935,
+        "embed_ms": 545.6626249999972,
+        "vector_ms": 4295.3988750000135,
+        "ns_result_counts": [
+          -1,
+          -1,
+          -1,
+          -1,
+          -1
+        ],
+        "total_results": 0
+      },
+      {
+        "query": "Recent California Court of Appeal opinions on premises liability for slip-and-fall at grocery stores.",
+        "ok": true,
+        "e2e_ms": 5180.024665999983,
+        "embed_ms": 883.3787920000032,
+        "vector_ms": 4296.568583999993,
+        "ns_result_counts": [
+          -1,
+          -1,
+          -1,
+          -1,
+          -1
+        ],
+        "total_results": 0
+      },
+      {
+        "query": "California Probate Code section 15610 — conservator standard.",
+        "ok": true,
+        "e2e_ms": 4636.7012920000125,
+        "embed_ms": 341.47783399999025,
+        "vector_ms": 4295.116083000001,
+        "ns_result_counts": [
+          -1,
+          -1,
+          -1,
+          -1,
+          -1
+        ],
+        "total_results": 0
+      },
+      {
+        "query": "What are the elements of a wrongful eviction claim in California?",
+        "ok": true,
+        "e2e_ms": 5771.902249999985,
+        "embed_ms": 1474.551084000006,
+        "vector_ms": 4297.225457999972,
+        "ns_result_counts": [
+          -1,
+          -1,
+          -1,
+          -1,
+          -1
+        ],
+        "total_results": 0
+      }
+    ],
+    "courtlistener_search": [
+      {
+        "query": "What's the leading California case law on condo-association lien priority?",
+        "ok": true,
+        "e2e_ms": 1291.6182499999995,
+        "result_count": 17,
+        "total_count": 17
+      },
+      {
+        "query": "Explain CRC 3.1320 — motion to seal requirements.",
+        "ok": true,
+        "e2e_ms": 898.3794999999809,
+        "result_count": 3,
+        "total_count": 3
+      },
+      {
+        "query": "Recent California Court of Appeal opinions on premises liability for slip-and-fall at grocery stores.",
+        "ok": true,
+        "e2e_ms": 1484.8181249999907,
+        "result_count": 20,
+        "total_count": 200
+      },
+      {
+        "query": "California Probate Code section 15610 — conservator standard.",
+        "ok": true,
+        "e2e_ms": 373.0279580000206,
+        "result_count": 1,
+        "total_count": 1
+      },
+      {
+        "query": "What are the elements of a wrongful eviction claim in California?",
+        "ok": true,
+        "e2e_ms": 5545.9044170000125,
+        "result_count": 20,
+        "total_count": 670
+      }
+    ]
+  },
+  "summary": {
+    "anthropic.messages.create": {
+      "success_rate": "5/5",
+      "e2e_ms": {
+        "n": 5,
+        "min": 10142.558417,
+        "max": 12295.741875000003,
+        "avg": 11264.6687002,
+        "p50": 11716.351792,
+        "p95": 12295.741875000003,
+        "p99": 12295.741875000003
+      },
+      "ttfb_ms": null,
+      "ttft_ms": null,
+      "embed_ms": null,
+      "vector_ms": null,
+      "errors": []
+    },
+    "anthropic.messages.stream": {
+      "success_rate": "5/5",
+      "e2e_ms": {
+        "n": 5,
+        "min": 8652.409,
+        "max": 12613.280833999997,
+        "avg": 10894.791866799998,
+        "p50": 10558.764666999996,
+        "p95": 12613.280833999997,
+        "p99": 12613.280833999997
+      },
+      "ttfb_ms": {
+        "n": 5,
+        "min": 595.4177080000081,
+        "max": 1577.2043330000015,
+        "avg": 1068.2786332000019,
+        "p50": 1087.5084999999963,
+        "p95": 1577.2043330000015,
+        "p99": 1577.2043330000015
+      },
+      "ttft_ms": {
+        "n": 5,
+        "min": 595.4460830000025,
+        "max": 1670.6808750000055,
+        "avg": 1087.5382916000017,
+        "p50": 1087.6601660000015,
+        "p95": 1670.6808750000055,
+        "p99": 1670.6808750000055
+      },
+      "embed_ms": null,
+      "vector_ms": null,
+      "errors": []
+    },
+    "anthropic.messages.stream + web_search": {
+      "success_rate": "5/5",
+      "e2e_ms": {
+        "n": 5,
+        "min": 19393.25899999999,
+        "max": 27710.49966599999,
+        "avg": 24288.365891600006,
+        "p50": 23927.267083000013,
+        "p95": 27710.49966599999,
+        "p99": 27710.49966599999
+      },
+      "ttfb_ms": {
+        "n": 5,
+        "min": 1501.3538750000007,
+        "max": 1937.809832999992,
+        "avg": 1662.2044666000031,
+        "p50": 1621.4013750000158,
+        "p95": 1937.809832999992,
+        "p99": 1937.809832999992
+      },
+      "ttft_ms": {
+        "n": 5,
+        "min": 3220.5232909999904,
+        "max": 7597.179165999987,
+        "avg": 6189.317608199996,
+        "p50": 6853.588334,
+        "p95": 7597.179165999987,
+        "p99": 7597.179165999987
+      },
+      "embed_ms": null,
+      "vector_ms": null,
+      "errors": []
+    },
+    "ceb_search (embed + Upstash Vector)": {
+      "success_rate": "5/5",
+      "e2e_ms": {
+        "n": 5,
+        "min": 4636.7012920000125,
+        "max": 6357.122833000001,
+        "avg": 5357.396933199995,
+        "p50": 5180.024665999983,
+        "p95": 6357.122833000001,
+        "p99": 6357.122833000001
+      },
+      "ttfb_ms": null,
+      "ttft_ms": null,
+      "embed_ms": {
+        "n": 5,
+        "min": 341.47783399999025,
+        "max": 2061.5075420000067,
+        "avg": 1061.3155754000006,
+        "p50": 883.3787920000032,
+        "p95": 2061.5075420000067,
+        "p99": 2061.5075420000067
+      },
+      "vector_ms": {
+        "n": 5,
+        "min": 4295.077166999981,
+        "max": 4297.225457999972,
+        "avg": 4295.877233399992,
+        "p50": 4295.3988750000135,
+        "p95": 4297.225457999972,
+        "p99": 4297.225457999972
+      },
+      "errors": []
+    },
+    "courtlistener_search": {
+      "success_rate": "5/5",
+      "e2e_ms": {
+        "n": 5,
+        "min": 373.0279580000206,
+        "max": 5545.9044170000125,
+        "avg": 1918.7496500000009,
+        "p50": 1291.6182499999995,
+        "p95": 5545.9044170000125,
+        "p99": 5545.9044170000125
+      },
+      "ttfb_ms": null,
+      "ttft_ms": null,
+      "embed_ms": null,
+      "vector_ms": null,
+      "errors": []
+    }
+  }
+}

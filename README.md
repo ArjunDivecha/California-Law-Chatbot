@@ -2,6 +2,79 @@
 
 A sophisticated AI-powered legal research assistant specializing in California law, featuring real-time integration with authoritative legal databases and comprehensive citation verification.
 
+> ⚠️ **V2 MIGRATION IN PROGRESS.** The sections below describe the **V1 production architecture** (OpenRouter-routed Gemini + Claude via the legacy orchestrator). V2 lives on branch `V2` and rewires inference to the **direct Anthropic Messages API** with an in-process agent loop, deleting roughly 7,800 lines of orchestration. The full V2 plan and status are tracked in `docs/MANAGED_AGENTS_RECONSTRUCTION_PLAN.md`. See **V2 Status** below for current state.
+
+---
+
+## V2 Status (auto-updated 2026-05-12)
+
+This section is the canonical place to find out where the V2 migration stands. Other agents / scripts reading this file should treat the table below as ground truth; cross-reference the cited artifacts for detail.
+
+### Pre-Phase-1 critical path (per 2026-05-10 ZDR-removal addendum)
+
+| Step | What | Status | Artifact |
+|---|---|---|---|
+| 0 | SDK upgrade `@anthropic-ai/sdk` 0.68.0 → 0.95.2 | ✅ done | commit `58dec1e`, `package.json` |
+| 1 | Sanitization branch import + deep audit | ✅ done | `docs/sanitization-audit-2026-05-10.md` |
+| 1b | Test-runner unblock (auditLog port + stubs) | ✅ done | commit `3c45f2d`, `api/_shared/auditLog.ts`, `components/draftingMagic/draftSectionState.ts` (stub), `hooks/useAttestation.ts` (stub) |
+| 1c | §6 token-map retention decision (addendum #3) | ⏸ Option C drafted, **pending F&F partner sign-off** | `docs/MANAGED_AGENTS_RECONSTRUCTION_PLAN.md` 2026-05-12 third addendum |
+| 2 | Threat model + **100-trap manifest** + runner | ✅ done (synthetic v1; F&F-matter half deferred 2026-05-12) | `tests/traps/manifest-v1.json`, `tests/traps/runTraps.mjs` |
+| 3 | **Privilege smoke test, iterate to zero leaks** (HARD GATE) | ✅ **100/100 pass × 2 consecutive runs** | commit `06eb445`, `reports/traps-baseline-2026-05-12.json` |
+| 4a | Upstash KV schema design | ✅ done | `docs/upstash-kv-schema-v1.md` |
+| 4b | Anthropic-stack latency baseline | ✅ done | `reports/latency-baseline-2026-05-12.json`, `scripts/latency-baseline.mjs` |
+
+### Latency baseline summary (2026-05-12, `claude-sonnet-4-6`, 5 queries per endpoint)
+
+| Endpoint | success | e2e p50 (ms) | e2e p95 (ms) | TTFB p50 | TTFT p50 |
+|---|---|---|---|---|---|
+| `anthropic.messages.create` | 5/5 | 11716 | 12296 | — | — |
+| `anthropic.messages.stream` | 5/5 | 10559 | 12613 | 1088 | 1088 |
+| `anthropic.messages.stream + web_search` | 5/5 | 23927 | 27710 | 1621 | 6854 |
+| `ceb_search` (embed + 5-namespace Upstash Vector) | 5/5 | 5180 | 6357 | — | — |
+| `courtlistener_search` | 5/5 | 1292 | 5546 | — | — |
+
+These numbers are the comparison floor Phase 1 measures against. The `+ web_search` row is the Gemini-grounding replacement.
+
+### Phase status
+
+| Phase | Status |
+|---|---|
+| Phase 1 — Spike (`api/_lib/agentLoop.ts`, ~250 lines; Upstash KV schema; ceb_search + courtlistener_search tools; privilege-gated web_search) | ❌ not started — **unblocked, ready** |
+| Phase 2 — Drafting workflows | ❌ not started |
+| Phase 3 — Verifier sub-agent | ❌ not started |
+| Phase 4 — UI integration | ❌ not started |
+| Phase 4.5 — Shadow run | ❌ not started |
+| Phase 5a — Cutover (deletes ~7,800 lines incl. `gemini/chatService.ts`, `agents/*`, `orchestrate-document.ts`) | ❌ not started |
+| Phase 5b — Legacy teardown | ❌ not started |
+
+### V2 commit timeline
+
+```
+06eb445  Step 3: iterate sanitization to zero leaks (100/100 trap pass × 2)
+2a6dc4f  Step 2: 100-trap manifest v1 + runner + 36/100 baseline
+3c45f2d  Unblock test runner: port auditLog + stub draftSectionState/useAttestation
+58dec1e  Step 0: bump @anthropic-ai/sdk 0.68.0 → 0.95.2
+fe9da1f  Plan: 3rd addendum — token-map retention (Option C, pending F&F sign-off)
+e489d67  V2 Step 1 deliverable: sanitization deep audit + test infra deps
+a720572  Sanitization audit fixes (May 11, V1 mechanical fixes for audit §8 4-7+10)
+```
+
+### Open dependencies
+
+1. **F&F partner sign-off** on `docs/MANAGED_AGENTS_RECONSTRUCTION_PLAN.md` 2026-05-12 third addendum (Option C retention). The addendum is binding only after counsel ratifies; until then, the `audit_record_envelope:*` keys in `docs/upstash-kv-schema-v1.md` remain a draft schema.
+2. **Gemini-grounding replacement acceptance criterion** for Phase 1 — tracked informally in conversation, not yet pinned in the plan. The replacement is `web_search_20250305` Anthropic tool with privilege gating (omit from `tools` array when input is privileged). `services/confidenceGating.ts` needs rewiring from Gemini grounding-metadata shape to Anthropic citations.
+
+### How to verify status reproducibly
+
+```bash
+yarn install
+yarn test:sanitization        # 103 pass / 39 fail baseline (the 39 are documented Phase 1/2/4 scaffolding gaps)
+yarn test:traps               # MUST report 100/100 — Step 3 gate
+yarn latency:baseline         # writes reports/latency-baseline-{date}.json (consumes API credits)
+```
+
+---
+
 ## 🎯 Overview
 
 This chatbot combines Google's Gemini 3 Pro (generator, via OpenRouter) with Anthropic's Claude Sonnet 4.5 (verifier, via OpenRouter) and direct access to official California legal sources to provide accurate, well-researched answers to legal questions. It automatically detects case law queries and searches CourtListener's database of millions of court opinions, while providing verified citations to official legal codes and statutes.
