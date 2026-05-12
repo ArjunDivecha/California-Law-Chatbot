@@ -1058,6 +1058,72 @@ await test('compound-risk parity: detectPii best-effort fallback also reports co
 });
 
 // ---------------------------------------------------------------------------
+// Tool-output sanitization wrapper (audit §8 #8 / 2026-05-10 second addendum
+// compliance) — closes the code/plan gap Codex caught on 2026-05-12
+// ---------------------------------------------------------------------------
+const agentLoopMod = await import('../api/_lib/agentLoop.ts');
+const { sanitizeToolOutput } = agentLoopMod;
+
+await test('sanitizeToolOutput: passes clean content through untouched', () => {
+  const { content, attestation } = sanitizeToolOutput(
+    'California Probate Code §15610 defines the conservator standard.',
+  );
+  assert.equal(
+    content,
+    'California Probate Code §15610 defines the conservator standard.',
+  );
+  assert.equal(attestation, null, 'no spans/buckets → no attestation');
+});
+
+await test('sanitizeToolOutput: redacts HIGH_RISK spans to [REDACTED:category] placeholders', () => {
+  const raw =
+    'Plaintiff Carlos Hernández-Ramírez can be reached at 213-555-0148.';
+  const { content, attestation } = sanitizeToolOutput(raw);
+  assert.ok(
+    /\[REDACTED:name\]/.test(content),
+    `name span should be redacted, got: ${content}`,
+  );
+  assert.ok(
+    /\[REDACTED:phone\]/.test(content),
+    `phone span should be redacted, got: ${content}`,
+  );
+  assert.ok(!/Carlos Hernández-Ramírez/.test(content), 'raw name must not leak');
+  assert.ok(!/213-555-0148/.test(content), 'raw phone must not leak');
+  assert.ok(attestation, 'attestation should be present');
+  assert.ok(attestation.redactions_count >= 2, `≥2 redactions (got ${attestation.redactions_count})`);
+  assert.ok((attestation.by_category.name ?? 0) >= 1, 'name category counted');
+  assert.ok((attestation.by_category.phone ?? 0) >= 1, 'phone category counted');
+  assert.equal(attestation.privileged, true);
+});
+
+await test('sanitizeToolOutput: attestation fires on compound-risk-only tool output even when no spans to redact', () => {
+  // Compound-risk-only content — no HIGH_RISK spans, but ≥3 buckets fire.
+  // The wrapper should attach an attestation (privileged=true,
+  // compound_risk_buckets≥3) even though there's nothing destructive to
+  // redact. The model gets the content unchanged but the audit knows.
+  const raw =
+    'Cantonese-speaking widower in Sunset District whose only son is a third-year radiology resident at UCSF.';
+  const { content, attestation } = sanitizeToolOutput(raw);
+  assert.equal(content, raw, 'no destructive redaction when zero HIGH_RISK spans');
+  assert.ok(attestation, 'attestation present because compound buckets ≥ threshold');
+  assert.equal(attestation.redactions_count, 0);
+  assert.ok(
+    attestation.compound_risk_buckets >= 3,
+    `compound buckets ≥ 3 (got ${attestation.compound_risk_buckets})`,
+  );
+  assert.equal(attestation.privileged, true);
+});
+
+await test('sanitizeToolOutput: empty / non-string input returns gracefully', () => {
+  for (const input of ['', null, undefined]) {
+    const { content, attestation } = sanitizeToolOutput(input);
+    assert.equal(attestation, null);
+    // empty string in → empty string out; non-string in → empty string out
+    assert.equal(typeof content, 'string');
+  }
+});
+
+// ---------------------------------------------------------------------------
 // Audit log (Day 5)
 // ---------------------------------------------------------------------------
 const auditMod = await import('../api/_shared/auditLog.ts');

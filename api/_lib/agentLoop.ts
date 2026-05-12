@@ -31,10 +31,106 @@ import {
   type SessionMessage,
 } from './sessionStore.js';
 import { buildAuditRecord, writeAuditRecord } from '../_shared/auditLog.js';
+import {
+  analyze,
+  HIGH_RISK_CATEGORIES,
+  type Span,
+} from '../_shared/sanitization/index.js';
+import { COMPOUND_RISK_BUCKET_THRESHOLD } from '../_shared/sanitization/compoundRisk.js';
 
 const DEFAULT_MODEL = 'claude-sonnet-4-6';
 const DEFAULT_MAX_TOKENS = 4096;
 const MAX_ITERATIONS = 8; // safety cap on tool-use rounds within one turn
+
+// ---------------------------------------------------------------------------
+// Tool-output sanitization wrapper (audit §8 #8 / second addendum compliance)
+// ---------------------------------------------------------------------------
+
+/**
+ * Attestation produced by sanitizeToolOutput. Recorded in the per-turn audit
+ * trail so a litigation hold can prove WHICH tool calls had their outputs
+ * scrubbed before the model saw them.
+ */
+export interface ToolOutputSanitization {
+  /** Number of HIGH_RISK spans redacted out of the tool's content. */
+  redactions_count: number;
+  /** Breakdown by SpanCategory. */
+  by_category: Record<string, number>;
+  /** Bucket count from the compound-risk detector (W1). */
+  compound_risk_buckets: number;
+  /** Whether the OR'd privileged flag fired on the tool output. */
+  privileged: boolean;
+}
+
+/**
+ * Sanitize a single tool result's content BEFORE it's appended to the
+ * outbound `tool_result` block.
+ *
+ * 2026-05-10 second addendum (Sanitization scope: Inputs AND tool outputs)
+ * and `docs/sanitization-audit-2026-05-10.md` §8 item #8 both require this:
+ * every tool_result block runs through the same span detector that
+ * processes user input. Without this, a public-records tool (CourtListener,
+ * CEB) could surface a party name or address that re-identifies a
+ * privileged matter — that text would then flow into the next
+ * messages.create() call with no defense.
+ *
+ * Behavior:
+ *   - Runs analyze() on the content string.
+ *   - Walks detected HIGH_RISK_CATEGORIES spans from end to start (so the
+ *     index shifts after substitution don't cascade) and replaces each
+ *     span with a `[REDACTED:<category>]` placeholder. Destructive — the
+ *     model never sees the privileged text.
+ *   - Returns the sanitized content + a structured attestation for the
+ *     audit record. The attestation also captures compound-risk buckets
+ *     even when there's nothing to redact, because a compound-risk-only
+ *     tool output is itself a flag worth recording.
+ *
+ * Trade-off (accepted per the second addendum): false positives on
+ * tool outputs may redact legitimately-public identifiers — e.g., a case
+ * caption "People v. Smith" could have "Smith" detected as a single-word
+ * name. The model will see "People v. [REDACTED:name]." Better than
+ * leaking, and the user can ask for clarification if needed.
+ */
+export function sanitizeToolOutput(
+  content: string,
+): { content: string; attestation: ToolOutputSanitization | null } {
+  if (!content || typeof content !== 'string') {
+    return { content: content ?? '', attestation: null };
+  }
+  const result = analyze(content);
+  const highRisk = result.spans.filter((s: Span) => HIGH_RISK_CATEGORIES.has(s.category));
+  const compoundBuckets = result.compoundRiskBuckets ?? 0;
+
+  if (highRisk.length === 0 && compoundBuckets < COMPOUND_RISK_BUCKET_THRESHOLD) {
+    return { content, attestation: null };
+  }
+
+  // Sort spans from highest start index to lowest so index-based slice
+  // substitution doesn't shift the indexes of subsequent spans.
+  const sorted = [...highRisk].sort((a, b) => b.start - a.start);
+  let redacted = content;
+  for (const span of sorted) {
+    redacted =
+      redacted.slice(0, span.start) +
+      `[REDACTED:${span.category}]` +
+      redacted.slice(span.end);
+  }
+
+  const byCategory: Record<string, number> = {};
+  for (const span of highRisk) {
+    byCategory[span.category] = (byCategory[span.category] ?? 0) + 1;
+  }
+
+  return {
+    content: redacted,
+    attestation: {
+      redactions_count: highRisk.length,
+      by_category: byCategory,
+      compound_risk_buckets: compoundBuckets,
+      privileged: Boolean(result.privileged),
+    },
+  };
+}
 
 export interface RunTurnOptions {
   session_id: string;
@@ -77,6 +173,16 @@ export interface RunTurnResult {
   stop_reason: string;
   /** True if MAX_ITERATIONS was hit (the model is still trying to use tools). */
   exhausted_iterations: boolean;
+  /**
+   * Total count of HIGH_RISK spans redacted from tool outputs during this
+   * turn (audit §8 #8 / 2026-05-10 second addendum compliance). 0 when no
+   * tool surfaced privileged-looking content.
+   */
+  tool_output_redactions: number;
+  /** Per-category breakdown of tool-output redactions. */
+  tool_output_redactions_by_category: Record<string, number>;
+  /** How many tool outputs had their privileged flag fire. */
+  tool_outputs_privileged_count: number;
 }
 
 const DEFAULT_SYSTEM_PROMPT = `You are an expert California legal research assistant working inside Femme & Femme Law. You help attorneys with California state and federal practice — case law, statutes, procedure, and practical drafting guidance.
@@ -127,29 +233,56 @@ function extractToolUses(blocks: Anthropic.Messages.ContentBlock[]): ToolUseBloc
 async function dispatchWithCache(
   sessionId: string,
   use: ToolUseBlock,
-): Promise<{ tool_use_id: string; content: string; is_error?: boolean }> {
+): Promise<{
+  tool_use_id: string;
+  content: string;
+  is_error?: boolean;
+  /** Sanitization attestation. null when no spans/buckets fired. */
+  sanitization: ToolOutputSanitization | null;
+}> {
   const cached = await readToolResult(sessionId, use.id).catch(() => null);
   if (cached) {
+    // Cached results are already sanitized (we wrote the sanitized form
+    // back to cache below). Re-emit them WITHOUT re-running analyze() —
+    // doing so would double-redact placeholders like "[REDACTED:name]"
+    // which contain the substring "name" and could trigger spurious
+    // false positives. Trust the cache contract.
     return {
       tool_use_id: use.id,
       content: typeof cached.result === 'string' ? cached.result : JSON.stringify(cached.result),
+      sanitization: null, // already-sanitized cache hit; no new attestation
     };
   }
-  const result = await dispatchTool(use);
+
+  const raw = await dispatchTool(use);
+  const rawContent = typeof raw.content === 'string' ? raw.content : JSON.stringify(raw.content);
+
+  // 2026-05-10 second-addendum mandate / audit §8 #8 — every tool_result
+  // block runs through the same span detector as user input. Destructive
+  // redaction (HIGH_RISK_CATEGORIES → [REDACTED:<category>]) before the
+  // model sees it.
+  const { content: sanitizedContent, attestation } = sanitizeToolOutput(rawContent);
+
+  // Cache the SANITIZED content, not the raw. If we cached raw and only
+  // sanitized at emit time, the second time we read from cache we'd
+  // bypass the wrapper. Storing the sanitized form makes the cache
+  // contract self-enforcing: anything that comes out is already safe.
   await writeToolResult(sessionId, {
     tool_use_id: use.id,
     name: use.name,
     input: use.input,
-    result: result.content,
-    hash: simpleHash(typeof result.content === 'string' ? result.content : JSON.stringify(result.content)),
+    result: sanitizedContent,
+    hash: simpleHash(sanitizedContent),
     written_at: new Date().toISOString(),
   }).catch(() => {
     // Idempotency cache write failure is non-fatal; the tool already ran.
   });
+
   return {
-    tool_use_id: result.tool_use_id,
-    content: typeof result.content === 'string' ? result.content : JSON.stringify(result.content),
-    is_error: result.is_error,
+    tool_use_id: raw.tool_use_id,
+    content: sanitizedContent,
+    is_error: raw.is_error,
+    sanitization: attestation,
   };
 }
 
@@ -202,6 +335,10 @@ export async function runTurn(opts: RunTurnOptions): Promise<RunTurnResult> {
   let stopReason = 'unknown';
   let finalText = '';
   let exhausted = false;
+  // Tool-output sanitization accumulators (audit §8 #8 compliance).
+  let toolOutputRedactions = 0;
+  const toolOutputByCategory: Record<string, number> = {};
+  let toolOutputsPrivilegedCount = 0;
 
   // Build the rolling history we send to the SDK on each iteration.
   let history: SessionMessage[] = [...existing, userMessage];
@@ -247,6 +384,16 @@ export async function runTurn(opts: RunTurnOptions): Promise<RunTurnResult> {
       toolUses.map((use) => dispatchWithCache(opts.session_id, use)),
     );
 
+    // Accumulate tool-output sanitization telemetry across the turn.
+    for (const tr of toolResults) {
+      if (!tr.sanitization) continue;
+      toolOutputRedactions += tr.sanitization.redactions_count;
+      for (const [cat, n] of Object.entries(tr.sanitization.by_category)) {
+        toolOutputByCategory[cat] = (toolOutputByCategory[cat] ?? 0) + n;
+      }
+      if (tr.sanitization.privileged) toolOutputsPrivilegedCount += 1;
+    }
+
     const toolResultUserMessage: SessionMessage = {
       role: 'user',
       content: toolResults.map((tr) => ({
@@ -278,6 +425,13 @@ export async function runTurn(opts: RunTurnOptions): Promise<RunTurnResult> {
   });
 
   const elapsedMs = performance.now() - t0;
+  const auditWarnings: string[] = [];
+  if (toolOutputRedactions > 0) {
+    auditWarnings.push(`tool_output_redactions:${toolOutputRedactions}`);
+  }
+  if (toolOutputsPrivilegedCount > 0) {
+    auditWarnings.push(`tool_outputs_privileged:${toolOutputsPrivilegedCount}`);
+  }
   await writeAuditRecord(
     buildAuditRecord({
       route: 'agent_loop',
@@ -290,6 +444,7 @@ export async function runTurn(opts: RunTurnOptions): Promise<RunTurnResult> {
         .filter((n): n is string => typeof n === 'string'),
       latencyMs: Math.round(elapsedMs),
       statusCode: 200,
+      warningFlags: auditWarnings.length > 0 ? auditWarnings : undefined,
     }),
   );
 
@@ -300,6 +455,9 @@ export async function runTurn(opts: RunTurnOptions): Promise<RunTurnResult> {
     elapsed_ms: elapsedMs,
     stop_reason: stopReason,
     exhausted_iterations: exhausted,
+    tool_output_redactions: toolOutputRedactions,
+    tool_output_redactions_by_category: toolOutputByCategory,
+    tool_outputs_privileged_count: toolOutputsPrivilegedCount,
   };
 }
 
@@ -322,6 +480,11 @@ export type TurnStreamEvent =
       name: string;
       is_error: boolean;
       elapsed_ms: number;
+      /** Count of HIGH_RISK spans redacted from this tool's output, if any.
+       *  Surfaces tool-output sanitization decisions to the UI. */
+      output_redactions_count?: number;
+      /** Compound-risk buckets detected in this tool's output. */
+      output_compound_risk_buckets?: number;
     }
   | { kind: 'iteration'; round: number }
   | { kind: 'done'; result: RunTurnResult }
@@ -373,6 +536,10 @@ export async function* runTurnStream(
   let stopReason = 'unknown';
   let finalText = '';
   let exhausted = false;
+  // Tool-output sanitization accumulators (audit §8 #8 compliance).
+  let toolOutputRedactions = 0;
+  const toolOutputByCategory: Record<string, number> = {};
+  let toolOutputsPrivilegedCount = 0;
   let history: SessionMessage[] = [...existing, userMessage];
 
   try {
@@ -465,12 +632,22 @@ export async function* runTurnStream(
         const dt0 = performance.now();
         const result = await dispatchWithCache(opts.session_id, use);
         const elapsed = performance.now() - dt0;
+        // Tool-output sanitization telemetry (audit §8 #8 compliance).
+        if (result.sanitization) {
+          toolOutputRedactions += result.sanitization.redactions_count;
+          for (const [cat, n] of Object.entries(result.sanitization.by_category)) {
+            toolOutputByCategory[cat] = (toolOutputByCategory[cat] ?? 0) + n;
+          }
+          if (result.sanitization.privileged) toolOutputsPrivilegedCount += 1;
+        }
         yield {
           kind: 'tool_result',
           tool_use_id: result.tool_use_id,
           name: use.name,
           is_error: Boolean(result.is_error),
           elapsed_ms: elapsed,
+          output_redactions_count: result.sanitization?.redactions_count,
+          output_compound_risk_buckets: result.sanitization?.compound_risk_buckets,
         };
         dispatched.push({
           tool_use_id: result.tool_use_id,
@@ -509,6 +686,13 @@ export async function* runTurnStream(
     });
 
     const elapsedMs = performance.now() - t0;
+    const auditWarnings: string[] = [];
+    if (toolOutputRedactions > 0) {
+      auditWarnings.push(`tool_output_redactions:${toolOutputRedactions}`);
+    }
+    if (toolOutputsPrivilegedCount > 0) {
+      auditWarnings.push(`tool_outputs_privileged:${toolOutputsPrivilegedCount}`);
+    }
     await writeAuditRecord(
       buildAuditRecord({
         route: 'agent_loop_stream',
@@ -521,6 +705,7 @@ export async function* runTurnStream(
           .filter((n): n is string => typeof n === 'string'),
         latencyMs: Math.round(elapsedMs),
         statusCode: 200,
+        warningFlags: auditWarnings.length > 0 ? auditWarnings : undefined,
       }),
     );
 
@@ -533,6 +718,9 @@ export async function* runTurnStream(
         elapsed_ms: elapsedMs,
         stop_reason: stopReason,
         exhausted_iterations: exhausted,
+        tool_output_redactions: toolOutputRedactions,
+        tool_output_redactions_by_category: toolOutputByCategory,
+        tool_outputs_privileged_count: toolOutputsPrivilegedCount,
       },
     };
   } catch (err) {

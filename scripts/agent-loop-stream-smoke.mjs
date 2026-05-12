@@ -144,10 +144,20 @@ for (const scenario of SCENARIOS) {
             is_error: event.is_error,
             elapsed_ms: event.elapsed_ms,
             t_ms: t,
+            output_redactions_count: event.output_redactions_count,
+            output_compound_risk_buckets: event.output_compound_risk_buckets,
           });
-          console.log(
-            `  [${fmt(t)}ms] tool_result: ${event.name}  ${fmt(event.elapsed_ms)}ms  is_error=${event.is_error}`,
-          );
+          {
+            const redact = event.output_redactions_count;
+            const buckets = event.output_compound_risk_buckets;
+            const tag =
+              redact > 0 || buckets >= 3
+                ? `  ⚠ output_redactions=${redact ?? 0} buckets=${buckets ?? 0}`
+                : '';
+            console.log(
+              `  [${fmt(t)}ms] tool_result: ${event.name}  ${fmt(event.elapsed_ms)}ms  is_error=${event.is_error}${tag}`,
+            );
+          }
           break;
         case 'token':
           if (ttft_ms === null) {
