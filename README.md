@@ -39,10 +39,10 @@ These numbers are the comparison floor Phase 1 measures against. The `+ web_sear
 
 | Phase | Status |
 |---|---|
-| Phase 1 — Spike (`api/_lib/agentLoop.ts`, ~250 lines; Upstash KV schema; ceb_search + courtlistener_search tools; privilege-gated web_search) | ❌ not started — **unblocked, ready** |
-| Phase 2 — Drafting workflows | ❌ not started |
-| Phase 3 — Verifier sub-agent | ❌ not started |
-| Phase 4 — UI integration | ❌ not started |
+| Phase 1 — Spike (agent loop + KV + tools + privilege-gated web_search + streaming + V2 chat UI) | ✅ first cut shipped (commits `8401011` → `9d94d1c` → `f2a4971`) — follow-ups per 2026-05-12 fifth addendum: Opus 4.7 default, MCP toolset support, Free Law Project MCP pilot, Skill-markdown extraction |
+| Phase 2 — Drafting workflows | ❌ not started — **scope revised** per 2026-05-12 fifth addendum: pull Skill content from `anthropics/claude-for-legal/{commercial,corporate,ip}-legal/skills/*.md` (Apache-2.0) instead of authoring from scratch (~30–50% effort reduction) |
+| Phase 3 — Verifier sub-agent | ❌ not started — **branched path** per 2026-05-12 fifth addendum: evaluate Solve Intelligence MCP first; if F1 ≥ acceptable, replace hand-rolled verifier with MCP tool call |
+| Phase 4 — UI integration | ✅ first cut shipped at `/v2` (commit `f2a4971`); follow-ups: Clerk auth, session persistence, markdown / citation rendering, sidebar integration |
 | Phase 4.5 — Shadow run | ❌ not started |
 | Phase 5a — Cutover (deletes ~7,800 lines incl. `gemini/chatService.ts`, `agents/*`, `orchestrate-document.ts`) | ❌ not started |
 | Phase 5b — Legacy teardown | ❌ not started |
@@ -64,6 +64,7 @@ a720572  Sanitization audit fixes (May 11, V1 mechanical fixes for audit §8 4-7
 1. **F&F partner sign-off** on `docs/MANAGED_AGENTS_RECONSTRUCTION_PLAN.md` 2026-05-12 third addendum (Option C retention). The addendum is binding only after counsel ratifies; until then, the `audit_record_envelope:*` keys in `docs/upstash-kv-schema-v1.md` remain a draft schema.
 2. **Gemini-grounding replacement acceptance criterion** for Phase 1 — tracked informally in conversation, not yet pinned in the plan. The replacement is `web_search_20250305` Anthropic tool with privilege gating (omit from `tools` array when input is privileged). `services/confidenceGating.ts` needs rewiring from Gemini grounding-metadata shape to Anthropic citations.
 3. **V2 Portability Principle work** (2026-05-12 fourth addendum) — extract `DEFAULT_SYSTEM_PROMPT` from `agentLoop.ts` into `agents/california-legal/skills/*.md`, agent config into `agents/california-legal/agent.yaml`, define `source` block schema for tool results. Phase 1 follow-up; should land before Phase 5 cutover so a future Managed-Agents-or-equivalent runtime swap stays cheap.
+4. **Anthropic 2026-05-12 legal-launch adoption** (2026-05-12 fifth addendum) — Phase 1 follow-up work: default model → `claude-opus-4-7`, MCP toolset support (`mcp_servers` parameter + `mcp-client-2025-11-20` beta header + `mcp_tool_use`/`mcp_tool_result` block handling in the agent loop), Free Law Project CourtListener MCP pilot, inlined Apache-2.0 litigation Skills (matter-intake, claim-chart, legal-hold, privilege-log-review) as system-prompt augmentation. **Open question**: F&F Thomson Reuters subscription status (gates the Westlaw / KeyCite / Practical Law MCP adoption in Phase 2). **Cost-impact decision** before Phase 4.5 shadow run: Opus 4.7 model cost is materially higher than Sonnet 4.6 — Arjun chooses among session-cap / tier-route / accept-cost.
 
 ### How to verify status reproducibly
 

@@ -1,8 +1,123 @@
 # Chatbot Reconstruction Plan — Anthropic Agent SDK on Messages API
 
 **Plan file destination:** `/Users/arjundivecha/Dropbox/AAA Backup/A Working/California-Law-Chatbot/docs/MANAGED_AGENTS_RECONSTRUCTION_PLAN.md` *(filename kept for git continuity; contents now describe the Agent SDK path)*
-**Date:** 2026-05-03 (original), **2026-05-10 architecture pivot**, **2026-05-10 ZDR-removal addendum**, **2026-05-12 token-map retention addendum (tentative — pending F&F partner review)**, **2026-05-12 Managed-Agents revisit (scope clarification, not reversal)**
-**Status:** Final, post Opus + Codex (3 rounds, approved) + Ultraplan + Council review + ZDR scope verification, + 2026-05-10 plan-level pivot to Anthropic Team plan (no ZDR). The 2026-05-12 third addendum below is **tentative pending F&F partner sign-off**; the 2026-05-12 fourth addendum below corrects the reasoning of the 2026-05-10 first addendum without reversing its conclusion.
+**Date:** 2026-05-03 (original), **2026-05-10 architecture pivot**, **2026-05-10 ZDR-removal addendum**, **2026-05-12 token-map retention addendum (tentative — pending F&F partner review)**, **2026-05-12 Managed-Agents revisit (scope clarification, not reversal)**, **2026-05-12 Anthropic legal-industry launch addendum (tool inventory + phase revisions)**
+**Status:** Final, post Opus + Codex (3 rounds, approved) + Ultraplan + Council review + ZDR scope verification, + 2026-05-10 plan-level pivot to Anthropic Team plan (no ZDR). The 2026-05-12 third addendum below is **tentative pending F&F partner sign-off**; the 2026-05-12 fourth and fifth addenda below carry forward the consequences of Anthropic's 2026-05-12 legal-industry launch.
+
+---
+
+## 2026-05-12 (fifth addendum) — Anthropic legal-industry launch: tool inventory + Phase deliverable revisions
+
+**Trigger:** Anthropic's 2026-05-12 release of:
+- 12 practice-area plugins (Apache-2.0 at [`anthropics/claude-for-legal`](https://github.com/anthropics/claude-for-legal))
+- 20+ MCP connectors (Free Law Project for CourtListener, Thomson Reuters CoCounsel for Westlaw + Practical Law + KeyCite, Solve Intelligence for citation verification, iManage / NetDocuments for DMS, Definely / Ironclad / DocuSign for contracts, Harvey, Everlaw, Relativity, etc.)
+- Claude Skills as an open standard (`agentskills.io`, Apache-2.0, Pro+/Team/Enterprise availability)
+- `mcp-client-2025-11-20` beta on the Messages API — first-class `mcp_servers` parameter on `messages.create()` ([docs](https://platform.claude.com/docs/en/agents-and-tools/mcp-connector))
+- Claude for Microsoft 365 (Word / Outlook plug-ins)
+- Claude Cowork (hosted workspace product)
+
+The 2026-05-12 fourth addendum (immediately below) handled the Managed-Agents implications. This fifth addendum covers the rest — what's adoptable into V2's Messages-API runtime, and which Phase deliverables it changes.
+
+**Finding:** The available tooling landscape changed materially. Several things V2 was building from scratch (citation verifier in Phase 3, drafting workflow patterns in Phase 2) now have higher-quality Anthropic-blessed equivalents reachable via the `mcp_servers` parameter or as Apache-2.0 Skill markdown. **The V2 wedge (sanitization-first privilege gating) does not change.** What changes is the tools and the system-prompt content behind that wedge.
+
+### Adoption decision matrix
+
+| Item | Verdict | Phase | Notes |
+|---|---|---|---|
+| Default model → `claude-opus-4-7` | **Adopt** | Phase 1 | Anthropic positions Opus 4.7 as legal-reasoning flagship (90.9% on Harvey's BigLaw Bench). Current default is `claude-sonnet-4-6`. Cost increase is real — see cost-impact note below. |
+| MCP toolset support in `agentLoop.ts` | **Adopt** | Phase 1 | Add `mcp_servers` parameter + `mcp-client-2025-11-20` beta header to `messages.create()`; handle `mcp_tool_use` / `mcp_tool_result` content block types. Privilege gating extends to MCP toolsets (omit when `privileged=true`). |
+| Free Law Project CourtListener MCP | **Adopt (additive)** | Phase 1 | Keep in-process `courtlistener_search` for audit-fidelity. Add MCP as alternative path for cases where PACER / judge profiles / oral arguments are useful and audit-trail-at-our-wire is not required. |
+| Inlined Skill content from `anthropics/claude-for-legal` (Apache-2.0) | **Adopt** | Phase 1 | Specifically: `litigation-legal/skills/{matter-intake,claim-chart,legal-hold,privilege-log-review}/SKILL.md` as system-prompt augmentation. This is the V2 portability principle (fourth addendum) cashing in. |
+| Thomson Reuters CoCounsel MCP (Westlaw + Practical Law + KeyCite) | **Adopt later** | Phase 2 | Single biggest research-quality upgrade. Depends on F&F having a TR subscription (open question). Privilege-gated like `web_search`. |
+| Solve Intelligence MCP for citation verification | **Evaluate before Phase 3** | Phase 3 | Could replace the hand-rolled verifier sub-agent. Decision criterion: F1 against ground-truth citations on a 30-question evaluation set. If acceptable, replace Phase 3's verifier scope with an MCP tool call. If insufficient, build the hand-rolled verifier as originally planned. |
+| iManage / NetDocuments MCP | **Adopt later, strict gating** | Phase 4+ | Only if F&F adopts one of those DMS products. **Privileged-input disabled by design** — a DMS contains client-confidential documents; MCP tool inputs flow through Anthropic per standard retention. Include in tools array ONLY when `privileged=false`, which means an attorney can never use V2 to fetch a privileged matter document — that lookup happens in the attorney's iManage UI directly, not through V2. |
+| Definely / Ironclad / DocuSign MCP | **Watch** | TBD | Contract-lifecycle integrations. Out of F&F's current scope (probate / family law primary focus). |
+| Harvey MCP | **Skip** | — | Separate Harvey subscription required (different price point + commercial relationship). |
+| Claude for M365 Word / Outlook | **Skip from V2's product surface** | — | Useful for F&F attorneys directly, but doesn't gate input. F&F licenses these at the Anthropic plan level, not the V2 product level. |
+| Claude Cowork as the V2 chat surface | **Skip** | — | No sanitization-first input gate. V2's `/v2` route keeps that role. |
+| Managed Agents deployment of the plugins | **Sandbox-only** | — | See fourth addendum. Synthetic-data evaluation track for pattern study; never in production. |
+
+### Phase-by-phase plan revisions
+
+**Phase 1 (Spike) — REVISED deliverables.** Adds to the existing Phase 1 deliverable list (per §A and the plan ground truth):
+
+- Default model → `claude-opus-4-7` in `api/_lib/agentLoop.ts` (`DEFAULT_MODEL`). Re-run latency baseline + smoke after the bump.
+- MCP toolset support: extend `buildToolsArray(privileged)` in `api/_lib/tools/index.ts` to optionally emit `{ type: 'mcp_toolset', mcp_server_name: '...' }` entries. Extend `runTurn` and `runTurnStream` in `agentLoop.ts` to pass `mcp_servers` and the `mcp-client-2025-11-20` beta header. Handle `mcp_tool_use` and `mcp_tool_result` content block types in the streaming loop.
+- Pilot Free Law Project CourtListener MCP integration. Document the MCP endpoint URL + auth shape in `docs/upstash-kv-schema-v1.md` companion notes.
+- Extract `DEFAULT_SYSTEM_PROMPT` from `agentLoop.ts` into `agents/california-legal/skills/*.md` matching the `anthropics/claude-for-legal` Skill frontmatter shape — per fourth addendum portability principle (open item #12).
+- Define `source` block schema for tool results — per fourth addendum portability principle (open item #14).
+
+**Phase 2 (Drafting workflows) — REVISED scope.** Instead of authoring drafting-workflow patterns from scratch:
+- Pull Skill content from `anthropics/claude-for-legal/{commercial-legal,corporate-legal,ip-legal}/skills/*.md` (Apache-2.0).
+- Adapt for California probate / family law where F&F practices.
+- Build the drafting UI on top of V2's existing agent loop with these skills as `system_prompt` overrides (loaded per-route or per-flow).
+
+Net delta: less hand-authoring of attorney workflow patterns; more curation of which Anthropic Skills are relevant to F&F's practice. Reduces Phase 2 effort by an estimated 30–50%.
+
+**Phase 3 (Verifier sub-agent) — POSSIBLY REPLACED.** Branched path:
+1. Build a 30-question citation-verification evaluation set drawn from V2's existing trap-manifest sources (or new authored cases).
+2. Run Solve Intelligence MCP against the eval set; measure F1 against ground-truth citations.
+3. If F1 is acceptable (threshold TBD with Arjun, suggested ≥ 0.90), replace Phase 3's hand-rolled verifier with the MCP tool call. Phase 3 collapses to "wire Solve Intelligence MCP into the agent loop with same privilege gating as other MCP toolsets."
+4. If F1 is insufficient, proceed with the hand-rolled verifier as originally planned.
+
+**Phase 4 (UI integration) — NO CHANGE.** V2 chat at `/v2` is built (commit `f2a4971`). Phase 4 follow-ups (Clerk auth, session persistence, markdown rendering, citation rendering, sidebar integration) unchanged.
+
+**Phase 4.5 (Shadow run) — NO CHANGE.**
+
+**Phase 5 (Cutover + teardown) — NO CHANGE** (still deletes ~7,800 lines of orchestration).
+
+### Tool inventory (replaces the implied "two custom tools + web_search" list)
+
+```
+V2 tools, post-2026-05-12 fifth addendum:
+
+  in-process (audit-fidelity-critical — full input/output observability at V2's wire):
+    - ceb_search                    (Upstash Vector + OpenAI embedding, 5 namespaces)
+    - courtlistener_search          (CourtListener REST v4)
+
+  mcp_servers via Messages API (Anthropic dispatches server-side, retention per Team-plan policy):
+    - free_law_project_mcp          (Phase 1 — additive alternative to in-process courtlistener_search)
+    - tr_cocounsel_mcp              (Phase 2 — if F&F subscription confirmed)
+    - solve_intelligence_mcp        (Phase 3 candidate — replaces verifier sub-agent if eval passes)
+    - imanage_mcp / netdocuments_mcp (Phase 4+ — DMS adoption + privileged-off-only inclusion)
+
+  anthropic server-side tools (built into messages.create, retention per Team-plan policy):
+    - web_search_20250305           (Phase 1 — privilege-gated, omit when privileged)
+
+  system prompt content (Apache-2.0 Skills inlined per portability principle):
+    - litigation: matter-intake, claim-chart, legal-hold, privilege-log-review
+    - drafting:   selected from commercial-legal/, corporate-legal/, ip-legal/
+    (loaded from agents/california-legal/skills/*.md once portability extraction lands)
+```
+
+### Privilege-gating extends to MCP toolsets (clarifying §E)
+
+`buildToolsArray(privileged)` in `api/_lib/tools/index.ts` already omits `web_search_20250305` when `privileged=true`. This addendum extends that contract:
+
+- **`free_law_project_mcp`, `tr_cocounsel_mcp`, `solve_intelligence_mcp`**: omit when `privileged=true`. These are public-research tools. A privileged input shouldn't generate a search query into them.
+- **`imanage_mcp` / `netdocuments_mcp`** (if adopted): omit when `privileged=true`. The DMS contains the privileged material; sending a privileged input as a search query to it would leak the input via MCP-side telemetry / Anthropic-side retention. The privileged-input case is "use iManage directly, not through V2."
+- **`ceb_search` and `courtlistener_search` (in-process)**: ALWAYS available, including when `privileged=true`. These tool inputs and outputs are entirely within V2's wire — no Anthropic retention exposure for the search query itself (only the resulting `tool_result` block reaches Anthropic, which the §6 Option C audit-record-envelope already accounts for).
+
+### Cost impact (§U-adjacent — Arjun decision before Phase 5 cutover)
+
+Opus 4.7 is materially more expensive than Sonnet 4.6 per million input/output tokens (current pricing at [`claude.com/pricing`](https://claude.com/pricing) — verify before committing). At V2's measured ~26k tokens per turn (latency baseline 2026-05-12), an Opus 4.7 turn costs roughly N× a Sonnet 4.6 turn. Three options Arjun chooses among before Phase 5:
+
+1. **Cap session length** to bound monthly spend (e.g., 100 turns/attorney/month).
+2. **Tier-route**: Sonnet 4.6 for routine queries, Opus 4.7 for explicitly-flagged "deep research" or compound-risk-bucket-rich turns. Decision logic in `agentProxy.ts`.
+3. **Accept the increase** — quality gain on legal reasoning is the primary value driver for F&F.
+
+Not blocking Phase 1; needs an answer before billing real attorney usage in Phase 4.5 shadow run.
+
+### Plan supersession order
+
+This 2026-05-12 fifth addendum:
+- Updates the tool inventory (supersedes the implied "two custom tools + web_search" list in §B).
+- Updates Phase 1 deliverables (adds Opus 4.7 default, MCP toolset support, Free Law Project pilot, portability extraction).
+- Updates Phase 2 scope (skill content reuse over from-scratch authoring; estimated 30–50% effort reduction).
+- Adds a branched Phase 3 path (Solve Intelligence MCP eval before hand-rolling verifier).
+- Adds the cost-impact decision point.
+- Does NOT change Phase 4, Phase 4.5, or Phase 5 plans.
+- Does NOT change the V2 wedge (sanitization-first privilege gating) — see fourth addendum portability principle.
 
 ---
 
