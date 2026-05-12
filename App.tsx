@@ -12,6 +12,7 @@ import { ModeSelector } from './components/ModeSelector';
 import { ResponseModeToggle } from './components/ResponseModeToggle';
 import { DraftingMode } from './components/drafting/DraftingMode';
 import SignInPage from './components/SignInPage';
+import { V2ChatPage } from './components/v2/V2ChatPage';
 import type { AppMode } from './types';
 
 // ---------------------------------------------------------------------------
@@ -146,6 +147,7 @@ const App: React.FC = () => {
                 <Routes>
                   <Route path="/" element={<NewChatRedirect />} />
                   <Route path="/c/:chatId" element={<ChatPage sidebarOpen={sidebarOpen} />} />
+                  <Route path="/v2" element={<V2ChatPage />} />
                   <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>
               </SignedIn>
