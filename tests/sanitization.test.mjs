@@ -1058,6 +1058,62 @@ await test('compound-risk parity: detectPii best-effort fallback also reports co
 });
 
 // ---------------------------------------------------------------------------
+// Skill loader (V2 portability principle — fourth + fifth addendum)
+// Workflow-aware system-prompt composition, not concatenation.
+// ---------------------------------------------------------------------------
+const skillsMod = await import('../api/_lib/skills.ts');
+const { buildSystemPrompt, detectIntent, getAgentConfig } = skillsMod;
+
+await test('skills: agent.json loads with the expected fields', () => {
+  const cfg = getAgentConfig();
+  assert.equal(cfg.name, 'california-legal');
+  assert.equal(cfg.model, 'claude-opus-4-7');
+  assert.equal(cfg.core_skill, 'california-legal-core');
+  assert.ok(typeof cfg.max_tokens === 'number' && cfg.max_tokens > 0);
+});
+
+await test('skills: buildSystemPrompt loads the core skill and returns its body', () => {
+  const result = buildSystemPrompt({});
+  assert.ok(result.prompt.length > 0, 'prompt non-empty');
+  assert.ok(result.skills_loaded.includes('california-legal-core'), 'core skill loaded');
+  assert.equal(result.intent, null, 'no intent detected from empty input');
+  assert.ok(/California legal research assistant/.test(result.prompt));
+  assert.ok(/ceb_search/.test(result.prompt));
+  assert.ok(/courtlistener_search/.test(result.prompt));
+  assert.ok(/Never repeat the user's input/.test(result.prompt));
+});
+
+await test('skills: detectIntent returns matter_intake for intake-shaped prompts', () => {
+  assert.equal(detectIntent('Start a new matter intake for the Chen estate'), 'matter_intake');
+  assert.equal(detectIntent('We have a new client to onboard'), 'matter_intake');
+  assert.equal(detectIntent('Opening a matter for probate'), 'matter_intake');
+});
+
+await test('skills: detectIntent returns claim_chart / legal_hold / privilege_log appropriately', () => {
+  assert.equal(detectIntent('Build me a claim chart for the negligence count'), 'claim_chart');
+  assert.equal(detectIntent('What are the elements of a wrongful eviction claim?'), 'claim_chart');
+  assert.equal(detectIntent('Need a legal hold notice for the Smith matter'), 'legal_hold');
+  assert.equal(detectIntent('Concerns about spoliation in this case'), 'legal_hold');
+  assert.equal(detectIntent('Reviewing the privilege log opposing counsel produced'), 'privilege_log');
+});
+
+await test('skills: detectIntent returns null for queries that match no workflow', () => {
+  assert.equal(detectIntent('What does CRC 2.550 require?'), null);
+  assert.equal(detectIntent(''), null);
+  assert.equal(detectIntent(null), null);
+});
+
+await test('skills: buildSystemPrompt with explicit intent attempts to load the mapped skill', () => {
+  // matter-intake skill body doesn't exist on disk yet (Phase 2 follow-up
+  // to populate from anthropics/claude-for-legal). The loader should
+  // gracefully fall back to core-only and not crash.
+  const result = buildSystemPrompt({ intent: 'matter_intake' });
+  assert.ok(result.prompt.length > 0);
+  assert.ok(result.skills_loaded.includes('california-legal-core'));
+  assert.equal(result.intent, 'matter_intake');
+});
+
+// ---------------------------------------------------------------------------
 // Tool-output sanitization wrapper (audit §8 #8 / 2026-05-10 second addendum
 // compliance) — closes the code/plan gap Codex caught on 2026-05-12
 // ---------------------------------------------------------------------------

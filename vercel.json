@@ -13,6 +13,16 @@
       "memory": 1024,
       "maxDuration": 120
     },
+    "api/agent/turn.ts": {
+      "memory": 1024,
+      "maxDuration": 300,
+      "includeFiles": "agents/**"
+    },
+    "api/agent/turn-stream.ts": {
+      "memory": 1024,
+      "maxDuration": 300,
+      "includeFiles": "agents/**"
+    },
     "api/**/*.ts": {
       "memory": 1024,
       "maxDuration": 60

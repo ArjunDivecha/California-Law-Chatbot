@@ -1,0 +1,16 @@
+{
+  "name": "california-legal",
+  "description": "California legal research assistant for Femme & Femme Law — sanitization-first agent loop on the Anthropic Messages API.",
+  "model": "claude-opus-4-7",
+  "max_tokens": 4096,
+  "max_iterations": 8,
+  "core_skill": "california-legal-core",
+  "intent_skills": {
+    "matter_intake": "matter-intake",
+    "claim_chart": "claim-chart",
+    "legal_hold": "legal-hold",
+    "privilege_log": "privilege-log-review"
+  },
+  "schema_version": 1,
+  "schema_note": "Format intentionally mirrors anthropics/claude-for-legal plugin layout (Skill markdown files with frontmatter + agent-level config). intent_skills declare which Skill files load when a workflow is detected; the loader picks by keyword for now (api/_lib/skills.ts), to be promoted to model-based intent routing later. Per 2026-05-12 fifth addendum portability principle: load by workflow, not concatenation."
+}
