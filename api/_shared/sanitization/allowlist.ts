@@ -28,10 +28,15 @@ export interface AllowlistMatch {
 const CASE_PATTERNS: RegExp[] = [
   // People v. Smith (2020) 50 Cal.App.5th 123
   /\b[A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z&.]+)*\s+v\.\s+[A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z&.]+)*(?:\s*\(\d{4}\))?(?:\s+\d+\s+[A-Z][a-z.]*\.?(?:\s*[A-Z][a-z.]*\.?)*\s*\d+[a-z]{2}?\s*\d+)?/g,
-  // In re Marriage of Clarke
-  /\bIn\s+re\s+(?:Marriage\s+of\s+)?[A-Z][a-zA-Z]+(?:\s+(?:and|&)\s+[A-Z][a-zA-Z]+)?/g,
-  // Estate of X
-  /\bEstate\s+of\s+[A-Z][a-zA-Z]+/g,
+  // In re Marriage of Clarke (1990) 12 Cal.App.4th 100
+  // Requires a year citation so it only fires on PUBLISHED-CASE references,
+  // not on private client probate/dissolution matters that share the same
+  // surface form. Without the year requirement the regex over-suppressed
+  // real client names like "In re Marriage of Margaret O'Sullivan-FitzGerald".
+  /\bIn\s+re\s+(?:Marriage\s+of\s+)?[A-Z][a-zA-Z]+(?:\s+(?:and|&)\s+[A-Z][a-zA-Z]+)?\s*\(\d{4}\)/g,
+  // Estate of Smith (1985) — same rationale: require a year citation so we
+  // don't allowlist client probate matters.
+  /\bEstate\s+of\s+[A-Z][a-zA-Z]+\s*\(\d{4}\)/g,
 ];
 
 const STATUTE_PATTERNS: RegExp[] = [

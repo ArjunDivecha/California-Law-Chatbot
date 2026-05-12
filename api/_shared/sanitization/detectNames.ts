@@ -22,18 +22,40 @@ export interface NameSpan {
     | 'relational'         // client X, my spouse X, decedent X
     | 'capitalized_bigram' // Fallback: two capitalized words in a row
     | 'address_cue'        // Mr./Ms. X or X residing at ...
-    | 'cue_lowercase';     // help/represent/client + lowercase 2-word name
+    | 'cue_lowercase'      // help/represent/client + lowercase 2-word name
+    | 'single_subject_verb'; // X verbed / X is / X will — single cap + verb
 }
 
 // ---------------------------------------------------------------------------
 // Shared building blocks
 // ---------------------------------------------------------------------------
 
-/** Capitalized name word: starts with uppercase, rest are letters. */
-const NAME_WORD = `[A-Z][a-zA-Z'\\-]*`;
+/**
+ * Capitalized name word: starts with an uppercase Latin letter (with or
+ * without diacritic), rest are Latin letters (any case) with optional
+ * apostrophe or hyphen. Covers Spanish/French/Portuguese/Vietnamese/Polish/etc.
+ * accented names like María, José, Sofía, Hernández, Nguyễn, Łukasz.
+ * Uses explicit BMP Latin ranges instead of \p{L} to avoid needing the `u`
+ * flag on every regex constructor downstream.
+ */
+const NAME_WORD = `[A-ZÀ-ÖØ-Þ][A-Za-zÀ-ÖØ-öø-ÿĀ-žƀ-ɏḀ-ỿ'\\-]*`;
 
 /** Up to four name words (First Middle Last Suffix). */
 const NAME_PHRASE = `${NAME_WORD}(?:\\s+${NAME_WORD}){0,3}`;
+
+/**
+ * Lowercase particles that appear inside compound foreign names ("de la",
+ * "van der", "bint", "ibn", "von", "del"). When a particle sits between two
+ * capitalized name words, treat the whole sequence as one name phrase rather
+ * than fragmenting. Used by NAME_PHRASE_WITH_PARTICLES below.
+ */
+const NAME_PARTICLE = `(?:de|del|de\\s+la|del\\s+la|de\\s+los|de\\s+las|la|las|van|van\\s+der|von|der|den|du|bint|bin|ibn|al|el|y|i)`;
+
+/**
+ * Like NAME_PHRASE but allows particles between capitalized words. Requires
+ * at least one continuation word (so a bigram remains 2+ words).
+ */
+const NAME_PHRASE_WITH_PARTICLES = `${NAME_WORD}(?:\\s+(?:${NAME_PARTICLE}\\s+)?${NAME_WORD}){1,5}`;
 
 /** Common honorifics / titles. */
 const TITLE_WORD = `(?:Mr|Mrs|Ms|Miss|Dr|Prof|Hon|Justice|Sen|Rep|Gov|Sheriff|Officer|Deputy|Attorney|Judge)`;
@@ -73,6 +95,8 @@ const POSSESSIVE_STOPWORDS_LOWER = new Set<string>([
   'trust', 'estate', 'counsel', 'judge', 'creditor', 'debtor',
   'trustee', 'executor', 'guardian', 'beneficiary', 'settlor',
   'trustor', 'decedent', 'testator', 'petitioner', 'respondent',
+  'sheriff', 'officer', 'deputy', 'magistrate', 'witness',
+  'user', 'system', 'admin', 'operator',
   // Informal family not in LOWERCASE_NAME_STOPWORDS
   'mom', 'dad', 'grandma', 'grandpa', 'grandpa', 'granny',
   'boss', 'colleague', 'coworker', 'neighbor', 'neighbour',
@@ -199,14 +223,28 @@ function scanCapitalizedBigram(text: string): NameSpan[] {
   // whose words intersect the US state abbreviation set or the
   // common-legal-phrase set, which are common false positives in
   // public-research prompts.
-  const re = new RegExp(`\\b(${NAME_WORD}\\s+${NAME_WORD}(?:\\s+${NAME_WORD})?)\\b`, 'g');
+  // Allow lowercase particles ("de la", "van der", "von") between cap words.
+  const re = new RegExp(`\\b(${NAME_PHRASE_WITH_PARTICLES})\\b`, 'g');
   const out: NameSpan[] = [];
   let m: RegExpExecArray | null;
   while ((m = re.exec(text)) !== null) {
     const raw = m[1];
     const words = raw.split(/\s+/);
     const firstWord = words[0];
-    if (COMMON_NON_NAME_STARTS.has(firstWord)) continue;
+    const firstWordBare = firstWord.replace(/[''`]s$/u, '');
+    const filterFirstWord =
+      COMMON_NON_NAME_STARTS.has(firstWord) ||
+      COMMON_NON_NAME_STARTS.has(firstWordBare) ||
+      /^[A-Z]{2,}$/.test(firstWord);
+
+    if (filterFirstWord) {
+      // Don't lose the rest of the bigram just because the title-cue or
+      // acronym leading word was filtered out. Re-attempt scanning
+      // starting one character after the first word so we still catch
+      // "X Y" out of "Witness X Y" or "Co-counsel X Y".
+      re.lastIndex = m.index + firstWord.length + 1;
+      continue;
+    }
     // If any word in the candidate is a US state abbreviation, this is
     // almost certainly an address fragment (e.g. "Francisco CA 94123"),
     // not a personal name.
@@ -337,10 +375,169 @@ const COMMON_NON_NAME_STARTS = new Set<string>([
   'Analyze',
   'Discuss',
   'Provide',
+  // Procedural / role nouns that the bigram scanner kept swallowing into
+  // adjacent name spans ("Witness Esperanza Cruz-Mendoza" → wrong; the
+  // relational scanner already captures the name itself).
+  'Witness',
+  'Witnesses',
+  'Witnessed',
+  'Movant',
+  'Movants',
+  'Notice',
+  'Notices',
+  'Status',
+  'Statement',
+  'Statements',
+  'Defense',
+  'Subpoena',
+  'Subpoenaed',
+  'Adverse',
+  'Engagement',
+  // Hyphenated role compounds.
+  'Co-counsel',
+  'Co-trustee',
+  'Co-trustees',
+  'Co-respondent',
+  'Cross-respondent',
+  'Cross-defendant',
+  'Cross-complainant',
+  // Common CA city / region words that the bigram scanner kept eating
+  // into ("San Jose", "Los Angeles", "San Francisco" as bigram-name).
+  // Listed as the FIRST word of common 2-word place names — sufficient
+  // to suppress the bigram capture; the place itself is not redacted.
+  'Los',
+  'San',
+  'Santa',
+  'La',
+  'Daly',
+  'Sherman',
+  'Long',
+  'Wilshire',
+  'Hollywood',
+  'Westwood',
+  'Mid-City',
+  'Pico-Robertson',
+  'Pico-Union',
+  'Beverly',
+  // Single-word CA cities / regions that surfaced in compound-risk
+  // signal scanning and shouldn't be flagged as personal names by the
+  // single-subject-verb scanner ("from Bishop," → Bishop is a city).
+  'Bishop',
+  'Encino',
+  'Koreatown',
+  'Petaluma',
+  'Glendale',
+  'Roseville',
+  'Burbank',
+  'Cupertino',
+  'Sunnyvale',
+  'Fremont',
+  'Bakersfield',
+  'Fresno',
+  'Oakland',
+  'Pasadena',
+  'Anaheim',
+  'Riverside',
+  'Modesto',
+  'Stockton',
+  'Berkeley',
+  'Compton',
+  'Inglewood',
+  'Torrance',
+  'Manila',
+  'Moscow',
+  // Brand / institution first words.
+  'Wells',
+  'Stanford',
+  'Harker',
+  'Berkeley',
+  // Generic place/feature words that surface as the leading word of a
+  // bigram inside multi-word place names ("Long Beach Cambodia Town",
+  // "Wilshire Western Metro", "UCSF Med Center").
+  'Beach',
+  'Western',
+  'Eastern',
+  'Northern',
+  'Southern',
+  'Metro',
+  'Med',
+  'Center',
+  'Centre',
+  'Tower',
+  'Plaza',
+  'Park',
+  'Square',
+  'Boulevard',
+  'Avenue',
+  'Street',
+  'Drive',
+  'Road',
+  'Lane',
+  'Court',
+  'Place',
+  'Way',
+  'Highway',
+  'Parkway',
+  'Town',
+  'Village',
+  'Hills',
+  // Acronyms / abbreviations frequently mis-flagged.
+  'MSC',
+  'CRC',
+  'CACI',
+  'MRN',
+  'BC',
+  'LASC',
+  'CEB',
+  'CDPH',
+  'LAUSD',
+  'HOA',
+  'TPS',
+  'UCSF',
+  'UCLA',
+  'USC',
+  'UC',
+  'DocuSign',
+  // Address-component first words that are not personal names but
+  // can produce false-positive bigrams when followed by a capitalized
+  // street/suffix word.
+  'Apt',
+  'Suite',
+  'Bldg',
   // Numbering
   'First',
   'Second',
   'Third',
+  // WH-question words (often capitalized at sentence start)
+  'What',
+  "What's",
+  'Where',
+  'When',
+  'Why',
+  'How',
+  'Who',
+  'Whom',
+  'Whose',
+  'Which',
+  // Ethnicity/affinity adjectives that frequently sit just before a
+  // capitalized noun phrase ("Native American", "Orthodox Jewish",
+  // "Brazilian-American DJ"). The compound-risk detector already flags
+  // their semantic significance; the bigram scanner should not also
+  // treat them as the leading word of a personal name.
+  'Native',
+  'Orthodox',
+  'Brazilian-American',
+  'Lebanese-American',
+  'African-American',
+  'Russian-speaking',
+  'Spanish-speaking',
+  'Series-B',
+  'Series-A',
+  'Series-C',
+  // Role / occupation words used possessively (e.g. "sheriff's deputy")
+  // that the bigram or possessive scanner kept attaching to a name.
+  'Sheriff',
+  'Sheriffs',
   // Time words
   'January',
   'February',
@@ -548,6 +745,76 @@ function scanLowercaseCue(text: string): NameSpan[] {
 // Public API
 // ---------------------------------------------------------------------------
 
+/**
+ * Single capitalized word at sentence-start or after a preposition that's
+ * immediately followed by an action verb or auxiliary. Handles "X served the
+ * papers", "X will testify", "with X" patterns that bigram-scanners can't
+ * see (only one capitalized word present). Confidence floor is the lowest
+ * in the system (handled in index.ts via cue_lowercase mapping for now);
+ * the preview flow can untokenize cleanly if false-positive.
+ */
+function scanSingleSubjectVerb(text: string): NameSpan[] {
+  // Verbs and auxiliaries that strongly suggest the preceding capitalized
+  // word is a subject (person or party). Kept conservative — we want
+  // strong, attorney-typical signals, not every English verb.
+  const ACTION_VERBS = [
+    'served', 'filed', 'signed', 'emailed', 'called', 'wrote', 'sent',
+    'mentioned', 'noted', 'stated', 'confirmed', 'requested', 'objected',
+    'appeared', 'testified', 'moved', 'argued', 'countered', 'replied',
+    'spoke', 'talked', 'met', 'returned', 'arrived', 'departed',
+    'updated', 'notified', 'responded', 'complained', 'sued', 'settled',
+    'paid', 'owed', 'owes', 'owns', 'owned', 'received', 'sent',
+    'denied', 'reviewed', 'approved', 'said', 'told', 'asked',
+    'claims', 'claimed', 'believes', 'believed', 'alleged', 'reported',
+    'objected', 'agreed', 'disagreed', 'wants', 'wanted', 'needs', 'needed',
+  ].join('|');
+  const AUX_VERBS = [
+    'will', "won't", 'did', "didn't", 'is', "isn't", 'was', "wasn't",
+    'has', "hasn't", 'had', "hadn't", 'should', 'would', 'could',
+    'must', 'may', 'might', 'shall',
+  ].join('|');
+  const VERB_TAIL = `(?:${ACTION_VERBS}|${AUX_VERBS})\\b`;
+
+  // Pattern A: sentence-start (or quote-start) + single cap word + verb.
+  const reA = new RegExp(`(^|[.!?]\\s+|["'\\u2019\\u201C]\\s*)(${NAME_WORD})\\s+${VERB_TAIL}`, 'g');
+  // Pattern B: preposition + single cap word followed by sentence terminator.
+  // "I just got off the phone with Anastasia."
+  const reB = new RegExp(
+    `\\b(?:with|to|from|by|about|for|against|representing|defending|engaging|retaining)\\s+(${NAME_WORD})\\b(?=\\s*[.!?,;])`,
+    'g',
+  );
+
+  const out: NameSpan[] = [];
+
+  const harvest = (m: RegExpExecArray, captureIdx: number, prefixLen: number) => {
+    const raw = m[captureIdx];
+    if (raw.length < 3) return;
+    if (COMMON_NON_NAME_STARTS.has(raw)) return;
+    if (COMMON_LEGAL_PHRASE_WORDS.has(raw)) return;
+    if (US_STATE_ABBR.has(raw)) return;
+    if (/^[A-Z]{2,}$/.test(raw)) return; // acronym
+    const start = m.index + prefixLen;
+    out.push({
+      start,
+      end: start + raw.length,
+      raw,
+      signal: 'single_subject_verb',
+    });
+  };
+
+  let m: RegExpExecArray | null;
+  while ((m = reA.exec(text)) !== null) {
+    harvest(m, 2, m[1].length);
+  }
+  while ((m = reB.exec(text)) !== null) {
+    // m[0] = "with Anastasia"; the cap-word capture is at m[1]. Compute
+    // the prefix length up to the start of m[1] inside m[0].
+    const innerStart = m[0].indexOf(m[1]);
+    harvest(m, 1, innerStart);
+  }
+  return out;
+}
+
 export function detectNames(text: string): NameSpan[] {
   return [
     ...scanTitlePrefix(text),
@@ -556,5 +823,6 @@ export function detectNames(text: string): NameSpan[] {
     ...scanAddressCue(text),
     ...scanCapitalizedBigram(text),
     ...scanLowercaseCue(text),
+    ...scanSingleSubjectVerb(text),
   ];
 }

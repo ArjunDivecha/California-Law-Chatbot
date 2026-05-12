@@ -73,6 +73,18 @@ export const PHONE: PIIPattern = {
   regex: /(?<!\d)(?:\+?1[\s.-]?)?\(?\b[2-9]\d{2}\)?[\s.-]?\d{3}[\s.-]?\d{4}\b(?!\d)/g,
 };
 
+/**
+ * International phone numbers (non-US). Requires explicit + prefix with a
+ * non-1 country code to disambiguate from US numbers (those use PHONE above).
+ * Accepts space, dot, or hyphen separators between digit groups.
+ */
+export const INTERNATIONAL_PHONE: PIIPattern = {
+  category: 'phone',
+  label: 'International Phone Number',
+  // +XX (1-3 digit country code, not 1) then 6-15 more digits with separators.
+  regex: /(?<!\d)\+(?:[2-9]|[1-9]\d{1,2})(?:[\s.-]?\d){6,14}(?!\d)/g,
+};
+
 /** Email addresses. Reasonably standard pattern — not RFC-strict. */
 export const EMAIL: PIIPattern = {
   category: 'email',
@@ -102,7 +114,11 @@ export const STREET_ADDRESS: PIIPattern = {
 export const ZIP: PIIPattern = {
   category: 'zip',
   label: 'ZIP Code',
-  regex: /\b(?:ZIP\s+\d{5}(?:-\d{4})?|[A-Z]{2}\s+\d{5}(?:-\d{4})?|\d{5}-\d{4})\b/g,
+  // State-prefix branch is restricted to real US 2-letter state abbreviations
+  // so "SF 94112" (city abbrev) doesn't get swallowed by the regex. The full
+  // US-state list is duplicated here from detectNames.ts; keep both in sync.
+  regex:
+    /\b(?:ZIP\s+\d{5}(?:-\d{4})?|(?:AL|AK|AZ|AR|CA|CO|CT|DE|FL|GA|HI|ID|IL|IN|IA|KS|KY|LA|ME|MD|MA|MI|MN|MS|MO|MT|NE|NV|NH|NJ|NM|NY|NC|ND|OH|OK|OR|PA|RI|SC|SD|TN|TX|UT|VT|VA|WA|WV|WI|WY|DC)\s+\d{5}(?:-\d{4})?|\d{5}-\d{4})\b/g,
 };
 
 // ---------------------------------------------------------------------------
@@ -148,22 +164,23 @@ export const BANK_ACCOUNT: PIIPattern = {
 // Medical + firm-specific
 // ---------------------------------------------------------------------------
 
-/** Medical record number: MRN prefix or 6-10 digit sequence labeled "MRN". */
+/** Medical record number: MRN prefix or 6-10 digit sequence labeled "MRN".
+ * Accepts ":", "#", "-", or whitespace between the prefix and digits. */
 export const MEDICAL_RECORD: PIIPattern = {
   category: 'medical_record',
   label: 'Medical Record Number',
-  regex: /\bMRN\s*[:#]?\s*\d{6,10}\b/gi,
+  regex: /\bMRN[\s:#-]*\d{6,10}\b/gi,
 };
 
 /**
- * Firm client-matter codes. Default catches forms like `DE-2025-001234`.
- * Firms can extend this at runtime by adding their own pattern via
- * registerFirmPattern(). Left permissive by default.
+ * Firm client-matter codes. Default catches forms like `DE-2025-001234` and
+ * ampersand-prefix firms like `F&F-2024-1187`. Firms can extend at runtime
+ * via registerFirmPattern().
  */
 export const FIRM_CLIENT_MATTER: PIIPattern = {
   category: 'client_matter',
   label: 'Client-Matter Code',
-  regex: /\b[A-Z]{2,4}-\d{2,4}-\d{2,6}\b/g,
+  regex: /\b[A-Z](?:[A-Z&]{1,3})-\d{2,4}-\d{2,6}\b/g,
 };
 
 
@@ -181,8 +198,15 @@ export const FIRM_CLIENT_MATTER: PIIPattern = {
 export const DOLLAR_AMOUNT: PIIPattern = {
   category: 'dollar_amount',
   label: 'Dollar Amount',
+  // Branches:
+  //   $1,234.56 / $4.3M / $48K / $8.5MM    — $ prefix with optional scale suffix
+  //   4.3 million dollars                  — digit + scale word + "dollars"
+  //   two million dollars                  — word-number + scale word + "dollars"
+  //   750k / 48K (no $)                    — bare digit + k/K suffix (limited
+  //                                          to k/K to avoid e.g. matching
+  //                                          "32M" in a license plate)
   regex:
-    /\$\s*\d[\d,]*(?:\.\d{1,2})?(?:\s*(?:thousand|million|billion|trillion|[kMBT]))?\b|\b\d[\d,]*(?:\.\d+)?\s*(?:thousand|million|billion|trillion)\s+dollars?\b/gi,
+    /\$\s*\d[\d,]*(?:\.\d{1,2})?(?:\s*(?:thousand|million|billion|trillion|MM|[kMBT]))?\b|\b\d[\d,]*(?:\.\d+)?\s*(?:thousand|million|billion|trillion)\s+dollars?\b|\b(?:one|two|three|four|five|six|seven|eight|nine|ten|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred)(?:[\s-]+(?:one|two|three|four|five|six|seven|eight|nine|ten|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred))*\s+(?:thousand|million|billion|trillion)\s+dollars?\b|\b\d[\d,]*(?:\.\d+)?[kK]\b/gi,
 };
 
 // ---------------------------------------------------------------------------
@@ -203,15 +227,18 @@ export const CA_BAR_NUMBER: PIIPattern = {
 
 /**
  * California superior court case numbers not caught by FIRM_CLIENT_MATTER:
- *   BC712345     — LA Superior (old alpha-prefix style)
- *   23STCV12345  — LA Superior (year + district + CV + seq)
- * Hyphenated forms (CGC-24-123456, CIV-DS-2024-001234) are already caught
- * by FIRM_CLIENT_MATTER. This pattern covers the non-hyphenated gaps.
+ *   BC712345        — LA Superior (old alpha-prefix style)
+ *   23STCV12345     — LA Superior (year + district + CV + seq)
+ *   24CV-067894     — LASC short form (year + CV + seq, with hyphen)
+ *   24-CCH-067894   — LASC alternate hyphenated form (year + dept + seq)
+ *   S280445         — CA Supreme Court docket
+ * Hyphenated firm-style forms (CGC-24-123456) are caught by FIRM_CLIENT_MATTER.
  */
 export const CA_COURT_CASE: PIIPattern = {
   category: 'court_case',
   label: 'California Court Case Number',
-  regex: /\bBC\d{6}\b|\b\d{2}[A-Z]{2,6}CV\d{4,8}\b/g,
+  regex:
+    /\bBC\d{6}\b|\b\d{2}[A-Z]{2,6}CV\d{4,8}\b|\b\d{2}CV-\d{4,8}\b|\b\d{2}-[A-Z]{2,5}-\d{4,8}\b|\bS\d{6}\b/g,
 };
 
 // ---------------------------------------------------------------------------
@@ -242,6 +269,7 @@ export const ALL_PATTERNS: readonly PIIPattern[] = [
   TIN,
   CA_DRIVER_LICENSE,
   PHONE,
+  INTERNATIONAL_PHONE,
   EMAIL,
   STREET_ADDRESS,
   ZIP,

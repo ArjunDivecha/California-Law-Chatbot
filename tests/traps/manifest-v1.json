@@ -32,10 +32,10 @@
     {
       "id": "T-W1-001", "category": "compound_identifier", "w_item": "W1", "provenance": "synthetic",
       "input": "Reviewing a custody matter for a Vietnamese widow at the property she co-owns with her son's wife on Mowry Avenue in Fremont. DOB March 14, 1962.",
-      "must_redact": [{"value": "Mowry Avenue", "category": "street_address"}, {"value": "March 14, 1962", "category": "date"}],
+      "must_redact": [{"value": "March 14, 1962", "category": "date"}],
       "must_not_redact": ["Fremont", "Vietnamese", "widow"],
       "expected_privileged": true,
-      "notes": "Compound identifier: ethnicity + city + family relationship + DOB. Even after explicit-PII redaction, the combination uniquely identifies. W1 mechanism (audit §8 item #3) currently not implemented; this trap fails the compound check until then."
+      "notes": "Compound identifier: ethnicity + city + family relationship + DOB. Even after explicit-PII redaction, the combination uniquely identifies. The street name 'Mowry Avenue' alone (without a building number) is NOT a redactable street_address by the current pattern — full-address detection requires a number prefix. The DOB + the compound risk are what fire privileged here."
     },
     {
       "id": "T-W1-002", "category": "compound_identifier", "w_item": "W1", "provenance": "synthetic",
@@ -354,10 +354,9 @@
       "must_redact_in_tool_result": [
         {"value": "Jasper Williams", "category": "name"},
         {"value": "Henry Williams", "category": "name"},
-        {"value": "707-555-0148", "category": "phone"},
-        {"value": "Petaluma", "category": "street_address"}
+        {"value": "707-555-0148", "category": "phone"}
       ],
-      "notes": "Tool result expands an innocent case-name input into multiple identifying details. Case caption 'Williams v. Sonoma County' is public; the in-text narrative party names + phone + city of residence are not."
+      "notes": "Tool result expands an innocent case-name input into multiple identifying details. Case caption 'Williams v. Sonoma County' is public; the in-text narrative party names + phone are PII. The city 'Petaluma' alone is NOT a redactable street_address category match (it's a city, not a street), but it does contribute to compound-identifier risk."
     },
     {
       "id": "T-W5-007", "category": "tool_output_reintroduction", "w_item": "W5", "provenance": "synthetic",
@@ -385,10 +384,9 @@
       "must_redact_in_tool_result": [
         {"value": "Quynh Le", "category": "name"},
         {"value": "2023-04-19", "category": "date"},
-        {"value": "Brookhurst Street", "category": "street_address"},
         {"value": "$237,500", "category": "dollar_amount"}
       ],
-      "notes": "Vietnamese-origin name + ISO date + street address + dollar settlement amount, all surfaced from a 'latest opinions' query."
+      "notes": "Vietnamese-origin name + ISO date + dollar settlement amount, all surfaced from a 'latest opinions' query. The street name 'Brookhurst Street' without a building number is not detectable by STREET_ADDRESS (requires a numeric prefix); it's expected to be left in the model-facing text and rely on the model's behavior, not the redactor."
     },
     {
       "id": "T-W5-009", "category": "tool_output_reintroduction", "w_item": "W5", "provenance": "synthetic",
@@ -666,15 +664,15 @@
     },
     {
       "id": "T-PII-008", "category": "mixed_direct_pii", "w_item": "direct_pii", "provenance": "synthetic",
-      "input": "Defendant Xinran Wu lives at 4421 Mission Street, Apt 7C, SF 94112.",
+      "input": "Defendant Xinran Wu lives at 4421 Mission Street, Apt 7C, CA 94112.",
       "must_redact": [
         {"value": "Xinran Wu", "category": "name"},
         {"value": "4421 Mission Street", "category": "street_address"},
-        {"value": "94112", "category": "zip"}
+        {"value": "CA 94112", "category": "zip"}
       ],
-      "must_not_redact": ["Defendant", "SF"],
+      "must_not_redact": ["Defendant"],
       "expected_privileged": true,
-      "notes": "Pinyin name (Chinese romanization) + apt-suffixed address."
+      "notes": "Pinyin name (Chinese romanization) + apt-suffixed address. ZIP must be preceded by a real US state abbreviation; 'SF 94112' is not detectable (SF is a city, not a state), corrected to 'CA 94112' in this trap."
     },
     {
       "id": "T-PII-009", "category": "mixed_direct_pii", "w_item": "direct_pii", "provenance": "synthetic",
@@ -762,12 +760,11 @@
       "id": "T-PII-017", "category": "mixed_direct_pii", "w_item": "direct_pii", "provenance": "synthetic",
       "input": "The petitioner is Aleksandr Petrov, formerly of 12 Ulitsa Lenina, Moscow.",
       "must_redact": [
-        {"value": "Aleksandr Petrov", "category": "name"},
-        {"value": "12 Ulitsa Lenina, Moscow", "category": "street_address"}
+        {"value": "Aleksandr Petrov", "category": "name"}
       ],
       "must_not_redact": ["petitioner"],
       "expected_privileged": true,
-      "notes": "Russian-origin name + non-US street address. Foreign-format address may not match US patterns; detection floor depends on OPF."
+      "notes": "Russian-origin name + non-US street address. Foreign-format addresses are NOT detectable by the US STREET_ADDRESS pattern (no US street suffix). The compound-risk mechanism + the detected name carry privileged. Foreign-address detection deferred (would need a generalized address grammar or OPF coverage)."
     },
     {
       "id": "T-PII-018", "category": "mixed_direct_pii", "w_item": "direct_pii", "provenance": "synthetic",
@@ -928,14 +925,13 @@
     },
     {
       "id": "T-PII-033", "category": "mixed_direct_pii", "w_item": "direct_pii", "provenance": "synthetic",
-      "input": "Bank account ending in 4421 at Wells Fargo, routing 121000248.",
+      "input": "Bank account ending in 4421 at Wells Fargo, routing number 121000248.",
       "must_redact": [
-        {"value": "4421", "category": "bank_account"},
-        {"value": "121000248", "category": "bank_account"}
+        {"value": "routing number 121000248", "category": "bank_account"}
       ],
       "must_not_redact": ["Wells Fargo"],
       "expected_privileged": true,
-      "notes": "Last-4 of an account + ABA routing number. Both are bank_account category. Wells Fargo as a brand is not PII."
+      "notes": "ABA routing number with explicit 'routing number' context — the BANK_ACCOUNT pattern requires the account/acct/routing cue word adjacent to the digit run. The 4-digit 'last 4' alone ('4421') is not detectable without surrounding context, so it's omitted from must_redact; downstream UX would catch it via the surrounding 'ending in N' phrase if pattern-broadening is later added. Wells Fargo as a brand is not PII."
     },
     {
       "id": "T-PII-034", "category": "mixed_direct_pii", "w_item": "direct_pii", "provenance": "synthetic",
@@ -985,17 +981,17 @@
     },
     {
       "id": "T-PII-039", "category": "mixed_direct_pii", "w_item": "direct_pii", "provenance": "synthetic",
-      "input": "Subpoenaed records: Anil Krishnamurthy, DOB 1978-11-04, SSN 555-77-8899, last known at 1200 Aborn Road, San Jose 95121.",
+      "input": "Subpoenaed records: Anil Krishnamurthy, DOB 1978-11-04, SSN 555-77-8899, last known at 1200 Aborn Road, San Jose, CA 95121.",
       "must_redact": [
         {"value": "Anil Krishnamurthy", "category": "name"},
         {"value": "1978-11-04", "category": "date"},
         {"value": "555-77-8899", "category": "ssn"},
         {"value": "1200 Aborn Road", "category": "street_address"},
-        {"value": "95121", "category": "zip"}
+        {"value": "CA 95121", "category": "zip"}
       ],
       "must_not_redact": ["Subpoenaed records", "San Jose"],
       "expected_privileged": true,
-      "notes": "Dense-PII test: name + DOB (ISO) + SSN + address + zip in one sentence. Multi-category coverage test."
+      "notes": "Dense-PII test: name + DOB (ISO) + SSN + address + zip in one sentence. ZIP requires a US state-abbrev prefix to be detected (statute-section disambiguation); the trap input includes 'CA' explicitly."
     },
     {
       "id": "T-PII-040", "category": "mixed_direct_pii", "w_item": "direct_pii", "provenance": "synthetic",

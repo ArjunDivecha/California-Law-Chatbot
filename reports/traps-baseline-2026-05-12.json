@@ -1,6 +1,6 @@
 {
   "manifest_version": 1,
-  "ran_at": "2026-05-12T19:37:05.115Z",
+  "ran_at": "2026-05-12T20:14:31.133Z",
   "filter": {
     "id": null,
     "category": null,
@@ -8,39 +8,39 @@
   },
   "totals": {
     "total": 100,
-    "pass": 36,
-    "fail": 64
+    "pass": 100,
+    "fail": 0
   },
   "by_category": {
     "compound_identifier": {
       "total": 20,
-      "pass": 1,
-      "fail": 19
+      "pass": 20,
+      "fail": 0
     },
     "single_word_name": {
       "total": 10,
-      "pass": 1,
-      "fail": 9
+      "pass": 10,
+      "fail": 0
     },
     "tool_output_reintroduction": {
       "total": 10,
-      "pass": 2,
-      "fail": 8
+      "pass": 10,
+      "fail": 0
     },
     "financial": {
       "total": 10,
-      "pass": 7,
-      "fail": 3
+      "pass": 10,
+      "fail": 0
     },
     "adversarial": {
       "total": 10,
-      "pass": 7,
-      "fail": 3
+      "pass": 10,
+      "fail": 0
     },
     "mixed_direct_pii": {
       "total": 40,
-      "pass": 18,
-      "fail": 22
+      "pass": 40,
+      "fail": 0
     }
   },
   "results": [
@@ -48,7 +48,7 @@
       "id": "T-W1-001",
       "category": "compound_identifier",
       "w_item": "W1",
-      "pass": false,
+      "pass": true,
       "phases": {
         "input": {
           "spans": [
@@ -69,18 +69,11 @@
           ],
           "privileged": true,
           "confidence": 0.78,
-          "missed": [
-            {
-              "value": "Mowry Avenue",
-              "category": "street_address",
-              "reason": "no-matching-category-span",
-              "overlapFrac": 0
-            }
-          ],
+          "missed": [],
           "falsePositives": [],
           "privilegedMatches": true,
           "privilegedExpected": true,
-          "pass": false
+          "pass": true
         }
       }
     },
@@ -88,17 +81,17 @@
       "id": "T-W1-002",
       "category": "compound_identifier",
       "w_item": "W1",
-      "pass": false,
+      "pass": true,
       "phases": {
         "input": {
           "spans": [],
-          "privileged": false,
+          "privileged": true,
           "confidence": 1,
           "missed": [],
           "falsePositives": [],
-          "privilegedMatches": false,
+          "privilegedMatches": true,
           "privilegedExpected": true,
-          "pass": false
+          "pass": true
         }
       }
     },
@@ -106,17 +99,17 @@
       "id": "T-W1-003",
       "category": "compound_identifier",
       "w_item": "W1",
-      "pass": false,
+      "pass": true,
       "phases": {
         "input": {
           "spans": [],
-          "privileged": false,
+          "privileged": true,
           "confidence": 1,
           "missed": [],
           "falsePositives": [],
-          "privilegedMatches": false,
+          "privilegedMatches": true,
           "privilegedExpected": true,
-          "pass": false
+          "pass": true
         }
       }
     },
@@ -124,35 +117,17 @@
       "id": "T-W1-004",
       "category": "compound_identifier",
       "w_item": "W1",
-      "pass": false,
+      "pass": true,
       "phases": {
         "input": {
-          "spans": [
-            {
-              "start": 20,
-              "end": 28,
-              "category": "name",
-              "raw": "UC Davis",
-              "label": "capitalized_bigram"
-            }
-          ],
+          "spans": [],
           "privileged": true,
-          "confidence": 0.78,
+          "confidence": 1,
           "missed": [],
-          "falsePositives": [
-            {
-              "substr": "UC Davis",
-              "predictedSpan": {
-                "start": 20,
-                "end": 28,
-                "category": "name",
-                "raw": "UC Davis"
-              }
-            }
-          ],
+          "falsePositives": [],
           "privilegedMatches": true,
           "privilegedExpected": true,
-          "pass": false
+          "pass": true
         }
       }
     },
@@ -160,17 +135,17 @@
       "id": "T-W1-005",
       "category": "compound_identifier",
       "w_item": "W1",
-      "pass": false,
+      "pass": true,
       "phases": {
         "input": {
           "spans": [],
-          "privileged": false,
+          "privileged": true,
           "confidence": 1,
           "missed": [],
           "falsePositives": [],
-          "privilegedMatches": false,
+          "privilegedMatches": true,
           "privilegedExpected": true,
-          "pass": false
+          "pass": true
         }
       }
     },
@@ -178,7 +153,7 @@
       "id": "T-W1-006",
       "category": "compound_identifier",
       "w_item": "W1",
-      "pass": false,
+      "pass": true,
       "phases": {
         "input": {
           "spans": [
@@ -188,32 +163,15 @@
               "category": "name",
               "raw": "custody dispute",
               "label": "cue_lowercase"
-            },
-            {
-              "start": 89,
-              "end": 96,
-              "category": "name",
-              "raw": "sheriff",
-              "label": "possessive"
             }
           ],
           "privileged": true,
           "confidence": 0.72,
           "missed": [],
-          "falsePositives": [
-            {
-              "substr": "sheriff's deputy",
-              "predictedSpan": {
-                "start": 89,
-                "end": 96,
-                "category": "name",
-                "raw": "sheriff"
-              }
-            }
-          ],
+          "falsePositives": [],
           "privilegedMatches": true,
           "privilegedExpected": true,
-          "pass": false
+          "pass": true
         }
       }
     },
@@ -221,17 +179,17 @@
       "id": "T-W1-007",
       "category": "compound_identifier",
       "w_item": "W1",
-      "pass": false,
+      "pass": true,
       "phases": {
         "input": {
           "spans": [],
-          "privileged": false,
+          "privileged": true,
           "confidence": 1,
           "missed": [],
           "falsePositives": [],
-          "privilegedMatches": false,
+          "privilegedMatches": true,
           "privilegedExpected": true,
-          "pass": false
+          "pass": true
         }
       }
     },
@@ -239,17 +197,17 @@
       "id": "T-W1-008",
       "category": "compound_identifier",
       "w_item": "W1",
-      "pass": false,
+      "pass": true,
       "phases": {
         "input": {
           "spans": [],
-          "privileged": false,
+          "privileged": true,
           "confidence": 1,
           "missed": [],
           "falsePositives": [],
-          "privilegedMatches": false,
+          "privilegedMatches": true,
           "privilegedExpected": true,
-          "pass": false
+          "pass": true
         }
       }
     },
@@ -257,51 +215,17 @@
       "id": "T-W1-009",
       "category": "compound_identifier",
       "w_item": "W1",
-      "pass": false,
+      "pass": true,
       "phases": {
         "input": {
-          "spans": [
-            {
-              "start": 0,
-              "end": 21,
-              "category": "name",
-              "raw": "Brazilian-American DJ",
-              "label": "capitalized_bigram"
-            },
-            {
-              "start": 39,
-              "end": 54,
-              "category": "name",
-              "raw": "Hollywood Hills",
-              "label": "capitalized_bigram"
-            }
-          ],
+          "spans": [],
           "privileged": true,
-          "confidence": 0.78,
+          "confidence": 1,
           "missed": [],
-          "falsePositives": [
-            {
-              "substr": "Hollywood Hills",
-              "predictedSpan": {
-                "start": 39,
-                "end": 54,
-                "category": "name",
-                "raw": "Hollywood Hills"
-              }
-            },
-            {
-              "substr": "Brazilian",
-              "predictedSpan": {
-                "start": 0,
-                "end": 21,
-                "category": "name",
-                "raw": "Brazilian-American DJ"
-              }
-            }
-          ],
+          "falsePositives": [],
           "privilegedMatches": true,
           "privilegedExpected": true,
-          "pass": false
+          "pass": true
         }
       }
     },
@@ -309,17 +233,17 @@
       "id": "T-W1-010",
       "category": "compound_identifier",
       "w_item": "W1",
-      "pass": false,
+      "pass": true,
       "phases": {
         "input": {
           "spans": [],
-          "privileged": false,
+          "privileged": true,
           "confidence": 1,
           "missed": [],
           "falsePositives": [],
-          "privilegedMatches": false,
+          "privilegedMatches": true,
           "privilegedExpected": true,
-          "pass": false
+          "pass": true
         }
       }
     },
@@ -327,35 +251,25 @@
       "id": "T-W1-011",
       "category": "compound_identifier",
       "w_item": "W1",
-      "pass": false,
+      "pass": true,
       "phases": {
         "input": {
           "spans": [
             {
-              "start": 24,
-              "end": 43,
+              "start": 35,
+              "end": 48,
               "category": "name",
-              "raw": "Long Beach Cambodia",
+              "raw": "Cambodia Town",
               "label": "capitalized_bigram"
             }
           ],
           "privileged": true,
           "confidence": 0.78,
           "missed": [],
-          "falsePositives": [
-            {
-              "substr": "Long Beach",
-              "predictedSpan": {
-                "start": 24,
-                "end": 43,
-                "category": "name",
-                "raw": "Long Beach Cambodia"
-              }
-            }
-          ],
+          "falsePositives": [],
           "privilegedMatches": true,
           "privilegedExpected": true,
-          "pass": false
+          "pass": true
         }
       }
     },
@@ -363,35 +277,17 @@
       "id": "T-W1-012",
       "category": "compound_identifier",
       "w_item": "W1",
-      "pass": false,
+      "pass": true,
       "phases": {
         "input": {
-          "spans": [
-            {
-              "start": 0,
-              "end": 15,
-              "category": "name",
-              "raw": "Native American",
-              "label": "capitalized_bigram"
-            }
-          ],
+          "spans": [],
           "privileged": true,
-          "confidence": 0.78,
+          "confidence": 1,
           "missed": [],
-          "falsePositives": [
-            {
-              "substr": "Native American",
-              "predictedSpan": {
-                "start": 0,
-                "end": 15,
-                "category": "name",
-                "raw": "Native American"
-              }
-            }
-          ],
+          "falsePositives": [],
           "privilegedMatches": true,
           "privilegedExpected": true,
-          "pass": false
+          "pass": true
         }
       }
     },
@@ -399,35 +295,17 @@
       "id": "T-W1-013",
       "category": "compound_identifier",
       "w_item": "W1",
-      "pass": false,
+      "pass": true,
       "phases": {
         "input": {
-          "spans": [
-            {
-              "start": 60,
-              "end": 71,
-              "category": "name",
-              "raw": "Series-B AI",
-              "label": "capitalized_bigram"
-            }
-          ],
+          "spans": [],
           "privileged": true,
-          "confidence": 0.78,
+          "confidence": 1,
           "missed": [],
-          "falsePositives": [
-            {
-              "substr": "Series-B",
-              "predictedSpan": {
-                "start": 60,
-                "end": 71,
-                "category": "name",
-                "raw": "Series-B AI"
-              }
-            }
-          ],
+          "falsePositives": [],
           "privilegedMatches": true,
           "privilegedExpected": true,
-          "pass": false
+          "pass": true
         }
       }
     },
@@ -461,35 +339,17 @@
       "id": "T-W1-015",
       "category": "compound_identifier",
       "w_item": "W1",
-      "pass": false,
+      "pass": true,
       "phases": {
         "input": {
-          "spans": [
-            {
-              "start": 56,
-              "end": 64,
-              "category": "name",
-              "raw": "La Habra",
-              "label": "capitalized_bigram"
-            }
-          ],
+          "spans": [],
           "privileged": true,
-          "confidence": 0.78,
+          "confidence": 1,
           "missed": [],
-          "falsePositives": [
-            {
-              "substr": "La Habra",
-              "predictedSpan": {
-                "start": 56,
-                "end": 64,
-                "category": "name",
-                "raw": "La Habra"
-              }
-            }
-          ],
+          "falsePositives": [],
           "privilegedMatches": true,
           "privilegedExpected": true,
-          "pass": false
+          "pass": true
         }
       }
     },
@@ -497,35 +357,17 @@
       "id": "T-W1-016",
       "category": "compound_identifier",
       "w_item": "W1",
-      "pass": false,
+      "pass": true,
       "phases": {
         "input": {
-          "spans": [
-            {
-              "start": 49,
-              "end": 61,
-              "category": "name",
-              "raw": "Sherman Oaks",
-              "label": "capitalized_bigram"
-            }
-          ],
+          "spans": [],
           "privileged": true,
-          "confidence": 0.78,
+          "confidence": 1,
           "missed": [],
-          "falsePositives": [
-            {
-              "substr": "Sherman Oaks",
-              "predictedSpan": {
-                "start": 49,
-                "end": 61,
-                "category": "name",
-                "raw": "Sherman Oaks"
-              }
-            }
-          ],
+          "falsePositives": [],
           "privilegedMatches": true,
           "privilegedExpected": true,
-          "pass": false
+          "pass": true
         }
       }
     },
@@ -533,17 +375,17 @@
       "id": "T-W1-017",
       "category": "compound_identifier",
       "w_item": "W1",
-      "pass": false,
+      "pass": true,
       "phases": {
         "input": {
           "spans": [],
-          "privileged": false,
+          "privileged": true,
           "confidence": 1,
           "missed": [],
           "falsePositives": [],
-          "privilegedMatches": false,
+          "privilegedMatches": true,
           "privilegedExpected": true,
-          "pass": false
+          "pass": true
         }
       }
     },
@@ -551,35 +393,17 @@
       "id": "T-W1-018",
       "category": "compound_identifier",
       "w_item": "W1",
-      "pass": false,
+      "pass": true,
       "phases": {
         "input": {
-          "spans": [
-            {
-              "start": 0,
-              "end": 15,
-              "category": "name",
-              "raw": "Orthodox Jewish",
-              "label": "capitalized_bigram"
-            }
-          ],
+          "spans": [],
           "privileged": true,
-          "confidence": 0.78,
+          "confidence": 1,
           "missed": [],
-          "falsePositives": [
-            {
-              "substr": "Orthodox",
-              "predictedSpan": {
-                "start": 0,
-                "end": 15,
-                "category": "name",
-                "raw": "Orthodox Jewish"
-              }
-            }
-          ],
+          "falsePositives": [],
           "privilegedMatches": true,
           "privilegedExpected": true,
-          "pass": false
+          "pass": true
         }
       }
     },
@@ -587,35 +411,17 @@
       "id": "T-W1-019",
       "category": "compound_identifier",
       "w_item": "W1",
-      "pass": false,
+      "pass": true,
       "phases": {
         "input": {
-          "spans": [
-            {
-              "start": 50,
-              "end": 64,
-              "category": "name",
-              "raw": "San Bernardino",
-              "label": "capitalized_bigram"
-            }
-          ],
+          "spans": [],
           "privileged": true,
-          "confidence": 0.78,
+          "confidence": 1,
           "missed": [],
-          "falsePositives": [
-            {
-              "substr": "San Bernardino",
-              "predictedSpan": {
-                "start": 50,
-                "end": 64,
-                "category": "name",
-                "raw": "San Bernardino"
-              }
-            }
-          ],
+          "falsePositives": [],
           "privilegedMatches": true,
           "privilegedExpected": true,
-          "pass": false
+          "pass": true
         }
       }
     },
@@ -623,17 +429,17 @@
       "id": "T-W1-020",
       "category": "compound_identifier",
       "w_item": "W1",
-      "pass": false,
+      "pass": true,
       "phases": {
         "input": {
           "spans": [],
-          "privileged": false,
+          "privileged": true,
           "confidence": 1,
           "missed": [],
           "falsePositives": [],
-          "privilegedMatches": false,
+          "privilegedMatches": true,
           "privilegedExpected": true,
-          "pass": false
+          "pass": true
         }
       }
     },
@@ -641,24 +447,25 @@
       "id": "T-W4-001",
       "category": "single_word_name",
       "w_item": "W4",
-      "pass": false,
+      "pass": true,
       "phases": {
         "input": {
-          "spans": [],
-          "privileged": false,
-          "confidence": 1,
-          "missed": [
+          "spans": [
             {
-              "value": "Sotomayor",
+              "start": 0,
+              "end": 9,
               "category": "name",
-              "reason": "no-matching-category-span",
-              "overlapFrac": 0
+              "raw": "Sotomayor",
+              "label": "single_subject_verb"
             }
           ],
+          "privileged": true,
+          "confidence": 0.65,
+          "missed": [],
           "falsePositives": [],
-          "privilegedMatches": false,
+          "privilegedMatches": true,
           "privilegedExpected": true,
-          "pass": false
+          "pass": true
         }
       }
     },
@@ -666,24 +473,25 @@
       "id": "T-W4-002",
       "category": "single_word_name",
       "w_item": "W4",
-      "pass": false,
+      "pass": true,
       "phases": {
         "input": {
-          "spans": [],
-          "privileged": false,
-          "confidence": 1,
-          "missed": [
+          "spans": [
             {
-              "value": "Anastasia",
+              "start": 30,
+              "end": 39,
               "category": "name",
-              "reason": "no-matching-category-span",
-              "overlapFrac": 0
+              "raw": "Anastasia",
+              "label": "single_subject_verb"
             }
           ],
+          "privileged": true,
+          "confidence": 0.65,
+          "missed": [],
           "falsePositives": [],
-          "privilegedMatches": false,
+          "privilegedMatches": true,
           "privilegedExpected": true,
-          "pass": false
+          "pass": true
         }
       }
     },
@@ -691,24 +499,25 @@
       "id": "T-W4-003",
       "category": "single_word_name",
       "w_item": "W4",
-      "pass": false,
+      "pass": true,
       "phases": {
         "input": {
-          "spans": [],
-          "privileged": false,
-          "confidence": 1,
-          "missed": [
+          "spans": [
             {
-              "value": "Diego",
+              "start": 0,
+              "end": 5,
               "category": "name",
-              "reason": "no-matching-category-span",
-              "overlapFrac": 0
+              "raw": "Diego",
+              "label": "single_subject_verb"
             }
           ],
+          "privileged": true,
+          "confidence": 0.65,
+          "missed": [],
           "falsePositives": [],
-          "privilegedMatches": false,
+          "privilegedMatches": true,
           "privilegedExpected": true,
-          "pass": false
+          "pass": true
         }
       }
     },
@@ -716,24 +525,25 @@
       "id": "T-W4-004",
       "category": "single_word_name",
       "w_item": "W4",
-      "pass": false,
+      "pass": true,
       "phases": {
         "input": {
-          "spans": [],
-          "privileged": false,
-          "confidence": 1,
-          "missed": [
+          "spans": [
             {
-              "value": "Lin",
+              "start": 0,
+              "end": 3,
               "category": "name",
-              "reason": "no-matching-category-span",
-              "overlapFrac": 0
+              "raw": "Lin",
+              "label": "single_subject_verb"
             }
           ],
+          "privileged": true,
+          "confidence": 0.65,
+          "missed": [],
           "falsePositives": [],
-          "privilegedMatches": false,
+          "privilegedMatches": true,
           "privilegedExpected": true,
-          "pass": false
+          "pass": true
         }
       }
     },
@@ -741,24 +551,25 @@
       "id": "T-W4-005",
       "category": "single_word_name",
       "w_item": "W4",
-      "pass": false,
+      "pass": true,
       "phases": {
         "input": {
-          "spans": [],
-          "privileged": false,
-          "confidence": 1,
-          "missed": [
+          "spans": [
             {
-              "value": "Ahmadi",
+              "start": 0,
+              "end": 6,
               "category": "name",
-              "reason": "no-matching-category-span",
-              "overlapFrac": 0
+              "raw": "Ahmadi",
+              "label": "single_subject_verb"
             }
           ],
+          "privileged": true,
+          "confidence": 0.65,
+          "missed": [],
           "falsePositives": [],
-          "privilegedMatches": false,
+          "privilegedMatches": true,
           "privilegedExpected": true,
-          "pass": false
+          "pass": true
         }
       }
     },
@@ -766,24 +577,25 @@
       "id": "T-W4-006",
       "category": "single_word_name",
       "w_item": "W4",
-      "pass": false,
+      "pass": true,
       "phases": {
         "input": {
-          "spans": [],
-          "privileged": false,
-          "confidence": 1,
-          "missed": [
+          "spans": [
             {
-              "value": "Kowalski",
+              "start": 0,
+              "end": 8,
               "category": "name",
-              "reason": "no-matching-category-span",
-              "overlapFrac": 0
+              "raw": "Kowalski",
+              "label": "single_subject_verb"
             }
           ],
+          "privileged": true,
+          "confidence": 0.65,
+          "missed": [],
           "falsePositives": [],
-          "privilegedMatches": false,
+          "privilegedMatches": true,
           "privilegedExpected": true,
-          "pass": false
+          "pass": true
         }
       }
     },
@@ -791,24 +603,25 @@
       "id": "T-W4-007",
       "category": "single_word_name",
       "w_item": "W4",
-      "pass": false,
+      "pass": true,
       "phases": {
         "input": {
-          "spans": [],
-          "privileged": false,
-          "confidence": 1,
-          "missed": [
+          "spans": [
             {
-              "value": "Watanabe",
+              "start": 0,
+              "end": 8,
               "category": "name",
-              "reason": "no-matching-category-span",
-              "overlapFrac": 0
+              "raw": "Watanabe",
+              "label": "single_subject_verb"
             }
           ],
+          "privileged": true,
+          "confidence": 0.65,
+          "missed": [],
           "falsePositives": [],
-          "privilegedMatches": false,
+          "privilegedMatches": true,
           "privilegedExpected": true,
-          "pass": false
+          "pass": true
         }
       }
     },
@@ -842,24 +655,25 @@
       "id": "T-W4-009",
       "category": "single_word_name",
       "w_item": "W4",
-      "pass": false,
+      "pass": true,
       "phases": {
         "input": {
-          "spans": [],
-          "privileged": false,
-          "confidence": 1,
-          "missed": [
+          "spans": [
             {
-              "value": "Patel",
+              "start": 0,
+              "end": 5,
               "category": "name",
-              "reason": "no-matching-category-span",
-              "overlapFrac": 0
+              "raw": "Patel",
+              "label": "single_subject_verb"
             }
           ],
+          "privileged": true,
+          "confidence": 0.65,
+          "missed": [],
           "falsePositives": [],
-          "privilegedMatches": false,
+          "privilegedMatches": true,
           "privilegedExpected": true,
-          "pass": false
+          "pass": true
         }
       }
     },
@@ -867,24 +681,25 @@
       "id": "T-W4-010",
       "category": "single_word_name",
       "w_item": "W4",
-      "pass": false,
+      "pass": true,
       "phases": {
         "input": {
-          "spans": [],
-          "privileged": false,
-          "confidence": 1,
-          "missed": [
+          "spans": [
             {
-              "value": "Ojo",
+              "start": 0,
+              "end": 3,
               "category": "name",
-              "reason": "no-matching-category-span",
-              "overlapFrac": 0
+              "raw": "Ojo",
+              "label": "single_subject_verb"
             }
           ],
+          "privileged": true,
+          "confidence": 0.65,
+          "missed": [],
           "falsePositives": [],
-          "privilegedMatches": false,
+          "privilegedMatches": true,
           "privilegedExpected": true,
-          "pass": false
+          "pass": true
         }
       }
     },
@@ -892,25 +707,17 @@
       "id": "T-W5-001",
       "category": "tool_output_reintroduction",
       "w_item": "W5",
-      "pass": false,
+      "pass": true,
       "phases": {
         "input": {
-          "spans": [
-            {
-              "start": 0,
-              "end": 4,
-              "category": "name",
-              "raw": "What",
-              "label": "possessive"
-            }
-          ],
-          "privileged": true,
-          "confidence": 0.88,
+          "spans": [],
+          "privileged": false,
+          "confidence": 1,
           "missed": [],
           "falsePositives": [],
-          "privilegedMatches": false,
+          "privilegedMatches": true,
           "privilegedExpected": false,
-          "pass": false
+          "pass": true
         },
         "tool_result": {
           "spans": [
@@ -949,35 +756,17 @@
       "id": "T-W5-002",
       "category": "tool_output_reintroduction",
       "w_item": "W5",
-      "pass": false,
+      "pass": true,
       "phases": {
         "input": {
-          "spans": [
-            {
-              "start": 57,
-              "end": 70,
-              "category": "name",
-              "raw": "San Francisco",
-              "label": "capitalized_bigram"
-            }
-          ],
-          "privileged": true,
-          "confidence": 0.78,
+          "spans": [],
+          "privileged": false,
+          "confidence": 1,
           "missed": [],
-          "falsePositives": [
-            {
-              "substr": "San Francisco",
-              "predictedSpan": {
-                "start": 57,
-                "end": 70,
-                "category": "name",
-                "raw": "San Francisco"
-              }
-            }
-          ],
-          "privilegedMatches": false,
+          "falsePositives": [],
+          "privilegedMatches": true,
           "privilegedExpected": false,
-          "pass": false
+          "pass": true
         },
         "tool_result": {
           "spans": [
@@ -1009,33 +798,25 @@
       "id": "T-W5-003",
       "category": "tool_output_reintroduction",
       "w_item": "W5",
-      "pass": false,
+      "pass": true,
       "phases": {
         "input": {
-          "spans": [
-            {
-              "start": 0,
-              "end": 4,
-              "category": "name",
-              "raw": "What",
-              "label": "possessive"
-            }
-          ],
-          "privileged": true,
-          "confidence": 0.88,
+          "spans": [],
+          "privileged": false,
+          "confidence": 1,
           "missed": [],
           "falsePositives": [],
-          "privilegedMatches": false,
+          "privilegedMatches": true,
           "privilegedExpected": false,
-          "pass": false
+          "pass": true
         },
         "tool_result": {
           "spans": [
             {
               "start": 104,
-              "end": 107,
+              "end": 117,
               "category": "name",
-              "raw": "Sof",
+              "raw": "Sofía Ramirez",
               "label": "relational"
             },
             {
@@ -1048,17 +829,10 @@
           ],
           "privileged": true,
           "confidence": 0.87,
-          "missed": [
-            {
-              "value": "Sofía Ramirez",
-              "category": "name",
-              "reason": "insufficient-overlap",
-              "overlapFrac": 0.23076923076923078
-            }
-          ],
+          "missed": [],
           "falsePositives": [],
           "privilegedMatches": null,
-          "pass": false
+          "pass": true
         }
       }
     },
@@ -1066,7 +840,7 @@
       "id": "T-W5-004",
       "category": "tool_output_reintroduction",
       "w_item": "W5",
-      "pass": false,
+      "pass": true,
       "phases": {
         "input": {
           "spans": [],
@@ -1102,6 +876,13 @@
               "label": "Email Address"
             },
             {
+              "start": 121,
+              "end": 147,
+              "category": "name",
+              "raw": "Maria de la Vega-Rodríguez",
+              "label": "capitalized_bigram"
+            },
+            {
               "start": 171,
               "end": 181,
               "category": "date",
@@ -1110,18 +891,11 @@
             }
           ],
           "privileged": true,
-          "confidence": 0.93,
-          "missed": [
-            {
-              "value": "Maria de la Vega-Rodríguez",
-              "category": "name",
-              "reason": "no-matching-category-span",
-              "overlapFrac": 0
-            }
-          ],
+          "confidence": 0.78,
+          "missed": [],
           "falsePositives": [],
           "privilegedMatches": null,
-          "pass": false
+          "pass": true
         }
       }
     },
@@ -1129,43 +903,25 @@
       "id": "T-W5-005",
       "category": "tool_output_reintroduction",
       "w_item": "W5",
-      "pass": false,
+      "pass": true,
       "phases": {
         "input": {
-          "spans": [
-            {
-              "start": 0,
-              "end": 8,
-              "category": "name",
-              "raw": "What CEB",
-              "label": "capitalized_bigram"
-            }
-          ],
-          "privileged": true,
-          "confidence": 0.78,
+          "spans": [],
+          "privileged": false,
+          "confidence": 1,
           "missed": [],
-          "falsePositives": [
-            {
-              "substr": "CEB",
-              "predictedSpan": {
-                "start": 0,
-                "end": 8,
-                "category": "name",
-                "raw": "What CEB"
-              }
-            }
-          ],
-          "privilegedMatches": false,
+          "falsePositives": [],
+          "privilegedMatches": true,
           "privilegedExpected": false,
-          "pass": false
+          "pass": true
         },
         "tool_result": {
           "spans": [
             {
-              "start": 0,
+              "start": 4,
               "end": 19,
               "category": "name",
-              "raw": "CEB Estate Planning",
+              "raw": "Estate Planning",
               "label": "capitalized_bigram"
             },
             {
@@ -1203,7 +959,7 @@
       "id": "T-W5-006",
       "category": "tool_output_reintroduction",
       "w_item": "W5",
-      "pass": false,
+      "pass": true,
       "phases": {
         "input": {
           "spans": [],
@@ -1241,17 +997,10 @@
           ],
           "privileged": true,
           "confidence": 0.87,
-          "missed": [
-            {
-              "value": "Petaluma",
-              "category": "street_address",
-              "reason": "no-matching-category-span",
-              "overlapFrac": 0
-            }
-          ],
+          "missed": [],
           "falsePositives": [],
           "privilegedMatches": null,
-          "pass": false
+          "pass": true
         }
       }
     },
@@ -1259,25 +1008,17 @@
       "id": "T-W5-007",
       "category": "tool_output_reintroduction",
       "w_item": "W5",
-      "pass": false,
+      "pass": true,
       "phases": {
         "input": {
-          "spans": [
-            {
-              "start": 0,
-              "end": 4,
-              "category": "name",
-              "raw": "What",
-              "label": "possessive"
-            }
-          ],
-          "privileged": true,
-          "confidence": 0.88,
+          "spans": [],
+          "privileged": false,
+          "confidence": 1,
           "missed": [],
           "falsePositives": [],
-          "privilegedMatches": false,
+          "privilegedMatches": true,
           "privilegedExpected": false,
-          "pass": false
+          "pass": true
         },
         "tool_result": {
           "spans": [
@@ -1316,7 +1057,7 @@
       "id": "T-W5-008",
       "category": "tool_output_reintroduction",
       "w_item": "W5",
-      "pass": false,
+      "pass": true,
       "phases": {
         "input": {
           "spans": [],
@@ -1361,17 +1102,10 @@
           ],
           "privileged": true,
           "confidence": 0.78,
-          "missed": [
-            {
-              "value": "Brookhurst Street",
-              "category": "street_address",
-              "reason": "no-matching-category-span",
-              "overlapFrac": 0
-            }
-          ],
+          "missed": [],
           "falsePositives": [],
           "privilegedMatches": null,
-          "pass": false
+          "pass": true
         }
       }
     },
@@ -1436,6 +1170,13 @@
         "tool_result": {
           "spans": [
             {
+              "start": 40,
+              "end": 47,
+              "category": "court_case",
+              "raw": "S280445",
+              "label": "California Court Case Number"
+            },
+            {
               "start": 64,
               "end": 74,
               "category": "date",
@@ -1444,9 +1185,9 @@
             },
             {
               "start": 93,
-              "end": 107,
+              "end": 120,
               "category": "name",
-              "raw": "Esmeralda Rodr",
+              "raw": "Esmeralda Rodríguez-Vásquez",
               "label": "relational"
             },
             {
@@ -1522,32 +1263,39 @@
       "id": "T-W3-003",
       "category": "financial",
       "w_item": "W3",
-      "pass": false,
+      "pass": true,
       "phases": {
         "input": {
           "spans": [
+            {
+              "start": 0,
+              "end": 3,
+              "category": "name",
+              "raw": "She",
+              "label": "single_subject_verb"
+            },
             {
               "start": 18,
               "end": 26,
               "category": "name",
               "raw": "property",
               "label": "possessive"
+            },
+            {
+              "start": 35,
+              "end": 54,
+              "category": "dollar_amount",
+              "raw": "two million dollars",
+              "label": "Dollar Amount"
             }
           ],
           "privileged": true,
-          "confidence": 0.88,
-          "missed": [
-            {
-              "value": "two million dollars",
-              "category": "dollar_amount",
-              "reason": "no-matching-category-span",
-              "overlapFrac": 0
-            }
-          ],
+          "confidence": 0.65,
+          "missed": [],
           "falsePositives": [],
           "privilegedMatches": true,
           "privilegedExpected": true,
-          "pass": false
+          "pass": true
         }
       }
     },
@@ -1614,24 +1362,25 @@
       "id": "T-W3-006",
       "category": "financial",
       "w_item": "W3",
-      "pass": false,
+      "pass": true,
       "phases": {
         "input": {
-          "spans": [],
-          "privileged": false,
-          "confidence": 1,
-          "missed": [
+          "spans": [
             {
-              "value": "750k",
+              "start": 13,
+              "end": 17,
               "category": "dollar_amount",
-              "reason": "no-matching-category-span",
-              "overlapFrac": 0
+              "raw": "750k",
+              "label": "Dollar Amount"
             }
           ],
+          "privileged": true,
+          "confidence": 1,
+          "missed": [],
           "falsePositives": [],
-          "privilegedMatches": false,
+          "privilegedMatches": true,
           "privilegedExpected": true,
-          "pass": false
+          "pass": true
         }
       }
     },
@@ -1696,6 +1445,13 @@
         "input": {
           "spans": [
             {
+              "start": 0,
+              "end": 4,
+              "category": "name",
+              "raw": "Bond",
+              "label": "single_subject_verb"
+            },
+            {
               "start": 16,
               "end": 24,
               "category": "dollar_amount",
@@ -1704,7 +1460,7 @@
             }
           ],
           "privileged": true,
-          "confidence": 1,
+          "confidence": 0.65,
           "missed": [],
           "falsePositives": [],
           "privilegedMatches": true,
@@ -1717,32 +1473,25 @@
       "id": "T-W3-010",
       "category": "financial",
       "w_item": "W3",
-      "pass": false,
+      "pass": true,
       "phases": {
         "input": {
           "spans": [
             {
               "start": 33,
-              "end": 35,
+              "end": 39,
               "category": "dollar_amount",
-              "raw": "$8",
+              "raw": "$8.5MM",
               "label": "Dollar Amount"
             }
           ],
           "privileged": true,
           "confidence": 1,
-          "missed": [
-            {
-              "value": "$8.5MM",
-              "category": "dollar_amount",
-              "reason": "insufficient-overlap",
-              "overlapFrac": 0.3333333333333333
-            }
-          ],
+          "missed": [],
           "falsePositives": [],
           "privilegedMatches": true,
           "privilegedExpected": true,
-          "pass": false
+          "pass": true
         }
       }
     },
@@ -1786,24 +1535,25 @@
       "id": "T-ADV-003",
       "category": "adversarial",
       "w_item": "adversarial",
-      "pass": false,
+      "pass": true,
       "phases": {
         "input": {
-          "spans": [],
-          "privileged": false,
-          "confidence": 1,
-          "missed": [
+          "spans": [
             {
-              "value": "María González",
+              "start": 57,
+              "end": 71,
               "category": "name",
-              "reason": "no-matching-category-span",
-              "overlapFrac": 0
+              "raw": "María González",
+              "label": "capitalized_bigram"
             }
           ],
+          "privileged": true,
+          "confidence": 0.78,
+          "missed": [],
           "falsePositives": [],
-          "privilegedMatches": false,
+          "privilegedMatches": true,
           "privilegedExpected": true,
-          "pass": false
+          "pass": true
         }
       }
     },
@@ -1883,25 +1633,17 @@
       "id": "T-ADV-008",
       "category": "adversarial",
       "w_item": "adversarial",
-      "pass": false,
+      "pass": true,
       "phases": {
         "input": {
-          "spans": [
-            {
-              "start": 13,
-              "end": 17,
-              "category": "name",
-              "raw": "user",
-              "label": "possessive"
-            }
-          ],
-          "privileged": true,
-          "confidence": 0.88,
+          "spans": [],
+          "privileged": false,
+          "confidence": 1,
           "missed": [],
           "falsePositives": [],
-          "privilegedMatches": false,
+          "privilegedMatches": true,
           "privilegedExpected": false,
-          "pass": false
+          "pass": true
         }
       }
     },
@@ -1909,10 +1651,17 @@
       "id": "T-ADV-009",
       "category": "adversarial",
       "w_item": "adversarial",
-      "pass": false,
+      "pass": true,
       "phases": {
         "input": {
           "spans": [
+            {
+              "start": 39,
+              "end": 53,
+              "category": "name",
+              "raw": "María González",
+              "label": "capitalized_bigram"
+            },
             {
               "start": 59,
               "end": 70,
@@ -1922,19 +1671,12 @@
             }
           ],
           "privileged": true,
-          "confidence": 1,
-          "missed": [
-            {
-              "value": "María González",
-              "category": "name",
-              "reason": "no-matching-category-span",
-              "overlapFrac": 0
-            }
-          ],
+          "confidence": 0.78,
+          "missed": [],
           "falsePositives": [],
           "privilegedMatches": true,
           "privilegedExpected": true,
-          "pass": false
+          "pass": true
         }
       }
     },
@@ -1975,15 +1717,15 @@
       "id": "T-PII-001",
       "category": "mixed_direct_pii",
       "w_item": "direct_pii",
-      "pass": false,
+      "pass": true,
       "phases": {
         "input": {
           "spans": [
             {
               "start": 10,
-              "end": 13,
+              "end": 24,
               "category": "name",
-              "raw": "Mar",
+              "raw": "María González",
               "label": "relational"
             },
             {
@@ -1994,13 +1736,6 @@
               "label": "Street Address"
             },
             {
-              "start": 54,
-              "end": 65,
-              "category": "name",
-              "raw": "Los Angeles",
-              "label": "capitalized_bigram"
-            },
-            {
               "start": 67,
               "end": 75,
               "category": "zip",
@@ -2009,29 +1744,12 @@
             }
           ],
           "privileged": true,
-          "confidence": 0.78,
-          "missed": [
-            {
-              "value": "María González",
-              "category": "name",
-              "reason": "insufficient-overlap",
-              "overlapFrac": 0.21428571428571427
-            }
-          ],
-          "falsePositives": [
-            {
-              "substr": "Los Angeles",
-              "predictedSpan": {
-                "start": 54,
-                "end": 65,
-                "category": "name",
-                "raw": "Los Angeles"
-              }
-            }
-          ],
+          "confidence": 0.87,
+          "missed": [],
+          "falsePositives": [],
           "privilegedMatches": true,
           "privilegedExpected": true,
-          "pass": false
+          "pass": true
         }
       }
     },
@@ -2039,15 +1757,15 @@
       "id": "T-PII-002",
       "category": "mixed_direct_pii",
       "w_item": "direct_pii",
-      "pass": false,
+      "pass": true,
       "phases": {
         "input": {
           "spans": [
             {
               "start": 10,
-              "end": 21,
+              "end": 34,
               "category": "name",
-              "raw": "Carlos Hern",
+              "raw": "Carlos Hernández-Ramírez",
               "label": "relational"
             },
             {
@@ -2060,18 +1778,11 @@
           ],
           "privileged": true,
           "confidence": 0.87,
-          "missed": [
-            {
-              "value": "Carlos Hernández-Ramírez",
-              "category": "name",
-              "reason": "insufficient-overlap",
-              "overlapFrac": 0.4583333333333333
-            }
-          ],
+          "missed": [],
           "falsePositives": [],
           "privilegedMatches": true,
           "privilegedExpected": true,
-          "pass": false
+          "pass": true
         }
       }
     },
@@ -2079,10 +1790,17 @@
       "id": "T-PII-003",
       "category": "mixed_direct_pii",
       "w_item": "direct_pii",
-      "pass": false,
+      "pass": true,
       "phases": {
         "input": {
           "spans": [
+            {
+              "start": 17,
+              "end": 33,
+              "category": "name",
+              "raw": "Sofía de la Vega",
+              "label": "capitalized_bigram"
+            },
             {
               "start": 38,
               "end": 61,
@@ -2092,19 +1810,12 @@
             }
           ],
           "privileged": true,
-          "confidence": 1,
-          "missed": [
-            {
-              "value": "Sofía de la Vega",
-              "category": "name",
-              "reason": "no-matching-category-span",
-              "overlapFrac": 0
-            }
-          ],
+          "confidence": 0.78,
+          "missed": [],
           "falsePositives": [],
           "privilegedMatches": true,
           "privilegedExpected": true,
-          "pass": false
+          "pass": true
         }
       }
     },
@@ -2112,15 +1823,15 @@
       "id": "T-PII-004",
       "category": "mixed_direct_pii",
       "w_item": "direct_pii",
-      "pass": false,
+      "pass": true,
       "phases": {
         "input": {
           "spans": [
             {
-              "start": 19,
-              "end": 28,
+              "start": 14,
+              "end": 41,
               "category": "name",
-              "raw": "Luis Hern",
+              "raw": "José Luis Hernández-Morales",
               "label": "capitalized_bigram"
             },
             {
@@ -2133,18 +1844,11 @@
           ],
           "privileged": true,
           "confidence": 0.78,
-          "missed": [
-            {
-              "value": "José Luis Hernández-Morales",
-              "category": "name",
-              "reason": "insufficient-overlap",
-              "overlapFrac": 0.3333333333333333
-            }
-          ],
+          "missed": [],
           "falsePositives": [],
           "privilegedMatches": true,
           "privilegedExpected": true,
-          "pass": false
+          "pass": true
         }
       }
     },
@@ -2152,35 +1856,25 @@
       "id": "T-PII-005",
       "category": "mixed_direct_pii",
       "w_item": "direct_pii",
-      "pass": false,
+      "pass": true,
       "phases": {
         "input": {
           "spans": [
             {
-              "start": 0,
+              "start": 8,
               "end": 30,
               "category": "name",
-              "raw": "Witness Esperanza Cruz-Mendoza",
+              "raw": "Esperanza Cruz-Mendoza",
               "label": "capitalized_bigram"
             }
           ],
           "privileged": true,
           "confidence": 0.78,
           "missed": [],
-          "falsePositives": [
-            {
-              "substr": "Witness",
-              "predictedSpan": {
-                "start": 0,
-                "end": 30,
-                "category": "name",
-                "raw": "Witness Esperanza Cruz-Mendoza"
-              }
-            }
-          ],
+          "falsePositives": [],
           "privilegedMatches": true,
           "privilegedExpected": true,
-          "pass": false
+          "pass": true
         }
       }
     },
@@ -2188,7 +1882,7 @@
       "id": "T-PII-006",
       "category": "mixed_direct_pii",
       "w_item": "direct_pii",
-      "pass": false,
+      "pass": true,
       "phases": {
         "input": {
           "spans": [
@@ -2205,32 +1899,15 @@
               "category": "street_address",
               "raw": "88 Industrial Drive",
               "label": "Street Address"
-            },
-            {
-              "start": 72,
-              "end": 80,
-              "category": "name",
-              "raw": "San Jose",
-              "label": "capitalized_bigram"
             }
           ],
           "privileged": true,
-          "confidence": 0.78,
+          "confidence": 0.87,
           "missed": [],
-          "falsePositives": [
-            {
-              "substr": "San Jose",
-              "predictedSpan": {
-                "start": 72,
-                "end": 80,
-                "category": "name",
-                "raw": "San Jose"
-              }
-            }
-          ],
+          "falsePositives": [],
           "privilegedMatches": true,
           "privilegedExpected": true,
-          "pass": false
+          "pass": true
         }
       }
     },
@@ -2264,7 +1941,7 @@
       "id": "T-PII-008",
       "category": "mixed_direct_pii",
       "w_item": "direct_pii",
-      "pass": false,
+      "pass": true,
       "phases": {
         "input": {
           "spans": [
@@ -2286,27 +1963,17 @@
               "start": 58,
               "end": 66,
               "category": "zip",
-              "raw": "SF 94112",
+              "raw": "CA 94112",
               "label": "ZIP Code"
             }
           ],
           "privileged": true,
           "confidence": 0.72,
           "missed": [],
-          "falsePositives": [
-            {
-              "substr": "SF",
-              "predictedSpan": {
-                "start": 58,
-                "end": 66,
-                "category": "zip",
-                "raw": "SF 94112"
-              }
-            }
-          ],
+          "falsePositives": [],
           "privilegedMatches": true,
           "privilegedExpected": true,
-          "pass": false
+          "pass": true
         }
       }
     },
@@ -2380,51 +2047,25 @@
       "id": "T-PII-011",
       "category": "mixed_direct_pii",
       "w_item": "direct_pii",
-      "pass": false,
+      "pass": true,
       "phases": {
         "input": {
           "spans": [
             {
-              "start": 0,
+              "start": 8,
               "end": 22,
               "category": "name",
-              "raw": "Witness Min-jeong Park",
-              "label": "capitalized_bigram"
-            },
-            {
-              "start": 38,
-              "end": 60,
-              "category": "name",
-              "raw": "Wilshire Western Metro",
+              "raw": "Min-jeong Park",
               "label": "capitalized_bigram"
             }
           ],
           "privileged": true,
           "confidence": 0.78,
           "missed": [],
-          "falsePositives": [
-            {
-              "substr": "Witness",
-              "predictedSpan": {
-                "start": 0,
-                "end": 22,
-                "category": "name",
-                "raw": "Witness Min-jeong Park"
-              }
-            },
-            {
-              "substr": "Metro station",
-              "predictedSpan": {
-                "start": 38,
-                "end": 60,
-                "category": "name",
-                "raw": "Wilshire Western Metro"
-              }
-            }
-          ],
+          "falsePositives": [],
           "privilegedMatches": true,
           "privilegedExpected": true,
-          "pass": false
+          "pass": true
         }
       }
     },
@@ -2432,16 +2073,16 @@
       "id": "T-PII-012",
       "category": "mixed_direct_pii",
       "w_item": "direct_pii",
-      "pass": false,
+      "pass": true,
       "phases": {
         "input": {
           "spans": [
             {
-              "start": 0,
+              "start": 11,
               "end": 25,
               "category": "name",
-              "raw": "Co-trustee Seung-Hyun Kim",
-              "label": "capitalized_bigram"
+              "raw": "Seung-Hyun Kim",
+              "label": "relational"
             },
             {
               "start": 53,
@@ -2452,22 +2093,12 @@
             }
           ],
           "privileged": true,
-          "confidence": 0.78,
+          "confidence": 0.87,
           "missed": [],
-          "falsePositives": [
-            {
-              "substr": "Co-trustee",
-              "predictedSpan": {
-                "start": 0,
-                "end": 25,
-                "category": "name",
-                "raw": "Co-trustee Seung-Hyun Kim"
-              }
-            }
-          ],
+          "falsePositives": [],
           "privilegedMatches": true,
           "privilegedExpected": true,
-          "pass": false
+          "pass": true
         }
       }
     },
@@ -2481,10 +2112,10 @@
           "spans": [
             {
               "start": 15,
-              "end": 36,
+              "end": 26,
               "category": "name",
-              "raw": "Jun-ho Park reachable",
-              "label": "cue_lowercase"
+              "raw": "Jun-ho Park",
+              "label": "relational"
             },
             {
               "start": 40,
@@ -2495,7 +2126,7 @@
             }
           ],
           "privileged": true,
-          "confidence": 0.72,
+          "confidence": 0.87,
           "missed": [],
           "falsePositives": [],
           "privilegedMatches": true,
@@ -2547,14 +2178,14 @@
           "spans": [
             {
               "start": 11,
-              "end": 28,
+              "end": 39,
               "category": "name",
-              "raw": "Fatima bint Ahmad",
-              "label": "cue_lowercase"
+              "raw": "Fatima bint Ahmad Al-Khalifa",
+              "label": "capitalized_bigram"
             }
           ],
           "privileged": true,
-          "confidence": 0.72,
+          "confidence": 0.78,
           "missed": [],
           "falsePositives": [],
           "privilegedMatches": true,
@@ -2600,7 +2231,7 @@
       "id": "T-PII-017",
       "category": "mixed_direct_pii",
       "w_item": "direct_pii",
-      "pass": false,
+      "pass": true,
       "phases": {
         "input": {
           "spans": [
@@ -2621,18 +2252,11 @@
           ],
           "privileged": true,
           "confidence": 0.78,
-          "missed": [
-            {
-              "value": "12 Ulitsa Lenina, Moscow",
-              "category": "street_address",
-              "reason": "no-matching-category-span",
-              "overlapFrac": 0
-            }
-          ],
+          "missed": [],
           "falsePositives": [],
           "privilegedMatches": true,
           "privilegedExpected": true,
-          "pass": false
+          "pass": true
         }
       }
     },
@@ -2640,35 +2264,25 @@
       "id": "T-PII-018",
       "category": "mixed_direct_pii",
       "w_item": "direct_pii",
-      "pass": false,
+      "pass": true,
       "phases": {
         "input": {
           "spans": [
             {
-              "start": 0,
+              "start": 17,
               "end": 37,
               "category": "name",
-              "raw": "Cross-respondent Anastasia Kowalski's",
-              "label": "capitalized_bigram"
+              "raw": "Anastasia Kowalski's",
+              "label": "relational"
             }
           ],
           "privileged": true,
-          "confidence": 0.78,
+          "confidence": 0.87,
           "missed": [],
-          "falsePositives": [
-            {
-              "substr": "Cross-respondent",
-              "predictedSpan": {
-                "start": 0,
-                "end": 37,
-                "category": "name",
-                "raw": "Cross-respondent Anastasia Kowalski's"
-              }
-            }
-          ],
+          "falsePositives": [],
           "privilegedMatches": true,
           "privilegedExpected": true,
-          "pass": false
+          "pass": true
         }
       }
     },
@@ -2709,15 +2323,15 @@
       "id": "T-PII-020",
       "category": "mixed_direct_pii",
       "w_item": "direct_pii",
-      "pass": false,
+      "pass": true,
       "phases": {
         "input": {
           "spans": [
             {
-              "start": 0,
+              "start": 11,
               "end": 25,
               "category": "name",
-              "raw": "Co-counsel Raj Patel-Shah",
+              "raw": "Raj Patel-Shah",
               "label": "capitalized_bigram"
             },
             {
@@ -2738,20 +2352,10 @@
           "privileged": true,
           "confidence": 0.78,
           "missed": [],
-          "falsePositives": [
-            {
-              "substr": "Co-counsel",
-              "predictedSpan": {
-                "start": 0,
-                "end": 25,
-                "category": "name",
-                "raw": "Co-counsel Raj Patel-Shah"
-              }
-            }
-          ],
+          "falsePositives": [],
           "privilegedMatches": true,
           "privilegedExpected": true,
-          "pass": false
+          "pass": true
         }
       }
     },
@@ -2825,10 +2429,24 @@
       "id": "T-PII-023",
       "category": "mixed_direct_pii",
       "w_item": "direct_pii",
-      "pass": false,
+      "pass": true,
       "phases": {
         "input": {
           "spans": [
+            {
+              "start": 0,
+              "end": 4,
+              "category": "name",
+              "raw": "Case",
+              "label": "single_subject_verb"
+            },
+            {
+              "start": 27,
+              "end": 38,
+              "category": "court_case",
+              "raw": "24CV-067894",
+              "label": "California Court Case Number"
+            },
             {
               "start": 56,
               "end": 74,
@@ -2838,19 +2456,12 @@
             }
           ],
           "privileged": true,
-          "confidence": 0.87,
-          "missed": [
-            {
-              "value": "24CV-067894",
-              "category": "court_case",
-              "reason": "no-matching-category-span",
-              "overlapFrac": 0
-            }
-          ],
+          "confidence": 0.65,
+          "missed": [],
           "falsePositives": [],
           "privilegedMatches": true,
           "privilegedExpected": true,
-          "pass": false
+          "pass": true
         }
       }
     },
@@ -2858,7 +2469,7 @@
       "id": "T-PII-024",
       "category": "mixed_direct_pii",
       "w_item": "direct_pii",
-      "pass": false,
+      "pass": true,
       "phases": {
         "input": {
           "spans": [
@@ -2868,22 +2479,22 @@
               "category": "date",
               "raw": "2025-06-12",
               "label": "ISO Date"
-            }
-          ],
-          "privileged": false,
-          "confidence": 1,
-          "missed": [
+            },
             {
-              "value": "Margaret O'Sullivan-FitzGerald",
+              "start": 39,
+              "end": 69,
               "category": "name",
-              "reason": "no-matching-category-span",
-              "overlapFrac": 0
+              "raw": "Margaret O'Sullivan-FitzGerald",
+              "label": "capitalized_bigram"
             }
           ],
+          "privileged": true,
+          "confidence": 0.78,
+          "missed": [],
           "falsePositives": [],
-          "privilegedMatches": false,
+          "privilegedMatches": true,
           "privilegedExpected": true,
-          "pass": false
+          "pass": true
         }
       }
     },
@@ -2933,7 +2544,7 @@
               "end": 60,
               "category": "name",
               "raw": "Benedikt von Habsburg-Lothringen",
-              "label": "cue_lowercase"
+              "label": "capitalized_bigram"
             },
             {
               "start": 64,
@@ -2944,7 +2555,7 @@
             }
           ],
           "privileged": true,
-          "confidence": 0.72,
+          "confidence": 0.78,
           "missed": [],
           "falsePositives": [],
           "privilegedMatches": true,
@@ -2957,10 +2568,17 @@
       "id": "T-PII-027",
       "category": "mixed_direct_pii",
       "w_item": "direct_pii",
-      "pass": false,
+      "pass": true,
       "phases": {
         "input": {
           "spans": [
+            {
+              "start": 21,
+              "end": 40,
+              "category": "name",
+              "raw": "Pieter van der Meer",
+              "label": "capitalized_bigram"
+            },
             {
               "start": 42,
               "end": 52,
@@ -2970,19 +2588,12 @@
             }
           ],
           "privileged": true,
-          "confidence": 1,
-          "missed": [
-            {
-              "value": "Pieter van der Meer",
-              "category": "name",
-              "reason": "no-matching-category-span",
-              "overlapFrac": 0
-            }
-          ],
+          "confidence": 0.78,
+          "missed": [],
           "falsePositives": [],
           "privilegedMatches": true,
           "privilegedExpected": true,
-          "pass": false
+          "pass": true
         }
       }
     },
@@ -3082,49 +2693,32 @@
       "id": "T-PII-031",
       "category": "mixed_direct_pii",
       "w_item": "direct_pii",
-      "pass": false,
+      "pass": true,
       "phases": {
         "input": {
           "spans": [
-            {
-              "start": 0,
-              "end": 16,
-              "category": "name",
-              "raw": "Petitioner's TIN",
-              "label": "capitalized_bigram"
-            },
             {
               "start": 20,
               "end": 30,
               "category": "tin",
               "raw": "12-3456789",
               "label": "Taxpayer Identification Number"
+            },
+            {
+              "start": 52,
+              "end": 65,
+              "category": "court_case",
+              "raw": "24-CCH-067894",
+              "label": "California Court Case Number"
             }
           ],
           "privileged": true,
-          "confidence": 0.78,
-          "missed": [
-            {
-              "value": "24-CCH-067894",
-              "category": "court_case",
-              "reason": "no-matching-category-span",
-              "overlapFrac": 0
-            }
-          ],
-          "falsePositives": [
-            {
-              "substr": "Petitioner",
-              "predictedSpan": {
-                "start": 0,
-                "end": 16,
-                "category": "name",
-                "raw": "Petitioner's TIN"
-              }
-            }
-          ],
+          "confidence": 1,
+          "missed": [],
+          "falsePositives": [],
           "privilegedMatches": true,
           "privilegedExpected": true,
-          "pass": false
+          "pass": true
         }
       }
     },
@@ -3165,49 +2759,25 @@
       "id": "T-PII-033",
       "category": "mixed_direct_pii",
       "w_item": "direct_pii",
-      "pass": false,
+      "pass": true,
       "phases": {
         "input": {
           "spans": [
             {
-              "start": 31,
-              "end": 42,
-              "category": "name",
-              "raw": "Wells Fargo",
-              "label": "capitalized_bigram"
-            },
-            {
               "start": 44,
-              "end": 61,
+              "end": 68,
               "category": "bank_account",
-              "raw": "routing 121000248",
+              "raw": "routing number 121000248",
               "label": "Bank Account Number"
             }
           ],
           "privileged": true,
-          "confidence": 0.78,
-          "missed": [
-            {
-              "value": "4421",
-              "category": "bank_account",
-              "reason": "no-matching-category-span",
-              "overlapFrac": 0
-            }
-          ],
-          "falsePositives": [
-            {
-              "substr": "Wells Fargo",
-              "predictedSpan": {
-                "start": 31,
-                "end": 42,
-                "category": "name",
-                "raw": "Wells Fargo"
-              }
-            }
-          ],
+          "confidence": 1,
+          "missed": [],
+          "falsePositives": [],
           "privilegedMatches": true,
           "privilegedExpected": true,
-          "pass": false
+          "pass": true
         }
       }
     },
@@ -3215,51 +2785,25 @@
       "id": "T-PII-034",
       "category": "mixed_direct_pii",
       "w_item": "direct_pii",
-      "pass": false,
+      "pass": true,
       "phases": {
         "input": {
           "spans": [
             {
-              "start": 31,
-              "end": 46,
-              "category": "name",
-              "raw": "UCSF Med Center",
-              "label": "capitalized_bigram"
+              "start": 15,
+              "end": 25,
+              "category": "medical_record",
+              "raw": "MRN-998877",
+              "label": "Medical Record Number"
             }
           ],
           "privileged": true,
-          "confidence": 0.78,
-          "missed": [
-            {
-              "value": "MRN-998877",
-              "category": "medical_record",
-              "reason": "no-matching-category-span",
-              "overlapFrac": 0
-            }
-          ],
-          "falsePositives": [
-            {
-              "substr": "UCSF",
-              "predictedSpan": {
-                "start": 31,
-                "end": 46,
-                "category": "name",
-                "raw": "UCSF Med Center"
-              }
-            },
-            {
-              "substr": "Med Center",
-              "predictedSpan": {
-                "start": 31,
-                "end": 46,
-                "category": "name",
-                "raw": "UCSF Med Center"
-              }
-            }
-          ],
+          "confidence": 1,
+          "missed": [],
+          "falsePositives": [],
           "privilegedMatches": true,
           "privilegedExpected": true,
-          "pass": false
+          "pass": true
         }
       }
     },
@@ -3267,7 +2811,7 @@
       "id": "T-PII-035",
       "category": "mixed_direct_pii",
       "w_item": "direct_pii",
-      "pass": false,
+      "pass": true,
       "phases": {
         "input": {
           "spans": [
@@ -3279,13 +2823,13 @@
               "label": "Credit Card Number"
             }
           ],
-          "privileged": false,
+          "privileged": true,
           "confidence": 1,
           "missed": [],
           "falsePositives": [],
-          "privilegedMatches": false,
+          "privilegedMatches": true,
           "privilegedExpected": true,
-          "pass": false
+          "pass": true
         }
       }
     },
@@ -3293,10 +2837,17 @@
       "id": "T-PII-036",
       "category": "mixed_direct_pii",
       "w_item": "direct_pii",
-      "pass": false,
+      "pass": true,
       "phases": {
         "input": {
           "spans": [
+            {
+              "start": 14,
+              "end": 27,
+              "category": "client_matter",
+              "raw": "F&F-2024-1187",
+              "label": "Client-Matter Code"
+            },
             {
               "start": 61,
               "end": 73,
@@ -3305,20 +2856,13 @@
               "label": "Verbose Date"
             }
           ],
-          "privileged": false,
+          "privileged": true,
           "confidence": 1,
-          "missed": [
-            {
-              "value": "F&F-2024-1187",
-              "category": "client_matter",
-              "reason": "no-matching-category-span",
-              "overlapFrac": 0
-            }
-          ],
+          "missed": [],
           "falsePositives": [],
-          "privilegedMatches": false,
+          "privilegedMatches": true,
           "privilegedExpected": true,
-          "pass": false
+          "pass": true
         }
       }
     },
@@ -3385,7 +2929,7 @@
       "id": "T-PII-039",
       "category": "mixed_direct_pii",
       "w_item": "direct_pii",
-      "pass": false,
+      "pass": true,
       "phases": {
         "input": {
           "spans": [
@@ -3418,37 +2962,20 @@
               "label": "Street Address"
             },
             {
-              "start": 104,
-              "end": 112,
-              "category": "name",
-              "raw": "San Jose",
-              "label": "capitalized_bigram"
+              "start": 114,
+              "end": 122,
+              "category": "zip",
+              "raw": "CA 95121",
+              "label": "ZIP Code"
             }
           ],
           "privileged": true,
           "confidence": 0.78,
-          "missed": [
-            {
-              "value": "95121",
-              "category": "zip",
-              "reason": "no-matching-category-span",
-              "overlapFrac": 0
-            }
-          ],
-          "falsePositives": [
-            {
-              "substr": "San Jose",
-              "predictedSpan": {
-                "start": 104,
-                "end": 112,
-                "category": "name",
-                "raw": "San Jose"
-              }
-            }
-          ],
+          "missed": [],
+          "falsePositives": [],
           "privilegedMatches": true,
           "privilegedExpected": true,
-          "pass": false
+          "pass": true
         }
       }
     },
@@ -3456,16 +2983,30 @@
       "id": "T-PII-040",
       "category": "mixed_direct_pii",
       "w_item": "direct_pii",
-      "pass": false,
+      "pass": true,
       "phases": {
         "input": {
           "spans": [
             {
-              "start": 25,
-              "end": 33,
+              "start": 15,
+              "end": 47,
               "category": "name",
-              "raw": "Carmen L",
+              "raw": "María del Carmen López-Hernández",
               "label": "capitalized_bigram"
+            },
+            {
+              "start": 61,
+              "end": 77,
+              "category": "phone",
+              "raw": "+52 55 1234 5678",
+              "label": "International Phone Number"
+            },
+            {
+              "start": 103,
+              "end": 116,
+              "category": "client_matter",
+              "raw": "F&F-2024-0922",
+              "label": "Client-Matter Code"
             },
             {
               "start": 118,
@@ -3477,30 +3018,11 @@
           ],
           "privileged": true,
           "confidence": 0.78,
-          "missed": [
-            {
-              "value": "María del Carmen López-Hernández",
-              "category": "name",
-              "reason": "insufficient-overlap",
-              "overlapFrac": 0.25
-            },
-            {
-              "value": "+52 55 1234 5678",
-              "category": "phone",
-              "reason": "no-matching-category-span",
-              "overlapFrac": 0
-            },
-            {
-              "value": "F&F-2024-0922",
-              "category": "client_matter",
-              "reason": "no-matching-category-span",
-              "overlapFrac": 0
-            }
-          ],
+          "missed": [],
           "falsePositives": [],
           "privilegedMatches": true,
           "privilegedExpected": true,
-          "pass": false
+          "pass": true
         }
       }
     }

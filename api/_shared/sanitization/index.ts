@@ -17,6 +17,7 @@ import {
 } from './patterns.js';
 import { findAllowlistMatches, overlapsAllowlist } from './allowlist.js';
 import { detectNames, type NameSpan } from './detectNames.js';
+import { detectCompoundRisk, COMPOUND_RISK_BUCKET_THRESHOLD } from './compoundRisk.js';
 
 export type SpanCategory = PIICategory | 'name';
 
@@ -34,8 +35,10 @@ export interface AnalyzeResult {
   /** How many allowlist hits we suppressed — useful for telemetry. */
   suppressedByAllowlist: number;
   /**
-   * True if any high-risk PII category was detected. Used by the agent loop
-   * to gate `web_search` out of the tools array (§E of the V2 plan).
+   * True if any high-risk PII category was detected OR the compound-risk
+   * mechanism (audit §8 item #3 minimum viable) detected ≥3 distinct
+   * signal buckets. Used by the agent loop to gate `web_search` out of
+   * the tools array (§E of the V2 plan).
    */
   privileged: boolean;
   /**
@@ -45,6 +48,12 @@ export interface AnalyzeResult {
    * audit §5 for a full picture of what this score cannot measure.
    */
   confidence: number;
+  /**
+   * Number of distinct compound-risk buckets that fired. ≥3 contributes
+   * to `privileged`. 0 when the input contains no signal-bucket terms.
+   * Surfaced for telemetry and for the audit record's compound-risk field.
+   */
+  compoundRiskBuckets?: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -65,11 +74,13 @@ export const HIGH_RISK_CATEGORIES: ReadonlySet<SpanCategory> = new Set<SpanCateg
   'email',
   'street_address',
   'bank_account',
+  'credit_card',
   'dollar_amount',
   'medical_record',
   'bar_number',
   'driver_license',
   'court_case',
+  'client_matter',
 ]);
 
 /**
@@ -86,6 +97,7 @@ const NAME_SIGNAL_CONFIDENCE: Readonly<Record<string, number>> = {
   'opf-internal-bigram': 0.85,
   capitalized_bigram: 0.78,
   cue_lowercase: 0.72,
+  single_subject_verb: 0.65,
 };
 
 /**
@@ -193,10 +205,14 @@ export function analyze(text: string): AnalyzeResult {
 
   const merged = mergeSpans(unsuppressed);
 
-  const privileged = merged.some((s) => HIGH_RISK_CATEGORIES.has(s.category));
+  const compoundRisk = detectCompoundRisk(text);
+  const compoundRiskBuckets = compoundRisk.bucketsHit;
+  const privileged =
+    merged.some((s) => HIGH_RISK_CATEGORIES.has(s.category)) ||
+    compoundRiskBuckets >= COMPOUND_RISK_BUCKET_THRESHOLD;
   const confidence = computeConfidence(merged);
 
-  return { spans: merged, suppressedByAllowlist, privileged, confidence };
+  return { spans: merged, suppressedByAllowlist, privileged, confidence, compoundRiskBuckets };
 }
 
 export { type PIICategory, type NameSpan };
