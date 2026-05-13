@@ -1240,13 +1240,62 @@ await test('skills: detectIntent returns null for queries that match no workflow
 });
 
 await test('skills: buildSystemPrompt with explicit intent attempts to load the mapped skill', () => {
-  // matter-intake skill body doesn't exist on disk yet (Phase 2 follow-up
-  // to populate from anthropics/claude-for-legal). The loader should
-  // gracefully fall back to core-only and not crash.
+  // matter-intake skill body now ALSO loads (authored 2026-05-13 from
+  // anthropics/claude-for-legal Apache-2.0). Previously the loader
+  // gracefully fell back to core-only because the file was missing;
+  // now it composes core + matter-intake.
   const result = buildSystemPrompt({ intent: 'matter_intake' });
   assert.ok(result.prompt.length > 0);
   assert.ok(result.skills_loaded.includes('california-legal-core'));
   assert.equal(result.intent, 'matter_intake');
+});
+
+await test('skills: matter-intake skill composes core + matter-intake bodies', () => {
+  const result = buildSystemPrompt({ intent: 'matter_intake' });
+  assert.equal(result.skills_loaded.length, 2, 'core + matter-intake loaded');
+  assert.ok(result.skills_loaded.includes('california-legal-core'));
+  assert.ok(result.skills_loaded.includes('matter-intake'));
+  // Body should mention the matter-intake-specific workflow content
+  assert.ok(/conflicts/i.test(result.prompt), 'matter-intake conflicts step included');
+  assert.ok(/risk triage/i.test(result.prompt), 'matter-intake risk-triage step included');
+  // Core skill is also there
+  assert.ok(/ceb_search/.test(result.prompt), 'core ceb_search guidance still there');
+});
+
+await test('skills: claim-chart skill composes core + claim-chart bodies', () => {
+  const result = buildSystemPrompt({ intent: 'claim_chart' });
+  assert.equal(result.skills_loaded.length, 2);
+  assert.ok(result.skills_loaded.includes('claim-chart'));
+  // claim-chart-specific content
+  assert.ok(/A CHART IS A DRAFT/i.test(result.prompt), 'claim-chart disclosure included');
+  assert.ok(/element/i.test(result.prompt));
+  assert.ok(/CACI/.test(result.prompt), 'California-specific CACI reference present');
+});
+
+await test('skills: legal-hold skill composes core + legal-hold bodies', () => {
+  const result = buildSystemPrompt({ intent: 'legal_hold' });
+  assert.equal(result.skills_loaded.length, 2);
+  assert.ok(result.skills_loaded.includes('legal-hold'));
+  assert.ok(/duty to preserve/i.test(result.prompt));
+  assert.ok(/Cedars-Sinai|2031\.300/.test(result.prompt), 'CA preservation framework cited');
+});
+
+await test('skills: privilege-log-review skill composes core + privilege-log-review bodies', () => {
+  const result = buildSystemPrompt({ intent: 'privilege_log' });
+  assert.equal(result.skills_loaded.length, 2);
+  assert.ok(result.skills_loaded.includes('privilege-log-review'));
+  assert.ok(/under-flagging.*one-way door/i.test(result.prompt) || /needs-attorney-review/i.test(result.prompt));
+  assert.ok(/Evid\. Code|CCP/.test(result.prompt), 'CA Evidence Code or CCP reference present');
+});
+
+await test('skills: intent detection picks up upstream phrasings (new matter, priv log, etc.)', () => {
+  assert.equal(detectIntent('Start a new matter for the Chen estate'), 'matter_intake');
+  assert.equal(detectIntent('Intake this matter — got a demand letter today'), 'matter_intake');
+  assert.equal(detectIntent('Build me an element chart for the negligence count'), 'claim_chart');
+  assert.equal(detectIntent('Issue a hold for the trust accounting dispute'), 'legal_hold');
+  assert.equal(detectIntent('Refresh the hold on the Acme matter'), 'legal_hold');
+  assert.equal(detectIntent('Pull the priv log we got from opposing counsel'), 'privilege_log');
+  assert.equal(detectIntent('Check privilege on these emails before production'), 'privilege_log');
 });
 
 // ---------------------------------------------------------------------------

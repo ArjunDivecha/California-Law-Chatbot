@@ -157,13 +157,22 @@ const INTENT_PATTERNS: Array<{ intent: string; patterns: RegExp[] }> = [
   {
     intent: 'matter_intake',
     patterns: [
-      /\b(matter[\s-]?intake|new client|client intake|open(?:ing)? (?:a )?matter|onboard)\b/i,
+      // V1 phrasings + upstream anthropics/claude-for-legal triggers
+      // ("new matter", "intake this matter", "bring a new matter into
+      // the portfolio") added 2026-05-13 to align with upstream Skill
+      // descriptions.
+      /\b(matter[\s-]?intake|new matter|intake this matter|new client|client intake|open(?:ing)? (?:a )?matter|onboard)\b/i,
     ],
   },
   {
     intent: 'claim_chart',
     patterns: [
       /\bclaim chart\b/i,
+      /\belement chart\b/i,
+      /\bproof chart\b/i,
+      /\belement[\s-]by[\s-]element\b/i,
+      /\b(?:infringement|invalidity) contention\b/i,
+      /\bwhat are we missing to prove\b/i,
       // "elements of (a) claim", "elements of liability",
       // "elements of a wrongful eviction claim", etc. Permits 0-5
       // tokens between "of" and "claim/liability".
@@ -175,13 +184,17 @@ const INTENT_PATTERNS: Array<{ intent: string; patterns: RegExp[] }> = [
     intent: 'legal_hold',
     patterns: [
       /\b(legal hold|preservation notice|litigation hold|spoliation)\b/i,
+      /\b(issue|refresh|release) (?:a |the )?hold\b/i,
+      /\bhold status\b/i,
     ],
   },
   {
     intent: 'privilege_log',
     patterns: [
       /\bprivilege log\b/i,
+      /\bpriv log\b/i,
       /\b(?:attorney[\s-]?client\s+)?privilege\s+review\b/i,
+      /\bcheck privilege on\b/i,
     ],
   },
 ];
