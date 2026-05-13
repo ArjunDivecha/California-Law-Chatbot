@@ -1,10 +1,11 @@
 {
-  "manifest_version": 1,
+  "manifest_version": 2,
   "authored": "2026-05-12",
+  "v2_addendum_authored": "2026-05-13",
   "supersedes": null,
-  "total": 100,
+  "total": 120,
   "_schema": {
-    "id": "T-{W1|W3|W4|W5|ADV|PII}-NNN",
+    "id": "T-{W1|W3|W4|W5|ADV|PII|FF}-NNN",
     "category": "compound_identifier | single_word_name | tool_output_reintroduction | financial | adversarial | mixed_direct_pii",
     "w_item": "W1 | W3 | W4 | W5 | adversarial | direct_pii",
     "provenance": "synthetic | f_and_f_matter_pattern",
@@ -19,15 +20,16 @@
     "category_values": ["ssn","tin","phone","email","street_address","zip","date","credit_card","bank_account","driver_license","medical_record","client_matter","dollar_amount","bar_number","court_case","name"]
   },
   "_distribution": {
-    "W1_compound_identifier": 20,
+    "W1_compound_identifier": 25,
     "W4_single_word_name": 10,
-    "W5_tool_output_reintroduction": 10,
+    "W5_tool_output_reintroduction": 11,
     "W3_financial": 10,
     "adversarial": 10,
-    "mixed_direct_pii": 40
+    "mixed_direct_pii": 54
   },
   "_pass_criteria": "Trap PASSES iff (a) every must_redact entry is ≥50%-overlap-covered by a span of the matching category in the pipeline output, AND (b) no must_not_redact substring intersects a predicted span, AND (c) result.privileged === expected_privileged. For tool_result_phase=true: run the tool-output wrapper against simulated_tool_result and apply (a)+(b) to must_redact_in_tool_result.",
-  "_provenance_note": "All 100 traps in v1 are synthetic. The audit doc §9 originally called for half from sanitized F&F matter patterns; that half was deferred 2026-05-12 by Arjun to keep the social-process dependency off the critical path. A future v2 manifest may add the F&F-matter half if attorney input becomes available.",
+  "_provenance_note": "Traps T-W1-001 through T-PII-040 (the v1 100) are synthetic. Traps T-FF-001 through T-FF-020 (v2 addendum, 2026-05-13) draw on F&F-matter-pattern seed input — names and query patterns provided by F&F counsel 2026-05-12, name-shifted per privacy practice (one-token shifts preserving linguistic origin / structural complexity / diacritic / hyphenation; literal letters changed so real friends do not appear in this public repo). The shifts preserve what matters for the sanitizer (origin, particles, compound shape) without putting actual people in the test data.",
+  "_v2_addendum_note": "The 2026-05-12 fifth addendum's Phase 2 work (manifest v2 with F&F-matter-pattern half) lands here. The v2 entries focus on what the v1 synthetic set couldn't hit: real F&F practice-area query patterns (trust planning, Revocable trust drafting), the specific name shapes attorneys actually encounter at this firm (Nahuatl/anglo, Western/Chinese, Turkish, Korean-middle triple-element compounds, Arabic, Vietnamese, Indian, hyphenated double-barreled, word-as-name with unusual surnames, diacritic given names), and the trust-planning-with-named-parties compound-identifier pattern that is F&F's most-used query shape.",
   "traps": [
     {
       "id": "T-W1-001", "category": "compound_identifier", "w_item": "W1", "provenance": "synthetic",
@@ -1005,6 +1007,213 @@
       "must_not_redact": ["Status update", "Mexico City", "local counsel"],
       "expected_privileged": true,
       "notes": "Spanish-origin name with 'del' particle + multi-element given name (María del Carmen) + compound surname. International phone format. F&F matter ID + Bar No. The hardest 'realistic mix' test for the pipeline."
+    },
+
+    {
+      "id": "T-FF-001", "category": "compound_identifier", "w_item": "W1", "provenance": "f_and_f_matter_pattern",
+      "input": "Consider Quetzal Brown is married to Theresa Chen and they have one child, would they want to set up a common trust or a pot trust?",
+      "must_redact": [
+        {"value": "Quetzal Brown", "category": "name"},
+        {"value": "Theresa Chen", "category": "name"}
+      ],
+      "must_not_redact": ["common trust", "pot trust", "married"],
+      "expected_privileged": true,
+      "notes": "F&F-v2 — THE canonical F&F trust-planning query pattern (provided by partner 2026-05-12; name-shifted from real client-example data). Two named parties + family structure + practice-area context. Tests: bigram on mixed-origin compounds (Nahuatl/anglo + Western/Chinese), parties+context-as-W1, drafting-workflow signal recognition."
+    },
+    {
+      "id": "T-FF-002", "category": "mixed_direct_pii", "w_item": "direct_pii", "provenance": "f_and_f_matter_pattern",
+      "input": "Draft a Revocable trust for Ocean Arky-Soliman.",
+      "must_redact": [
+        {"value": "Ocean Arky-Soliman", "category": "name"}
+      ],
+      "must_not_redact": ["Revocable trust", "Draft"],
+      "expected_privileged": true,
+      "notes": "F&F-v2 — drafting-workflow query (F&F partner-provided pattern). Word-as-name given (Ocean) + hyphenated double-barreled surname. Tests: name detection on common-noun-as-given-name + complex hyphenated surname. Risk: 'Ocean' is in many word lists; may be missed without the surname's bigram pull."
+    },
+    {
+      "id": "T-FF-003", "category": "mixed_direct_pii", "w_item": "direct_pii", "provenance": "f_and_f_matter_pattern",
+      "input": "Yasmin Pamucu reached out about her father's estate; she's the named executor.",
+      "must_redact": [
+        {"value": "Yasmin Pamucu", "category": "name"}
+      ],
+      "must_not_redact": ["estate", "executor", "father"],
+      "expected_privileged": true,
+      "notes": "F&F-v2 — Arabic/Persian given + Turkish-origin surname. Verb-cue (reached out) supports detection. Tests bigram on Turkish surname shape (no common cue in pattern dictionary)."
+    },
+    {
+      "id": "T-FF-004", "category": "mixed_direct_pii", "w_item": "direct_pii", "provenance": "f_and_f_matter_pattern",
+      "input": "Layla Bugaro filed the petition this morning.",
+      "must_redact": [
+        {"value": "Layla Bugaro", "category": "name"}
+      ],
+      "must_not_redact": ["petition", "filed", "morning"],
+      "expected_privileged": true,
+      "notes": "F&F-v2 — common Western given + unfamiliar Romance/Italian-style surname. Tests bigram on Romance-shape unfamiliar surnames at sentence start. Sentence-start position is a regression risk if the bigram requires a leading cue."
+    },
+    {
+      "id": "T-FF-005", "category": "mixed_direct_pii", "w_item": "direct_pii", "provenance": "f_and_f_matter_pattern",
+      "input": "Status update from Jameela Brown's matter — settlement reached last week.",
+      "must_redact": [
+        {"value": "Jameela Brown", "category": "name"}
+      ],
+      "must_not_redact": ["Status update", "matter", "settlement"],
+      "expected_privileged": true,
+      "notes": "F&F-v2 — Arabic-influenced given + anglo surname, possessive 's cue. 'Status' is in COMMON_NON_NAME_STARTS so 'Status update from Jameela...' should not greedily bigram on the leading word."
+    },
+    {
+      "id": "T-FF-006", "category": "mixed_direct_pii", "w_item": "direct_pii", "provenance": "f_and_f_matter_pattern",
+      "input": "Farrah Pulci needs the deposition docs by Friday.",
+      "must_redact": [
+        {"value": "Farrah Pulci", "category": "name"}
+      ],
+      "must_not_redact": ["deposition", "Friday", "docs"],
+      "expected_privileged": true,
+      "notes": "F&F-v2 — Western given + Italian-shape surname ending in -ci. 'Friday' is in COMMON_NON_NAME_STARTS already (date-word stop)."
+    },
+    {
+      "id": "T-FF-007", "category": "mixed_direct_pii", "w_item": "direct_pii", "provenance": "f_and_f_matter_pattern",
+      "input": "Alma Soongil Beck — the triple-name client — wants to amend her trust before the end of the quarter.",
+      "must_redact": [
+        {"value": "Alma Soongil Beck", "category": "name"}
+      ],
+      "must_not_redact": ["client", "trust", "quarter"],
+      "expected_privileged": true,
+      "notes": "F&F-v2 — THE HARDEST CASE. Latin given (Alma) + Korean middle (Soongil) + German surname (Beck). Three-element compound name spanning three linguistic origins. Tests the bigram+third-word path. Also tests that the em-dash interruption ('— the triple-name client —') doesn't break the span. Most likely failure mode: detector stops at 'Alma Soongil' (2-word bigram) and misses Beck, or misses the whole thing because the third word isn't anglo-shape."
+    },
+    {
+      "id": "T-FF-008", "category": "mixed_direct_pii", "w_item": "direct_pii", "provenance": "f_and_f_matter_pattern",
+      "input": "Milan Phong is the trustee on the Phong family trust.",
+      "must_redact": [
+        {"value": "Milan Phong", "category": "name"}
+      ],
+      "must_not_redact": ["trustee", "family trust"],
+      "expected_privileged": true,
+      "notes": "F&F-v2 — Slavic given + Vietnamese surname. Same surname (Phong) appears twice in one sentence (client's name + trust name). Tests: bigram detection on Vietnamese-shape surnames AND that the second 'Phong' (in 'Phong family trust') doesn't cause double-counting or category confusion."
+    },
+    {
+      "id": "T-FF-009", "category": "mixed_direct_pii", "w_item": "direct_pii", "provenance": "f_and_f_matter_pattern",
+      "input": "Amir Maklad's brother-in-law is challenging the will in probate court.",
+      "must_redact": [
+        {"value": "Amir Maklad", "category": "name"}
+      ],
+      "must_not_redact": ["brother-in-law", "will", "probate court"],
+      "expected_privileged": true,
+      "notes": "F&F-v2 — Arabic given + Arabic surname, possessive cue, family-structure relational. Tests bigram on Arabic-full-name shape with possessive 's tail."
+    },
+    {
+      "id": "T-FF-010", "category": "mixed_direct_pii", "w_item": "direct_pii", "provenance": "f_and_f_matter_pattern",
+      "input": "Co-counsel for Vikram Patel just emailed re calendaring next Tuesday's hearing.",
+      "must_redact": [
+        {"value": "Vikram Patel", "category": "name"}
+      ],
+      "must_not_redact": ["Co-counsel", "Tuesday", "hearing"],
+      "expected_privileged": true,
+      "notes": "F&F-v2 — Indian-origin name (south-Asian given + common Gujarati surname). Role-cue prefix ('Co-counsel for'). 'Co-counsel' is in COMMON_NON_NAME_STARTS so the prefix should not be greedily attached."
+    },
+    {
+      "id": "T-FF-011", "category": "mixed_direct_pii", "w_item": "direct_pii", "provenance": "f_and_f_matter_pattern",
+      "input": "Set up the intake meeting with Pamé Orun for Tuesday at 2 PM.",
+      "must_redact": [
+        {"value": "Pamé Orun", "category": "name"}
+      ],
+      "must_not_redact": ["intake meeting", "Tuesday", "2 PM"],
+      "expected_privileged": true,
+      "notes": "F&F-v2 — Diacritic in given name (é) + Romance-shape surname. Tests the Unicode/diacritic Latin-extended name regex that landed Step 3 Iter 2 (2026-05-12). 'Tuesday' should not match date pattern; '2 PM' should not match time-as-phone."
+    },
+    {
+      "id": "T-FF-012", "category": "mixed_direct_pii", "w_item": "direct_pii", "provenance": "f_and_f_matter_pattern",
+      "input": "Halim Madee is concerned about probate timing on the contested estate.",
+      "must_redact": [
+        {"value": "Halim Madee", "category": "name"}
+      ],
+      "must_not_redact": ["probate", "contested estate"],
+      "expected_privileged": true,
+      "notes": "F&F-v2 — Arabic full name with -ee surname ending (variant transliteration). Sentence-start name, no prefix cue. Bigram on Arabic-shape names at sentence-start."
+    },
+    {
+      "id": "T-FF-013", "category": "compound_identifier", "w_item": "W1", "provenance": "f_and_f_matter_pattern",
+      "input": "Married couple — wife is a Korean-American family-medicine physician in Berkeley; husband is a Mexican-American architect; one teen daughter at Bishop O'Dowd. Common trust or pot trust?",
+      "must_redact": [],
+      "must_not_redact": ["Korean-American", "Mexican-American", "Berkeley", "Bishop O'Dowd", "physician", "architect"],
+      "expected_privileged": true,
+      "notes": "F&F-v2 — pure-compound trust-planning query, NO names. Compound identifiers: two ethnicities (Korean-American, Mexican-American) + city (Berkeley) + specific profession (family-medicine physician, architect) + family structure (teen daughter) + specific institution (Bishop O'Dowd). Should fire compound-risk with ≥3 buckets → privileged=true. Bishop is in COMMON_NON_NAME_STARTS so 'Bishop O'Dowd' should not bigram on Bishop."
+    },
+    {
+      "id": "T-FF-014", "category": "compound_identifier", "w_item": "W1", "provenance": "f_and_f_matter_pattern",
+      "input": "Surviving spouse — Vietnamese-American, retired Boeing engineer in Long Beach. Decedent died intestate; one adult son in Sacramento, one minor daughter at Mark Keppel. Intestate succession question.",
+      "must_redact": [],
+      "must_not_redact": ["Vietnamese-American", "Boeing engineer", "Long Beach", "Sacramento", "intestate", "Surviving spouse"],
+      "expected_privileged": true,
+      "notes": "F&F-v2 — pure-compound probate query, NO names. Ethnicity + employer (Boeing) + small geographic locator + family structure (two children, one adult, one minor) + specific school (Mark Keppel). Should fire compound-risk. 'Mark Keppel' INTENTIONALLY NOT in must_not_redact — school names are identifying when combined with other facts, so the sanitizer flagging it as a name span is conservative-correct behavior. 'intestate' in must_not_redact requires legal-vocabulary stoplist (Intestate added to COMMON_LEGAL_PHRASE_WORDS v2 2026-05-13)."
+    },
+    {
+      "id": "T-FF-015", "category": "mixed_direct_pii", "w_item": "direct_pii", "provenance": "f_and_f_matter_pattern",
+      "input": "Alma Soongil Beck and her ex-husband Halim Madee are co-trustees on the children's trust.",
+      "must_redact": [
+        {"value": "Alma Soongil Beck", "category": "name"},
+        {"value": "Halim Madee", "category": "name"}
+      ],
+      "must_not_redact": ["co-trustees", "ex-husband", "children's trust"],
+      "expected_privileged": true,
+      "notes": "F&F-v2 — TWO named parties in one sentence, both complex: triple-element Korean-middle compound + Arabic full name. Family-structure relational context. Tests bigram extraction on multiple complex names + non-name cue word ('co-trustees', 'ex-husband') filtering."
+    },
+    {
+      "id": "T-FF-016", "category": "mixed_direct_pii", "w_item": "direct_pii", "provenance": "f_and_f_matter_pattern",
+      "input": "Pamé Orun's husband, Sébastien Orun, wants to add himself as successor trustee.",
+      "must_redact": [
+        {"value": "Pamé Orun", "category": "name"},
+        {"value": "Sébastien Orun", "category": "name"}
+      ],
+      "must_not_redact": ["husband", "successor trustee"],
+      "expected_privileged": true,
+      "notes": "F&F-v2 — MULTIPLE diacritics across two names (é in both Pamé and Sébastien). Same surname twice. Family relational cue. Tests Unicode-extended Latin matching on French-shape names + possessive + comma-bracketed apposition."
+    },
+    {
+      "id": "T-FF-017", "category": "compound_identifier", "w_item": "W1", "provenance": "f_and_f_matter_pattern",
+      "input": "Iranian-American couple in Cupertino — wife is a UCSF child psychiatrist, husband is a Cisco principal engineer. Pre-nup with revocable trust integration, no kids yet but planning. Discuss timing.",
+      "must_redact": [],
+      "must_not_redact": ["Iranian-American", "Cupertino", "UCSF", "Cisco", "psychiatrist", "engineer", "Pre-nup", "revocable trust"],
+      "expected_privileged": true,
+      "notes": "F&F-v2 — Cupertino-area tech-and-medicine compound (typical Bay-Area F&F client shape). Ethnicity + small city + multiple specific employers + specific specialties. ≥5 compound buckets expected. NO names; pure compound-risk privileged trigger."
+    },
+    {
+      "id": "T-FF-018", "category": "tool_output_reintroduction", "w_item": "W5", "provenance": "f_and_f_matter_pattern",
+      "input": "What does California Probate Code §6110 require for a holographic will to be valid? Cite the statute and a recent appellate case.",
+      "must_redact": [],
+      "must_not_redact": ["holographic will", "Probate Code", "appellate"],
+      "expected_privileged": false,
+      "tool_result_phase": true,
+      "simulated_tool_result": "Probate Code §6110 requires the will be signed by the testator. Recent appellate application: Estate of Pulci (2024) 102 Cal.App.5th 218, where decedent Farrah Pulci of 4421 Mission Street, San Francisco left a holographic instrument; the court upheld validity based on testimony from her brother Jameel Brown.",
+      "must_redact_in_tool_result": [
+        {"value": "Farrah Pulci", "category": "name"},
+        {"value": "Jameel Brown", "category": "name"},
+        {"value": "4421 Mission Street", "category": "street_address"}
+      ],
+      "notes": "F&F-v2 — drafting-workflow tool-result-reintroduction trap. Innocent statute query; tool result returns a case caption with party names + address that re-introduce F&F-shape names. Tool-output sanitization wrapper (committed in e181faa) should redact all three before the model sees them. Uses the same shifted names from elsewhere in v2 so we exercise the wrapper on the same name shapes the input-side traps cover."
+    },
+    {
+      "id": "T-FF-019", "category": "compound_identifier", "w_item": "W1", "provenance": "f_and_f_matter_pattern",
+      "input": "Consider Vikram Patel is married to Yasmin Pamucu and they have twins, would a pot trust make sense given the twins are minors with different developmental needs?",
+      "must_redact": [
+        {"value": "Vikram Patel", "category": "name"},
+        {"value": "Yasmin Pamucu", "category": "name"}
+      ],
+      "must_not_redact": ["pot trust", "twins", "minors"],
+      "expected_privileged": true,
+      "notes": "F&F-v2 — F&F's canonical trust-planning question pattern (T-FF-001 shape) applied to a different pair of named parties. Indian + Turkish compound. Twins as compound-identifier element ('twins with different developmental needs' is uniquely identifying when combined with the names). Tests pattern recurrence + cross-cultural-name bigram detection."
+    },
+    {
+      "id": "T-FF-020", "category": "mixed_direct_pii", "w_item": "direct_pii", "provenance": "f_and_f_matter_pattern",
+      "input": "Add Milan Phong, Alma Soongil Beck, and Halim Madee as co-successor trustees on the family trust, effective 2026-07-01.",
+      "must_redact": [
+        {"value": "Milan Phong", "category": "name"},
+        {"value": "Alma Soongil Beck", "category": "name"},
+        {"value": "Halim Madee", "category": "name"},
+        {"value": "2026-07-01", "category": "date"}
+      ],
+      "must_not_redact": ["co-successor trustees", "family trust"],
+      "expected_privileged": true,
+      "notes": "F&F-v2 — THREE complex names in a comma-list + ISO date. Tests that bigram detection handles enumeration (name, name, and name) without span boundary errors, AND that the triple-element name (Alma Soongil Beck) survives the comma context, AND that the ISO date pattern (W9, committed Step 1) fires. The 'co-successor trustees' phrase should not get bigram-extended."
     }
   ]
 }

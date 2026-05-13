@@ -334,6 +334,18 @@ const COMMON_LEGAL_PHRASE_WORDS = new Set<string>([
   'Statutes',
   'Reporter',
   'Reports',
+  // Probate / estate vocabulary that surfaces in F&F intake. Without
+  // these, scanLowercaseCue captures "Decedent died intestate" as a
+  // 2-word name because "died" + "intestate" are both lowercase
+  // letters-only words. Added v2 2026-05-13 after T-FF-014 surfaced
+  // the gap.
+  'Intestate',
+  'Testate',
+  'Holographic',
+  'Codicil',
+  'Probate',
+  'Pour-over',
+  'Decanting',
 ]);
 
 /**

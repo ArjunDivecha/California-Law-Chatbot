@@ -57,6 +57,21 @@ const TERM_TO_BUCKET: ReadonlyArray<[string, string]> = [
   ['Russian-speaking', 'ethnicity'],
   ['Spanish-speaking', 'ethnicity'],
   ['Orthodox Jewish', 'ethnicity'],
+  // Hyphenated-American forms commonly used in F&F intake (added v2 2026-05-13)
+  ['Korean-American', 'ethnicity'],
+  ['Mexican-American', 'ethnicity'],
+  ['Vietnamese-American', 'ethnicity'],
+  ['Iranian-American', 'ethnicity'],
+  ['Chinese-American', 'ethnicity'],
+  ['Japanese-American', 'ethnicity'],
+  ['Indian-American', 'ethnicity'],
+  ['Pakistani-American', 'ethnicity'],
+  ['Filipino-American', 'ethnicity'],
+  ['Cuban-American', 'ethnicity'],
+  ['Italian-American', 'ethnicity'],
+  ['Irish-American', 'ethnicity'],
+  ['Asian-American', 'ethnicity'],
+  ['Pacific Islander', 'ethnicity'],
   ['Hispanic', 'ethnicity'],
   ['Latino', 'ethnicity'],
   ['Latina', 'ethnicity'],
@@ -98,6 +113,22 @@ const TERM_TO_BUCKET: ReadonlyArray<[string, string]> = [
   ['Westwood', 'small_location'],
   ['Fresno', 'small_location'],
   ['Fresno County', 'small_location'],
+  // Bay-Area / California locations common in F&F intake (added v2 2026-05-13)
+  ['Berkeley', 'small_location'],
+  ['Oakland', 'small_location'],
+  ['Sacramento', 'small_location'],
+  ['Palo Alto', 'small_location'],
+  ['Mountain View', 'small_location'],
+  ['Menlo Park', 'small_location'],
+  ['Alameda', 'small_location'],
+  ['Walnut Creek', 'small_location'],
+  ['Lafayette', 'small_location'],
+  ['Orinda', 'small_location'],
+  ['Marin County', 'small_location'],
+  ['Marin', 'small_location'],
+  ['Santa Cruz', 'small_location'],
+  ['Pasadena', 'small_location'],
+  ['Alhambra', 'small_location'],
 
   // ────────────────────────────────────────────────────────────────────
   // immigration / visa status
@@ -164,6 +195,21 @@ const TERM_TO_BUCKET: ReadonlyArray<[string, string]> = [
   ['nursing home', 'niche_occupation'],
   ['shop owner', 'niche_occupation'],
   ['farmer', 'niche_occupation'],
+  // Specific F&F-shape professional specialties (added v2 2026-05-13).
+  // Note: kept compound to avoid firing on generic "physician" or
+  // "engineer" alone — only the specialty-qualified forms count.
+  ['family-medicine physician', 'niche_occupation'],
+  ['child psychiatrist', 'niche_occupation'],
+  ['principal engineer', 'niche_occupation'],
+  ['in-house attorney', 'niche_occupation'],
+  ['tax attorney', 'niche_occupation'],
+  ['plaintiffs attorney', 'niche_occupation'],
+  ['plaintiff\'s attorney', 'niche_occupation'],
+  ['estate planning attorney', 'niche_occupation'],
+  ['nurse practitioner', 'niche_occupation'],
+  ['Boeing engineer', 'niche_occupation'],
+  ['Cisco principal engineer', 'niche_occupation'],
+  ['UCSF child psychiatrist', 'niche_occupation'],
 
   // ────────────────────────────────────────────────────────────────────
   // language / linguistic-community markers (distinct from ethnicity —
@@ -200,6 +246,27 @@ const TERM_TO_BUCKET: ReadonlyArray<[string, string]> = [
   ['Talmudic-court', 'institution_marker'],
   ['Talmudic court', 'institution_marker'],
   ['diocese', 'institution_marker'],
+  // Bay-Area tech / corporate employers + schools common in F&F intake
+  // (added v2 2026-05-13). Specific enough to fire compound-risk when
+  // combined with location + ethnicity; not so generic as to false-positive
+  // on legal-research queries (no "tech company" / "engineer" alone).
+  ['Boeing', 'institution_marker'],
+  ['Cisco', 'institution_marker'],
+  ['Google', 'institution_marker'],
+  ['Apple', 'institution_marker'],
+  ['Meta', 'institution_marker'],
+  ['Genentech', 'institution_marker'],
+  ['Tesla', 'institution_marker'],
+  ['Kaiser', 'institution_marker'],
+  ['UCSF Medical', 'institution_marker'],
+  ['Stanford Hospital', 'institution_marker'],
+  ['Bishop O\'Dowd', 'institution_marker'],
+  ['Mark Keppel', 'institution_marker'],
+  ['Lowell', 'institution_marker'],
+  ['San Marin', 'institution_marker'],
+  ['Berkeley High', 'institution_marker'],
+  ['Lick-Wilmerding', 'institution_marker'],
+  ['College Prep', 'institution_marker'],
 ];
 
 /**
