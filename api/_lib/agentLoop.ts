@@ -237,15 +237,100 @@ export interface ToolOutputSanitization {
  * name. The model will see "People v. [REDACTED:name]." Better than
  * leaking, and the user can ask for clarification if needed.
  */
+/**
+ * Tool-output fields whose VALUES are public-record case captions and
+ * should be exempt from `name`-category redaction. Task #71 fix: case
+ * party names in CourtListener / citation_verify hits aren't privileged
+ * client data — they're indexed public-record case-law. Redacting them
+ * to `[REDACTED:name]` breaks the model's verification feedback loop
+ * and produces broken Sources panels.
+ *
+ * Other HIGH_RISK categories (ssn, phone, etc.) STILL get redacted even
+ * inside these fields — only `name` is exempted, and only inside these
+ * specific fields. Privileged content the model received from a tool
+ * still gets redacted everywhere else.
+ */
+const CAPTION_SAFE_FIELDS: Readonly<string[]> = [
+  'case_name',
+  'caseName',
+  'caption',
+  'caseTitle',
+  'title', // for citation_verify entries whose top-level "text" is the cited case
+  'text',  // citation_verify's `citations[].text` field is "Name v. Name (year) Reporter"
+];
+
+/**
+ * Find byte ranges within a JSON string that correspond to values of
+ * known case-caption fields. Returns sorted, non-overlapping ranges
+ * where `name`-category spans should NOT be redacted.
+ *
+ * Implementation: regex over the raw JSON looking for `"field":"value"`
+ * patterns. Imperfect for values containing escaped quotes (rare in
+ * tool output), but safe-fallback is "redact normally" — i.e., the worst
+ * case is we redact a case caption we could have left alone, which is
+ * the pre-fix behavior. Never increases leak risk.
+ */
+function findCaptionSafeRanges(content: string): Array<{ start: number; end: number }> {
+  const ranges: Array<{ start: number; end: number }> = [];
+  for (const field of CAPTION_SAFE_FIELDS) {
+    // Match: "field":"<value>" — value is non-greedy, terminated by an
+    // unescaped quote. Captures the inner value's byte range.
+    const re = new RegExp(`"${field}"\\s*:\\s*"((?:[^"\\\\]|\\\\.)*)"`, 'g');
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(content)) !== null) {
+      const valueStart = m.index + m[0].indexOf('"', m[0].indexOf(':')) + 1;
+      const valueEnd = valueStart + m[1].length;
+      ranges.push({ start: valueStart, end: valueEnd });
+    }
+  }
+  // Sort + merge overlapping
+  ranges.sort((a, b) => a.start - b.start);
+  const merged: Array<{ start: number; end: number }> = [];
+  for (const r of ranges) {
+    const last = merged[merged.length - 1];
+    if (last && r.start <= last.end) {
+      last.end = Math.max(last.end, r.end);
+    } else {
+      merged.push({ ...r });
+    }
+  }
+  return merged;
+}
+
+function spanInsideAnyRange(
+  span: Span,
+  ranges: Array<{ start: number; end: number }>,
+): boolean {
+  for (const r of ranges) {
+    if (span.start >= r.start && span.end <= r.end) return true;
+  }
+  return false;
+}
+
 export function sanitizeToolOutput(
   content: string,
+  options?: { toolName?: string },
 ): { content: string; attestation: ToolOutputSanitization | null } {
   if (!content || typeof content !== 'string') {
     return { content: content ?? '', attestation: null };
   }
   const result = analyze(content);
-  const highRisk = result.spans.filter((s: Span) => HIGH_RISK_CATEGORIES.has(s.category));
+  const highRiskRaw = result.spans.filter((s: Span) => HIGH_RISK_CATEGORIES.has(s.category));
   const compoundBuckets = result.compoundRiskBuckets ?? 0;
+
+  // Task #71 — for tool outputs whose results contain public-record case
+  // captions, exempt the `name` category from redaction when the span
+  // falls inside a known caption field. Applies to case-law-shaped tools
+  // (courtlistener_search, citation_verify) and CEB which sometimes
+  // surfaces case names. Other categories (ssn/phone/etc.) still get
+  // redacted everywhere.
+  const captionAware = options?.toolName === 'courtlistener_search' ||
+    options?.toolName === 'citation_verify' ||
+    options?.toolName === 'ceb_search';
+  const safeRanges = captionAware ? findCaptionSafeRanges(content) : [];
+  const highRisk = captionAware
+    ? highRiskRaw.filter((s) => !(s.category === 'name' && spanInsideAnyRange(s, safeRanges)))
+    : highRiskRaw;
 
   if (highRisk.length === 0 && compoundBuckets < COMPOUND_RISK_BUCKET_THRESHOLD) {
     return { content, attestation: null };
@@ -471,7 +556,10 @@ async function dispatchWithCache(
   // block runs through the same span detector as user input. Destructive
   // redaction (HIGH_RISK_CATEGORIES → [REDACTED:<category>]) before the
   // model sees it.
-  const { content: sanitizedContent, attestation } = sanitizeToolOutput(rawContent);
+  const { content: sanitizedContent, attestation } = sanitizeToolOutput(
+    rawContent,
+    { toolName: use.name },
+  );
 
   // Cache the SANITIZED content, not the raw. If we cached raw and only
   // sanitized at emit time, the second time we read from cache we'd
