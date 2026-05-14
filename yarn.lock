@@ -233,7 +233,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@clerk/backend@npm:^3.2.8":
+"@clerk/backend@npm:^3.2.8, @clerk/backend@npm:^3.4.7":
   version: 3.4.7
   resolution: "@clerk/backend@npm:3.4.7"
   dependencies:
@@ -297,6 +297,25 @@ __metadata:
     react-dom:
       optional: true
   checksum: 10c0/12814e949af57e11cf12fdc3590f0aad9c4432629404e0d71d70312e827b3fb25c0f17f0bdb49ef701677799d8fb715e15eb331f67e6550d8061213aef34c105
+  languageName: node
+  linkType: hard
+
+"@clerk/testing@npm:^2.0.27":
+  version: 2.0.27
+  resolution: "@clerk/testing@npm:2.0.27"
+  dependencies:
+    "@clerk/backend": "npm:^3.4.7"
+    "@clerk/shared": "npm:^4.10.2"
+    dotenv: "npm:17.2.2"
+  peerDependencies:
+    "@playwright/test": ^1
+    cypress: ^13 || ^14
+  peerDependenciesMeta:
+    "@playwright/test":
+      optional: true
+    cypress:
+      optional: true
+  checksum: 10c0/181f8d181d9b45d2d5676bf17772611ce22d263b8c9de34d15c4d98901bc29d2e870e5e1cdcf9c28d7462bf2a80eed719ed3d1d8417533a010e85314d46db456
   languageName: node
   linkType: hard
 
@@ -1799,6 +1818,7 @@ __metadata:
     "@anthropic-ai/sdk": "npm:^0.95.2"
     "@clerk/backend": "npm:^3.2.8"
     "@clerk/clerk-react": "npm:^5.61.4"
+    "@clerk/testing": "npm:^2.0.27"
     "@google/genai": "npm:^1.27.0"
     "@types/node": "npm:^22.14.0"
     "@upstash/redis": "npm:^1.37.0"
@@ -2130,6 +2150,13 @@ __metadata:
     "@types/trusted-types":
       optional: true
   checksum: 10c0/fa0a8c55a436ba0d54389195e3d2337e311f56de709a2fc9efc98dbbc7746fa53bb4b74b6ac043b77a279a8f2ebd8685f0ebaa6e58c9e32e92051d529bc0baf8
+  languageName: node
+  linkType: hard
+
+"dotenv@npm:17.2.2":
+  version: 17.2.2
+  resolution: "dotenv@npm:17.2.2"
+  checksum: 10c0/be66513504590aff6eccb14167625aed9bd42ce80547f4fe5d195860211971a7060949b57108dfaeaf90658f79e40edccd3f233f0a978bff507b5b1565ae162b
   languageName: node
   linkType: hard
 

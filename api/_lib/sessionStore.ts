@@ -32,6 +32,20 @@ export interface SessionRedis {
   get(key: string): Promise<string | null>;
   del(key: string): Promise<number>;
   expire(key: string, seconds: number): Promise<unknown>;
+  // Sorted-set methods for the per-user session index. @upstash/redis
+  // signatures: zadd(key, {score, member}); zrange(key, min, max, opts).
+  zadd(
+    key: string,
+    score_member: { score: number; member: string },
+  ): Promise<number | null>;
+  zrange(
+    key: string,
+    start: number,
+    stop: number,
+    opts?: { rev?: boolean },
+  ): Promise<string[]>;
+  zrem(key: string, member: string): Promise<number>;
+  zcard(key: string): Promise<number>;
 }
 
 let injected: SessionRedis | null = null;
@@ -73,6 +87,13 @@ function toolResultKey(sessionId: string, toolUseId: string): string {
 function lockKey(sessionId: string): string {
   return `session:${sessionId}:lock`;
 }
+/**
+ * Per-user index of sessions, sorted by last-active timestamp.
+ * ZADD on every turn; ZREVRANGE on session-list reads.
+ */
+function userSessionsKey(userId: string): string {
+  return `user:${userId}:sessions`;
+}
 
 const TOOL_RESULT_TTL_SECONDS = 60 * 60 * 24;
 const LOCK_TTL_SECONDS = 30;
@@ -102,6 +123,9 @@ export interface SessionMessage {
     redactions_count: number;
     by_category: Record<string, number>;
   };
+  /** Workflow mode for this turn (V2 Phase 4 P2.5) — surfaced as a badge
+   *  in the chat UI so attorneys can see which mode produced each turn. */
+  workflow?: 'quick' | 'research';
 }
 
 export async function appendMessage(
@@ -179,6 +203,84 @@ export async function writeMeta(
 
 export async function touchLastActive(sessionId: string): Promise<void> {
   await writeMeta(sessionId, { last_active_at: new Date().toISOString() });
+}
+
+// ---------------------------------------------------------------------------
+// Per-user session index (Phase 4.x)
+// ---------------------------------------------------------------------------
+
+/**
+ * Register/refresh a session in the user's index. Called on every turn
+ * via the agent loop so the score (last-active ms) stays current. The
+ * sidebar lists `user:{userId}:sessions` via ZREVRANGE to get the
+ * newest sessions first.
+ *
+ * Idempotent — ZADD updates the score for an existing member.
+ */
+export async function indexUserSession(
+  userId: string,
+  sessionId: string,
+): Promise<void> {
+  if (!userId || !sessionId) return;
+  const redis = resolveRedis();
+  await redis.zadd(userSessionsKey(userId), {
+    score: Date.now(),
+    member: sessionId,
+  });
+}
+
+export interface SessionSummary {
+  session_id: string;
+  title: string | null;
+  last_active_at: string | null;
+  created_at: string | null;
+  message_count: number;
+}
+
+/**
+ * List the most-recent sessions for a user, newest first. Default 50.
+ * Reads from the per-user sorted-set index, then fetches each session's
+ * meta + message count. N+1 calls — acceptable at 50 sessions; if the
+ * cap grows, batch into a Pipeline.
+ */
+export async function listSessionsForUser(
+  userId: string,
+  limit: number = 50,
+): Promise<SessionSummary[]> {
+  if (!userId) return [];
+  const redis = resolveRedis();
+  // zrange(..., {rev: true}) is @upstash/redis's idiomatic ZREVRANGE.
+  const ids = await redis.zrange(userSessionsKey(userId), 0, limit - 1, {
+    rev: true,
+  });
+  if (!ids || ids.length === 0) return [];
+
+  const results: SessionSummary[] = [];
+  for (const id of ids) {
+    const meta = await readMeta(id);
+    const messages = await redis.lrange(messagesKey(id), 0, -1);
+    results.push({
+      session_id: id,
+      title: meta?.title ?? null,
+      last_active_at: meta?.last_active_at ?? null,
+      created_at: meta?.created_at ?? null,
+      message_count: messages?.length ?? 0,
+    });
+  }
+  return results;
+}
+
+/**
+ * Remove a session from the user's index (e.g., on delete). Does NOT
+ * delete the underlying session data — call deleteSession for that.
+ */
+export async function unindexUserSession(
+  userId: string,
+  sessionId: string,
+): Promise<void> {
+  if (!userId || !sessionId) return;
+  const redis = resolveRedis();
+  await redis.zrem(userSessionsKey(userId), sessionId);
 }
 
 // ---------------------------------------------------------------------------

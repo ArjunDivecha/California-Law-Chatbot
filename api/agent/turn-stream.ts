@@ -52,6 +52,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     user_id?: string | null;
     model?: string;
     system_prompt?: string;
+    workflow?: 'quick' | 'research';
   };
 
   // SSE headers. X-Accel-Buffering disables nginx buffering on
@@ -74,6 +75,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       user_id: body.user_id ?? null,
       model: body.model,
       system_prompt: body.system_prompt,
+      workflow: body.workflow,
     })) {
       writeEvent(event.kind, event);
       if (event.kind === 'done' || event.kind === 'error' || event.kind === 'proxy_error') {

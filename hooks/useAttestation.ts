@@ -1,31 +1,112 @@
 /**
- * Phase 4 / §Y placeholder — confidentiality attestation hook.
+ * useAttestation — per-user informed-consent state.
  *
- * Tests in tests/sanitization.test.mjs reference `_internals` (storageKey,
- * readAttestation, writeAttestation) and `ATTESTATION_VERSION`. Until the
- * real hook ships with the §Y per-session attestation generator (Phase 4
- * UI integration), this stub satisfies the dynamic import so the test
- * runner completes. The dependent tests fail loudly with a known-cause
- * message instead of silent assertion mismatches.
+ * Reads / writes a localStorage flag keyed by Clerk user ID and a
+ * version marker. Bumping ATTESTATION_VERSION forces the modal to
+ * resurface for every attorney — use this when the acknowledgement
+ * wording changes materially.
  *
- * Real implementation lives on `codex/drafting-magic-sanitized` at this
- * same path.
+ * Pure browser-local state. No server call, no network. The audit log
+ * is the durable record; this hook is just the UI gate.
  */
 
-const NOT_IMPLEMENTED = 'Phase 4 / §Y deliverable — see codex/drafting-magic-sanitized for reference impl';
+import { useCallback, useEffect, useState } from 'react';
 
-export const ATTESTATION_VERSION = 0;
+/**
+ * Version of the acknowledgement text. Bump when the modal wording
+ * changes in a way that requires every attorney to re-acknowledge.
+ * F&F compliance counsel should own this value.
+ */
+export const ATTESTATION_VERSION = 1;
 
-function notImplemented(method: string): never {
-  throw new Error(`useAttestation._internals.${method}: ${NOT_IMPLEMENTED}`);
+const STORAGE_PREFIX = 'cla-sanitization-attested';
+
+export interface AttestationRecord {
+  version: number;
+  acknowledgedAt: string; // ISO-8601
 }
 
-export const _internals = {
-  storageKey: (..._args: unknown[]): never => notImplemented('storageKey'),
-  readAttestation: (..._args: unknown[]): never => notImplemented('readAttestation'),
-  writeAttestation: (..._args: unknown[]): never => notImplemented('writeAttestation'),
-};
-
-export function useAttestation(..._args: unknown[]): never {
-  throw new Error(`useAttestation: ${NOT_IMPLEMENTED}`);
+function storageKey(userId: string): string {
+  return `${STORAGE_PREFIX}:v${ATTESTATION_VERSION}:${userId}`;
 }
+
+function readAttestation(userId: string): AttestationRecord | null {
+  if (typeof window === 'undefined' || !userId) return null;
+  try {
+    const raw = window.localStorage.getItem(storageKey(userId));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as AttestationRecord;
+    if (parsed?.version !== ATTESTATION_VERSION || !parsed?.acknowledgedAt) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function writeAttestation(userId: string, record: AttestationRecord): void {
+  if (typeof window === 'undefined' || !userId) return;
+  try {
+    window.localStorage.setItem(storageKey(userId), JSON.stringify(record));
+  } catch {
+    // Ignore quota / privacy-mode errors — worst case the modal shows again.
+  }
+}
+
+export interface UseAttestationResult {
+  /** True once the attorney has acknowledged the current version. */
+  attested: boolean;
+  /** Timestamp of the acknowledgement, if any. */
+  acknowledgedAt: string | null;
+  /** Call when the attorney clicks "I understand". */
+  acknowledge: () => void;
+  /** Clear the acknowledgement (e.g., if F&F wants to require re-attestation). */
+  clear: () => void;
+  /** True once the mount-time read has completed. Avoids a modal flash. */
+  ready: boolean;
+}
+
+export function useAttestation(userId: string | null | undefined): UseAttestationResult {
+  const [record, setRecord] = useState<AttestationRecord | null>(null);
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    if (!userId) {
+      setRecord(null);
+      setReady(true);
+      return;
+    }
+    setRecord(readAttestation(userId));
+    setReady(true);
+  }, [userId]);
+
+  const acknowledge = useCallback(() => {
+    if (!userId) return;
+    const next: AttestationRecord = {
+      version: ATTESTATION_VERSION,
+      acknowledgedAt: new Date().toISOString(),
+    };
+    writeAttestation(userId, next);
+    setRecord(next);
+  }, [userId]);
+
+  const clear = useCallback(() => {
+    if (!userId) return;
+    try {
+      window.localStorage.removeItem(storageKey(userId));
+    } catch {
+      // ignore
+    }
+    setRecord(null);
+  }, [userId]);
+
+  return {
+    attested: !!record,
+    acknowledgedAt: record?.acknowledgedAt ?? null,
+    acknowledge,
+    clear,
+    ready,
+  };
+}
+
+// Exported for tests and any external helper scripts.
+export const _internals = { storageKey, readAttestation, writeAttestation };

@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Routes, Route, Navigate, useParams, useNavigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useParams, useNavigate, useLocation } from 'react-router-dom';
 import { SignedIn, SignedOut, RedirectToSignIn } from '@clerk/clerk-react';
 import { useAuthFetch } from './utils/authFetch.ts';
 
@@ -13,6 +13,10 @@ import { ResponseModeToggle } from './components/ResponseModeToggle';
 import { DraftingMode } from './components/drafting/DraftingMode';
 import SignInPage from './components/SignInPage';
 import { V2ChatPage } from './components/v2/V2ChatPage';
+import { V2DraftPage } from './components/v2/V2DraftPage';
+import { V2Sidebar } from './components/v2/V2Sidebar';
+import { V2VerifyPage } from './components/v2/V2VerifyPage';
+import { V2DraftingMagicPage } from './components/v2/V2DraftingMagicPage';
 import type { AppMode } from './types';
 
 // ---------------------------------------------------------------------------
@@ -127,6 +131,37 @@ const NewChatRedirect: React.FC = () => {
 // ---------------------------------------------------------------------------
 // Root App
 // ---------------------------------------------------------------------------
+// V1's Sidebar fetches /api/chats on mount. On /v2* routes V2 owns its
+// own chrome — render the V1 sidebar only on V1 routes to avoid the
+// pre-signin 401 noise and the visual mismatch.
+const SignedInShell: React.FC<{ sidebarOpen: boolean; onToggle: () => void }> = ({
+  sidebarOpen,
+  onToggle,
+}) => {
+  const location = useLocation();
+  const isV2Route = location.pathname.startsWith('/v2');
+  return (
+    <div className={isV2Route ? 'flex' : ''}>
+      {!isV2Route && <Sidebar isOpen={sidebarOpen} onToggle={onToggle} />}
+      {isV2Route && <V2Sidebar />}
+      <div className={isV2Route ? 'flex-1 min-w-0' : ''}>
+        <Routes>
+          <Route path="/" element={<NewChatRedirect />} />
+          <Route path="/c/:chatId" element={<ChatPage sidebarOpen={sidebarOpen} />} />
+          <Route path="/v2" element={<V2ChatPage />} />
+          <Route path="/v2/draft" element={<V2DraftPage />} />
+          <Route path="/v2/verify" element={<V2VerifyPage />} />
+          <Route path="/v2/magic" element={<V2DraftingMagicPage />} />
+          {/* /v2/:sessionId loads a past session — keep AFTER literal
+              routes so /v2/draft, /v2/verify, /v2/magic win over the param. */}
+          <Route path="/v2/:sessionId" element={<V2ChatPage />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </div>
+    </div>
+  );
+};
+
 const App: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
@@ -143,13 +178,10 @@ const App: React.FC = () => {
           element={
             <>
               <SignedIn>
-                <Sidebar isOpen={sidebarOpen} onToggle={() => setSidebarOpen(o => !o)} />
-                <Routes>
-                  <Route path="/" element={<NewChatRedirect />} />
-                  <Route path="/c/:chatId" element={<ChatPage sidebarOpen={sidebarOpen} />} />
-                  <Route path="/v2" element={<V2ChatPage />} />
-                  <Route path="*" element={<Navigate to="/" replace />} />
-                </Routes>
+                <SignedInShell
+                  sidebarOpen={sidebarOpen}
+                  onToggle={() => setSidebarOpen((o) => !o)}
+                />
               </SignedIn>
               <SignedOut>
                 <RedirectToSignIn />

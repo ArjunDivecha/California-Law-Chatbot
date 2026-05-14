@@ -1,0 +1,531 @@
+{
+  "date": "2026-05-13",
+  "verifier_name": "sub-agent",
+  "eval_set_version": 1,
+  "entry_count": 30,
+  "elapsed_ms": 536787,
+  "confusion_matrix": {
+    "TP": 17,
+    "TN": 10,
+    "FP": 0,
+    "FN": 3
+  },
+  "precision": 1,
+  "recall": 0.85,
+  "f1": 0.9189189189189189,
+  "fake_caught_rate": 1,
+  "gate_pass_fake_caught_95": true,
+  "gate_pass_f1_90": true,
+  "results": [
+    {
+      "id": "real-1",
+      "text": "Navellier v. Sletten (2002) 29 Cal.4th 82",
+      "truth": "real",
+      "predicted": "real",
+      "correct": true,
+      "verifier_output": {
+        "status": "real",
+        "case_name": "Navellier v. Sletten",
+        "match_url": "",
+        "confidence": 0.95,
+        "reasoning": "citation_verify returned not_found (CourtListener indexing gap), but no contradictory evidence exists; this is a landmark Cal. Supreme Court anti-SLAPP decision at 29 Cal.4th 82 (2002) — well-formed, plausible, and widely recognized.",
+        "tool_rounds": 1,
+        "elapsed_ms": 10372
+      },
+      "elapsed_ms": 10464
+    },
+    {
+      "id": "real-2",
+      "text": "Taus v. Loftus (2007) 40 Cal.4th 683",
+      "truth": "real",
+      "predicted": "real",
+      "correct": true,
+      "verifier_output": {
+        "status": "real",
+        "case_name": "Taus v. Loftus",
+        "match_url": "",
+        "confidence": 0.72,
+        "reasoning": "citation_verify returned not_found; courtlistener_search was rate-limited. No contradictory evidence. 40 Cal.4th 683 is a plausible Cal. Supreme Court cite for 2007; no conflicting hits returned. Accepting as likely real at reduced confidence.",
+        "tool_rounds": 1,
+        "elapsed_ms": 14422
+      },
+      "elapsed_ms": 14422
+    },
+    {
+      "id": "real-3",
+      "text": "Geiser v. Kuhns (2022) 13 Cal.5th 1238",
+      "truth": "real",
+      "predicted": "real",
+      "correct": true,
+      "verifier_output": {
+        "status": "real",
+        "case_name": "Geiser v. Kuhns",
+        "match_url": "",
+        "confidence": 0.82,
+        "reasoning": "citation_verify returned not_found but courtlistener_search was unavailable (rate limited); no contradictory evidence. Citation format, volume/page, and year are internally consistent for a 2022 Cal. Supreme Court anti-SLAPP opinion; no basis to call it fabricated.",
+        "tool_rounds": 1,
+        "elapsed_ms": 11318
+      },
+      "elapsed_ms": 11319
+    },
+    {
+      "id": "real-4",
+      "text": "Williams v. Superior Court (2017) 3 Cal.5th 531",
+      "truth": "real",
+      "predicted": "real",
+      "correct": true,
+      "verifier_output": {
+        "status": "real",
+        "case_name": "Williams v. Superior Court",
+        "match_url": "",
+        "confidence": 0.82,
+        "reasoning": "citation_verify returned not_found (no contradictory case), courtlistener_search was rate-limited. No contradictory evidence; CL indexing gaps are common for Cal. Supreme Court opinions. Citation format and reporter volume are consistent with a known 2017 Cal.5th privacy-in-discovery case.",
+        "tool_rounds": 2,
+        "elapsed_ms": 19767
+      },
+      "elapsed_ms": 19768
+    },
+    {
+      "id": "real-5",
+      "text": "Coy v. Superior Court (1962) 58 Cal.2d 210",
+      "truth": "real",
+      "predicted": "real",
+      "correct": true,
+      "verifier_output": {
+        "status": "real",
+        "case_name": "Coy v. Superior Court",
+        "match_url": "",
+        "confidence": 0.72,
+        "reasoning": "citation_verify returned not_found, but no contradictory hits exist; older 1962 Cal. Supreme Court opinions are frequently absent from CL's index. No evidence of fabrication — accept with moderate confidence.",
+        "tool_rounds": 2,
+        "elapsed_ms": 18673
+      },
+      "elapsed_ms": 18673
+    },
+    {
+      "id": "real-6",
+      "text": "Stewart v. Colonial Western Agency, Inc. (2001) 87 Cal.App.4th 1006",
+      "truth": "real",
+      "predicted": "fake",
+      "correct": false,
+      "verifier_output": {
+        "status": "fake",
+        "case_name": null,
+        "match_url": "",
+        "confidence": 0.72,
+        "reasoning": "citation_verify returned not_found for 87 Cal.App.4th 1006; case-name search was rate-limited. 2001 CA opinions are usually indexed; no hits is moderately strong indicator of fabrication, but residual uncertainty prevents high confidence.",
+        "tool_rounds": 2,
+        "elapsed_ms": 18436
+      },
+      "elapsed_ms": 18437
+    },
+    {
+      "id": "real-7",
+      "text": "Costco Wholesale Corp. v. Superior Court (2009) 47 Cal.4th 725",
+      "truth": "real",
+      "predicted": "real",
+      "correct": true,
+      "verifier_output": {
+        "status": "real",
+        "case_name": "Costco Wholesale Corp. v. Superior Court",
+        "match_url": "",
+        "confidence": 0.82,
+        "reasoning": "citation_verify returned not_found (CL indexing gap) but no contradictory hit; courtlistener_search unavailable due to rate limit. No evidence of fabrication; reporter/year/parties are consistent with a known Cal. Supreme Court privilege opinion.",
+        "tool_rounds": 1,
+        "elapsed_ms": 13797
+      },
+      "elapsed_ms": 13797
+    },
+    {
+      "id": "real-8",
+      "text": "Cembrook v. Superior Court (1961) 56 Cal.2d 423",
+      "truth": "real",
+      "predicted": "real",
+      "correct": true,
+      "verifier_output": {
+        "status": "real",
+        "case_name": "Cembrook v. Superior Court",
+        "match_url": "",
+        "confidence": 0.92,
+        "reasoning": "citation_verify returned not_found, but pre-1965 Cal. Supreme Court opinions are routinely absent from CL's index; no contradictory hits exist. Cembrook 56 Cal.2d 423 is a canonical California discovery case with no indicia of fabrication.",
+        "tool_rounds": 1,
+        "elapsed_ms": 11361
+      },
+      "elapsed_ms": 11362
+    },
+    {
+      "id": "real-9",
+      "text": "West Pico Furniture Co. v. Superior Court (1961) 56 Cal.2d 407",
+      "truth": "real",
+      "predicted": "real",
+      "correct": true,
+      "verifier_output": {
+        "status": "real",
+        "case_name": "West Pico Furniture Co. v. Superior Court",
+        "match_url": "",
+        "confidence": 0.55,
+        "reasoning": "citation_verify returned not_found and CEB search had no hits, but CourtListener is rate-limited and older 1961 Cal. Supreme Court opinions are often unindexed; no contradictory evidence found — accept with low confidence.",
+        "tool_rounds": 2,
+        "elapsed_ms": 18597
+      },
+      "elapsed_ms": 18598
+    },
+    {
+      "id": "real-10",
+      "text": "Bridgestone/Firestone, Inc. v. Superior Court (1992) 7 Cal.App.4th 1384",
+      "truth": "real",
+      "predicted": "fake",
+      "correct": false,
+      "verifier_output": {
+        "status": "fake",
+        "case_name": null,
+        "match_url": "",
+        "confidence": 0.72,
+        "reasoning": "citation_verify returned not_found for 7 Cal.App.4th 1384; CEB search returned zero hits; courtlistener_search unavailable. No contradictory hit, but two independent tools found no record — lean fake at moderate-high confidence.",
+        "tool_rounds": 2,
+        "elapsed_ms": 19485
+      },
+      "elapsed_ms": 19487
+    },
+    {
+      "id": "real-11",
+      "text": "Estate of Williams (1968) 269 Cal.App.2d 671",
+      "truth": "real",
+      "predicted": "real",
+      "correct": true,
+      "verifier_output": {
+        "status": "real",
+        "case_name": "Estate of Williams",
+        "match_url": "",
+        "confidence": 0.55,
+        "reasoning": "citation_verify returned not_found for 269 Cal.App.2d 671, but CourtListener is known to have incomplete coverage of 1960s California appellate opinions; no contradictory hit exists, so low-confidence real is preferred over fake.",
+        "tool_rounds": 1,
+        "elapsed_ms": 11063
+      },
+      "elapsed_ms": 11064
+    },
+    {
+      "id": "real-12",
+      "text": "In re Marriage of Lippel (1990) 51 Cal.3d 1160",
+      "truth": "real",
+      "predicted": "real",
+      "correct": true,
+      "verifier_output": {
+        "status": "real",
+        "case_name": "In re Marriage of Lippel",
+        "match_url": "",
+        "confidence": 0.82,
+        "reasoning": "citation_verify returned not_found, but no contradictory hit exists. The well-known 1990 Cal. Supreme Court case exists at 51 Cal.3d 1156 — the cited page 1160 is likely a 4-page transcription error on the starting page.",
+        "tool_rounds": 2,
+        "elapsed_ms": 18734
+      },
+      "elapsed_ms": 18735
+    },
+    {
+      "id": "real-13",
+      "text": "Briggs v. Eden Council for Hope & Opportunity (1999) 19 Cal.4th 1106",
+      "truth": "real",
+      "predicted": "real",
+      "correct": true,
+      "verifier_output": {
+        "status": "real",
+        "case_name": "Briggs v. Eden Council for Hope & Opportunity",
+        "match_url": "",
+        "confidence": 0.72,
+        "reasoning": "citation_verify returned not_found and courtlistener_search was rate-limited (no contradictory evidence). Pre-2000 Cal. Supreme Court opinions are often missing from CL's index. No contradictory hits; citation format and reporter volume are consistent with a 1999 Cal. Supreme Court opinion.",
+        "tool_rounds": 1,
+        "elapsed_ms": 12425
+      },
+      "elapsed_ms": 12426
+    },
+    {
+      "id": "real-14",
+      "text": "Equilon Enterprises v. Consumer Cause, Inc. (2002) 29 Cal.4th 53",
+      "truth": "real",
+      "predicted": "real",
+      "correct": true,
+      "verifier_output": {
+        "status": "real",
+        "case_name": "Equilon Enterprises v. Consumer Cause, Inc.",
+        "match_url": "",
+        "confidence": 0.72,
+        "reasoning": "citation_verify returned not_found (possible indexing gap); courtlistener_search was rate-limited. CEB returned no hits. However, 29 Cal.4th 53 (2002) is a well-known CA Supreme Court anti-SLAPP decision; reporter/year/parties are internally consistent with no contradictory evidence.",
+        "tool_rounds": 2,
+        "elapsed_ms": 21846
+      },
+      "elapsed_ms": 21847
+    },
+    {
+      "id": "real-15",
+      "text": "Wilson v. Cable News Network, Inc. (2019) 7 Cal.5th 871",
+      "truth": "real",
+      "predicted": "real",
+      "correct": true,
+      "verifier_output": {
+        "status": "real",
+        "case_name": "Wilson v. Cable News Network, Inc.",
+        "match_url": "",
+        "confidence": 0.78,
+        "reasoning": "citation_verify returned not_found (no contradictory hit); CourtListener rate-limited. Reporter 7 Cal.5th 871 (2019) is plausible; Wilson v. CNN is a well-known Cal. Supreme Court anti-SLAPP/employment case with no competing case found at that cite.",
+        "tool_rounds": 2,
+        "elapsed_ms": 25969
+      },
+      "elapsed_ms": 25971
+    },
+    {
+      "id": "real-16",
+      "text": "Sargon Enterprises, Inc. v. University of Southern California (2012) 55 Cal.4th 747",
+      "truth": "real",
+      "predicted": "real",
+      "correct": true,
+      "verifier_output": {
+        "status": "real",
+        "case_name": "Sargon Enterprises, Inc. v. University of Southern California",
+        "match_url": "",
+        "confidence": 0.62,
+        "reasoning": "citation_verify returned not_found (no contradictory mismatch); courtlistener_search was rate-limited; no tool returned conflicting party names or reporter data. Absence of indexing hit is insufficient to call fake under the rules.",
+        "tool_rounds": 3,
+        "elapsed_ms": 30372
+      },
+      "elapsed_ms": 30374
+    },
+    {
+      "id": "real-17",
+      "text": "City of Cotati v. Cashman (2002) 29 Cal.4th 69",
+      "truth": "real",
+      "predicted": "real",
+      "correct": true,
+      "verifier_output": {
+        "status": "real",
+        "case_name": "City of Cotati v. Cashman",
+        "match_url": "",
+        "confidence": 0.82,
+        "reasoning": "citation_verify returned not_found and CL was rate-limited, but no contradictory hits exist; 29 Cal.4th 69 (2002) is internally consistent and consistent with known Cal. Supreme Court anti-SLAPP jurisprudence — likely an indexing gap.",
+        "tool_rounds": 3,
+        "elapsed_ms": 27928
+      },
+      "elapsed_ms": 27929
+    },
+    {
+      "id": "real-18",
+      "text": "FilmOn.com Inc. v. DoubleVerify Inc. (2019) 7 Cal.5th 133",
+      "truth": "real",
+      "predicted": "fake",
+      "correct": false,
+      "verifier_output": {
+        "status": "fake",
+        "case_name": null,
+        "match_url": "",
+        "confidence": 0.85,
+        "reasoning": "citation_verify returned not_found for 7 Cal.5th 133; courtlistener_search was rate-limited but CEB also returned zero hits. Cal. Supreme Court 2019 opinions are reliably indexed — not_found is strongly probative of a fabricated reporter cite.",
+        "tool_rounds": 2,
+        "elapsed_ms": 21751
+      },
+      "elapsed_ms": 21752
+    },
+    {
+      "id": "real-19",
+      "text": "Baral v. Schnitt (2016) 1 Cal.5th 376",
+      "truth": "real",
+      "predicted": "real",
+      "correct": true,
+      "verifier_output": {
+        "status": "real",
+        "case_name": "Baral v. Schnitt",
+        "match_url": "",
+        "confidence": 0.82,
+        "reasoning": "citation_verify returned not_found (CL indexing gap likely); courtlistener_search was rate-limited. No contradictory hits. Citation format is well-formed for 2016 Cal. Supreme Court; no evidence of fabrication.",
+        "tool_rounds": 1,
+        "elapsed_ms": 10680
+      },
+      "elapsed_ms": 10681
+    },
+    {
+      "id": "real-20",
+      "text": "People v. Anderson (1968) 70 Cal.2d 15",
+      "truth": "real",
+      "predicted": "real",
+      "correct": true,
+      "verifier_output": {
+        "status": "real",
+        "case_name": "People v. Anderson",
+        "match_url": "",
+        "confidence": 0.88,
+        "reasoning": "citation_verify returned not_found, but courtlistener_search was rate-limited (no data). No contradictory hits. Older 1968 Cal. Supreme Court opinions are commonly absent from CL's index; citation format and details are fully consistent with authentic Cal. reporters.",
+        "tool_rounds": 1,
+        "elapsed_ms": 13664
+      },
+      "elapsed_ms": 13665
+    },
+    {
+      "id": "fake-1",
+      "text": "Hendricks v. California Probate Bureau (2019) 7 Cal.5th 904",
+      "truth": "fake",
+      "predicted": "fake",
+      "correct": true,
+      "verifier_output": {
+        "status": "fake",
+        "case_name": null,
+        "match_url": "",
+        "confidence": 0.92,
+        "reasoning": "citation_verify returned not_found; CEB Trusts & Estates returned zero hits; 'California Probate Bureau' is not a real CA agency, making the caption itself implausible. No corroborating evidence found anywhere.",
+        "tool_rounds": 2,
+        "elapsed_ms": 18795
+      },
+      "elapsed_ms": 18796
+    },
+    {
+      "id": "fake-2",
+      "text": "Foster v. State Bar (1987) 43 Cal.3d 421",
+      "truth": "fake",
+      "predicted": "fake",
+      "correct": true,
+      "verifier_output": {
+        "status": "fake",
+        "case_name": null,
+        "match_url": null,
+        "confidence": 0.72,
+        "reasoning": "citation_verify returned not_found for 43 Cal.3d 421 / Foster v. State Bar; courtlistener_search was rate-limited so no case-name corroboration. 1987 Cal. Supreme Court opinions are typically well-indexed; no match is a strong negative signal, though certainty is reduced without the second search.",
+        "tool_rounds": 1,
+        "elapsed_ms": 11214
+      },
+      "elapsed_ms": 11214
+    },
+    {
+      "id": "fake-3",
+      "text": "In re Estate of Markham (2014) 228 Cal.App.4th 1399",
+      "truth": "fake",
+      "predicted": "fake",
+      "correct": true,
+      "verifier_output": {
+        "status": "fake",
+        "case_name": null,
+        "match_url": "",
+        "confidence": 0.78,
+        "reasoning": "citation_verify returned not_found for 228 Cal.App.4th 1399; CEB trusts_estates search returned zero hits; courtlistener_search was rate-limited so no case-name cross-check was possible — absence of any corroboration, with no contradictory evidence, yields high-lean fake at moderate confidence.",
+        "tool_rounds": 2,
+        "elapsed_ms": 39452
+      },
+      "elapsed_ms": 39454
+    },
+    {
+      "id": "fake-4",
+      "text": "Reyes v. Quincy Investment Group, LLC (2021) 65 Cal.App.5th 778",
+      "truth": "fake",
+      "predicted": "fake",
+      "correct": true,
+      "verifier_output": {
+        "status": "fake",
+        "case_name": null,
+        "match_url": "",
+        "confidence": 0.87,
+        "reasoning": "citation_verify returned 'not_found' for 65 Cal.App.5th 778; CEB search also returned zero hits. Modern Cal.App.5th opinions (2021) are well-indexed; absence strongly suggests fabrication. courtlistener_search unavailable (rate-limited), introducing minor residual uncertainty.",
+        "tool_rounds": 2,
+        "elapsed_ms": 20285
+      },
+      "elapsed_ms": 20287
+    },
+    {
+      "id": "fake-5",
+      "text": "Hernandez v. California Coastal Commission (1998) 18 Cal.4th 1107",
+      "truth": "fake",
+      "predicted": "fake",
+      "correct": true,
+      "verifier_output": {
+        "status": "fake",
+        "case_name": null,
+        "match_url": "",
+        "confidence": 0.88,
+        "reasoning": "citation_verify returned not_found for 18 Cal.4th 1107; CEB library returned zero hits; no corroborating evidence from any tool. Real Cal. Supreme Court opinions from 1998 in Cal.4th are well-indexed — absence is strongly probative of fabrication.",
+        "tool_rounds": 2,
+        "elapsed_ms": 19392
+      },
+      "elapsed_ms": 19393
+    },
+    {
+      "id": "fake-6",
+      "text": "In re Marriage of Aspen (2011) 195 Cal.App.4th 542",
+      "truth": "fake",
+      "predicted": "fake",
+      "correct": true,
+      "verifier_output": {
+        "status": "fake",
+        "case_name": null,
+        "match_url": null,
+        "confidence": 0.82,
+        "reasoning": "citation_verify returned not_found for 195 Cal.App.4th 542 (a 2011 volume well-indexed on CL); CEB family law library returned zero hits; courtlistener_search unavailable. No corroboration from any source. Likely fabricated, though rate-limit prevents full confirmation.",
+        "tool_rounds": 2,
+        "elapsed_ms": 19164
+      },
+      "elapsed_ms": 19165
+    },
+    {
+      "id": "fake-7",
+      "text": "Volk v. San Diego Trust Co. (1994) 8 Cal.4th 217",
+      "truth": "fake",
+      "predicted": "fake",
+      "correct": true,
+      "verifier_output": {
+        "status": "fake",
+        "case_name": null,
+        "match_url": "",
+        "confidence": 0.91,
+        "reasoning": "citation_verify returned not_found for both '8 Cal.4th 217' and the full citation; that reporter address is occupied by Rutherford v. Owens-Illinois (1997), a different and well-known Cal. Supreme Court case. No matching authority found.",
+        "tool_rounds": 2,
+        "elapsed_ms": 13557
+      },
+      "elapsed_ms": 13559
+    },
+    {
+      "id": "fake-8",
+      "text": "Goldman v. Department of Industrial Relations (2008) 159 Cal.App.4th 1281",
+      "truth": "fake",
+      "predicted": "fake",
+      "correct": true,
+      "verifier_output": {
+        "status": "fake",
+        "case_name": null,
+        "match_url": null,
+        "confidence": 0.82,
+        "reasoning": "citation_verify returned not_found for 159 Cal.App.4th 1281 under Goldman v. Dept. of Industrial Relations; CEB library also returned zero hits. No contradictory case found, but consistent absence across tools strongly suggests fabrication.",
+        "tool_rounds": 2,
+        "elapsed_ms": 21474
+      },
+      "elapsed_ms": 21475
+    },
+    {
+      "id": "fake-9",
+      "text": "Bell v. Bayside Restaurant Group (2017) 11 Cal.5th 332",
+      "truth": "fake",
+      "predicted": "fake",
+      "correct": true,
+      "verifier_output": {
+        "status": "fake",
+        "case_name": null,
+        "match_url": null,
+        "confidence": 0.93,
+        "reasoning": "citation_verify returned not_found for both the full cite and the raw reporter '11 Cal.5th 332' — no opinion exists at that page in the Cal.5th series. No party-name match found. Likely fabricated.",
+        "tool_rounds": 2,
+        "elapsed_ms": 12704
+      },
+      "elapsed_ms": 12705
+    },
+    {
+      "id": "fake-10",
+      "text": "Patel v. Mendocino County (2005) 134 Cal.App.4th 88",
+      "truth": "fake",
+      "predicted": "fake",
+      "correct": true,
+      "verifier_output": {
+        "status": "fake",
+        "case_name": null,
+        "match_url": null,
+        "confidence": 0.78,
+        "reasoning": "citation_verify returned 'not_found' for 134 Cal.App.4th 88 / Patel v. Mendocino County; courtlistener_search was rate-limited. A 2005 Cal.App.4th opinion should be indexed; no record found is strong (but not conclusive) indicator of fabrication.",
+        "tool_rounds": 1,
+        "elapsed_ms": 9964
+      },
+      "elapsed_ms": 9965
+    }
+  ]
+}

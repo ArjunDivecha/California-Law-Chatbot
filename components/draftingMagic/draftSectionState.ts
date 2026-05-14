@@ -1,30 +1,107 @@
-/**
- * Phase 2 placeholder — Drafting Magic section-state primitives.
- *
- * Tests in tests/sanitization.test.mjs (Drafting Magic section edits / lock /
- * regeneration) import these functions. Until Phase 2 ports the real
- * implementation, the stubs throw so dependent tests fail loudly with a
- * known-cause message instead of silent assertion mismatches.
- *
- * Real implementation lives on `codex/drafting-magic-sanitized` at this same
- * path. The runner-completion stub here exists only so the test file's
- * top-level `await import(...)` doesn't crash the entire suite.
- */
+export type EditableDraftStatus = 'Reviewed' | 'Needs review' | 'Generated';
 
-const NOT_IMPLEMENTED = 'Phase 2 deliverable — see codex/drafting-magic-sanitized for reference impl';
-
-export function markSectionEdited(..._args: unknown[]): never {
-  throw new Error(`draftSectionState.markSectionEdited: ${NOT_IMPLEMENTED}`);
+export interface EditableDraftSection {
+  id: string;
+  title: string;
+  status: EditableDraftStatus;
+  lineage: string;
+  requirements: string;
+  content: string;
+  locked?: boolean;
+  editedAt?: string;
 }
 
-export function mergeGeneratedDraftSections(..._args: unknown[]): never {
-  throw new Error(`draftSectionState.mergeGeneratedDraftSections: ${NOT_IMPLEMENTED}`);
+export function markSectionEdited(
+  sections: EditableDraftSection[],
+  sectionId: string,
+  patch: Partial<Pick<EditableDraftSection, 'title' | 'content'>>,
+  editedAt = new Date().toISOString()
+): EditableDraftSection[] {
+  return sections.map((section) =>
+    section.id === sectionId
+      ? {
+          ...section,
+          ...patch,
+          status: 'Reviewed',
+          locked: true,
+          editedAt,
+        }
+      : section
+  );
 }
 
-export function replaceDraftSectionFromGenerated(..._args: unknown[]): never {
-  throw new Error(`draftSectionState.replaceDraftSectionFromGenerated: ${NOT_IMPLEMENTED}`);
+export function toggleSectionLock(sections: EditableDraftSection[], sectionId: string): EditableDraftSection[] {
+  return sections.map((section) =>
+    section.id === sectionId
+      ? {
+          ...section,
+          locked: !section.locked,
+        }
+      : section
+  );
 }
 
-export function toggleSectionLock(..._args: unknown[]): never {
-  throw new Error(`draftSectionState.toggleSectionLock: ${NOT_IMPLEMENTED}`);
+function cleanGeneratedSection(section: EditableDraftSection): EditableDraftSection {
+  const { locked: _locked, editedAt: _editedAt, ...cleaned } = section;
+  return cleaned;
+}
+
+function findCurrentSectionForGenerated(
+  current: EditableDraftSection[],
+  generated: EditableDraftSection[],
+  generatedIndex: number
+) {
+  const generatedSection = generated[generatedIndex];
+  return current.find((section) => section.id === generatedSection.id) || current[generatedIndex];
+}
+
+export function mergeGeneratedDraftSections(
+  current: EditableDraftSection[],
+  generated: EditableDraftSection[]
+): EditableDraftSection[] {
+  const merged = generated.map((section, index) => {
+    const existing = findCurrentSectionForGenerated(current, generated, index);
+    if (existing?.locked) {
+      return existing;
+    }
+    return cleanGeneratedSection(section);
+  });
+
+  const mergedIds = new Set(merged.map((section) => section.id));
+  const lockedRemainders = current.filter((section) => section.locked && !mergedIds.has(section.id));
+  return [...merged, ...lockedRemainders];
+}
+
+export function replaceDraftSectionFromGenerated(
+  current: EditableDraftSection[],
+  generated: EditableDraftSection[],
+  targetSectionId: string
+): EditableDraftSection[] {
+  const targetIndex = current.findIndex((section) => section.id === targetSectionId);
+  if (targetIndex === -1) {
+    return current;
+  }
+
+  const target = current[targetIndex];
+  if (target.locked) {
+    return current;
+  }
+
+  const replacement =
+    generated.find((section) => section.id === target.id) ||
+    generated[targetIndex] ||
+    generated[0];
+
+  if (!replacement) {
+    return current;
+  }
+
+  return current.map((section) =>
+    section.id === targetSectionId
+      ? {
+          ...cleanGeneratedSection(replacement),
+          id: section.id,
+        }
+      : section
+  );
 }

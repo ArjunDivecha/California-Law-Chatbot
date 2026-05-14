@@ -29,6 +29,7 @@ import {
   runTurnStream,
   type RunTurnResult,
   type TurnStreamEvent,
+  type Workflow,
 } from './agentLoop.js';
 import { buildAuditRecord, writeAuditRecord } from '../_shared/auditLog.js';
 
@@ -40,6 +41,8 @@ export interface AgentProxyRequest {
   model?: string;
   /** Optional system prompt override. */
   system_prompt?: string;
+  /** Workflow selector — 'quick' (Sonnet, no tools) or 'research' (default). */
+  workflow?: Workflow;
 }
 
 export type AgentProxyResponse =
@@ -118,6 +121,7 @@ export async function runAgentProxy(req: AgentProxyRequest): Promise<AgentProxyR
       model: req.model,
       system_prompt: req.system_prompt,
       user_id: req.user_id ?? null,
+      workflow: req.workflow,
     });
     return { ok: true, result, privileged, compound_risk_buckets: compoundRiskBuckets };
   } catch (err) {
@@ -237,6 +241,7 @@ export async function* runAgentProxyStream(
     model: req.model,
     system_prompt: req.system_prompt,
     user_id: req.user_id ?? null,
+    workflow: req.workflow,
   })) {
     yield event;
   }

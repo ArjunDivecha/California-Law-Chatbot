@@ -1,0 +1,381 @@
+{
+  "date": "2026-05-13",
+  "fixture_count": 10,
+  "passed": 9,
+  "failed": 1,
+  "gate_pass": false,
+  "total_citations": 56,
+  "total_verified": 55,
+  "total_not_found": 1,
+  "elapsed_ms": 703698,
+  "results": [
+    {
+      "name": "memo-holographic-codicil",
+      "template_id": "legal_memo",
+      "pass": false,
+      "word_count": 2220,
+      "tool_call_count": 0,
+      "elapsed_ms": 45752,
+      "sections": [
+        "header",
+        "question_presented",
+        "brief_answer",
+        "facts",
+        "analysis",
+        "conclusion"
+      ],
+      "missing_sections": [],
+      "sanitization": {
+        "kind": "sanitization",
+        "privileged": true,
+        "compound_risk_buckets": 0,
+        "redactions_count": 3
+      },
+      "done_summary": {
+        "tool_rounds": 0,
+        "total_tokens": 29790,
+        "stop_reason": "end_turn",
+        "exhausted_iterations": false,
+        "tool_output_redactions": 0
+      },
+      "citations_total": 7,
+      "citations_verified": 6,
+      "citations_not_found": 1,
+      "citations_unverified": 0,
+      "not_found_examples": [
+        "91 Cal.App.5th 1293"
+      ]
+    },
+    {
+      "name": "memo-fee-spousal-support-modification",
+      "template_id": "legal_memo",
+      "pass": true,
+      "word_count": 1590,
+      "tool_call_count": 0,
+      "elapsed_ms": 35289,
+      "sections": [
+        "header",
+        "question_presented",
+        "brief_answer",
+        "facts",
+        "analysis",
+        "conclusion"
+      ],
+      "missing_sections": [],
+      "sanitization": {
+        "kind": "sanitization",
+        "privileged": true,
+        "compound_risk_buckets": 0,
+        "redactions_count": 4
+      },
+      "done_summary": {
+        "tool_rounds": 0,
+        "total_tokens": 36021,
+        "stop_reason": "end_turn",
+        "exhausted_iterations": false,
+        "tool_output_redactions": 0
+      },
+      "citations_total": 5,
+      "citations_verified": 5,
+      "citations_not_found": 0,
+      "citations_unverified": 0,
+      "not_found_examples": []
+    },
+    {
+      "name": "memo-anti-slapp-business-dispute",
+      "template_id": "legal_memo",
+      "pass": true,
+      "word_count": 2721,
+      "tool_call_count": 5,
+      "elapsed_ms": 92392,
+      "sections": [
+        "header",
+        "question_presented",
+        "brief_answer",
+        "facts",
+        "analysis",
+        "conclusion"
+      ],
+      "missing_sections": [],
+      "sanitization": {
+        "kind": "sanitization",
+        "privileged": false,
+        "compound_risk_buckets": 0,
+        "redactions_count": 1
+      },
+      "done_summary": {
+        "tool_rounds": 2,
+        "total_tokens": 238005,
+        "stop_reason": "end_turn",
+        "exhausted_iterations": false,
+        "tool_output_redactions": 138
+      },
+      "citations_total": 14,
+      "citations_verified": 14,
+      "citations_not_found": 0,
+      "citations_unverified": 0,
+      "not_found_examples": []
+    },
+    {
+      "name": "demand-contractor-deposit",
+      "template_id": "demand_letter",
+      "pass": true,
+      "word_count": 1278,
+      "tool_call_count": 2,
+      "elapsed_ms": 42322,
+      "sections": [
+        "letterhead",
+        "introduction",
+        "factual_background",
+        "legal_basis",
+        "demand",
+        "consequences",
+        "closing"
+      ],
+      "missing_sections": [],
+      "sanitization": {
+        "kind": "sanitization",
+        "privileged": true,
+        "compound_risk_buckets": 1,
+        "redactions_count": 9
+      },
+      "done_summary": {
+        "tool_rounds": 1,
+        "total_tokens": 65098,
+        "stop_reason": "end_turn",
+        "exhausted_iterations": false,
+        "tool_output_redactions": 107
+      },
+      "citations_total": 0,
+      "citations_verified": 0,
+      "citations_not_found": 0,
+      "citations_unverified": 0,
+      "not_found_examples": []
+    },
+    {
+      "name": "demand-cease-and-desist-trademark",
+      "template_id": "demand_letter",
+      "pass": true,
+      "word_count": 1407,
+      "tool_call_count": 2,
+      "elapsed_ms": 54289,
+      "sections": [
+        "letterhead",
+        "introduction",
+        "factual_background",
+        "legal_basis",
+        "demand",
+        "consequences",
+        "closing"
+      ],
+      "missing_sections": [],
+      "sanitization": {
+        "kind": "sanitization",
+        "privileged": true,
+        "compound_risk_buckets": 1,
+        "redactions_count": 11
+      },
+      "done_summary": {
+        "tool_rounds": 1,
+        "total_tokens": 66830,
+        "stop_reason": "end_turn",
+        "exhausted_iterations": false,
+        "tool_output_redactions": 87
+      },
+      "citations_total": 4,
+      "citations_verified": 4,
+      "citations_not_found": 0,
+      "citations_unverified": 0,
+      "not_found_examples": []
+    },
+    {
+      "name": "client-feha-harassment",
+      "template_id": "client_letter",
+      "pass": true,
+      "word_count": 2101,
+      "tool_call_count": 5,
+      "elapsed_ms": 74719,
+      "sections": [
+        "letterhead",
+        "introduction",
+        "facts_summary",
+        "legal_analysis",
+        "options",
+        "next_steps",
+        "closing"
+      ],
+      "missing_sections": [],
+      "sanitization": {
+        "kind": "sanitization",
+        "privileged": true,
+        "compound_risk_buckets": 1,
+        "redactions_count": 12
+      },
+      "done_summary": {
+        "tool_rounds": 2,
+        "total_tokens": 281475,
+        "stop_reason": "end_turn",
+        "exhausted_iterations": false,
+        "tool_output_redactions": 292
+      },
+      "citations_total": 2,
+      "citations_verified": 2,
+      "citations_not_found": 0,
+      "citations_unverified": 0,
+      "not_found_examples": []
+    },
+    {
+      "name": "client-llc-operating-agreement-review",
+      "template_id": "client_letter",
+      "pass": true,
+      "word_count": 1679,
+      "tool_call_count": 0,
+      "elapsed_ms": 42177,
+      "sections": [
+        "letterhead",
+        "introduction",
+        "facts_summary",
+        "legal_analysis",
+        "options",
+        "next_steps",
+        "closing"
+      ],
+      "missing_sections": [],
+      "sanitization": {
+        "kind": "sanitization",
+        "privileged": true,
+        "compound_risk_buckets": 1,
+        "redactions_count": 9
+      },
+      "done_summary": {
+        "tool_rounds": 0,
+        "total_tokens": 45450,
+        "stop_reason": "end_turn",
+        "exhausted_iterations": false,
+        "tool_output_redactions": 0
+      },
+      "citations_total": 0,
+      "citations_verified": 0,
+      "citations_not_found": 0,
+      "citations_unverified": 0,
+      "not_found_examples": []
+    },
+    {
+      "name": "compel-special-interrogatories",
+      "template_id": "motion_compel",
+      "pass": true,
+      "word_count": 3048,
+      "tool_call_count": 1,
+      "elapsed_ms": 93000,
+      "sections": [
+        "caption",
+        "notice_of_motion",
+        "mpa_introduction",
+        "mpa_facts",
+        "mpa_argument",
+        "mpa_prayer",
+        "declaration",
+        "separate_statement",
+        "pos_reference",
+        "signature"
+      ],
+      "missing_sections": [],
+      "sanitization": {
+        "kind": "sanitization",
+        "privileged": true,
+        "compound_risk_buckets": 1,
+        "redactions_count": 7
+      },
+      "done_summary": {
+        "tool_rounds": 1,
+        "total_tokens": 73902,
+        "stop_reason": "end_turn",
+        "exhausted_iterations": false,
+        "tool_output_redactions": 1
+      },
+      "citations_total": 7,
+      "citations_verified": 7,
+      "citations_not_found": 0,
+      "citations_unverified": 0,
+      "not_found_examples": []
+    },
+    {
+      "name": "compel-rfpd",
+      "template_id": "motion_compel",
+      "pass": true,
+      "word_count": 3261,
+      "tool_call_count": 2,
+      "elapsed_ms": 103906,
+      "sections": [
+        "caption",
+        "notice_of_motion",
+        "mpa_introduction",
+        "mpa_facts",
+        "mpa_argument",
+        "mpa_prayer",
+        "declaration",
+        "separate_statement",
+        "pos_reference",
+        "signature"
+      ],
+      "missing_sections": [],
+      "sanitization": {
+        "kind": "sanitization",
+        "privileged": true,
+        "compound_risk_buckets": 0,
+        "redactions_count": 8
+      },
+      "done_summary": {
+        "tool_rounds": 1,
+        "total_tokens": 101674,
+        "stop_reason": "max_tokens",
+        "exhausted_iterations": false,
+        "tool_output_redactions": 22
+      },
+      "citations_total": 10,
+      "citations_verified": 10,
+      "citations_not_found": 0,
+      "citations_unverified": 0,
+      "not_found_examples": []
+    },
+    {
+      "name": "compel-rfa",
+      "template_id": "motion_compel",
+      "pass": true,
+      "word_count": 2884,
+      "tool_call_count": 1,
+      "elapsed_ms": 85368,
+      "sections": [
+        "caption",
+        "notice_of_motion",
+        "mpa_introduction",
+        "mpa_facts",
+        "mpa_argument",
+        "mpa_prayer",
+        "declaration",
+        "separate_statement",
+        "pos_reference",
+        "signature"
+      ],
+      "missing_sections": [],
+      "sanitization": {
+        "kind": "sanitization",
+        "privileged": true,
+        "compound_risk_buckets": 0,
+        "redactions_count": 6
+      },
+      "done_summary": {
+        "tool_rounds": 1,
+        "total_tokens": 55232,
+        "stop_reason": "end_turn",
+        "exhausted_iterations": false,
+        "tool_output_redactions": 1
+      },
+      "citations_total": 7,
+      "citations_verified": 7,
+      "citations_not_found": 0,
+      "citations_unverified": 0,
+      "not_found_examples": []
+    }
+  ]
+}

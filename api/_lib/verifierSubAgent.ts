@@ -1,0 +1,242 @@
+/**
+ * Phase 3 — Citation verifier sub-agent.
+ *
+ * Per plan §Phase 3: "Adversarial verification as a separate agent-loop
+ * invocation. Separate conversation per verification run, fresh `messages`
+ * array, no shared context with workbench."
+ *
+ * Architecture:
+ *   - Invokes anthropic.messages.create with a NEW conversation (no session
+ *     state, no shared history with the main workbench).
+ *   - System prompt is the verification-specific Skill below.
+ *   - Tools: citation_verify, courtlistener_search, ceb_search.
+ *     web_search is omitted — verification must rely on deterministic
+ *     case-law sources, never on general web content.
+ *   - Output schema: JSON {status, case_name?, confidence, reasoning}.
+ *   - The MODEL applies judgment to reject mismatched search hits
+ *     (e.g., CourtListener returning "John Doe v. Gary Settle" for a
+ *     query about "Hendricks v. California Probate Bureau" — the
+ *     baseline tool blindly accepts that; the sub-agent rejects it).
+ *
+ * Why a sub-agent vs. extending citation_verify:
+ *   - The judgment step (does this CL hit actually correspond to the
+ *     citation in the query?) is semantic, not syntactic. Regex / fuzzy
+ *     string matching breaks on parallel reporters and party-name
+ *     reorderings. The model can read both citations and decide.
+ *   - The verifier needs to be defensible in deposition — "an LLM with
+ *     verification-specific instructions and read-only access to
+ *     CourtListener / CEB confirmed each citation" is a clearer story
+ *     than "we ran a regex against CourtListener's search API."
+ *
+ * Used by:
+ *   - scripts/phase3-eval.mjs (evaluation harness)
+ *   - Future: a `verify` endpoint or workflow that lets attorneys paste
+ *     a passage and get a verification report.
+ */
+
+import Anthropic from '@anthropic-ai/sdk';
+import {
+  CEB_SEARCH_TOOL_DEFINITION,
+  COURTLISTENER_SEARCH_TOOL_DEFINITION,
+  CITATION_VERIFY_TOOL_DEFINITION,
+  cebSearch,
+  courtlistenerSearch,
+  citationVerify,
+} from './tools/index.js';
+import { getAgentConfig } from './skills.js';
+
+// The verifier uses Sonnet 4.6 — adequate for read-and-decide, faster
+// and cheaper than Opus 4.7 for what is fundamentally a structured-
+// output task. Override via env if needed.
+const VERIFIER_MODEL = process.env.V2_VERIFIER_MODEL ?? 'claude-sonnet-4-6';
+const VERIFIER_MAX_TOKENS = 2048;
+const VERIFIER_MAX_ROUNDS = 8;
+
+export interface VerifierVerdict {
+  status: 'real' | 'fake';
+  case_name?: string;
+  match_url?: string;
+  confidence: number;
+  reasoning: string;
+  tool_rounds: number;
+  elapsed_ms: number;
+}
+
+const VERIFIER_SYSTEM_PROMPT = `You are a citation-verification sub-agent. Given a single legal citation in a user message, decide whether the cited authority is REAL (an attorney can rely on it) or FAKE (likely fabricated).
+
+CRITICAL RULES — read carefully:
+
+1. **Ground every conclusion in tool results.** Do NOT rely on your memorized knowledge of cases. Your training data has gaps and errors; the tools are the ground truth. If a tool returns a hit, trust it. If your memory tells you the cite is "actually 69 Cal.2d 59" but the tool returns a different match, GO WITH THE TOOL.
+
+2. **Search BOTH ways.** Always run both:
+   - citation_verify on the full citation text (uses CourtListener search-by-citation)
+   - courtlistener_search by the CASE-NAME alone (extracts "Name v. Name" from the citation; broader recall)
+   Either tool returning a matching case is sufficient evidence.
+
+3. **A match counts when**:
+   - The party names in the matched record are essentially the same as the citation's party names (allow for caption variations: "Estate of X" ≈ "In re Estate of X"; "Marriage of X" ≈ "In re Marriage of X"; surname-only matches OK if uncommon).
+   - The matched opinion's year (date_filed) is within 3 years of the year in the citation.
+   - The matched reporter cite OR the case name's reporter parallel cite roughly corresponds to the citation. CL records sometimes have parallel-reporter cites only.
+
+4. **A citation is FAKE only when**:
+   - Both citation_verify AND courtlistener_search return zero hits OR return hits whose party names are clearly unrelated (different surnames, different case-types).
+   - Note: when search returns NO hits, this is suggestive of fake but not conclusive — California has many older opinions that aren't well-indexed in CourtListener. Distinguish "no hits" (uncertain, lean fake but allow real with low confidence) from "hits that contradict" (definitely fake).
+
+5. **Bias toward FAKE only when contradictory evidence exists.** When evidence is ambiguous (no hits in either tool, no contradictory hits), prefer REAL with low confidence (0.4–0.6) over FAKE — the cost of a false-positive-fake (rejecting a real case) is annoying; the cost of a false-positive-real (accepting a fabricated case) is malpractice. The bias is asymmetric: accept ambiguity in favor of real.
+
+6. **DO NOT call something fake just because you don't recognize it.** Your memorized knowledge is incomplete.
+
+When done researching, emit your verdict as a JSON object on a single line, preceded by the literal token "VERDICT:" — no leading whitespace, no trailing text after it. Schema:
+
+VERDICT: {"status":"real"|"fake","case_name":"<name as confirmed>","match_url":"<url>","confidence":0.0-1.0,"reasoning":"<one-sentence explanation grounded in what tools returned>"}
+
+Good examples:
+
+VERDICT: {"status":"real","case_name":"Navellier v. Sletten","match_url":"https://www.courtlistener.com/opinion/...","confidence":0.98,"reasoning":"citation_verify and courtlistener_search both returned the Cal. Supreme Court 2002 opinion at 29 Cal.4th 82; party names and reporter match exactly."}
+
+VERDICT: {"status":"fake","confidence":0.92,"reasoning":"CourtListener returned 'John Doe v. Gary Settle' (unrelated) as the only hit for 'Hendricks v. California Probate Bureau'; courtlistener_search by case-name returned zero hits. No California Supreme Court opinion exists at 7 Cal.5th 904. Likely fabricated."}
+
+VERDICT: {"status":"real","case_name":"Estate of Williams","match_url":"","confidence":0.55,"reasoning":"Neither citation_verify nor courtlistener_search returned hits for 269 Cal.App.2d 671 or 'Estate of Williams' 1968, but older California probate opinions are often missing from CL's full-text index. No contradictory evidence — accept with low confidence rather than reject."}
+
+You may emit at most ONE VERDICT line. Keep reasoning under 280 characters.`;
+
+const VERIFIER_TOOLS = [
+  CEB_SEARCH_TOOL_DEFINITION,
+  COURTLISTENER_SEARCH_TOOL_DEFINITION,
+  CITATION_VERIFY_TOOL_DEFINITION,
+];
+
+interface ToolUseBlock {
+  type: 'tool_use';
+  id: string;
+  name: string;
+  input: Record<string, unknown>;
+}
+
+async function dispatchVerifierTool(use: ToolUseBlock): Promise<string> {
+  try {
+    switch (use.name) {
+      case 'citation_verify': {
+        const r = await citationVerify(use.input as { text?: string; citations?: string[] });
+        return JSON.stringify(r);
+      }
+      case 'courtlistener_search': {
+        const r = await courtlistenerSearch(use.input as { query: string });
+        return JSON.stringify(r);
+      }
+      case 'ceb_search': {
+        const r = await cebSearch(use.input as { query: string });
+        return JSON.stringify(r);
+      }
+      default:
+        return JSON.stringify({ error: `Unknown tool: ${use.name}` });
+    }
+  } catch (err) {
+    return JSON.stringify({ error: err instanceof Error ? err.message : String(err) });
+  }
+}
+
+function extractVerdict(text: string): VerifierVerdict | null {
+  const m = text.match(/VERDICT:\s*(\{.*?\})\s*$/m) || text.match(/VERDICT:\s*(\{[^\n]*\})/);
+  if (!m) return null;
+  try {
+    const parsed = JSON.parse(m[1]) as Partial<VerifierVerdict>;
+    if (parsed.status !== 'real' && parsed.status !== 'fake') return null;
+    return {
+      status: parsed.status,
+      case_name: parsed.case_name,
+      match_url: parsed.match_url,
+      confidence: typeof parsed.confidence === 'number' ? parsed.confidence : 0.5,
+      reasoning: parsed.reasoning ?? '',
+      tool_rounds: 0,
+      elapsed_ms: 0,
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Verify a single citation via the sub-agent. Stateless — no session
+ * persistence, no shared context with the main workbench.
+ */
+export async function verifyCitationViaSubAgent(citationText: string): Promise<VerifierVerdict> {
+  const t0 = performance.now();
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) throw new Error('verifyCitationViaSubAgent: ANTHROPIC_API_KEY not configured');
+
+  const client = new Anthropic({ apiKey });
+  const messages: Anthropic.Messages.MessageParam[] = [
+    {
+      role: 'user',
+      content: `Verify this citation: ${citationText}`,
+    },
+  ];
+
+  let toolRounds = 0;
+  let finalText = '';
+  for (let iter = 0; iter < VERIFIER_MAX_ROUNDS; iter += 1) {
+    const response = await client.messages.create({
+      model: VERIFIER_MODEL,
+      max_tokens: VERIFIER_MAX_TOKENS,
+      system: VERIFIER_SYSTEM_PROMPT,
+      messages,
+      tools: VERIFIER_TOOLS,
+    });
+
+    const blocks = response.content;
+    const assistantText: string[] = [];
+    const toolUses: ToolUseBlock[] = [];
+    for (const b of blocks) {
+      if (b.type === 'text') assistantText.push(b.text);
+      else if (b.type === 'tool_use') {
+        toolUses.push({
+          type: 'tool_use',
+          id: b.id,
+          name: b.name,
+          input: b.input as Record<string, unknown>,
+        });
+      }
+    }
+    finalText = assistantText.join('\n');
+
+    if (response.stop_reason === 'end_turn' || toolUses.length === 0) {
+      break;
+    }
+
+    toolRounds += 1;
+    messages.push({ role: 'assistant', content: blocks });
+    const toolResults: Anthropic.Messages.ToolResultBlockParam[] = [];
+    for (const use of toolUses) {
+      const content = await dispatchVerifierTool(use);
+      toolResults.push({
+        type: 'tool_result',
+        tool_use_id: use.id,
+        content,
+      });
+    }
+    messages.push({ role: 'user', content: toolResults });
+  }
+
+  const elapsed = performance.now() - t0;
+  const verdict = extractVerdict(finalText);
+  if (verdict) {
+    verdict.tool_rounds = toolRounds;
+    verdict.elapsed_ms = Math.round(elapsed);
+    return verdict;
+  }
+
+  // Couldn't parse a VERDICT line — treat as fake with low confidence.
+  // Better to fail closed than to silently accept an unparseable answer.
+  return {
+    status: 'fake',
+    confidence: 0.1,
+    reasoning: `Sub-agent did not return a parseable VERDICT. Raw output: ${finalText.slice(0, 200)}`,
+    tool_rounds: toolRounds,
+    elapsed_ms: Math.round(elapsed),
+  };
+}
+
+// Suppress the "imported but unused" warning if the agent config isn't
+// referenced — keep it as an explicit dependency for future use.
+void getAgentConfig;

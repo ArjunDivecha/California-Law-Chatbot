@@ -27,17 +27,72 @@
  */
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useUser } from '@clerk/clerk-react';
-import { useV2AgentStream } from '../../hooks/useV2AgentStream.ts';
+import { Link, useParams } from 'react-router-dom';
+import { useUser, useAuth } from '@clerk/clerk-react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import { useV2AgentStream, type V2SourceSummary } from '../../hooks/useV2AgentStream.ts';
+import { useV2SanitizationPreview } from '../../hooks/useV2SanitizationPreview.ts';
+import { ConfidentialityAttestation } from '../ConfidentialityAttestation.tsx';
+import { checkAnswer } from '../../services/guardrailsServiceV2.ts';
+import { prune as pruneSources } from '../../services/retrievalPrunerV2.ts';
+import { fetchSessionWithCache, invalidateSession } from '../../utils/chatStoreV2.ts';
+
+type Workflow = 'quick' | 'research';
 
 interface DisplayMessage {
   id: string;
   role: 'user' | 'assistant';
   text: string;
+  /** Source summaries (assistant messages only) — what tools surfaced. */
+  sources?: V2SourceSummary[];
+  /** Workflow that produced this turn — surfaced as a badge on the
+   *  assistant message ("Quick" / "Research"). Carries the value from
+   *  the originating user-message's `workflow` field. */
+  workflow?: 'quick' | 'research';
 }
 
 function newSessionId(): string {
   return `v2_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+}
+
+/**
+ * Per-session localStorage key for the in-progress textarea. Debounced
+ * save (1500ms after typing stops) so a refresh / accidental nav doesn't
+ * lose a half-typed query. Matches V1's LOCAL_DRAFT_PREFIX semantics.
+ */
+const LOCAL_DRAFT_KEY = (sessionId: string): string =>
+  `cal-law-chat-draft:v2:${sessionId}`;
+const LOCAL_DRAFT_DEBOUNCE_MS = 1500;
+
+/**
+ * Welcome message displayed when a session has no messages yet AND no
+ * stream is in flight. Mirrors V1's WELCOME_MESSAGE.
+ */
+const WELCOME_MESSAGE =
+  'Welcome — I\'m V2 of the California Law Chatbot. Ask a legal-research question, or use the workflow toggle above to pick Draft Document or Verify Citation. I have access to CEB practice guides, CourtListener case law, LegiScan + OpenStates legislation, a citation verifier, and web search.';
+
+/**
+ * Convert an Anthropic-shape message content (string | content-block
+ * array) to a displayable text string. Tool-use / tool-result blocks
+ * are summarized rather than rendered — those aren't user-visible in
+ * the chat bubble layout.
+ */
+function renderContent(content: unknown): string {
+  if (typeof content === 'string') return content;
+  if (!Array.isArray(content)) return '';
+  const parts: string[] = [];
+  for (const block of content) {
+    if (block && typeof block === 'object') {
+      const b = block as { type?: string; text?: string };
+      if (b.type === 'text' && typeof b.text === 'string') {
+        parts.push(b.text);
+      }
+      // tool_use / tool_result intentionally skipped — they're rendered
+      // as pills during the active turn, not as historical bubbles.
+    }
+  }
+  return parts.join('\n');
 }
 
 function toolHumanName(name: string): string {
@@ -55,12 +110,34 @@ function toolHumanName(name: string): string {
 
 export const V2ChatPage: React.FC = () => {
   const { user } = useUser();
+  const { getToken } = useAuth();
   const userId = user?.id ?? null;
+  const params = useParams<{ sessionId?: string }>();
+  const urlSessionId = params.sessionId ?? null;
 
-  const [sessionId] = useState(() => newSessionId());
-  const [draft, setDraft] = useState('');
+  // sessionId is URL-driven when present; otherwise mint a fresh one.
+  // useMemo (not useState) so navigating between sessions actually
+  // switches the active session, not just the URL.
+  const sessionId = useMemo(
+    () => urlSessionId ?? newSessionId(),
+    [urlSessionId],
+  );
+  // Restore in-progress textarea from localStorage on mount (per-session).
+  const [draft, setDraft] = useState<string>(() => {
+    if (typeof window === 'undefined') return '';
+    try {
+      const sid = urlSessionId ?? 'new';
+      return window.localStorage.getItem(LOCAL_DRAFT_KEY(sid)) ?? '';
+    } catch {
+      return '';
+    }
+  });
+  const [workflow, setWorkflow] = useState<Workflow>('research');
   const [messages, setMessages] = useState<DisplayMessage[]>([]);
+  const [hydrating, setHydrating] = useState(false);
   const { state, send, reset } = useV2AgentStream();
+  const { preview: livePreview, isComputing: previewComputing, hasDetections } =
+    useV2SanitizationPreview(draft);
 
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
@@ -71,6 +148,73 @@ export const V2ChatPage: React.FC = () => {
       behavior: 'smooth',
     });
   }, [messages, state.tokens, state.toolEvents.length]);
+
+  // Debounced save of the in-progress textarea — survives refresh.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const sid = urlSessionId ?? 'new';
+    const key = LOCAL_DRAFT_KEY(sid);
+    if (!draft) {
+      // Cleared input — clear stored draft too. No debounce needed.
+      try {
+        window.localStorage.removeItem(key);
+      } catch {}
+      return;
+    }
+    const t = window.setTimeout(() => {
+      try {
+        window.localStorage.setItem(key, draft);
+      } catch {}
+    }, LOCAL_DRAFT_DEBOUNCE_MS);
+    return () => window.clearTimeout(t);
+  }, [draft, urlSessionId]);
+
+  // Hydrate from KV when landing on /v2/:sessionId. Pulls full message
+  // history via GET /api/agent/session?id= and converts the Anthropic-
+  // shape messages to the DisplayMessage[] the UI renders.
+  useEffect(() => {
+    if (!urlSessionId) {
+      setMessages([]);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      setHydrating(true);
+      try {
+        // P4.5 — read through local cache (5min TTL); falls back to
+        // /api/agent/session and writes the result back to localStorage.
+        const payload = await fetchSessionWithCache(urlSessionId, getToken);
+        if (cancelled || !payload) return;
+        const messagesData = payload.messages as Array<{
+          role: 'user' | 'assistant';
+          content: unknown;
+          workflow?: 'quick' | 'research';
+        }>;
+        const display: DisplayMessage[] = [];
+        let idx = 0;
+        let lastUserWorkflow: 'quick' | 'research' | undefined;
+        for (const m of messagesData) {
+          const text = renderContent(m.content);
+          if (!text) continue;
+          if (m.role === 'user') lastUserWorkflow = m.workflow;
+          display.push({
+            id: `${m.role}_${idx++}`,
+            role: m.role,
+            text,
+            workflow: m.role === 'assistant' ? lastUserWorkflow : m.workflow,
+          });
+        }
+        setMessages(display);
+      } catch {
+        // hydration failures show as empty conversation; UI doesn't break
+      } finally {
+        if (!cancelled) setHydrating(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [urlSessionId, getToken]);
 
   const onSubmit = useCallback(
     (e: React.FormEvent) => {
@@ -83,10 +227,16 @@ export const V2ChatPage: React.FC = () => {
         { id: `u_${Date.now()}`, role: 'user', text },
       ]);
       setDraft('');
+      // Clear the persisted draft — message has flown.
+      try {
+        const sid = urlSessionId ?? 'new';
+        window.localStorage.removeItem(LOCAL_DRAFT_KEY(sid));
+      } catch {}
       void send({
         session_id: sessionId,
         user_text: text,
         user_id: userId,
+        workflow,
       });
     },
     [draft, state.isStreaming, send, sessionId, userId],
@@ -102,8 +252,17 @@ export const V2ChatPage: React.FC = () => {
           id: `a_${Date.now()}`,
           role: 'assistant',
           text: state.done?.final_text || state.tokens,
+          sources: state.sources.slice(),
+          workflow,
         },
       ]);
+      // Tell the V2Sidebar to refresh — the new turn just landed in
+      // KV's per-user index and we want it visible immediately rather
+      // than waiting for the next sidebar mount.
+      (window as unknown as { __v2RefreshSidebar?: () => void }).__v2RefreshSidebar?.();
+      // P4.5 — invalidate the cache for this session so the next
+      // visit to /v2/<sessionId> re-fetches with the new turn included.
+      invalidateSession(sessionId);
       // Reset stream state so the next turn's privileged chip + tool events
       // don't carry over from the previous turn.
       // Use a short timeout so the user can see the final summary briefly
@@ -116,20 +275,25 @@ export const V2ChatPage: React.FC = () => {
   const privilegedBadge = useMemo(() => {
     if (!state.sanitization) return null;
     const { privileged, compound_risk_buckets, redactions_count } = state.sanitization;
+    // Informational only — sanitization still detects spans + compound
+    // risk, but as of the 7th addendum the privileged flag no longer
+    // gates web_search. The chip surfaces what was detected so the
+    // attorney can SEE the assessment, but the model has access to all
+    // tools either way.
     if (privileged) {
       const reasons: string[] = [];
       if (compound_risk_buckets > 0) reasons.push(`compound risk ×${compound_risk_buckets}`);
       if (redactions_count > 0) reasons.push(`${redactions_count} redaction${redactions_count > 1 ? 's' : ''}`);
       return (
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-pink-100 px-3 py-1 text-xs font-semibold text-pink-700">
-          🔒 Privileged — web search disabled
-          {reasons.length > 0 && <span className="text-pink-600/80">({reasons.join(' · ')})</span>}
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800">
+          ⚠️ Privileged content detected
+          {reasons.length > 0 && <span className="text-amber-700/80">({reasons.join(' · ')})</span>}
         </span>
       );
     }
     return (
       <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">
-        🌐 Public research — web search enabled
+        🌐 No privileged content detected
       </span>
     );
   }, [state.sanitization]);
@@ -139,6 +303,10 @@ export const V2ChatPage: React.FC = () => {
       className="flex flex-col h-screen"
       style={{ backgroundColor: '#FAFAF8', fontFamily: 'Georgia, "Times New Roman", serif' }}
     >
+      {/* P2.4 — informed-consent attestation. Self-gates via useAttestation
+          per Clerk user ID. Soft gate by default (dismissable). */}
+      <ConfidentialityAttestation softGate />
+
       <header className="bg-white border-b border-gray-100 px-6 py-4">
         <div className="mx-auto flex max-w-4xl items-center justify-between">
           <div className="flex items-center gap-3">
@@ -152,23 +320,46 @@ export const V2ChatPage: React.FC = () => {
               </span>
             </div>
           </div>
-          <div className="text-xs text-gray-400">
-            session: <span className="font-mono">{sessionId.slice(0, 16)}…</span>
+          <div className="flex items-center gap-3 text-xs">
+            <Link
+              to="/v2/draft"
+              className="rounded-full bg-pink-50 px-3 py-1.5 text-pink-700 font-semibold hover:bg-pink-100"
+            >
+              Draft a document →
+            </Link>
+            <span className="text-gray-400">
+              session: <span className="font-mono">{sessionId.slice(0, 16)}…</span>
+            </span>
           </div>
         </div>
       </header>
 
       <main className="flex-1 overflow-hidden">
         <div className="mx-auto h-full max-w-3xl flex flex-col">
-          <div ref={scrollRef} className="flex-1 overflow-y-auto px-6 py-6 space-y-4">
-            {messages.length === 0 && !state.isStreaming && (
-              <div className="text-center text-gray-400 text-sm py-12">
-                Ask a California legal-research question to begin. Try “What does CRC 2.550 require for a motion to seal?” or a client-context query.
+          <WorkflowToggle
+            workflow={workflow}
+            onSelectWorkflow={setWorkflow}
+            disabled={state.isStreaming}
+          />
+
+          <div ref={scrollRef} className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+            {messages.length === 0 && !state.isStreaming && !hydrating && (
+              <div className="rounded-2xl border border-gray-200 bg-white p-5 max-w-2xl mx-auto shadow-sm">
+                <div className="text-[13px] font-semibold text-pink-600 uppercase tracking-wider mb-2">
+                  V2 Welcome
+                </div>
+                <p className="text-[14px] text-gray-700 leading-relaxed">{WELCOME_MESSAGE}</p>
+                <div className="mt-3 text-[12px] text-gray-500">
+                  <strong className="text-gray-700">Try:</strong> "What does CRC 2.550 require for a motion to seal?" — "Draft a holographic codicil for Estate of Smith" — paste a memo into Verify Citation to check every cite.
+                </div>
               </div>
+            )}
+            {hydrating && (
+              <div className="text-center text-gray-400 text-sm py-6 italic">Loading prior session…</div>
             )}
 
             {messages.map((m) => (
-              <MessageBubble key={m.id} role={m.role} text={m.text} />
+              <MessageBubble key={m.id} role={m.role} text={m.text} sources={m.sources} workflow={m.workflow} />
             ))}
 
             {state.isStreaming && (
@@ -238,8 +429,19 @@ export const V2ChatPage: React.FC = () => {
                 {state.isStreaming ? 'Working…' : 'Send'}
               </button>
             </div>
+
+            {/* Live sanitization preview (P1.1) — debounced 300ms after you stop
+                typing. Informational only per the 7th addendum — no submission
+                blocking. Shows the detector's verdict on your in-progress text. */}
+            <LiveSanitizationPanel
+              draft={draft}
+              preview={livePreview}
+              hasDetections={hasDetections}
+              isComputing={previewComputing}
+            />
+
             <div className="mt-2 text-[11px] text-gray-400">
-              V2 preview: Anthropic agent loop with sanitization gating. Conversation persists to Upstash KV under{' '}
+              V2 preview: Anthropic agent loop with live sanitization preview. Conversation persists to Upstash KV under{' '}
               <span className="font-mono">{sessionId}</span>.
             </div>
           </form>
@@ -253,24 +455,352 @@ export const V2ChatPage: React.FC = () => {
 // Tiny message-bubble + tool-pill subcomponents (kept local to this file)
 // ---------------------------------------------------------------------------
 
-const MessageBubble: React.FC<{ role: 'user' | 'assistant'; text: string; streaming?: boolean }> = ({
+/**
+ * Workflow toggle — 4 buttons at the top of the chat surface. Replaces
+ * V1's source-mode toggle per the Phase 4 plan. The two "on-page"
+ * workflows (Quick, Research) change request behavior; the two "go-to"
+ * workflows (Draft, Verify) navigate to dedicated routes via <Link>
+ * for reliable react-router transitions.
+ */
+const WorkflowToggle: React.FC<{
+  workflow: 'quick' | 'research';
+  onSelectWorkflow: (w: 'quick' | 'research') => void;
+  disabled?: boolean;
+}> = ({ workflow, onSelectWorkflow, disabled }) => {
+  const ToggleBtn: React.FC<{
+    label: string;
+    sub: string;
+    active?: boolean;
+    onClick: () => void;
+    disabled?: boolean;
+  }> = ({ label, sub, active, onClick, disabled }) => (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className={`flex-1 rounded-lg border px-3 py-2 text-left transition ${
+        active
+          ? 'border-pink-300 bg-pink-50'
+          : 'border-gray-200 bg-white hover:border-pink-200'
+      } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+    >
+      <div className={`text-[12px] font-semibold ${active ? 'text-pink-700' : 'text-gray-800'}`}>
+        {label}
+      </div>
+      <div className="text-[10px] text-gray-500 leading-tight mt-0.5">{sub}</div>
+    </button>
+  );
+  const NavLink: React.FC<{ to: string; label: string; sub: string; disabled?: boolean }> = ({
+    to,
+    label,
+    sub,
+    disabled,
+  }) => (
+    <Link
+      to={to}
+      role="button"
+      aria-label={label}
+      className={`flex-1 rounded-lg border border-gray-200 bg-white hover:border-pink-200 px-3 py-2 text-left transition ${
+        disabled ? 'opacity-50 pointer-events-none' : ''
+      }`}
+    >
+      <div className="text-[12px] font-semibold text-gray-800">{label}</div>
+      <div className="text-[10px] text-gray-500 leading-tight mt-0.5">{sub}</div>
+    </Link>
+  );
+  return (
+    <div className="px-6 pt-4 pb-2">
+      <div className="flex gap-2">
+        <ToggleBtn
+          label="Quick Answer"
+          sub="Sonnet · no tools · ~5s"
+          active={workflow === 'quick'}
+          onClick={() => onSelectWorkflow('quick')}
+          disabled={disabled}
+        />
+        <ToggleBtn
+          label="Research Memo"
+          sub="Opus · full tools · ~30s"
+          active={workflow === 'research'}
+          onClick={() => onSelectWorkflow('research')}
+          disabled={disabled}
+        />
+        <NavLink to="/v2/draft" label="Draft Document" sub="Templates + section streaming" disabled={disabled} />
+        <NavLink to="/v2/verify" label="Verify Citation" sub="Adversarial citation check" disabled={disabled} />
+      </div>
+    </div>
+  );
+};
+
+/**
+ * Live sanitization preview panel — appears below the textarea. Shows
+ * the detector's verdict on the in-progress text after a 300ms debounce.
+ * Informational; never blocks submission (per the 7th addendum).
+ */
+const LiveSanitizationPanel: React.FC<{
+  draft: string;
+  preview: import('../../hooks/useV2SanitizationPreview.ts').PreviewData;
+  hasDetections: boolean;
+  isComputing: boolean;
+}> = ({ draft, preview, hasDetections, isComputing }) => {
+  if (!draft.trim()) return null;
+  if (isComputing && !hasDetections) {
+    // Brief pre-debounce state — show a faint placeholder so the user
+    // knows the system is looking, not just silent.
+    return (
+      <div className="mt-2 text-[11px] text-gray-400 italic">Analyzing…</div>
+    );
+  }
+  if (!hasDetections) {
+    return (
+      <div className="mt-2 flex items-center gap-2">
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700">
+          🌐 No privileged content detected
+        </span>
+      </div>
+    );
+  }
+  // Detections — list categories with counts; show the first ~3 raw matches.
+  const counts = preview.categoryCounts;
+  const parts = Object.entries(counts)
+    .filter(([, n]) => (n as number) > 0)
+    .map(([cat, n]) => `${n} ${cat.replace(/_/g, ' ')}${(n as number) > 1 ? 's' : ''}`);
+  return (
+    <div className="mt-2 space-y-1.5">
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-semibold text-amber-800">
+          ⚠️ Detected: {parts.join(' · ')}
+        </span>
+        <span className="text-[10px] text-gray-400">Web search remains available — your call.</span>
+      </div>
+      <div className="flex flex-wrap gap-1">
+        {preview.tokens.slice(0, 8).map((t) => (
+          <span
+            key={t.value}
+            className="inline-flex items-center gap-1 rounded bg-amber-50 border border-amber-200 px-1.5 py-0.5 text-[10px] text-amber-900"
+            title={`Will tokenize as ${t.value}`}
+          >
+            <span className="font-mono">{t.value}</span>
+            <span className="text-amber-700/70">= {t.raw.slice(0, 24)}{t.raw.length > 24 ? '…' : ''}</span>
+          </span>
+        ))}
+        {preview.tokens.length > 8 && (
+          <span className="text-[10px] text-gray-400">+{preview.tokens.length - 8} more</span>
+        )}
+      </div>
+    </div>
+  );
+};
+
+const MessageBubble: React.FC<{
+  role: 'user' | 'assistant';
+  text: string;
+  streaming?: boolean;
+  sources?: V2SourceSummary[];
+  workflow?: 'quick' | 'research';
+}> = ({
   role,
   text,
   streaming,
+  sources,
+  workflow,
 }) => {
   const isUser = role === 'user';
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // Some browsers (and Playwright headless without permission) block
+      // clipboard writes — fall back to a temporary textarea + execCommand.
+      try {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.setAttribute('readonly', '');
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        setCopied(true);
+        window.setTimeout(() => setCopied(false), 1500);
+      } catch {}
+    }
+  }, [text]);
+
+  const handlePrint = useCallback(() => {
+    // Open the message text in a print-only window so we don't print the
+    // whole chat surface. Header for context.
+    const w = window.open('', '_blank', 'width=800,height=900');
+    if (!w) return;
+    w.document.write(`<!doctype html><html><head><title>V2 Message</title>
+      <style>body{font-family:Georgia,serif;padding:2rem;max-width:7in;margin:0 auto;color:#1a1a1a}pre{white-space:pre-wrap;font:inherit}</style>
+      </head><body><pre>${text.replace(/[<>&]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c] as string))}</pre>
+      <script>window.onload = () => window.print();</script></body></html>`);
+    w.document.close();
+  }, [text]);
+
   return (
     <div className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
-      <div
-        className={`max-w-[85%] rounded-2xl px-4 py-3 text-[15px] leading-relaxed whitespace-pre-wrap ${
-          isUser
-            ? 'bg-pink-500 text-white'
-            : 'bg-white border border-gray-200 text-gray-900 shadow-sm'
-        }`}
-      >
-        {text}
-        {streaming && !isUser && <span className="ml-1 inline-block animate-pulse">▍</span>}
+      <div className="max-w-[85%] flex flex-col gap-1">
+        <div
+          className={`rounded-2xl px-4 py-3 text-[15px] leading-relaxed ${
+            isUser
+              ? 'bg-pink-500 text-white whitespace-pre-wrap'
+              : 'bg-white border border-gray-200 text-gray-900 shadow-sm v2-md'
+          }`}
+        >
+          {isUser ? (
+            text
+          ) : (
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm]}
+              components={{
+                a: ({ node, ...props }) => (
+                  <a
+                    {...props}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-pink-600 underline hover:text-pink-700"
+                  />
+                ),
+              }}
+            >
+              {text}
+            </ReactMarkdown>
+          )}
+          {streaming && !isUser && <span className="ml-1 inline-block animate-pulse">▍</span>}
+        </div>
+
+        {/* Guardrail warning (P4.2) — flags case names cited in the
+            answer but not present in the sources panel. */}
+        {!isUser && !streaming && (() => {
+          const result = checkAnswer(text, sources ?? []);
+          if (result.warnings.length === 0) return null;
+          return (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-1.5 text-[11px] text-amber-900">
+              ⚠ {result.warnings[0]}
+            </div>
+          );
+        })()}
+
+        {/* Sources panel (P2.3) — appears on completed assistant
+            messages that had tool calls. Shows what the agent used. */}
+        {!isUser && !streaming && sources && sources.length > 0 && (
+          <SourcesPanel sources={sources} />
+        )}
+
+        {/* Per-message actions: only on completed assistant messages.
+            Hidden on user bubbles and while the assistant is still
+            streaming. */}
+        {!isUser && !streaming && (
+          <div className="flex items-center gap-2 text-[11px] text-gray-400 px-1 flex-wrap">
+            <button
+              type="button"
+              onClick={handleCopy}
+              className="hover:text-pink-600 inline-flex items-center gap-1"
+              title={copied ? 'Copied!' : 'Copy to clipboard'}
+              aria-label="Copy message"
+            >
+              {copied ? '✓ Copied' : '⧉ Copy'}
+            </button>
+            <span className="text-gray-300">·</span>
+            <button
+              type="button"
+              onClick={handlePrint}
+              className="hover:text-pink-600 inline-flex items-center gap-1"
+              title="Print message"
+              aria-label="Print message"
+            >
+              ⎙ Print
+            </button>
+            {workflow && (
+              <>
+                <span className="text-gray-300">·</span>
+                <span
+                  className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                    workflow === 'quick'
+                      ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                      : 'bg-purple-50 text-purple-700 border border-purple-200'
+                  }`}
+                  title={workflow === 'quick' ? 'Generated with Quick Answer (Sonnet, no tools)' : 'Generated with Research Memo (Opus + full tools)'}
+                >
+                  {workflow === 'quick' ? 'Quick' : 'Research'}
+                </span>
+              </>
+            )}
+          </div>
+        )}
       </div>
+    </div>
+  );
+};
+
+/**
+ * Sources panel — rendered below an assistant bubble that had tool calls.
+ * Lists per-tool what was retrieved. Click-throughs go to the actual
+ * source URL. Replaces V1's CEBBadge with a tool-agnostic listing that
+ * covers CEB / CourtListener / LegiScan / OpenStates / citation_verify.
+ */
+const SourcesPanel: React.FC<{ sources: V2SourceSummary[] }> = ({ sources }) => {
+  // P4.3 — dedupe near-duplicates (CourtListener + citation_verify can
+  // both surface the same case) and cap to 12.
+  const pruned = pruneSources(sources, 12);
+  // Group by source_type so the user sees "CEB (3), CourtListener (2)" sections
+  const grouped = pruned.reduce<Record<string, V2SourceSummary[]>>((acc, s) => {
+    (acc[s.source_type] = acc[s.source_type] ?? []).push(s);
+    return acc;
+  }, {});
+  const labelFor = (t: string): string => {
+    switch (t) {
+      case 'ceb': return 'CEB Practice Guides';
+      case 'courtlistener': return 'CourtListener Cases';
+      case 'legiscan': return 'LegiScan Bills';
+      case 'openstates': return 'OpenStates Bills';
+      case 'citation_verify': return 'Verified Citations';
+      case 'ca_code': return 'California Code Sections';
+      case 'web': return 'Web Results';
+      default: return t;
+    }
+  };
+  return (
+    <div className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-[11px] space-y-1.5">
+      <div className="font-semibold text-gray-700 uppercase tracking-wider text-[10px]">Sources</div>
+      {Object.entries(grouped).map(([type, items]) => (
+        <div key={type}>
+          <div className="text-[10px] font-semibold text-pink-700 mb-0.5">
+            {labelFor(type)} <span className="text-gray-400">({items.length})</span>
+          </div>
+          <ul className="space-y-0.5 ml-2 list-disc list-inside">
+            {items.map((s, i) => (
+              <li key={i} className="text-gray-700">
+                {s.url ? (
+                  <a
+                    href={s.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-pink-600 underline hover:text-pink-700"
+                  >
+                    {s.title}
+                  </a>
+                ) : (
+                  <span>{s.title}</span>
+                )}
+                {s.status && (
+                  <span className={`ml-2 inline-block rounded px-1 text-[9px] ${s.status === 'verified' ? 'bg-emerald-100 text-emerald-700' : s.status === 'not_found' ? 'bg-amber-100 text-amber-700' : 'bg-gray-200 text-gray-600'}`}>
+                    {s.status}
+                  </span>
+                )}
+                {s.detail && <span className="text-gray-500"> — {s.detail}</span>}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
     </div>
   );
 };

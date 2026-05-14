@@ -39,6 +39,15 @@ export interface V2ToolEvent {
   input?: unknown;
 }
 
+export interface V2SourceSummary {
+  tool_name: string;
+  source_type: string;
+  title: string;
+  detail?: string;
+  url?: string;
+  status?: string;
+}
+
 export interface V2Sanitization {
   privileged: boolean;
   compound_risk_buckets: number;
@@ -66,6 +75,8 @@ export interface V2TurnState {
   sanitization: V2Sanitization | null;
   tokens: string;
   toolEvents: V2ToolEvent[];
+  /** Per-tool source summaries collected from tool_result events. */
+  sources: V2SourceSummary[];
   isStreaming: boolean;
   error: V2StreamError | null;
   done: V2DoneSummary | null;
@@ -77,6 +88,7 @@ const INITIAL_STATE: V2TurnState = {
   sanitization: null,
   tokens: '',
   toolEvents: [],
+  sources: [],
   isStreaming: false,
   error: null,
   done: null,
@@ -89,6 +101,8 @@ interface SendOpts {
   user_id?: string | null;
   model?: string;
   system_prompt?: string;
+  /** 'quick' (Sonnet, no tools) or 'research' (Opus + full tool set). */
+  workflow?: 'quick' | 'research';
 }
 
 export function useV2AgentStream() {
@@ -121,7 +135,14 @@ export function useV2AgentStream() {
       resp = await fetch('/api/agent/turn-stream', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
-        body: JSON.stringify(opts),
+        body: JSON.stringify({
+          session_id: opts.session_id,
+          user_text: opts.user_text,
+          user_id: opts.user_id,
+          model: opts.model,
+          system_prompt: opts.system_prompt,
+          workflow: opts.workflow,
+        }),
         signal: ctrl.signal,
       });
     } catch (err) {
@@ -266,6 +287,9 @@ function handleSseEvent(
       const id = String(data.tool_use_id);
       const isError = Boolean(data.is_error);
       const elapsed = Number(data.elapsed_ms ?? 0);
+      const summaries = Array.isArray(data.source_summary)
+        ? (data.source_summary as V2SourceSummary[])
+        : [];
       setState((s) => ({
         ...s,
         toolEvents: s.toolEvents.map((e) =>
@@ -273,6 +297,7 @@ function handleSseEvent(
             ? { ...e, status: isError ? 'error' : 'done', elapsed_ms: elapsed }
             : e,
         ),
+        sources: [...s.sources, ...summaries],
       }));
       break;
     }

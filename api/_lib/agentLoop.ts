@@ -30,9 +30,12 @@ import {
 import {
   appendMessage,
   readMessages,
+  readMeta,
+  writeMeta,
   readToolResult,
   writeToolResult,
   touchLastActive,
+  indexUserSession,
   type SessionMessage,
 } from './sessionStore.js';
 import { buildAuditRecord, writeAuditRecord } from '../_shared/auditLog.js';
@@ -42,7 +45,7 @@ import {
   type Span,
 } from '../_shared/sanitization/index.js';
 import { COMPOUND_RISK_BUCKET_THRESHOLD } from '../_shared/sanitization/compoundRisk.js';
-import { buildSystemPrompt } from './skills.js';
+import { buildSystemPrompt, getAgentConfig } from './skills.js';
 
 // Anthropic's 2026-05-12 legal-industry launch cites Opus 4.7 as their
 // flagship legal-reasoning model (90.9% on Harvey's BigLaw Bench). V2
@@ -51,10 +54,139 @@ import { buildSystemPrompt } from './skills.js';
 // impact note, decision deferred to Arjun pre-Phase-4.5 shadow run).
 const DEFAULT_MODEL = 'claude-opus-4-7';
 const DEFAULT_MAX_TOKENS = 4096;
-const MAX_ITERATIONS = 8; // safety cap on tool-use rounds within one turn
+/**
+ * Default safety cap on tool-use rounds within one turn. Overridden at
+ * runtime by agents/california-legal/agent.json `max_iterations` (Phase 2:
+ * motion_compel-class drafts legitimately need ~12 rounds for citation
+ * verification). The agent-config value is read via getAgentConfig()
+ * inside runTurn / runTurnStream.
+ */
+const DEFAULT_MAX_ITERATIONS = 8;
 
 /** Beta header for the MCP connector — 2026-05-12 fifth addendum. */
 const MCP_BETA_HEADER = 'mcp-client-2025-11-20';
+
+/**
+ * Source summary attached to each tool_result event so the V2 chat UI
+ * can render a Sources panel below the assistant message. Per-tool
+ * shapes are normalized into a single union.
+ */
+export interface ToolSourceSummary {
+  tool_name: string;
+  source_type: 'ceb' | 'courtlistener' | 'legiscan' | 'openstates' | 'citation_verify' | 'ca_code' | 'web' | 'unknown';
+  title: string;
+  detail?: string;
+  url?: string;
+  /** For citation_verify: 'verified' | 'not_found' | 'unverified' */
+  status?: string;
+}
+
+/**
+ * Parse the JSON-stringified tool output into 0-N normalized source
+ * summaries. Best-effort — failures return []. Caps at first 5 per
+ * tool to keep SSE event payloads compact.
+ */
+function summarizeToolOutputForSources(toolName: string, raw: string): ToolSourceSummary[] {
+  if (typeof raw !== 'string' || raw.length === 0) return [];
+  let body: unknown;
+  try {
+    body = JSON.parse(raw);
+  } catch {
+    return [];
+  }
+  if (!body || typeof body !== 'object') return [];
+  const out: ToolSourceSummary[] = [];
+  const LIMIT = 5;
+  if (toolName === 'ceb_search') {
+    const hits = (body as { hits?: Array<Record<string, unknown>> }).hits ?? [];
+    for (const h of hits.slice(0, LIMIT)) {
+      const meta = (h.metadata ?? {}) as Record<string, unknown>;
+      // CEB hits don't have a clean title field — derive one from
+      // metadata.source_file (pdf basename) and metadata.category.
+      const sourceFile = String(meta.source_file ?? '');
+      const cleaned = sourceFile
+        .replace(/\.pdf$/i, '')
+        .replace(/^california_/i, '')
+        .replace(/_[0-9]+_[0-9]+/g, '')
+        .replace(/_/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+      const niceTitle = cleaned
+        ? cleaned.charAt(0).toUpperCase() + cleaned.slice(1)
+        : 'CEB practice guide';
+      const category = String(meta.category ?? '').replace(/_/g, ' ');
+      const score = typeof h.score === 'number' ? h.score.toFixed(2) : '';
+      const detailParts: string[] = [];
+      if (category) detailParts.push(`category: ${category}`);
+      if (score) detailParts.push(`score: ${score}`);
+      out.push({
+        tool_name: toolName,
+        source_type: 'ceb',
+        title: niceTitle,
+        detail: detailParts.join(' · ') || undefined,
+        url: typeof meta.url === 'string' ? meta.url : undefined,
+      });
+    }
+  } else if (toolName === 'courtlistener_search') {
+    const hits = (body as { hits?: Array<Record<string, unknown>> }).hits ?? [];
+    for (const h of hits.slice(0, LIMIT)) {
+      out.push({
+        tool_name: toolName,
+        source_type: 'courtlistener',
+        title: String(h.case_name ?? 'Case'),
+        detail: [h.court, h.date_filed, h.citation].filter(Boolean).join(' · '),
+        url: typeof h.absolute_url === 'string' ? h.absolute_url : undefined,
+      });
+    }
+  } else if (toolName === 'legiscan_search') {
+    const hits = (body as { hits?: Array<Record<string, unknown>> }).hits ?? [];
+    for (const h of hits.slice(0, LIMIT)) {
+      out.push({
+        tool_name: toolName,
+        source_type: 'legiscan',
+        title: `${h.bill_number ?? ''} — ${h.title ?? ''}`.trim(),
+        detail: String(h.status ?? h.last_action ?? ''),
+        url: typeof h.url === 'string' ? h.url : undefined,
+      });
+    }
+  } else if (toolName === 'openstates_search') {
+    const hits = (body as { hits?: Array<Record<string, unknown>> }).hits ?? [];
+    for (const h of hits.slice(0, LIMIT)) {
+      out.push({
+        tool_name: toolName,
+        source_type: 'openstates',
+        title: `${h.identifier ?? ''} — ${h.title ?? ''}`.trim(),
+        detail: String(h.latest_action_description ?? ''),
+        url: typeof h.openstates_url === 'string' ? h.openstates_url : undefined,
+      });
+    }
+  } else if (toolName === 'california_code_lookup') {
+    const hits = (body as { hits?: Array<Record<string, unknown>> }).hits ?? [];
+    for (const h of hits.slice(0, LIMIT)) {
+      out.push({
+        tool_name: toolName,
+        source_type: 'ca_code',
+        title: `${h.code_full_name ?? ''} § ${h.section ?? ''}`.trim(),
+        detail: String(h.raw_match ?? '') || undefined,
+        url: typeof h.url === 'string' ? h.url : undefined,
+      });
+    }
+  } else if (toolName === 'citation_verify') {
+    const cits = (body as { citations?: Array<Record<string, unknown>> }).citations ?? [];
+    for (const c of cits.slice(0, LIMIT)) {
+      const m = (c.courtlistener_match ?? {}) as Record<string, unknown>;
+      out.push({
+        tool_name: toolName,
+        source_type: 'citation_verify',
+        title: String(c.text ?? 'citation'),
+        detail: String(m.case_name ?? '') || undefined,
+        url: typeof m.url === 'string' ? m.url : undefined,
+        status: String(c.status ?? ''),
+      });
+    }
+  }
+  return out;
+}
 
 // ---------------------------------------------------------------------------
 // Tool-output sanitization wrapper (audit §8 #8 / second addendum compliance)
@@ -146,10 +278,21 @@ export function sanitizeToolOutput(
   };
 }
 
+/**
+ * Workflow selector — surfaces in V2 chat as a top-of-page button row.
+ * - 'quick'    — Sonnet 4.6, NO tools, terse direct answer. Cheap + fast.
+ * - 'research' — Opus 4.7 + full tool set. Default. Current behavior.
+ *   (Draft and Verify workflows redirect to their own routes; they don't
+ *    flow through this enum.)
+ */
+export type Workflow = 'quick' | 'research';
+
 export interface RunTurnOptions {
   session_id: string;
   /** The attorney's input text (already sanitized — agentProxy handles that). */
   user_text: string;
+  /** Workflow mode for this turn (default 'research'). */
+  workflow?: Workflow;
   /**
    * True when the input contains compound-risk or HIGH_RISK_CATEGORIES
    * spans. Controls whether web_search is included in the tools array.
@@ -212,6 +355,47 @@ function newTurnId(): string {
   return `t_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
+/**
+ * After a user turn lands, update the per-user session index + write a
+ * derived title on the first turn (so the sidebar has something readable
+ * to display). Non-fatal — failures just degrade the sidebar UX, never
+ * the agent loop.
+ *
+ * Title = first 80 chars of the user text with newlines collapsed.
+ * Subsequent turns don't overwrite the title (first message wins —
+ * matches how most chat UIs derive a thread title).
+ */
+async function registerSessionForUser(
+  sessionId: string,
+  userId: string | null,
+  userText: string,
+  isFirstTurn: boolean,
+): Promise<void> {
+  if (!userId) return;
+  try {
+    await indexUserSession(userId, sessionId);
+    if (isFirstTurn) {
+      const title = userText
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, 80);
+      const meta = await readMeta(sessionId).catch(() => null);
+      // Only write title + user_id + created_at if not already set —
+      // idempotent across retries.
+      const fields: Record<string, string> = {};
+      if (!meta?.title) fields.title = title;
+      if (!meta?.user_id) fields.user_id = userId;
+      if (!meta?.created_at) fields.created_at = new Date().toISOString();
+      fields.last_active_at = new Date().toISOString();
+      if (Object.keys(fields).length > 0) {
+        await writeMeta(sessionId, fields);
+      }
+    }
+  } catch {
+    // Index/meta writes are best-effort.
+  }
+}
+
 /** Coerce SessionMessage[] into Anthropic's MessageParam[] shape. */
 function toAnthropicMessages(history: SessionMessage[]): Anthropic.Messages.MessageParam[] {
   return history.map(
@@ -253,6 +437,10 @@ async function dispatchWithCache(
   is_error?: boolean;
   /** Sanitization attestation. null when no spans/buckets fired. */
   sanitization: ToolOutputSanitization | null;
+  /** Pre-sanitization source summaries — extracted from the raw JSON so
+   *  it survives even when the sanitizer mangles the JSON structure.
+   *  Empty on cache hits (we don't have the raw anymore). */
+  source_summary: ToolSourceSummary[];
 }> {
   const cached = await readToolResult(sessionId, use.id).catch(() => null);
   if (cached) {
@@ -265,11 +453,19 @@ async function dispatchWithCache(
       tool_use_id: use.id,
       content: typeof cached.result === 'string' ? cached.result : JSON.stringify(cached.result),
       sanitization: null, // already-sanitized cache hit; no new attestation
+      source_summary: [], // raw is gone; sources unavailable on cache hit
     };
   }
 
   const raw = await dispatchTool(use);
   const rawContent = typeof raw.content === 'string' ? raw.content : JSON.stringify(raw.content);
+
+  // Extract source summaries from the RAW content BEFORE sanitization.
+  // The sanitizer's [REDACTED:name] insertions can corrupt JSON escape
+  // sequences, making post-sanitize parsing unreliable. Source titles
+  // (e.g., case names from CourtListener) are public-record by design,
+  // so parsing from raw doesn't violate the sanitization contract.
+  const sourceSummary = summarizeToolOutputForSources(use.name, rawContent);
 
   // 2026-05-10 second-addendum mandate / audit §8 #8 — every tool_result
   // block runs through the same span detector as user input. Destructive
@@ -297,6 +493,7 @@ async function dispatchWithCache(
     content: sanitizedContent,
     is_error: raw.is_error,
     sanitization: attestation,
+    source_summary: sourceSummary,
   };
 }
 
@@ -374,9 +571,16 @@ function callMessagesStream(
 export async function runTurn(opts: RunTurnOptions): Promise<RunTurnResult> {
   const t0 = performance.now();
   const turnId = opts.turn_id ?? newTurnId();
-  const model = opts.model ?? DEFAULT_MODEL;
+  const workflow: Workflow = opts.workflow ?? 'research';
+  // Quick workflow trades depth for latency — Sonnet 4.6 + no tools.
+  const model =
+    opts.model ??
+    (workflow === 'quick' ? 'claude-sonnet-4-6' : DEFAULT_MODEL);
   const systemPrompt =
-    opts.system_prompt ?? buildSystemPrompt({ user_text: opts.user_text }).prompt;
+    opts.system_prompt ??
+    (workflow === 'quick'
+      ? `You are a fast California legal-research assistant. Answer the attorney's question DIRECTLY in 2-5 sentences with NO tool calls and NO research detours. If you don't know, say so in one sentence. Do not include citations unless the attorney explicitly asked.`
+      : buildSystemPrompt({ user_text: opts.user_text }).prompt);
   const client =
     opts.anthropic_client ??
     new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY ?? undefined });
@@ -393,13 +597,28 @@ export async function runTurn(opts: RunTurnOptions): Promise<RunTurnResult> {
     sequence: nextSequence,
     appended_at: new Date().toISOString(),
     sanitization: opts.sanitization,
+    workflow: opts.workflow ?? 'research',
   };
   await appendMessage(opts.session_id, userMessage);
+  // Sidebar index (Phase 4.x) — derives a thread title from first turn
+  // and refreshes the per-user newest-first index.
+  void registerSessionForUser(
+    opts.session_id,
+    opts.user_id ?? null,
+    opts.user_text,
+    nextSequence === 0,
+  );
 
   // ── 2. Build the tools array (privilege-gated web_search + MCP toolsets)
   //       and the parallel mcp_servers spec (empty unless V2_MCP_ENABLED
   //       and a server is opted in via its per-server env flag).
-  const tools = buildToolsArray(opts.privileged) as unknown as Anthropic.Messages.Tool[];
+  // Quick workflow → no tools at all (Sonnet answers directly). Research
+  // (default) → full V2 tool set (CEB/CourtListener/LegiScan/OpenStates/
+  // citation_verify/web_search).
+  const tools =
+    workflow === 'quick'
+      ? ([] as unknown as Anthropic.Messages.Tool[])
+      : (buildToolsArray(opts.privileged) as unknown as Anthropic.Messages.Tool[]);
   const mcpServers = buildMcpServers(opts.privileged);
 
   // ── 3. Loop: call messages.create → if assistant emitted tool_use,
@@ -418,13 +637,14 @@ export async function runTurn(opts: RunTurnOptions): Promise<RunTurnResult> {
   // Build the rolling history we send to the SDK on each iteration.
   let history: SessionMessage[] = [...existing, userMessage];
 
-  for (let iter = 0; iter < MAX_ITERATIONS; iter += 1) {
+  const maxIterations = getAgentConfig().max_iterations ?? DEFAULT_MAX_ITERATIONS;
+  for (let iter = 0; iter < maxIterations; iter += 1) {
     const messages = toAnthropicMessages(history);
     const response = await callMessagesCreate(
       client,
       {
         model,
-        max_tokens: DEFAULT_MAX_TOKENS,
+        max_tokens: getAgentConfig().max_tokens ?? DEFAULT_MAX_TOKENS,
         system: systemPrompt,
         messages,
         tools,
@@ -488,7 +708,7 @@ export async function runTurn(opts: RunTurnOptions): Promise<RunTurnResult> {
     await appendMessage(opts.session_id, toolResultUserMessage);
     history = [...history, toolResultUserMessage];
 
-    if (iter === MAX_ITERATIONS - 1) {
+    if (iter === maxIterations - 1) {
       exhausted = true;
     }
   }
@@ -581,6 +801,10 @@ export type TurnStreamEvent =
       is_mcp?: boolean;
       /** MCP server name when is_mcp=true. */
       mcp_server_name?: string;
+      /** Per-source summaries extracted from the tool's result content —
+       *  used by the V2 chat UI to render a Sources panel beneath the
+       *  assistant message (Phase 4 P2.3). Caps at first 5 per tool. */
+      source_summary?: ToolSourceSummary[];
     }
   | { kind: 'iteration'; round: number }
   | { kind: 'done'; result: RunTurnResult }
@@ -604,9 +828,16 @@ export async function* runTurnStream(
 ): AsyncGenerator<TurnStreamEvent, void, void> {
   const t0 = performance.now();
   const turnId = opts.turn_id ?? newTurnId();
-  const model = opts.model ?? DEFAULT_MODEL;
+  const workflow: Workflow = opts.workflow ?? 'research';
+  // Quick workflow trades depth for latency — Sonnet 4.6 + no tools.
+  const model =
+    opts.model ??
+    (workflow === 'quick' ? 'claude-sonnet-4-6' : DEFAULT_MODEL);
   const systemPrompt =
-    opts.system_prompt ?? buildSystemPrompt({ user_text: opts.user_text }).prompt;
+    opts.system_prompt ??
+    (workflow === 'quick'
+      ? `You are a fast California legal-research assistant. Answer the attorney's question DIRECTLY in 2-5 sentences with NO tool calls and NO research detours. If you don't know, say so in one sentence. Do not include citations unless the attorney explicitly asked.`
+      : buildSystemPrompt({ user_text: opts.user_text }).prompt);
   const client =
     opts.anthropic_client ??
     new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY ?? undefined });
@@ -623,10 +854,23 @@ export async function* runTurnStream(
     sequence: nextSequence,
     appended_at: new Date().toISOString(),
     sanitization: opts.sanitization,
+    workflow: opts.workflow ?? 'research',
   };
   await appendMessage(opts.session_id, userMessage);
+  void registerSessionForUser(
+    opts.session_id,
+    opts.user_id ?? null,
+    opts.user_text,
+    nextSequence === 0,
+  );
 
-  const tools = buildToolsArray(opts.privileged) as unknown as Anthropic.Messages.Tool[];
+  // Quick workflow → no tools at all (Sonnet answers directly). Research
+  // (default) → full V2 tool set (CEB/CourtListener/LegiScan/OpenStates/
+  // citation_verify/web_search).
+  const tools =
+    workflow === 'quick'
+      ? ([] as unknown as Anthropic.Messages.Tool[])
+      : (buildToolsArray(opts.privileged) as unknown as Anthropic.Messages.Tool[]);
   const mcpServers = buildMcpServers(opts.privileged);
 
   let totalTokens = 0;
@@ -643,8 +887,9 @@ export async function* runTurnStream(
   let mcpToolUses = 0;
   let history: SessionMessage[] = [...existing, userMessage];
 
+  const maxIterations = getAgentConfig().max_iterations ?? DEFAULT_MAX_ITERATIONS;
   try {
-    for (let iter = 0; iter < MAX_ITERATIONS; iter += 1) {
+    for (let iter = 0; iter < maxIterations; iter += 1) {
       yield { kind: 'iteration', round: iter + 1 };
 
       const messages = toAnthropicMessages(history);
@@ -652,7 +897,7 @@ export async function* runTurnStream(
         client,
         {
           model,
-          max_tokens: DEFAULT_MAX_TOKENS,
+          max_tokens: getAgentConfig().max_tokens ?? DEFAULT_MAX_TOKENS,
           system: systemPrompt,
           messages,
           tools,
@@ -793,6 +1038,7 @@ export async function* runTurnStream(
           elapsed_ms: elapsed,
           output_redactions_count: result.sanitization?.redactions_count,
           output_compound_risk_buckets: result.sanitization?.compound_risk_buckets,
+          source_summary: result.source_summary,
         };
         dispatched.push({
           tool_use_id: result.tool_use_id,
@@ -818,7 +1064,7 @@ export async function* runTurnStream(
       await appendMessage(opts.session_id, toolResultUserMessage);
       history = [...history, toolResultUserMessage];
 
-      if (iter === MAX_ITERATIONS - 1) exhausted = true;
+      if (iter === maxIterations - 1) exhausted = true;
     }
 
     if (!finalText && exhausted) {

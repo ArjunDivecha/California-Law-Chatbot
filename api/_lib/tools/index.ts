@@ -27,6 +27,26 @@ import {
   courtlistenerSearch,
   type CourtListenerSearchInput,
 } from './courtlistenerSearch.js';
+import {
+  LEGISCAN_SEARCH_TOOL_DEFINITION,
+  legiscanSearch,
+  type LegiscanSearchInput,
+} from './legiscanSearch.js';
+import {
+  OPENSTATES_SEARCH_TOOL_DEFINITION,
+  openstatesSearch,
+  type OpenStatesSearchInput,
+} from './openstatesSearch.js';
+import {
+  CITATION_VERIFY_TOOL_DEFINITION,
+  citationVerify,
+  type CitationVerifyInput,
+} from './citationVerify.js';
+import {
+  CALIFORNIA_CODE_LOOKUP_TOOL_DEFINITION,
+  californiaCodeLookup,
+  type CaCodeLookupInput,
+} from './californiaCodeLookupTool.js';
 import { buildMcpServerSpec, hasMcpToolsets } from './mcpRegistry.js';
 export { hasMcpToolsets };
 
@@ -34,6 +54,10 @@ export { hasMcpToolsets };
 export type ToolDefinition =
   | typeof CEB_SEARCH_TOOL_DEFINITION
   | typeof COURTLISTENER_SEARCH_TOOL_DEFINITION
+  | typeof LEGISCAN_SEARCH_TOOL_DEFINITION
+  | typeof OPENSTATES_SEARCH_TOOL_DEFINITION
+  | typeof CITATION_VERIFY_TOOL_DEFINITION
+  | typeof CALIFORNIA_CODE_LOOKUP_TOOL_DEFINITION
   | {
       type: 'web_search_20250305';
       name: 'web_search';
@@ -61,13 +85,22 @@ const WEB_SEARCH_TOOL: ToolDefinition = {
  * grounding-search vector.
  */
 export function buildToolsArray(privileged: boolean): ToolDefinition[] {
+  // Drafting + research tools (Phase 1 + Phase 2). web_search is now
+  // ALWAYS included as of the 2026-05-13 seventh addendum — the user
+  // ratified dropping the §E privilege gate. Sanitization detection
+  // still runs and is surfaced in the UI + audit record (the attorney
+  // can see what was flagged), but the gate no longer omits web_search.
+  // The `privileged` parameter is retained for audit/telemetry only.
+  void privileged;
   const tools: ToolDefinition[] = [
     CEB_SEARCH_TOOL_DEFINITION,
     COURTLISTENER_SEARCH_TOOL_DEFINITION,
+    LEGISCAN_SEARCH_TOOL_DEFINITION,
+    OPENSTATES_SEARCH_TOOL_DEFINITION,
+    CITATION_VERIFY_TOOL_DEFINITION,
+    CALIFORNIA_CODE_LOOKUP_TOOL_DEFINITION,
+    WEB_SEARCH_TOOL,
   ];
-  if (!privileged) {
-    tools.push(WEB_SEARCH_TOOL);
-  }
   // MCP toolsets (per 2026-05-12 fifth addendum). Each MCP entry in the
   // registry has its own privilege_gate flag; servers with privilege_gate
   // = true are omitted when privileged=true, parity with web_search.
@@ -135,6 +168,46 @@ export async function dispatchTool(use: ToolUseBlock): Promise<ToolResultBlock> 
           content: JSON.stringify(result),
         };
       }
+      case 'legiscan_search': {
+        const result = await legiscanSearch(
+          use.input as unknown as LegiscanSearchInput,
+        );
+        return {
+          type: 'tool_result',
+          tool_use_id: use.id,
+          content: JSON.stringify(result),
+        };
+      }
+      case 'openstates_search': {
+        const result = await openstatesSearch(
+          use.input as unknown as OpenStatesSearchInput,
+        );
+        return {
+          type: 'tool_result',
+          tool_use_id: use.id,
+          content: JSON.stringify(result),
+        };
+      }
+      case 'citation_verify': {
+        const result = await citationVerify(
+          use.input as unknown as CitationVerifyInput,
+        );
+        return {
+          type: 'tool_result',
+          tool_use_id: use.id,
+          content: JSON.stringify(result),
+        };
+      }
+      case 'california_code_lookup': {
+        const result = await californiaCodeLookup(
+          use.input as unknown as CaCodeLookupInput,
+        );
+        return {
+          type: 'tool_result',
+          tool_use_id: use.id,
+          content: JSON.stringify(result),
+        };
+      }
       default:
         return {
           type: 'tool_result',
@@ -154,5 +227,17 @@ export async function dispatchTool(use: ToolUseBlock): Promise<ToolResultBlock> 
   }
 }
 
-export { cebSearch, courtlistenerSearch };
-export { CEB_SEARCH_TOOL_DEFINITION, COURTLISTENER_SEARCH_TOOL_DEFINITION };
+export {
+  cebSearch,
+  courtlistenerSearch,
+  legiscanSearch,
+  openstatesSearch,
+  citationVerify,
+};
+export {
+  CEB_SEARCH_TOOL_DEFINITION,
+  COURTLISTENER_SEARCH_TOOL_DEFINITION,
+  LEGISCAN_SEARCH_TOOL_DEFINITION,
+  OPENSTATES_SEARCH_TOOL_DEFINITION,
+  CITATION_VERIFY_TOOL_DEFINITION,
+};

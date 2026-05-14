@@ -43,6 +43,7 @@ interface AgentConfig {
   max_iterations: number;
   core_skill: string;
   intent_skills: Record<string, string>;
+  drafting_skills?: Record<string, string>;
   schema_version: number;
 }
 
@@ -72,6 +73,7 @@ const FALLBACK_CONFIG: AgentConfig = {
   max_iterations: 8,
   core_skill: 'california-legal-core',
   intent_skills: {},
+  drafting_skills: {},
   schema_version: 1,
 };
 
@@ -126,6 +128,9 @@ function parseSkillMarkdown(text: string): ParsedSkill {
 
 function loadSkillByName(name: string): ParsedSkill | null {
   if (skillCache.has(name)) return skillCache.get(name) ?? null;
+  // Support nested skill names like "drafting/legal-memo" — used by
+  // drafting_skills mapping in agent.json. The name maps directly to a
+  // subdirectory under SKILLS_DIR.
   const filepath = join(SKILLS_DIR, `${name}.md`);
   if (!existsSync(filepath)) return null;
   try {
@@ -223,6 +228,12 @@ export interface BuildSystemPromptOptions {
   intent?: string;
   /** User text — used for intent detection when intent isn't supplied. */
   user_text?: string;
+  /**
+   * Template ID for drafting flows. When set, loads the drafting Skill
+   * mapped by agent.json `drafting_skills` instead of an intent skill.
+   * intent / user_text are ignored. Used by /api/agent/draft-stream.
+   */
+  template_id?: string;
 }
 
 export interface SystemPromptResult {
@@ -243,10 +254,20 @@ export function buildSystemPrompt(opts: BuildSystemPromptOptions = {}): SystemPr
   const config = loadAgentConfig();
   const skillNames: string[] = [config.core_skill];
 
-  const intent = opts.intent ?? (opts.user_text ? detectIntent(opts.user_text) : null);
-  if (intent) {
-    const intentSkillName = config.intent_skills[intent];
-    if (intentSkillName) skillNames.push(intentSkillName);
+  // Drafting path takes precedence over chat-intent detection. The
+  // drafting endpoint passes template_id explicitly; the rest of the
+  // chat flow uses intent detection on user_text.
+  let intent: string | null = null;
+  if (opts.template_id) {
+    intent = `drafting:${opts.template_id}`;
+    const draftingSkillName = config.drafting_skills?.[opts.template_id];
+    if (draftingSkillName) skillNames.push(draftingSkillName);
+  } else {
+    intent = opts.intent ?? (opts.user_text ? detectIntent(opts.user_text) : null);
+    if (intent) {
+      const intentSkillName = config.intent_skills[intent];
+      if (intentSkillName) skillNames.push(intentSkillName);
+    }
   }
 
   const bodies: string[] = [];

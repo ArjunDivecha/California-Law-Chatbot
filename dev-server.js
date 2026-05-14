@@ -27,6 +27,11 @@ dotenv.config({ path: '.env.local', override: true }); // loads .env.local (over
     'UPSTASH_REDIS_REST_URL',
     'UPSTASH_REDIS_REST_TOKEN',
     'COURTLISTENER_API_KEY',
+    // V2 session endpoints + V1 chats endpoint verify Clerk JWTs server-
+    // side. Without CLERK_SECRET_KEY the sidebar fetches 401.
+    'CLERK_SECRET_KEY',
+    'LEGISCAN_API_KEY',
+    'OPENSTATES_API_KEY',
   ];
   if (required.every((k) => process.env[k])) return;
   let text;
@@ -145,6 +150,36 @@ app.all('/api/agent/turn', async (req, res) => {
 
 app.all('/api/agent/turn-stream', async (req, res) => {
   const handler = await loadHandler('./api/agent/turn-stream.ts');
+  await handler(req, res);
+});
+
+app.all('/api/agent/draft-stream', async (req, res) => {
+  const handler = await loadHandler('./api/agent/draft-stream.ts');
+  await handler(req, res);
+});
+
+app.all('/api/agent/revise-section', async (req, res) => {
+  const handler = await loadHandler('./api/agent/revise-section.ts');
+  await handler(req, res);
+});
+
+app.all('/api/agent/drafting-magic', async (req, res) => {
+  const handler = await loadHandler('./api/agent/drafting-magic.ts');
+  await handler(req, res);
+});
+
+app.all('/api/agent/verify-stream', async (req, res) => {
+  const handler = await loadHandler('./api/agent/verify-stream.ts');
+  await handler(req, res);
+});
+
+app.all('/api/agent/sessions', async (req, res) => {
+  const handler = await loadHandler('./api/agent/sessions.ts');
+  await handler(req, res);
+});
+
+app.all('/api/agent/session', async (req, res) => {
+  const handler = await loadHandler('./api/agent/session.ts');
   await handler(req, res);
 });
 

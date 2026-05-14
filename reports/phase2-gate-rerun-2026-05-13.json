@@ -1,0 +1,79 @@
+{
+  "date": "2026-05-13",
+  "fixture": "memo-anti-slapp-business-dispute",
+  "verify": {
+    "citations": [
+      {
+        "text": "40 Cal.4th 683",
+        "type": "case",
+        "is_valid_format": true,
+        "courtlistener_match": {
+          "cluster_id": "8001318",
+          "url": "https://www.courtlistener.com/opinion/8001318/golick-v-state-of-cal/",
+          "case_name": "Golick v. State of Cal.",
+          "court": "California Court of Appeal",
+          "date_filed": "2022-09-08"
+        },
+        "status": "verified"
+      },
+      {
+        "text": "154 Cal.App.4th 28",
+        "type": "case",
+        "is_valid_format": true,
+        "courtlistener_match": {
+          "cluster_id": "2250040",
+          "url": "https://www.courtlistener.com/opinion/2250040/rohde-v-wolf/",
+          "case_name": "Rohde v. Wolf",
+          "court": "California Court of Appeal",
+          "date_filed": "2007-08-13"
+        },
+        "status": "verified"
+      },
+      {
+        "text": "29 Cal.4th 82",
+        "type": "case",
+        "is_valid_format": true,
+        "courtlistener_match": {
+          "cluster_id": "6240283",
+          "url": "https://www.courtlistener.com/opinion/6240283/cal-fire-local-2881-v-cal-pub-employees-ret-sys/",
+          "case_name": "Cal Fire Local 2881 v. Cal. Pub. Employees' Ret. Sys.",
+          "court": "California Supreme Court",
+          "date_filed": "2019-03-04"
+        },
+        "status": "verified"
+      },
+      {
+        "text": "1 Cal.5th 376",
+        "type": "case",
+        "is_valid_format": true,
+        "courtlistener_match": {
+          "cluster_id": "10639801",
+          "url": "https://www.courtlistener.com/opinion/10639801/lara-v-cal-ins-co/",
+          "case_name": "Lara v. Cal. Ins. Co.",
+          "court": "California Court of Appeal",
+          "date_filed": "2025-07-23"
+        },
+        "status": "verified"
+      },
+      {
+        "text": "97 Cal.App.5th 731",
+        "type": "case",
+        "is_valid_format": true,
+        "courtlistener_match": {
+          "cluster_id": "6239687",
+          "url": "https://www.courtlistener.com/opinion/6239687/people-v-killion/",
+          "case_name": "People v. Killion",
+          "court": "California Court of Appeal, 5th District",
+          "date_filed": "2018-06-11"
+        },
+        "status": "verified"
+      }
+    ],
+    "total_found": 5,
+    "verified": 5,
+    "unverified": 0,
+    "not_found": 0,
+    "elapsed_ms": 2010.8603749999893
+  },
+  "word_count": 2860
+}

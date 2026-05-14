@@ -9,6 +9,28 @@
     <link rel="icon" href="/Heart Favicon.png" sizes="any" />
     <link rel="apple-touch-icon" sizes="180x180" href="/Heart Favicon.png" />
     <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      /* V2 markdown styling — keeps generated drafts readable inside the */
+      /* V2 chat bubbles and the draft output pane. Tailwind doesn't ship */
+      /* prose by default in this project; this is the minimum baseline.  */
+      .v2-md p { margin: 0 0 0.6rem 0; }
+      .v2-md p:last-child { margin-bottom: 0; }
+      .v2-md ul, .v2-md ol { margin: 0.3rem 0 0.6rem 1.2rem; }
+      .v2-md ul { list-style: disc; }
+      .v2-md ol { list-style: decimal; }
+      .v2-md li { margin: 0.15rem 0; }
+      .v2-md h1 { font-size: 1.05rem; font-weight: 700; margin: 0.8rem 0 0.4rem; }
+      .v2-md h2 { font-size: 1rem; font-weight: 600; margin: 0.8rem 0 0.4rem; }
+      .v2-md h3 { font-size: 0.95rem; font-weight: 600; margin: 0.7rem 0 0.3rem; }
+      .v2-md h4 { font-size: 0.9rem; font-weight: 600; margin: 0.6rem 0 0.3rem; }
+      .v2-md code { background: #f4f4f4; padding: 0.1rem 0.3rem; border-radius: 3px; font-size: 0.85em; }
+      .v2-md pre { background: #f4f4f4; padding: 0.6rem; border-radius: 6px; overflow-x: auto; font-size: 0.85em; }
+      .v2-md blockquote { border-left: 3px solid #ddd; padding-left: 0.8rem; color: #555; margin: 0.4rem 0; }
+      .v2-md hr { border: none; border-top: 1px solid #eee; margin: 0.8rem 0; }
+      .v2-md table { border-collapse: collapse; margin: 0.5rem 0; font-size: 0.85em; }
+      .v2-md th, .v2-md td { border: 1px solid #e5e5e5; padding: 0.3rem 0.6rem; text-align: left; }
+      .v2-md th { background: #fafafa; font-weight: 600; }
+    </style>
   <script type="importmap">
 {
   "imports": {

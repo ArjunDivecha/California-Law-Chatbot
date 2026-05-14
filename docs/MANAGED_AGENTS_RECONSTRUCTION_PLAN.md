@@ -1,8 +1,90 @@
 # Chatbot Reconstruction Plan — Anthropic Agent SDK on Messages API
 
 **Plan file destination:** `/Users/arjundivecha/Dropbox/AAA Backup/A Working/California-Law-Chatbot/docs/MANAGED_AGENTS_RECONSTRUCTION_PLAN.md` *(filename kept for git continuity; contents now describe the Agent SDK path)*
-**Date:** 2026-05-03 (original), **2026-05-10 architecture pivot**, **2026-05-10 ZDR-removal addendum**, **2026-05-12 token-map retention addendum (tentative — pending F&F partner review)**, **2026-05-12 Managed-Agents revisit (scope clarification, not reversal)**, **2026-05-12 Anthropic legal-industry launch addendum (tool inventory + phase revisions)**
-**Status:** Final, post Opus + Codex (3 rounds, approved) + Ultraplan + Council review + ZDR scope verification, + 2026-05-10 plan-level pivot to Anthropic Team plan (no ZDR). The 2026-05-12 third addendum below is **tentative pending F&F partner sign-off**; the 2026-05-12 fourth and fifth addenda below carry forward the consequences of Anthropic's 2026-05-12 legal-industry launch.
+**Date:** 2026-05-03 (original), **2026-05-10 architecture pivot**, **2026-05-10 ZDR-removal addendum**, **2026-05-12 token-map retention addendum (tentative)**, **2026-05-12 Managed-Agents revisit (scope clarification)**, **2026-05-12 Anthropic legal-industry launch addendum**, **2026-05-13 F&F partner ratifications (sixth addendum)**
+**Status:** Final, post Opus + Codex (3 rounds, approved) + Ultraplan + Council review + ZDR scope verification, + 2026-05-10 plan-level pivot to Anthropic Team plan (no ZDR). **The 2026-05-13 sixth addendum below ratifies the three people-decisions that were blocking Phase 4.5 shadow run.**
+
+---
+
+## 2026-05-13 (seventh addendum) — Drop the web_search privilege gate
+
+**Decided 2026-05-13 by Arjun.** The §E rule that omits `web_search` from the tools array when input is detected as privileged is **dropped**. The attorney decides; the detection layer is now informational, not gating.
+
+### What changes
+
+- `api/_lib/tools/index.ts::buildToolsArray()` now **always** includes `web_search`. The `privileged` parameter is retained for telemetry / audit only.
+- V2 chat + draft UIs change the privilege chip from "🔒 Privileged — web search disabled" (pink, claims-disabling) to "⚠️ Privileged content detected" (amber, informational) — no claim about what was disabled, because nothing was.
+- Audit records still capture the detection result. The sanitization gate is **still strict-mode fail-closed** (sanitizer-unavailable still blocks inference), but the *output* of detection no longer narrows the tool set.
+
+### What does NOT change
+
+- Sanitization detection still runs on every input (`detectPii` in strict mode).
+- Tool-output sanitization still runs on every tool result (audit §8 #8).
+- Audit records still note `privileged=true|false` per turn.
+- Trap manifest still gates that the detector itself is sound.
+- Compound-risk dictionary still applies.
+- The 6th-addendum Option C retention model is unchanged.
+
+### Why
+
+User's stated reason: the heuristic-based decision to block web_search was overreach by code. The detection layer was built to *inform* an attorney's judgment, not *substitute* for it. Dropping the gate restores attorney agency over which tools are available per query while preserving the visible/audited record of what the detector found.
+
+### Supersedes
+
+- §E "privilege gating" claim about web_search → removed as a tool-restriction rule.
+- Anywhere in this plan that says "privileged → web_search disabled" → corrected to "privileged → informational chip; web_search remains available."
+
+---
+
+## 2026-05-13 (sixth addendum) — F&F partner ratifications: §6 Option C, no TR, accept Opus 4.7 cost
+
+**Decided 2026-05-13 by F&F (Arjun + co-partner). These ratifications retire three open dependencies that were blocking Phase 4.5 shadow run.**
+
+### Decision 1 — §6 retention model: **Option C ratified**
+
+The third addendum's tentative Option C (hybrid: client-side IndexedDB token-map + metadata-only server audit record) is now **binding policy**.
+
+Consequences:
+- The `audit_record_envelope:*` Upstash KV schema in `docs/upstash-kv-schema-v1.md` is no longer draft. Fields lock at: timestamp, redaction category counts, HMAC of the sanitized prompt, sanitization-attestation hash, schema version. **The raw token-map never leaves the client.**
+- The third addendum's open implementation items #1–3 (token-map storage, retention bound, audit-record schema lock) are unblocked. Phase 1 follow-up actually closes — no longer waiting on partner review.
+- Audit doc `docs/sanitization-audit-2026-05-10.md` §8 item #9 ("Architectural reconciliation of §6 retention model") flips ⚠️ → ✅.
+- Deposition answer to "what does Anthropic see and retain about a privileged input?" is now precise: *"Anthropic sees the sanitized form (privileged spans redacted to `[REDACTED:<category>]` tokens), retained ~30 days under Team-plan trust-and-safety. The rehydration map exists only in the attorney's browser IndexedDB; F&F's servers hold only a hash of the sanitized form plus a per-category redaction count, so we can prove a redaction happened without rehydrating the privileged content."*
+
+### Decision 2 — Thomson Reuters CoCounsel MCP: **rejected**
+
+F&F does not have a Westlaw / Practical Law / KeyCite subscription and will not be acquiring one for this project.
+
+Consequences:
+- Phase 2 fifth-addendum row "Thomson Reuters CoCounsel MCP — Adopt later" is now **REJECTED**. Remove from the tool-inventory roadmap.
+- V2 stays on the in-house CEB + CourtListener stack for case-law research. The plan's "single biggest research-quality upgrade" is permanently off the table for V2's scope.
+- The Phase 3 verifier sub-agent (now wired) covers the gap in citation-accuracy from CourtListener-only verification. F1=0.919 / fake-caught=1.000 on the 30-cite eval set is the empirical ceiling we ship with.
+- Future revisit only if F&F changes its TR posture. No engineering work pending.
+
+### Decision 3 — Opus 4.7 cost: **Option C ratified (accept full Opus price)**
+
+F&F accepts paying Opus 4.7 per-token pricing for every turn. No session cap, no tier-route.
+
+Consequences:
+- Plan §Cost-impact (fifth addendum) Options A (session cap) and B (tier-route) are now **NOT IMPLEMENTED**. No `agentProxy.ts` routing logic needed.
+- Default model stays `claude-opus-4-7` for both chat and drafting (agent.json `model` field). Sonnet 4.6 still used for the verifier sub-agent (cheaper + adequate for structured-output verification — keep this carve-out).
+- Phase 4.5 shadow run starts billing real attorney usage at Opus 4.7 rates from day one. No additional gates.
+- Rationale: legal-reasoning quality is the value driver; the latency win (Opus 4.7 8.2s p50 vs Sonnet 4.6 11.7s p50 per Phase 1 baseline) means Opus is also the better UX. Cost is accepted as the price of quality.
+
+### What this unblocks
+
+All three of the previously-open people-dependencies that gated Phase 4.5 are now ratified. **Phase 4.5 shadow run can proceed without further partner sign-off.**
+
+The remaining gating items for cutover (Phase 5) are engineering, not policy:
+- V2 session history in sidebar (Phase 4.x — not yet built)
+- Phase 4.5 shadow-run wrapper (mirrors prod queries through V2 in parallel; only legacy answer shown to user)
+- Phase 5 cutover script + V1 deletion plan
+
+### Plan supersession order
+
+This 2026-05-13 sixth addendum supersedes:
+- The third addendum's "TENTATIVE — pending F&F partner review" qualifier on §6 Option C → now binding.
+- The fifth addendum's "Thomson Reuters CoCounsel MCP — Adopt later" row → now permanently rejected.
+- The fifth addendum's Cost-impact Options A/B → not implemented; Option C accepted.
 
 ---
 
