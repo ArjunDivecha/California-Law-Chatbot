@@ -168,6 +168,11 @@ app.all('/api/agent/drafting-magic', async (req, res) => {
   await handler(req, res);
 });
 
+app.all('/api/agent/shadow', async (req, res) => {
+  const handler = await loadHandler('./api/agent/shadow.ts');
+  await handler(req, res);
+});
+
 app.all('/api/agent/verify-stream', async (req, res) => {
   const handler = await loadHandler('./api/agent/verify-stream.ts');
   await handler(req, res);
