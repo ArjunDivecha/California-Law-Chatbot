@@ -149,17 +149,31 @@ const VerdictRow: React.FC<{ verdict: V2Verdict }> = ({ verdict }) => {
     );
   }
   const isReal = verdict.status === 'real';
-  const tag = isReal ? '✓' : '⚠';
-  const color = isReal ? 'text-emerald-700' : 'text-amber-700';
-  const bg = isReal ? 'bg-emerald-50 border-emerald-200' : 'bg-amber-50 border-amber-200';
+  const isAmbiguous = verdict.status === 'ambiguous';
+  // Visual key: real=green-✓, fake=red-✗, ambiguous=amber-? with manual-verify
+  // hint so the attorney knows the tool punted, not that the cite is bad.
+  const tag = isReal ? '✓' : isAmbiguous ? '?' : '✗';
+  const color = isReal
+    ? 'text-emerald-700'
+    : isAmbiguous
+    ? 'text-amber-700'
+    : 'text-red-700';
+  const bg = isReal
+    ? 'bg-emerald-50 border-emerald-200'
+    : isAmbiguous
+    ? 'bg-amber-50 border-amber-200'
+    : 'bg-red-50 border-red-200';
   return (
     <div className={`flex items-start gap-2 text-xs rounded border ${bg} px-2 py-1.5`}>
-      <span className={color}>{tag}</span>
+      <span className={`${color} font-bold`}>{tag}</span>
       <div className="flex-1 min-w-0">
         <div className="flex items-baseline gap-2">
           <span className="font-mono text-[11px] text-gray-700 truncate">{verdict.citation}</span>
           {typeof verdict.confidence === 'number' && (
             <span className="text-[10px] text-gray-400 shrink-0">conf {verdict.confidence.toFixed(2)}</span>
+          )}
+          {isAmbiguous && (
+            <span className="text-[10px] font-semibold text-amber-800 shrink-0">VERIFY MANUALLY</span>
           )}
         </div>
         {verdict.case_name && verdict.match_url && isReal && (

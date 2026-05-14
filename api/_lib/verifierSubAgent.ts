@@ -53,7 +53,16 @@ const VERIFIER_MAX_TOKENS = 2048;
 const VERIFIER_MAX_ROUNDS = 8;
 
 export interface VerifierVerdict {
-  status: 'real' | 'fake';
+  /**
+   * `real` — tools returned positive evidence (matching CL hit or CEB ref).
+   * `fake` — tools returned contradictory evidence (different case at the
+   *           cite, or party-name mismatch).
+   * `ambiguous` — tools returned NO evidence either way (e.g. CourtListener
+   *               rate-limited, CEB had no hit, citation_verify not_found).
+   *               Distinguishes "we don't know" from "we know it's fake."
+   *               Attorney should verify against Westlaw/Lexis manually.
+   */
+  status: 'real' | 'fake' | 'ambiguous';
   case_name?: string;
   match_url?: string;
   confidence: number;
@@ -62,7 +71,7 @@ export interface VerifierVerdict {
   elapsed_ms: number;
 }
 
-const VERIFIER_SYSTEM_PROMPT = `You are a citation-verification sub-agent. Given a single legal citation in a user message, decide whether the cited authority is REAL (an attorney can rely on it) or FAKE (likely fabricated).
+const VERIFIER_SYSTEM_PROMPT = `You are a citation-verification sub-agent. Given a single legal citation in a user message, decide whether the cited authority is REAL, FAKE, or AMBIGUOUS.
 
 CRITICAL RULES — read carefully:
 
@@ -78,17 +87,18 @@ CRITICAL RULES — read carefully:
    - The matched opinion's year (date_filed) is within 3 years of the year in the citation.
    - The matched reporter cite OR the case name's reporter parallel cite roughly corresponds to the citation. CL records sometimes have parallel-reporter cites only.
 
-4. **A citation is FAKE only when**:
-   - Both citation_verify AND courtlistener_search return zero hits OR return hits whose party names are clearly unrelated (different surnames, different case-types).
-   - Note: when search returns NO hits, this is suggestive of fake but not conclusive — California has many older opinions that aren't well-indexed in CourtListener. Distinguish "no hits" (uncertain, lean fake but allow real with low confidence) from "hits that contradict" (definitely fake).
+4. **Pick exactly ONE status:**
+   - \`real\` — Positive evidence in at least one tool. A matching CourtListener record OR a CEB practice-guide reference. Confidence ≥ 0.7.
+   - \`fake\` — Contradictory evidence. CourtListener returned a hit at the cited reporter but the party names are clearly unrelated, OR returned hits whose dates contradict the cited year, OR the reporter doesn't exist (e.g. "99 Cal.5th" when Cal.5th's max volume is much lower). Confidence ≥ 0.75.
+   - \`ambiguous\` — No evidence either way. All tools returned empty (zero hits) OR were unavailable (rate-limited, errored). You CANNOT distinguish a fabricated cite from a genuine old/uncommon opinion missing from CL's index. Confidence 0.3-0.6.
 
-5. **Bias toward FAKE only when contradictory evidence exists.** When evidence is ambiguous (no hits in either tool, no contradictory hits), prefer REAL with low confidence (0.4–0.6) over FAKE — the cost of a false-positive-fake (rejecting a real case) is annoying; the cost of a false-positive-real (accepting a fabricated case) is malpractice. The bias is asymmetric: accept ambiguity in favor of real.
+5. **DO NOT collapse ambiguity into fake.** When all tools return empty (no hits AND no contradictory hits), the correct status is \`ambiguous\`, not \`fake\`. The attorney needs to verify against Westlaw/Lexis. Calling these "fake" is a false-positive-fake which costs the attorney trust in the tool.
 
 6. **DO NOT call something fake just because you don't recognize it.** Your memorized knowledge is incomplete.
 
 When done researching, emit your verdict as a JSON object on a single line, preceded by the literal token "VERDICT:" — no leading whitespace, no trailing text after it. Schema:
 
-VERDICT: {"status":"real"|"fake","case_name":"<name as confirmed>","match_url":"<url>","confidence":0.0-1.0,"reasoning":"<one-sentence explanation grounded in what tools returned>"}
+VERDICT: {"status":"real"|"fake"|"ambiguous","case_name":"<name as confirmed>","match_url":"<url>","confidence":0.0-1.0,"reasoning":"<one-sentence explanation grounded in what tools returned>"}
 
 Good examples:
 
@@ -96,7 +106,7 @@ VERDICT: {"status":"real","case_name":"Navellier v. Sletten","match_url":"https:
 
 VERDICT: {"status":"fake","confidence":0.92,"reasoning":"CourtListener returned 'John Doe v. Gary Settle' (unrelated) as the only hit for 'Hendricks v. California Probate Bureau'; courtlistener_search by case-name returned zero hits. No California Supreme Court opinion exists at 7 Cal.5th 904. Likely fabricated."}
 
-VERDICT: {"status":"real","case_name":"Estate of Williams","match_url":"","confidence":0.55,"reasoning":"Neither citation_verify nor courtlistener_search returned hits for 269 Cal.App.2d 671 or 'Estate of Williams' 1968, but older California probate opinions are often missing from CL's full-text index. No contradictory evidence — accept with low confidence rather than reject."}
+VERDICT: {"status":"ambiguous","confidence":0.45,"reasoning":"citation_verify not_found and CourtListener rate-limited; CEB returned no reference. Zero confirmatory and zero contradictory evidence. Older Cal. opinions are often missing from CL's index. Manual verification against Westlaw/Lexis required."}
 
 You may emit at most ONE VERDICT line. Keep reasoning under 280 characters.`;
 
@@ -141,7 +151,13 @@ function extractVerdict(text: string): VerifierVerdict | null {
   if (!m) return null;
   try {
     const parsed = JSON.parse(m[1]) as Partial<VerifierVerdict>;
-    if (parsed.status !== 'real' && parsed.status !== 'fake') return null;
+    if (
+      parsed.status !== 'real' &&
+      parsed.status !== 'fake' &&
+      parsed.status !== 'ambiguous'
+    ) {
+      return null;
+    }
     return {
       status: parsed.status,
       case_name: parsed.case_name,
@@ -226,12 +242,14 @@ export async function verifyCitationViaSubAgent(citationText: string): Promise<V
     return verdict;
   }
 
-  // Couldn't parse a VERDICT line — treat as fake with low confidence.
-  // Better to fail closed than to silently accept an unparseable answer.
+  // Couldn't parse a VERDICT line — we have NO signal about the citation.
+  // Return ambiguous (not fake) so the attorney is prompted to verify
+  // manually rather than being given a misleading "fake" verdict for what
+  // is actually a sub-agent failure.
   return {
-    status: 'fake',
+    status: 'ambiguous',
     confidence: 0.1,
-    reasoning: `Sub-agent did not return a parseable VERDICT. Raw output: ${finalText.slice(0, 200)}`,
+    reasoning: `Sub-agent did not return a parseable VERDICT. Manual verification required. Raw output: ${finalText.slice(0, 200)}`,
     tool_rounds: toolRounds,
     elapsed_ms: Math.round(elapsed),
   };

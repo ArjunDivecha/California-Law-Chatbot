@@ -80,6 +80,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         kind: 'done',
         verified: 0,
         fake: 0,
+        ambiguous: 0,
         total: 0,
         elapsed_ms: 0,
       });
@@ -90,13 +91,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const t0 = performance.now();
     let verifiedCount = 0;
     let fakeCount = 0;
+    let ambiguousCount = 0;
 
     for (let i = 0; i < extracted.length; i += 1) {
       const c = extracted[i];
       try {
         const verdict = await verifyCitationViaSubAgent(c.text);
         if (verdict.status === 'real') verifiedCount += 1;
-        else fakeCount += 1;
+        else if (verdict.status === 'fake') fakeCount += 1;
+        else ambiguousCount += 1;
         writeEvent('verdict', {
           kind: 'verdict',
           index: i,
@@ -110,7 +113,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           elapsed_ms: verdict.elapsed_ms,
         });
       } catch (err) {
-        fakeCount += 1;
+        // Sub-agent crash counts as error, not fake — surface separately.
         writeEvent('verdict', {
           kind: 'verdict',
           index: i,
@@ -125,6 +128,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       kind: 'done',
       verified: verifiedCount,
       fake: fakeCount,
+      ambiguous: ambiguousCount,
       total: extracted.length,
       elapsed_ms: Math.round(performance.now() - t0),
     });

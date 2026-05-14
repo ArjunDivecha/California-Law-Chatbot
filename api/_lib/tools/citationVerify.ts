@@ -51,6 +51,22 @@ const CASE_CITATION_PATTERNS: RegExp[] = [
   /(\d{4})\s+(WL|Cal\.?\s*(?:App\.?)?\s*LEXIS)\s+(\d+)/gi,
 ];
 
+// A "party-name token" is a Title-Case word that MAY include embedded
+// periods (Univ., Cal., Inc., Co., Corp., Bros.), apostrophes (Ass'n,
+// O'Reilly), ampersands (Smith & Wesson), or hyphens (7-Eleven, Coca-
+// Cola). Bare uppercase like "Cal" is also fine. We additionally
+// allow lowercase connectors ("of", "the", "and", "&", "in", "on",
+// "for", "or", "de", "la") between Title-Case tokens so captions
+// like "Regents of the University of California" don't break the
+// match. This pattern is intentionally permissive on the case-name
+// side and strict on the reporter side.
+const PARTY_NAME = String.raw`[A-Z][\w'.&\-]*(?:\s+(?:[A-Z][\w'.&\-]*|of|the|and|&|in|on|for|or|de|la|el|los|las|von|van))*`;
+// A reporter cite: 1+ digits + space + (Cal[.App][.Xd|th] | F[.Supp][.Xd] | U.S.) + space + 1+ digits.
+// Note we explicitly enumerate the period-bearing forms instead of using
+// a generic [^,;.\n]+ — that earlier pattern choked on multi-period
+// reporters like "Cal.App.5th".
+const REPORTER = String.raw`\d+\s+(?:Cal\.?\s*(?:App\.?)?\s*(?:2d|3d|4th|5th)?|F\.?\s*(?:Supp\.?)?\s*(?:2d|3d)?|U\.?S\.?)\s+\d+`;
+
 export function extractCitations(text: string): Array<{ text: string; type: 'case' | 'statute' | 'unknown' }> {
   const seen = new Set<string>();
   const out: Array<{ text: string; type: 'case' | 'statute' | 'unknown' }> = [];
@@ -58,7 +74,11 @@ export function extractCitations(text: string): Array<{ text: string; type: 'cas
   // FIRST pass: full case-name+reporter ("Williams v. Superior Court (2017) 3 Cal.5th 531").
   // Capture these BEFORE the bare-reporter pass so their sub-reporter parts
   // can be deduped against the full form in the next pass.
-  const fullPattern = /([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\s+v\.?\s+[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\s*(?:\((\d{4})\))?\s*,?\s*(\d+\s+(?:Cal|F|U\.?S)\.?[^,;.\n]+\d+)/gi;
+  const fullPattern = new RegExp(
+    String.raw`(${PARTY_NAME}\s+v\.?\s+${PARTY_NAME})` +
+      String.raw`\s*(?:\((\d{4})\))?\s*,?\s*(${REPORTER})`,
+    'gi',
+  );
   const fullForms: string[] = [];
   let m: RegExpExecArray | null;
   while ((m = fullPattern.exec(text)) !== null) {

@@ -16,7 +16,14 @@ import { useCallback, useRef, useState } from 'react';
 export interface V2Verdict {
   index: number;
   citation: string;
-  status: 'real' | 'fake' | 'error' | 'pending';
+  /**
+   * `real` — positive evidence (matching CL hit or CEB ref)
+   * `fake` — contradictory evidence (different case at the cite, etc.)
+   * `ambiguous` — tools returned no evidence either way; manual verify needed
+   * `pending` — in-flight (UI placeholder)
+   * `error` — sub-agent crashed / network failure
+   */
+  status: 'real' | 'fake' | 'ambiguous' | 'error' | 'pending';
   case_name?: string;
   match_url?: string;
   confidence?: number;
@@ -29,6 +36,7 @@ export interface V2Verdict {
 export interface V2VerifyDoneSummary {
   verified: number;
   fake: number;
+  ambiguous: number;
   total: number;
   elapsed_ms: number;
 }
@@ -188,6 +196,7 @@ function handleEvent(raw: string, setState: React.Dispatch<React.SetStateAction<
         done: {
           verified: Number(data.verified ?? 0),
           fake: Number(data.fake ?? 0),
+          ambiguous: Number(data.ambiguous ?? 0),
           total: Number(data.total ?? 0),
           elapsed_ms: Number(data.elapsed_ms ?? 0),
         },
