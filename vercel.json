@@ -1,5 +1,11 @@
 {
   "framework": "vite",
+  "rewrites": [
+    {
+      "source": "/((?!api/).*)",
+      "destination": "/index.html"
+    }
+  ],
   "functions": {
     "api/orchestrate-document.ts": {
       "memory": 2048,
@@ -19,6 +25,26 @@
       "includeFiles": "agents/**"
     },
     "api/agent/turn-stream.ts": {
+      "memory": 1024,
+      "maxDuration": 300,
+      "includeFiles": "agents/**"
+    },
+    "api/agent/draft-stream.ts": {
+      "memory": 1024,
+      "maxDuration": 300,
+      "includeFiles": "agents/**"
+    },
+    "api/agent/revise-section.ts": {
+      "memory": 1024,
+      "maxDuration": 300,
+      "includeFiles": "agents/**"
+    },
+    "api/agent/drafting-magic.ts": {
+      "memory": 1024,
+      "maxDuration": 300,
+      "includeFiles": "agents/**"
+    },
+    "api/agent/verify-stream.ts": {
       "memory": 1024,
       "maxDuration": 300,
       "includeFiles": "agents/**"
