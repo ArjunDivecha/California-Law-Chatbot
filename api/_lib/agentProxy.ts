@@ -23,7 +23,15 @@
  * Clerk auth, CORS) belongs in the Vercel route handler that calls us.
  */
 
-import { detectPii, OpfUnavailableError } from '../../services/sanitization/detectionPipeline.js';
+// Server-side regex backstop only (per 6th addendum Option C + V1→V2
+// audit 2026-05-14). Browser tokenizes via `detectPii` (OPF +
+// IndexedDB); server sees `@@TOKEN@@` placeholders. The backstop
+// rejects anything that still matches a deterministic PII regex —
+// fail-closed defense in depth.
+import {
+  detectPiiServerBackstop,
+  RawInputDetectedError,
+} from '../../services/sanitization/detectionPipeline.js';
 import {
   runTurn,
   runTurnStream,
@@ -58,7 +66,9 @@ export interface AgentProxyError {
   message: string;
 }
 
-const STRICT_DETECTION_MODE: 'strict' = 'strict';
+// (Server-side OPF strict-mode gate was removed 2026-05-14 — the
+// browser is now the primary tokenizer; server runs deterministic
+// regex backstop only. See detectPiiServerBackstop().)
 
 /**
  * Single entry point a Vercel route handler calls. Performs the
@@ -75,25 +85,15 @@ export async function runAgentProxy(req: AgentProxyRequest): Promise<AgentProxyR
     return errorResp('invalid_input', 'user_text must be a non-empty string', 400, req);
   }
 
-  // ── 1. Sanitization gate (strict — fail-closed if OPF down).
-  let detection;
-  try {
-    detection = await detectPii(userText, STRICT_DETECTION_MODE);
-  } catch (err) {
-    if (err instanceof OpfUnavailableError) {
-      return errorResp(
-        'sanitizer_unavailable',
-        'Sanitization service is unavailable; request blocked to prevent unprotected send.',
-        503,
-        req,
-      );
-    }
-    return errorResp(
-      'internal_error',
-      err instanceof Error ? err.message : String(err),
-      500,
-      req,
-    );
+  // ── 1. Server-side regex backstop. Browser is the primary tokenizer
+  // (OPF + IndexedDB). Server runs deterministic patterns only; if any
+  // raw PII is detected, fail-closed — the request shouldn't have
+  // reached here as raw.
+  const detection = detectPiiServerBackstop(userText);
+  if (detection.spans.length > 0) {
+    const cats = Array.from(new Set(detection.spans.map((s) => s.category)));
+    const err = new RawInputDetectedError(cats, detection.spans.length);
+    return errorResp('sanitizer_unavailable', err.message, 503, req);
   }
 
   // ── 2. Privileged flag + attestation snapshot.
@@ -180,35 +180,27 @@ export async function* runAgentProxyStream(
     return;
   }
 
-  let detection;
-  try {
-    detection = await detectPii(userText, STRICT_DETECTION_MODE);
-  } catch (err) {
-    if (err instanceof OpfUnavailableError) {
-      yield {
-        kind: 'proxy_error',
-        code: 'sanitizer_unavailable',
-        message:
-          'Sanitization service is unavailable; request blocked to prevent unprotected send.',
-        status_code: 503,
-      };
-      void writeAuditRecord(
-        buildAuditRecord({
-          route: 'agent_proxy_stream',
-          sanitizedPrompt: userText,
-          userId: req.user_id ?? null,
-          statusCode: 503,
-          warningFlags: ['sanitizer_unavailable'],
-        }),
-      ).catch(() => {});
-      return;
-    }
+  // Server-side regex backstop (per Option C). Browser tokenizes;
+  // server rejects anything still matching raw PII patterns.
+  const detection = detectPiiServerBackstop(userText);
+  if (detection.spans.length > 0) {
+    const cats = Array.from(new Set(detection.spans.map((s) => s.category)));
+    const rawErr = new RawInputDetectedError(cats, detection.spans.length);
     yield {
       kind: 'proxy_error',
-      code: 'internal_error',
-      message: err instanceof Error ? err.message : String(err),
-      status_code: 500,
+      code: 'sanitizer_unavailable',
+      message: rawErr.message,
+      status_code: 503,
     };
+    void writeAuditRecord(
+      buildAuditRecord({
+        route: 'agent_proxy_stream',
+        sanitizedPrompt: userText,
+        userId: req.user_id ?? null,
+        statusCode: 503,
+        warningFlags: ['raw_input_detected', ...cats.map((c) => `raw_${c}`)],
+      }),
+    ).catch(() => {});
     return;
   }
 

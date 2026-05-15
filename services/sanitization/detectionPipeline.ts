@@ -44,6 +44,27 @@ import {
 import { detectSpans, type DetectResult } from './opfClient.js';
 import { getUserAllowlistLower } from './userAllowlist.js';
 
+/**
+ * Thrown by `detectPiiServerBackstop()` when raw PII is detected in the
+ * request body. Under Option C (6th addendum), the browser must
+ * tokenize before sending; if the server still sees a recognizable SSN
+ * / phone / etc., it means tokenization failed upstream. Fail-closed.
+ */
+export class RawInputDetectedError extends Error {
+  public readonly categories: string[];
+  public readonly count: number;
+  constructor(categories: string[], count: number) {
+    super(
+      `Raw PII detected in request body (${count} match${count === 1 ? '' : 'es'}: ${categories.join(', ')}). ` +
+        `Browser-side tokenization should have replaced these with @@TOKEN@@ placeholders. ` +
+        `Request blocked to prevent unprotected send.`,
+    );
+    this.name = 'RawInputDetectedError';
+    this.categories = categories;
+    this.count = count;
+  }
+}
+
 export class OpfUnavailableError extends Error {
   constructor(cause?: unknown) {
     super(
@@ -467,5 +488,79 @@ export async function detectPii(
     compoundRiskBuckets,
     usedOpf: true,
     opfElapsedMs: opfResult.elapsedMs,
+  };
+}
+
+/**
+ * Server-side regex backstop only — no OPF call, no name heuristics.
+ *
+ * Per the 6th-addendum Option C and the V1→V2 audit 2026-05-14, the
+ * Vercel proxy is NOT the primary detector. The browser tokenizes via
+ * `detectPii()` (which uses OPF + IndexedDB token map) and sends
+ * `@@TOKEN@@` placeholders over the wire. This function runs only the
+ * deterministic regex patterns from `patterns.ts` so the server can
+ * catch any raw PII that slipped past the browser (defense in depth).
+ *
+ * Behavior:
+ *   - If raw PII is detected, returns the spans + privileged=true. The
+ *     caller (agentProxy) should reject the request with a fail-closed
+ *     error to prevent unprotected send to Anthropic.
+ *   - If no raw PII detected, returns empty spans + privileged
+ *     computed from compound-risk only.
+ *   - Allowlist is honored (statute citations, case names, agencies).
+ *
+ * What this DOES NOT do:
+ *   - No OPF daemon call. The daemon lives on the attorney's device,
+ *     not in the Vercel container. Server-side OPF was an architecture
+ *     error documented in audit §1.
+ *   - No name heuristics. Single-word names ("Smith", "Liu") cannot be
+ *     caught deterministically; the browser-side OPF + ML model is
+ *     responsible. If a name appears here raw, browser-side
+ *     tokenization failed and the request is rejected.
+ */
+export function detectPiiServerBackstop(text: string): DetectionPipelineResult {
+  if (!text || typeof text !== 'string') {
+    return {
+      spans: [],
+      suppressedByAllowlist: 0,
+      privileged: false,
+      confidence: 1.0,
+      compoundRiskBuckets: 0,
+      usedOpf: false,
+      opfElapsedMs: null,
+    };
+  }
+
+  const allowlist = findAllowlistMatches(text);
+  const regexSpans = patternSpans(text);
+
+  // Drop spans overlapping the allowlist (statute citations, court names).
+  const filteredSpans: Span[] = [];
+  let suppressedByAllowlist = 0;
+  for (const span of regexSpans) {
+    if (overlapsAllowlist(span.start, span.end, allowlist)) {
+      suppressedByAllowlist += 1;
+    } else {
+      filteredSpans.push(span);
+    }
+  }
+
+  // Compound-risk pass — same dictionary as the browser path, fine to
+  // re-run server-side (it's pure regex).
+  const compoundRisk = detectCompoundRisk(text);
+  const compoundRiskBuckets = compoundRisk.bucketsHit;
+  const privileged =
+    filteredSpans.some((s) => HIGH_RISK_CATEGORIES.has(s.category)) ||
+    compoundRiskBuckets >= COMPOUND_RISK_BUCKET_THRESHOLD;
+  const confidence = computeConfidence(filteredSpans);
+
+  return {
+    spans: filteredSpans,
+    suppressedByAllowlist,
+    privileged,
+    confidence,
+    compoundRiskBuckets,
+    usedOpf: false,
+    opfElapsedMs: null,
   };
 }

@@ -30,28 +30,28 @@ import {
 /*
  * V2 ADAPTATION NOTES (codex/drafting-magic-sanitized → V2):
  *
- * The codex branch used a browser-side privacy filter daemon (`useSanitizer`
- * + `tokenizeForWire`) that tokenized text before POSTing to a non-streaming
- * Bedrock endpoint. V2 runs sanitization *server-side* inside the agent loop,
- * so the entire pre-send tokenization scaffolding (`buildSanitizedPayload`,
- * `tokenizeForWire`, `getChatSanitizer.rehydrateMessage`, the
- * `privacyFilterReady` gate) is replaced with V2-native equivalents:
- *
- *   useSanitizer()      → always-ready stub (V2 sanitizes server-side)
- *   tokenizeForWire()   → identity passthrough
- *   getChatSanitizer()  → identity rehydrator
- *   fetch /api/drafting-magic (codex JSON)
- *                       → useV2DraftingMagicStream → /api/agent/drafting-magic (V2 SSE)
- *                         then parseV2MagicMarkdown() converts the streamed
- *                         markdown back into a GeneratedDraftPackage shape so
- *                         the rest of the UI keeps working unchanged.
+ * Wire path (per 6th-addendum Option C, V1→V2 audit 2026-05-14):
+ *   browser useSanitizer  →  IndexedDB token map + OPF daemon
+ *   tokenizeForWire()     →  real adapter; raw client text replaced by
+ *                            @@TOKEN@@ placeholders before POST
+ *   /api/agent/drafting-magic  →  V2 SSE, server sees only tokens
+ *   getChatSanitizer().rehydrateMessage()
+ *                          →  applied on streamed tokens for display
  *
  * Everything else — UI tabs, comparison rows, strategy panel, compliance
  * checklist, workspace snapshot — is preserved verbatim from the codex page.
+ *
+ * Previous identity-stub implementation (commit 726ecd0) defeated
+ * Option C — replaced 2026-05-14 with the real browser-side hooks.
  */
 import { useUser } from '@clerk/clerk-react';
 import { Link } from 'react-router-dom';
 import { useV2DraftingMagicStream, type MagicSource } from '../../hooks/useV2DraftingMagicStream';
+import { useSanitizer } from '../../hooks/useSanitizer';
+import {
+  getChatSanitizer,
+  tokenizeForWire,
+} from '../../services/sanitization/chatAdapter';
 import { downloadDraftPackageDocx } from '../draftingMagic/draftDocxExport';
 import {
   markSectionEdited,
@@ -63,30 +63,6 @@ import {
 import { extractTextFromFile } from '../draftingMagic/fileTextExtraction';
 import type { GeneratedDraftPackage } from '../draftingMagic/localDraftGeneration';
 import { buildPacketComparisonRows, extractDraftingUnits, getSourceText } from '../draftingMagic/localExtraction';
-
-/**
- * V2 sanitizer stub: V2 sanitizes server-side, so the client-side daemon
- * gate is always-ready. Returning a constant object keeps the call sites
- * in the codex UI unchanged.
- */
-function useSanitizer() {
-  return {
-    ready: true,
-    unlocked: true,
-    tokenCount: 0,
-    daemonStatus: { state: 'healthy' as const },
-  };
-}
-
-/** Identity passthrough — V2 doesn't tokenize on the client. */
-async function tokenizeForWire(text: string): Promise<{ sanitized: string; usedOpf: boolean }> {
-  return { sanitized: text, usedOpf: true };
-}
-
-/** Identity rehydrator — V2 server returns already-rehydrated text. */
-function getChatSanitizer() {
-  return { rehydrateMessage: (s: string) => s };
-}
 
 /**
  * Parse V2's streamed markdown (sections delimited by `## SECTION: <name>`
