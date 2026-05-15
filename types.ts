@@ -327,9 +327,11 @@ export interface RankedAuthority {
 export interface ModelLanguageExcerpt {
   source: string;
   citation: string;
-  contentType: 'sample_clause' | 'checklist' | 'practice_tip' | 'form_language';
+  contentType: 'sample_clause' | 'checklist' | 'practice_tip' | 'form_language' | string;
   text: string;
-  usage: string;
+  /** How an attorney should apply this excerpt. Optional — V2 callers
+   * don't always populate it. */
+  usage?: string;
 }
 
 /**

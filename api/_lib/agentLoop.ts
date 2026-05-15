@@ -635,11 +635,15 @@ function callMessagesCreate(
   >;
 }
 
+// Anthropic SDK >= 0.45 removed the exported `MessageStream` /
+// `MessageStreamParams` types in favor of a less rigid inference path.
+// We type the return as `unknown`-cast and let the caller treat it as
+// an async iterable + .finalMessage() — the runtime shape is unchanged.
 function callMessagesStream(
   client: Anthropic,
   params: BaseMessagesParams,
   mcpServers: McpServerEntry[],
-): Anthropic.Messages.MessageStream {
+): ReturnType<typeof client.messages.stream> {
   if (mcpServers.length === 0) {
     return client.messages.stream(params);
   }
@@ -649,7 +653,7 @@ function callMessagesStream(
     ...params,
     mcp_servers: mcpServers,
     betas: [MCP_BETA_HEADER],
-  } as unknown as Anthropic.Beta.Messages.MessageStreamParams) as unknown as Anthropic.Messages.MessageStream;
+  } as unknown as Parameters<typeof client.beta.messages.stream>[0]) as unknown as ReturnType<typeof client.messages.stream>;
 }
 
 /**

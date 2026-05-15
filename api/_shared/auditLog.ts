@@ -16,7 +16,7 @@
  * complete. The audit is important but not worth taking the app down for.
  */
 
-import { createHmac } from 'node:crypto';
+import { createCipheriv, createHmac, randomBytes } from 'node:crypto';
 import { Redis } from '@upstash/redis';
 
 export interface AuditRecord {
@@ -121,6 +121,147 @@ export async function writeAuditRecord(record: AuditRecord): Promise<void> {
     await sink.expire(key, DAILY_TTL_SECONDS);
   } catch (err) {
     console.warn('[auditLog] write failed:', (err as { message?: string })?.message ?? err);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Per-redaction envelope-encrypted audit record (D15, KV schema L129–147)
+// ---------------------------------------------------------------------------
+
+/**
+ * Per-redaction audit envelope shape. Written to
+ * `audit_record_envelope:{id}` in Upstash KV after AES-256-GCM
+ * encryption. Per the 6th-addendum Option C ratification: NO plaintext
+ * of privileged content, NO ciphertext of the actual prompt — only
+ * metadata + HMACs of the sanitized form. 7-year retention.
+ *
+ * The KEK lives in 1Password (operator-controlled). The DEK is stored
+ * in `audit_record_envelope:dek`, itself encrypted with the KEK.
+ * Break-glass access requires the KEK holder; access is logged per
+ * plan §U.
+ *
+ * For Phase D pre-deploy, this writer uses `AUDIT_ENVELOPE_DEK` env
+ * var directly (a base64-encoded 32-byte key). The KEK-wrapped flow
+ * is a follow-up — env-var DEK gives us the per-redaction trail today
+ * without blocking on the 1Password KEK provisioning.
+ */
+export interface RedactionAuditEnvelope {
+  id: string;                      // ULID
+  session_id: string;
+  attorney_id: string | null;
+  input_sha256: string;            // HMAC of raw input length+structure (browser-side)
+  sanitized_sha256: string;        // HMAC of sanitized prompt (server sees this)
+  redaction_decisions_count: number;
+  by_category_counts: Record<string, number>;
+  confidence: number;
+  privileged_bool: boolean;
+  compound_risk_buckets: number;
+  timestamp: string;               // ISO-8601
+  schema_version: 1;
+}
+
+const ENVELOPE_TTL_SECONDS = 60 * 60 * 24 * 365 * 7; // 7 years
+
+function nextUlid(): string {
+  // Minimal ULID-ish: timestamp ms + 8 random hex. Sufficient for
+  // monotonic ordering + collision resistance at our write rate.
+  const ms = Date.now().toString(36);
+  const rand = (
+    Math.random().toString(36).slice(2, 10) +
+    Math.random().toString(36).slice(2, 10)
+  ).slice(0, 12);
+  return `ar_${ms}_${rand}`;
+}
+
+/**
+ * AES-256-GCM encrypt + base64-encode. Returns `{ciphertext, iv, tag}`
+ * concatenated as base64 strings for compact KV storage.
+ */
+function encryptEnvelope(plaintext: string): { payload: string; iv: string; tag: string } | null {
+  const dekB64 = process.env.AUDIT_ENVELOPE_DEK;
+  if (!dekB64) return null;
+  let dek: Buffer;
+  try {
+    dek = Buffer.from(dekB64, 'base64');
+    if (dek.length !== 32) {
+      console.warn('[auditLog] AUDIT_ENVELOPE_DEK is not 32 bytes; skipping envelope encryption');
+      return null;
+    }
+  } catch {
+    console.warn('[auditLog] AUDIT_ENVELOPE_DEK is not valid base64; skipping envelope encryption');
+    return null;
+  }
+  const iv = randomBytes(12);
+  const cipher = createCipheriv('aes-256-gcm', dek, iv);
+  const enc = Buffer.concat([cipher.update(plaintext, 'utf8'), cipher.final()]);
+  const tag = cipher.getAuthTag();
+  return {
+    payload: enc.toString('base64'),
+    iv: iv.toString('base64'),
+    tag: tag.toString('base64'),
+  };
+}
+
+/**
+ * Public sink for the envelope record. Extends AuditSink with a
+ * generic SET because envelope records aren't list-pushed.
+ */
+export interface EnvelopeSink {
+  set(key: string, value: string, opts: { ex: number }): Promise<unknown>;
+}
+
+let envelopeSink: EnvelopeSink | null = null;
+function resolveEnvelopeSink(): EnvelopeSink | null {
+  if (envelopeSink) return envelopeSink;
+  const url = process.env.UPSTASH_REDIS_REST_URL;
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+  if (!url || !token) return null;
+  const client = new Redis({ url, token });
+  envelopeSink = {
+    set: (key, value, opts) => client.set(key, value, opts),
+  };
+  return envelopeSink;
+}
+
+/**
+ * Write an envelope-encrypted audit record per Option C / KV schema.
+ * Fire-and-forget; never throws. Skipped (with warning) if
+ * AUDIT_ENVELOPE_DEK or Upstash creds are missing — the daily HMAC log
+ * remains the operational fallback.
+ *
+ * Returns the assigned record id, or null if envelope wasn't written.
+ */
+export async function writeRedactionEnvelope(
+  data: Omit<RedactionAuditEnvelope, 'id' | 'timestamp' | 'schema_version'>,
+): Promise<string | null> {
+  try {
+    const sink = resolveEnvelopeSink();
+    if (!sink) return null;
+    const id = nextUlid();
+    const record: RedactionAuditEnvelope = {
+      ...data,
+      id,
+      timestamp: new Date().toISOString(),
+      schema_version: 1,
+    };
+    const plaintext = JSON.stringify(record);
+    const enc = encryptEnvelope(plaintext);
+    if (!enc) return null;
+    const stored = JSON.stringify({
+      v: 1,
+      alg: 'aes-256-gcm',
+      iv: enc.iv,
+      tag: enc.tag,
+      payload: enc.payload,
+    });
+    await sink.set(`audit_record_envelope:${id}`, stored, { ex: ENVELOPE_TTL_SECONDS });
+    return id;
+  } catch (err) {
+    console.warn(
+      '[auditLog] envelope write failed:',
+      (err as { message?: string })?.message ?? err,
+    );
+    return null;
   }
 }
 

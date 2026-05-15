@@ -102,7 +102,7 @@ async function runShadow(body: ShadowBody): Promise<void> {
       user_text: userText,
       user_id: body.user_id ?? null,
     });
-    if (!v2.ok) {
+    if (v2.ok === false) {
       // Write a failure-shaped record so we can still see V1/V2 mismatches
       // even when V2 errored.
       await writeRecord({

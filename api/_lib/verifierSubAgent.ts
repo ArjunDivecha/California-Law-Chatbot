@@ -197,7 +197,7 @@ export async function verifyCitationViaSubAgent(citationText: string): Promise<V
       max_tokens: VERIFIER_MAX_TOKENS,
       system: VERIFIER_SYSTEM_PROMPT,
       messages,
-      tools: VERIFIER_TOOLS,
+      tools: VERIFIER_TOOLS as unknown as Anthropic.Messages.Tool[],
     });
 
     const blocks = response.content;

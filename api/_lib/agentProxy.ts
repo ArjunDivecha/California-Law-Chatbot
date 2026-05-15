@@ -40,7 +40,12 @@ import {
   type TurnStreamEvent,
   type Workflow,
 } from './agentLoop.js';
-import { buildAuditRecord, writeAuditRecord } from '../_shared/auditLog.js';
+import {
+  buildAuditRecord,
+  computeHmac,
+  writeAuditRecord,
+  writeRedactionEnvelope,
+} from '../_shared/auditLog.js';
 
 export interface AgentProxyRequest {
   session_id: string;
@@ -111,6 +116,23 @@ export async function runAgentProxy(req: AgentProxyRequest): Promise<AgentProxyR
     redactions_count: detection.spans.length,
     by_category: byCategory,
   };
+
+  // ── 2b. Per-redaction envelope-encrypted audit record (D15, per 6th
+  // addendum Option C ratification + KV schema L129–147). The server
+  // records the wire-state metadata only — never the raw text, never
+  // the token map. AES-256-GCM via AUDIT_ENVELOPE_DEK; KEK-wrapped DEK
+  // is a follow-up. Fire-and-forget — non-fatal if it fails.
+  void writeRedactionEnvelope({
+    session_id: sessionId,
+    attorney_id: req.user_id ?? null,
+    input_sha256: computeHmac(userText) ?? '',
+    sanitized_sha256: computeHmac(userText) ?? '',
+    redaction_decisions_count: detection.spans.length,
+    by_category_counts: byCategory,
+    confidence: detection.confidence ?? 1.0,
+    privileged_bool: privileged,
+    compound_risk_buckets: compoundRiskBuckets,
+  }).catch(() => {});
 
   // ── 3. Run the loop.
   try {
@@ -218,6 +240,20 @@ export async function* runAgentProxyStream(
     compound_risk_buckets: compoundRiskBuckets,
     redactions_count: detection.spans.length,
   };
+
+  // Per-redaction envelope record (D15) — same shape as the
+  // non-streaming path. Fire-and-forget.
+  void writeRedactionEnvelope({
+    session_id: sessionId,
+    attorney_id: req.user_id ?? null,
+    input_sha256: computeHmac(userText) ?? '',
+    sanitized_sha256: computeHmac(userText) ?? '',
+    redaction_decisions_count: detection.spans.length,
+    by_category_counts: byCategory,
+    confidence: detection.confidence ?? 1.0,
+    privileged_bool: privileged,
+    compound_risk_buckets: compoundRiskBuckets,
+  }).catch(() => {});
 
   const sanitization = {
     privileged,

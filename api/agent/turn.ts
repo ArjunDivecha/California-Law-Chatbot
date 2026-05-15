@@ -48,7 +48,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     system_prompt: body.system_prompt,
   });
 
-  if (!result.ok) {
+  if (result.ok === false) {
     res.status(result.status_code).json({ error: result.error });
     return;
   }

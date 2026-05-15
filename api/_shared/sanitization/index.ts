@@ -196,7 +196,7 @@ function mergeSpans(spans: Span[]): Span[] {
 
 export function analyze(text: string): AnalyzeResult {
   if (!text || typeof text !== 'string') {
-    return { spans: [], suppressedByAllowlist: 0 };
+    return { spans: [], suppressedByAllowlist: 0, privileged: false, confidence: 1.0 };
   }
 
   const allowlist = findAllowlistMatches(text);

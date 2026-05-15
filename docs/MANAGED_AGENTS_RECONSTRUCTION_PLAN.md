@@ -1,8 +1,50 @@
 # Chatbot Reconstruction Plan — Anthropic Agent SDK on Messages API
 
 **Plan file destination:** `/Users/arjundivecha/Dropbox/AAA Backup/A Working/California-Law-Chatbot/docs/MANAGED_AGENTS_RECONSTRUCTION_PLAN.md` *(filename kept for git continuity; contents now describe the Agent SDK path)*
-**Date:** 2026-05-03 (original), **2026-05-10 architecture pivot**, **2026-05-10 ZDR-removal addendum**, **2026-05-12 token-map retention addendum (tentative)**, **2026-05-12 Managed-Agents revisit (scope clarification)**, **2026-05-12 Anthropic legal-industry launch addendum**, **2026-05-13 F&F partner ratifications (sixth addendum)**, **2026-05-13 web_search privilege-gate drop (seventh addendum)**, **2026-05-14 confidence-hold-back drop (eighth addendum)**
-**Status:** Final, post Opus + Codex (3 rounds, approved) + Ultraplan + Council review + ZDR scope verification, + 2026-05-10 plan-level pivot to Anthropic Team plan (no ZDR). **The 2026-05-13 sixth addendum below ratifies the three people-decisions that were blocking Phase 4.5 shadow run. The 2026-05-14 eighth addendum drops the confidence-hold-back gate, completing the move to "detector informs, attorney decides."**
+**Date:** 2026-05-03 (original), **2026-05-10 architecture pivot**, **2026-05-10 ZDR-removal addendum**, **2026-05-12 token-map retention addendum (tentative)**, **2026-05-12 Managed-Agents revisit (scope clarification)**, **2026-05-12 Anthropic legal-industry launch addendum**, **2026-05-13 F&F partner ratifications (sixth addendum)**, **2026-05-13 web_search privilege-gate drop (seventh addendum)**, **2026-05-14 confidence-hold-back drop (eighth addendum)**, **2026-05-15 GLiNER replaces OPF as primary detector (ninth addendum)**
+**Status:** Final. The 2026-05-15 ninth addendum below records the empirical Phase C decision to swap stock OPF for GLiNER (urchade/gliner_multi_pii-v1) as the primary PII detector after the §0.c trap-gate experiments, plus the related extension of HIGH_RISK_CATEGORIES with `date` and `zip`.
+
+---
+
+## 2026-05-15 (ninth addendum) — GLiNER replaces OPF as primary detector
+
+**Decided 2026-05-15 by Arjun.** During Phase C of the V1→V2 audit (see `docs/v1-v2-audit-2026-05-14.md`, `docs/phase-c-decision-2026-05-15.md`), the 120-trap zero-leak gate revealed that the stock OPF detector — even hybridized with the AI4Privacy-fine-tuned `run_b_weighted` checkpoint — could not reach zero wire-leaks on F&F's distribution: 16 wire-leaks with stock OPF, 9 with the hybrid, persistent gaps on single-word/foreign names and on multi-word non-Western names that fragment under BIO-tag detection.
+
+GLiNER (`urchade/gliner_multi_pii-v1`), a span-based PII detector trained on a different corpus than the AI4Privacy family, hit **zero wire-leaks** end-to-end and **120/120 trap pass** over two consecutive runs after a small stoplist + threshold tune. The architectural correctness comes from the diversity-of-error principle: GLiNER fails differently from OPF/AI4Privacy because it's span-based and trained on uncorrelated data, so ensembling buys real precision/recall rather than amplifying correlated errors.
+
+### What changes
+
+- **Primary PII detector**: `urchade/gliner_multi_pii-v1` via a local HTTPS daemon at `https://localhost:47842` (HTTP fallback `:47841`). Wrapper at `~/.gliner-daemon/gliner_daemon.py`, installer at `tools/gliner-daemon/install.sh`, launchd agent at `~/Library/LaunchAgents/com.fflp.gliner-daemon.plist`.
+- **Stock OPF**: relegated to fallback. `services/sanitization/opfClient.ts::OPF_DAEMON_URLS` lists GLiNER endpoints first; the stock daemon at `:47821/:47822` remains as a graceful-degradation path while users transition.
+- **OPF fine-tune `run_b_weighted`**: **REJECTED** for production (`docs/phase-a-6-5-fine-tune-decision-2026-05-15.md`). Fragmented CA addresses, private_address F1 → 0.000. Keep the checkpoint as research artifact on `codex/privacy-filter-prd-run`.
+- **Production parameters**: GLiNER threshold 0.7, stoplist of ~150 entries (salutations, professions, day/month names, ethnic adjectives, CA neighborhood names, generic role words like "user"/"the client"), prefix-trim for title/role prefixes ("Mr. Smith" → name=Smith). Configurable via `GLINER_THRESHOLD` env, model swappable via `GLINER_MODEL` env.
+
+### Related: HIGH_RISK_CATEGORIES extended with `date` and `zip`
+
+The same Phase C runs surfaced 6 wire-leaks on ISO/long-form dates and ZIP codes that were detected but not tokenized because `date` and `zip` weren't in `HIGH_RISK_CATEGORIES`. They are now (`api/_shared/sanitization/index.ts`). The plan §6 compound-risk model still applies — date alone wouldn't trigger privileged via the original §E rule — but combined with the wire-form tokenization that Option C now mandates, leaving dates raw on the wire is no longer acceptable. Utility tradeoff (the agent can't read raw dates in client text) accepted under F&F's privacy-first stance.
+
+### What does NOT change
+
+- The 6th-addendum Option C retention model (token map on device, never on server) — unchanged.
+- The 7th-addendum web_search gating drop — unchanged.
+- The 8th-addendum confidence-hold-back retirement — unchanged.
+- The 5th-addendum MCP-tool privilege gating — verified 2026-05-15 still in effect (`buildMcpServerSpec(privileged)` filters via per-MCP `privilege_gate` flag).
+- The trap manifest, audit log shape, attestation chain, KV schema — all unchanged.
+
+### Why this is safe
+
+- **Empirically verified**: 120/120 trap pass, 0 wire-leaks, two consecutive runs. Reports at `reports/traps-wire-gliner-final-v8-run{1,2}.json`.
+- **Wire-form proof**: `scripts/probe-wire-no-raw.mjs` shows zero raw PII in outbound bodies on `/v2` chat and `/v2/verify` against the live GLiNER daemon.
+- **Token-map persistence**: `scripts/probe-token-map-persists.mjs` shows the IndexedDB token map carries the same `CLIENT_001` token across page reload, confirming the on-device retention is intact through the detector swap.
+- **Latency improvement**: GLiNER median 45ms steady-state vs OPF's 1.6s — 35× faster, reducing chat-turn latency materially.
+- **Architectural diversity**: combined with regex patterns (deterministic SSN/email/phone/...) and the existing compound-risk detector (W1 patterns), V2 now has three uncorrelated detection signals.
+
+### Supersedes
+
+- §E references to "OPF" as the primary detector → "GLiNER (with regex + compound-risk + allowlist)".
+- The fifth-addendum-era discussion of a Solve Intelligence MCP for PII detection → not pursued; GLiNER + regex covers the field.
+- `services/sanitization/opfClient.ts` (now misnamed but kept for API stability — the file talks to either OPF or GLiNER via the same JSON shape).
+- The audit scorecard's D6/D7/D9/D10/D11/D21 entries — all now ✅ as of this addendum's implementation.
 
 ---
 
