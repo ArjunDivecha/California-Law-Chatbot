@@ -8,6 +8,7 @@ import {
   getChatSanitizer,
   tokenizeForWire,
 } from '../services/sanitization/chatAdapter';
+import { assertNoRawPii } from '../services/sanitization/wireGuard';
 
 export interface MagicSource {
   id: string;
@@ -105,6 +106,18 @@ export function useV2DraftingMagicStream() {
           code: 'sanitizer_unavailable',
           message: `Sanitization failed: ${(err as Error).message}. The drafting-magic request was blocked to prevent raw client text from leaving the device.`,
         },
+      }));
+      return;
+    }
+
+    // Plan §S browser-side CI assertion — final regex check.
+    try {
+      assertNoRawPii(tokenizedOpts);
+    } catch (err) {
+      setState((s) => ({
+        ...s,
+        isStreaming: false,
+        error: { code: 'wire_guard_violation', message: (err as Error).message },
       }));
       return;
     }

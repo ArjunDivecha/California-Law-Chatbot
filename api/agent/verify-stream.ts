@@ -31,6 +31,11 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { extractCitations } from '../_lib/tools/citationVerify.js';
 import { verifyCitationViaSubAgent } from '../_lib/verifierSubAgent.js';
+import {
+  detectPiiServerBackstop,
+  RawInputDetectedError,
+} from '../../services/sanitization/detectionPipeline.js';
+import { scrubMessage } from '../_lib/scrubError.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -53,6 +58,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const text = (body.text ?? '').trim();
   if (!text) {
     res.status(400).json({ error: 'invalid_input', message: 'text is required' });
+    return;
+  }
+
+  // Server-side regex backstop. Browser is expected to tokenize via
+  // useV2VerifyStream → tokenizeForWire before send (per 6th-addendum
+  // Option C). If raw PII slips through, fail-closed with 503.
+  const detection = detectPiiServerBackstop(text);
+  if (detection.spans.length > 0) {
+    const cats = Array.from(new Set(detection.spans.map((s) => s.category)));
+    const err = new RawInputDetectedError(cats, detection.spans.length);
+    res.status(503).json({ error: 'sanitizer_unavailable', message: err.message });
     return;
   }
 
@@ -119,7 +135,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           index: i,
           citation: c.text,
           status: 'error',
-          error: err instanceof Error ? err.message : String(err),
+          error: scrubMessage(err instanceof Error ? err.message : String(err)),
         });
       }
     }
@@ -133,7 +149,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       elapsed_ms: Math.round(performance.now() - t0),
     });
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
+    const message = scrubMessage(err instanceof Error ? err.message : String(err));
     writeEvent('error', { code: 'internal_error', message });
   } finally {
     res.end();

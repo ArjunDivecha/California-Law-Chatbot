@@ -32,6 +32,7 @@ import {
   detectPiiServerBackstop,
   RawInputDetectedError,
 } from '../../services/sanitization/detectionPipeline.js';
+import { scrubMessage } from './scrubError.js';
 import {
   runTurn,
   runTurnStream,
@@ -127,7 +128,7 @@ export async function runAgentProxy(req: AgentProxyRequest): Promise<AgentProxyR
   } catch (err) {
     return errorResp(
       'inference_error',
-      err instanceof Error ? err.message : String(err),
+      scrubMessage(err instanceof Error ? err.message : String(err)),
       502,
       req,
     );

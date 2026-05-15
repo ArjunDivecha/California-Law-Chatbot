@@ -40,6 +40,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { runAgentProxyStream } from '../_lib/agentProxy.js';
 import { buildSystemPrompt } from '../_lib/skills.js';
+import { scrubMessage } from '../_lib/scrubError.js';
 
 interface DraftingMagicSource {
   id: string;
@@ -180,7 +181,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       writeEvent('error', { code: 'no_terminal_event', message: 'stream ended without done/error' });
     }
   } catch (err) {
-    writeEvent('error', { code: 'internal_error', message: err instanceof Error ? err.message : String(err) });
+    writeEvent('error', { code: 'internal_error', message: scrubMessage(err instanceof Error ? err.message : String(err)) });
   } finally {
     res.end();
   }

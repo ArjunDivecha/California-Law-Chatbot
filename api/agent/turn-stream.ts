@@ -29,6 +29,7 @@
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { runAgentProxyStream } from '../_lib/agentProxy.js';
+import { scrubMessage } from '../_lib/scrubError.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // CORS for the streaming path. Browsers require explicit headers
@@ -89,7 +90,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       writeEvent('error', { code: 'no_terminal_event', message: 'stream ended without done/error' });
     }
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
+    // Scrub the error message before emit — even though browser
+    // tokenized, a tool-layer exception that quotes the request body
+    // could re-leak raw PII into the SSE response or Vercel logs.
+    const message = scrubMessage(err instanceof Error ? err.message : String(err));
     writeEvent('error', { code: 'internal_error', message });
   } finally {
     res.end();

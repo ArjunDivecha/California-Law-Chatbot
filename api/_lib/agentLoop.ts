@@ -46,6 +46,7 @@ import {
 } from '../_shared/sanitization/index.js';
 import { COMPOUND_RISK_BUCKET_THRESHOLD } from '../_shared/sanitization/compoundRisk.js';
 import { buildSystemPrompt, getAgentConfig } from './skills.js';
+import { scrubMessage } from './scrubError.js';
 
 // Anthropic's 2026-05-12 legal-industry launch cites Opus 4.7 as their
 // flagship legal-reasoning model (90.9% on Harvey's BigLaw Bench). V2
@@ -1206,7 +1207,10 @@ export async function* runTurnStream(
       },
     };
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
+    // Scrub before emit — an Anthropic SDK error may quote part of the
+    // request body in the message; even though it should already be
+    // tokenized, defense-in-depth scrub.
+    const message = scrubMessage(err instanceof Error ? err.message : String(err));
     yield { kind: 'error', code: 'inference_error', message };
   }
 }

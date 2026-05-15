@@ -16,6 +16,7 @@ import {
   getChatSanitizer,
   tokenizeForWire,
 } from '../services/sanitization/chatAdapter';
+import { assertNoRawPii } from '../services/sanitization/wireGuard';
 
 export interface V2Verdict {
   index: number;
@@ -98,6 +99,18 @@ export function useV2VerifyStream() {
           code: 'sanitizer_unavailable',
           message: `Sanitization failed: ${(err as Error).message}. The verify request was blocked to prevent raw client text from leaving the device.`,
         },
+      }));
+      return;
+    }
+
+    // Plan §S browser-side CI assertion — final regex check.
+    try {
+      assertNoRawPii({ text: wireText });
+    } catch (err) {
+      setState((s) => ({
+        ...s,
+        isStreaming: false,
+        error: { code: 'wire_guard_violation', message: (err as Error).message },
       }));
       return;
     }

@@ -27,6 +27,7 @@ import {
   getChatSanitizer,
   tokenizeForWire,
 } from '../services/sanitization/chatAdapter';
+import { assertNoRawPii } from '../services/sanitization/wireGuard';
 
 export interface V2ToolEvent {
   /** Stable id for keying the React list. */
@@ -154,22 +155,42 @@ export function useV2AgentStream() {
       return;
     }
 
+    const wireBody = {
+      session_id: opts.session_id,
+      // Tokenized text — raw PII has been replaced by @@TOKEN@@
+      // placeholders via the browser-side OPF + IndexedDB token map.
+      // The token map stays on the device.
+      user_text: wireText,
+      user_id: opts.user_id,
+      model: opts.model,
+      system_prompt: opts.system_prompt,
+      workflow: opts.workflow,
+    };
+
+    // Plan §S browser-side CI assertion. Final deterministic-regex
+    // check on the assembled body; abort send on any HIGH_RISK
+    // pattern survival. Defense in depth on top of tokenizeForWire.
+    try {
+      assertNoRawPii(wireBody);
+    } catch (err) {
+      setState((s) => ({
+        ...s,
+        isStreaming: false,
+        error: {
+          code: 'wire_guard_violation',
+          message: (err as Error).message,
+          proxy: true,
+        },
+      }));
+      return;
+    }
+
     let resp: Response;
     try {
       resp = await fetch('/api/agent/turn-stream', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
-        body: JSON.stringify({
-          session_id: opts.session_id,
-          // Tokenized text — raw PII has been replaced by @@TOKEN@@
-          // placeholders via the browser-side OPF + IndexedDB token map.
-          // The token map stays on the device.
-          user_text: wireText,
-          user_id: opts.user_id,
-          model: opts.model,
-          system_prompt: opts.system_prompt,
-          workflow: opts.workflow,
-        }),
+        body: JSON.stringify(wireBody),
         signal: ctrl.signal,
       });
     } catch (err) {

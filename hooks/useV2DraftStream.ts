@@ -21,6 +21,7 @@ import {
   getChatSanitizer,
   tokenizeForWire,
 } from '../services/sanitization/chatAdapter';
+import { assertNoRawPii } from '../services/sanitization/wireGuard';
 
 export interface V2DraftToolEvent {
   id: string;
@@ -142,6 +143,23 @@ export function useV2DraftStream() {
         error: {
           code: 'sanitizer_unavailable',
           message: `Sanitization failed: ${(err as Error).message}. The draft request was blocked to prevent raw client text from leaving the device.`,
+          proxy: true,
+        },
+      }));
+      return;
+    }
+
+    // Plan §S browser-side CI assertion — final regex check on the
+    // outbound body; abort if any raw HIGH_RISK pattern survived.
+    try {
+      assertNoRawPii(tokenizedOpts);
+    } catch (err) {
+      setState((s) => ({
+        ...s,
+        isStreaming: false,
+        error: {
+          code: 'wire_guard_violation',
+          message: (err as Error).message,
           proxy: true,
         },
       }));
