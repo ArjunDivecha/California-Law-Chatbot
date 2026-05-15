@@ -111,6 +111,20 @@ STOPLIST_LOWER = {
     'japanese', 'indian', 'filipino', 'african', 'asian', 'european',
     'middle eastern', 'european', 'persian', 'arab', 'hispanic', 'latino',
     'latina', 'latinx',
+    'salvadoran', 'guatemalan', 'honduran', 'nicaraguan', 'colombian',
+    'venezuelan', 'argentinian', 'peruvian', 'bolivian',
+    'cambodian', 'thai', 'laotian', 'burmese', 'malaysian', 'indonesian',
+    'singaporean', 'taiwanese', 'mongolian', 'tibetan', 'nepalese',
+    'pakistani', 'bangladeshi', 'sri lankan', 'afghani', 'iraqi', 'iranian',
+    'syrian', 'jordanian', 'palestinian', 'turkish', 'kurdish', 'armenian',
+    'ethiopian', 'eritrean', 'somali', 'nigerian', 'ghanaian', 'kenyan',
+    'south african', 'egyptian', 'moroccan',
+    'brazilian', 'portuguese', 'spanish', 'italian', 'french', 'german',
+    'dutch', 'irish', 'scottish', 'welsh', 'polish', 'ukrainian', 'romanian',
+    'hungarian', 'czech', 'slovak', 'serbian', 'croatian', 'greek',
+    'hmong', 'punjabi', 'gujarati', 'bengali', 'tamil', 'telugu',
+    'cantonese', 'mandarin', 'hokkien', 'shanghainese',
+    'native american',
     # Religious adjectives / clergy
     'orthodox', 'catholic', 'protestant', 'buddhist', 'muslim', 'jewish',
     'hindu', 'sikh', 'mormon', 'evangelical', 'pastor', 'priest', 'rabbi',
@@ -131,6 +145,18 @@ STOPLIST_LOWER = {
     'fremont', 'hayward', 'walnut creek', 'orinda', 'lafayette',
     'marin county', 'alameda county', 'orange county', 'santa clara county',
     'silicon valley', 'bay area', 'sf bay area',
+    # Neighborhood / district names — generic geographic markers, not
+    # full addresses (no street number/name). Compound-risk pass still
+    # picks up the privacy signal when paired with other attributes.
+    'sunset district', 'pico-union', 'koreatown', 'hollywood hills',
+    'mission district', 'chinatown', 'little tokyo', 'little saigon',
+    'pico-robertson', 'pasadena hills', 'beverly grove', 'east la',
+    'west la', 'downtown la', 'east oakland', 'west oakland',
+    'sherman oaks', 'encino', 'studio city', 'van nuys',
+    'mar vista', 'venice', 'glassell park', 'silver lake',
+    'echo park', 'westwood', 'culver city', 'inglewood',
+    'bishop', 'roseville', 'visalia', 'bakersfield',
+    'cambodia town', 'thai town',
     # Schools / institutions commonly mentioned as third-party orgs
     'bishop o\'dowd', "bishop o'dowd",
     # Common legal phrases
@@ -138,6 +164,13 @@ STOPLIST_LOWER = {
     'irrevocable trust', 'special needs trust', 'pot trust',
     # Relationship words
     'twins', 'triplets', 'siblings',
+    # "my client", "my counsel" — possessive-attached role phrases
+    'my client', 'my counsel', 'my attorney', 'my trustee',
+    'her client', 'his client', 'their client',
+    'the client', 'the trustee', 'the beneficiary', 'the executor',
+    # Generic user/system role words that GLiNER mistags as person
+    'user', 'users', 'the user', 'the system', 'the model', 'the agent',
+    'the assistant', 'the bot', 'the chatbot',
 }
 
 

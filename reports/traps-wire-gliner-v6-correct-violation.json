@@ -1,0 +1,146 @@
+{
+  "generated_at": "2026-05-15T16:06:31.570Z",
+  "label": "gliner-v6-correct-violation",
+  "manifest_version": 2,
+  "manifest_authored": "2026-05-12",
+  "elapsed_seconds": 0,
+  "totals": {
+    "total": 120,
+    "pass": 115,
+    "fail": 5,
+    "wire_leaks": 0
+  },
+  "by_category": {
+    "compound_identifier": {
+      "total": 25,
+      "pass": 21,
+      "fail": 4
+    },
+    "single_word_name": {
+      "total": 10,
+      "pass": 10,
+      "fail": 0
+    },
+    "tool_output_reintroduction": {
+      "total": 11,
+      "pass": 11,
+      "fail": 0
+    },
+    "financial": {
+      "total": 10,
+      "pass": 10,
+      "fail": 0
+    },
+    "adversarial": {
+      "total": 10,
+      "pass": 9,
+      "fail": 1
+    },
+    "mixed_direct_pii": {
+      "total": 54,
+      "pass": 54,
+      "fail": 0
+    }
+  },
+  "failed": [
+    {
+      "id": "T-W1-002",
+      "category": "compound_identifier",
+      "w_item": "W1",
+      "missed": [],
+      "falsePositives": [
+        {
+          "substr": "Sunset District",
+          "predictedSpan": {
+            "start": 30,
+            "end": 45,
+            "category": "street_address",
+            "raw": "Sunset District"
+          }
+        }
+      ],
+      "wireLeaks": [],
+      "privilegedExpected": true,
+      "privilegedActual": true
+    },
+    {
+      "id": "T-W1-003",
+      "category": "compound_identifier",
+      "w_item": "W1",
+      "missed": [],
+      "falsePositives": [
+        {
+          "substr": "Pico-Union",
+          "predictedSpan": {
+            "start": 28,
+            "end": 38,
+            "category": "street_address",
+            "raw": "Pico-Union"
+          }
+        },
+        {
+          "substr": "Salvadoran",
+          "predictedSpan": {
+            "start": 0,
+            "end": 10,
+            "category": "name",
+            "raw": "Salvadoran"
+          }
+        }
+      ],
+      "wireLeaks": [],
+      "privilegedExpected": true,
+      "privilegedActual": true
+    },
+    {
+      "id": "T-W1-008",
+      "category": "compound_identifier",
+      "w_item": "W1",
+      "missed": [],
+      "falsePositives": [
+        {
+          "substr": "Koreatown",
+          "predictedSpan": {
+            "start": 32,
+            "end": 41,
+            "category": "street_address",
+            "raw": "Koreatown"
+          }
+        }
+      ],
+      "wireLeaks": [],
+      "privilegedExpected": true,
+      "privilegedActual": true
+    },
+    {
+      "id": "T-W1-009",
+      "category": "compound_identifier",
+      "w_item": "W1",
+      "missed": [],
+      "falsePositives": [
+        {
+          "substr": "Hollywood Hills",
+          "predictedSpan": {
+            "start": 39,
+            "end": 54,
+            "category": "street_address",
+            "raw": "Hollywood Hills"
+          }
+        }
+      ],
+      "wireLeaks": [],
+      "privilegedExpected": true,
+      "privilegedActual": true
+    },
+    {
+      "id": "T-ADV-008",
+      "category": "adversarial",
+      "w_item": "adversarial",
+      "missed": [],
+      "falsePositives": [],
+      "wireLeaks": [],
+      "privilegedExpected": false,
+      "privilegedActual": true
+    }
+  ]
+}

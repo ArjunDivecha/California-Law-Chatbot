@@ -114,11 +114,21 @@ function isCovered(spans, value, category, text) {
            reason: frac >= 0.5 ? null : contributors.length === 0 ? 'no-matching-category-span' : 'insufficient-overlap' };
 }
 function findViolation(spans, substr, text) {
+  // A `must_not_redact` violation fires when a predicted span EQUALS
+  // OR IS FULLY CONTAINED WITHIN the substring — i.e., the detector
+  // tagged this exact substring as PII on its own.
+  //
+  // It does NOT fire when the predicted span is LARGER than the
+  // substring, because that means the substring is just a fragment of
+  // a wider real-PII match (e.g., "San Jose" within "88 Industrial
+  // Drive, San Jose" is correctly part of the full address span).
+  // Pre-fix this fired on any overlap, which was overly strict — it
+  // counted larger-span correct catches as false positives.
   const idx = text.indexOf(substr);
   if (idx < 0) return null;
   const range = [idx, idx + substr.length];
   for (const sp of spans) {
-    if (overlapLen([sp.start, sp.end], range) > 0) {
+    if (sp.start >= range[0] && sp.end <= range[1]) {
       return { substr, predictedSpan: { start: sp.start, end: sp.end, category: sp.category, raw: sp.raw } };
     }
   }

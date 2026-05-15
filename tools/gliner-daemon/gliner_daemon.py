@@ -72,28 +72,34 @@ GLINER_LABELS = list(LABEL_MAP.keys())
 
 # Stoplist matched case-insensitively against the FULL span text.
 STOPLIST_LOWER = {
+    # Salutations / titles
     'mr.', 'mrs.', 'ms.', 'dr.', 'prof.', 'hon.', 'sir', 'madam',
     'mr', 'mrs', 'ms', 'dr', 'prof', 'hon',
+    # Generic legal roles (not personal names)
     'petitioner', 'respondent', 'plaintiff', 'defendant', 'appellant',
     'appellee', 'client', 'witness', 'co-counsel', 'co-trustee',
     'co-trustees', 'executor', 'executrix', 'trustee', 'trustees',
     'beneficiary', 'beneficiaries', 'grantor', 'settlor', 'guardian',
     'conservator', 'fiduciary', 'attorney', 'counsel', 'lawyer',
     'judge', 'justice', 'magistrate', 'clerk', 'court reporter',
-    'declarant', 'affiant', 'surviving spouse',
+    'witness', 'declarant', 'affiant', 'surviving spouse',
+    # Generic professions
     'architect', 'engineer', 'doctor', 'physician', 'nurse', 'teacher',
     'professor', 'student', 'resident', 'partner', 'associate',
     'consultant', 'manager', 'director', 'officer', 'analyst',
     'developer', 'designer', 'accountant', 'auditor', 'pharmacist',
     'therapist', 'counselor', 'researcher', 'pilot', 'driver',
     'mechanic', 'carpenter', 'electrician', 'plumber',
-    'restaurateur', 'proprietor', 'owner', 'founder', 'entrepreneur',
-    'executive', 'CEO', 'CFO', 'CTO', 'COO', 'president', 'vice president',
+    'boeing engineer', 'cisco engineer',
+    # Days/months/time
     'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday',
     'sunday', 'morning', 'afternoon', 'evening', 'night', 'noon',
     'midnight', '2 pm', '2 am', '2pm', '2am', 'am', 'pm',
     'january', 'february', 'march', 'april', 'may', 'june', 'july',
     'august', 'september', 'october', 'november', 'december',
+    # Hyphenated ethnic/national adjectives — these describe a community,
+    # not a specific person. The compound-risk pass picks up the
+    # privacy signal when combined with other attributes.
     'korean-american', 'vietnamese-american', 'iranian-american',
     'mexican-american', 'chinese-american', 'japanese-american',
     'indian-american', 'filipino-american', 'african-american',
@@ -101,28 +107,71 @@ STOPLIST_LOWER = {
     'korean american', 'vietnamese american', 'chinese american',
     'japanese american', 'indian american', 'filipino american',
     'african american', 'asian american',
+    # Bare nationality / ethnic adjectives
     'russian', 'mexican', 'lebanese', 'chinese', 'korean', 'vietnamese',
     'japanese', 'indian', 'filipino', 'african', 'asian', 'european',
-    'middle eastern', 'persian', 'arab', 'hispanic', 'latino', 'latina',
-    'latinx',
+    'middle eastern', 'european', 'persian', 'arab', 'hispanic', 'latino',
+    'latina', 'latinx',
+    'salvadoran', 'guatemalan', 'honduran', 'nicaraguan', 'colombian',
+    'venezuelan', 'argentinian', 'peruvian', 'bolivian',
+    'cambodian', 'thai', 'laotian', 'burmese', 'malaysian', 'indonesian',
+    'singaporean', 'taiwanese', 'mongolian', 'tibetan', 'nepalese',
+    'pakistani', 'bangladeshi', 'sri lankan', 'afghani', 'iraqi', 'iranian',
+    'syrian', 'jordanian', 'palestinian', 'turkish', 'kurdish', 'armenian',
+    'ethiopian', 'eritrean', 'somali', 'nigerian', 'ghanaian', 'kenyan',
+    'south african', 'egyptian', 'moroccan',
+    'brazilian', 'portuguese', 'spanish', 'italian', 'french', 'german',
+    'dutch', 'irish', 'scottish', 'welsh', 'polish', 'ukrainian', 'romanian',
+    'hungarian', 'czech', 'slovak', 'serbian', 'croatian', 'greek',
+    'hmong', 'punjabi', 'gujarati', 'bengali', 'tamil', 'telugu',
+    'cantonese', 'mandarin', 'hokkien', 'shanghainese',
+    'native american',
+    # Religious adjectives / clergy
     'orthodox', 'catholic', 'protestant', 'buddhist', 'muslim', 'jewish',
     'hindu', 'sikh', 'mormon', 'evangelical', 'pastor', 'priest', 'rabbi',
     'imam', 'monk', 'nun', 'bishop',
+    # More generic occupations
+    'restaurateur', 'proprietor', 'owner', 'founder', 'entrepreneur',
+    'executive', 'CEO', 'CFO', 'CTO', 'COO', 'president', 'vice president',
+    # Common org names — when mentioned generically, not as a client.
     'wells fargo', 'cisco', 'boeing', 'google', 'apple', 'meta',
     'microsoft', 'amazon', 'tesla', 'salesforce', 'oracle', 'intel',
     'nvidia', 'ucsf', 'ucla', 'usc', 'stanford', 'berkeley', 'caltech',
     'kaiser', 'bank of america', 'chase', 'citibank',
+    # CA cities/regions used as generic geographic, not addresses
     'los angeles', 'san francisco', 'san diego', 'san jose', 'sacramento',
-    'fresno', 'oakland', 'long beach', 'cupertino', 'palo alto',
-    'mountain view', 'sunnyvale', 'pasadena', 'beverly hills', 'la jolla',
-    'malibu', 'santa monica', 'santa barbara', 'santa clara',
+    'fresno', 'oakland', 'berkeley', 'long beach', 'cupertino',
+    'palo alto', 'mountain view', 'sunnyvale', 'pasadena', 'beverly hills',
+    'la jolla', 'malibu', 'santa monica', 'santa barbara', 'santa clara',
     'fremont', 'hayward', 'walnut creek', 'orinda', 'lafayette',
     'marin county', 'alameda county', 'orange county', 'santa clara county',
     'silicon valley', 'bay area', 'sf bay area',
-    "bishop o'dowd",
+    # Neighborhood / district names — generic geographic markers, not
+    # full addresses (no street number/name). Compound-risk pass still
+    # picks up the privacy signal when paired with other attributes.
+    'sunset district', 'pico-union', 'koreatown', 'hollywood hills',
+    'mission district', 'chinatown', 'little tokyo', 'little saigon',
+    'pico-robertson', 'pasadena hills', 'beverly grove', 'east la',
+    'west la', 'downtown la', 'east oakland', 'west oakland',
+    'sherman oaks', 'encino', 'studio city', 'van nuys',
+    'mar vista', 'venice', 'glassell park', 'silver lake',
+    'echo park', 'westwood', 'culver city', 'inglewood',
+    'bishop', 'roseville', 'visalia', 'bakersfield',
+    'cambodia town', 'thai town',
+    # Schools / institutions commonly mentioned as third-party orgs
+    'bishop o\'dowd', "bishop o'dowd",
+    # Common legal phrases
     'family trust', 'common trust', 'living trust', 'revocable trust',
     'irrevocable trust', 'special needs trust', 'pot trust',
+    # Relationship words
     'twins', 'triplets', 'siblings',
+    # "my client", "my counsel" — possessive-attached role phrases
+    'my client', 'my counsel', 'my attorney', 'my trustee',
+    'her client', 'his client', 'their client',
+    'the client', 'the trustee', 'the beneficiary', 'the executor',
+    # Generic user/system role words that GLiNER mistags as person
+    'user', 'users', 'the user', 'the system', 'the model', 'the agent',
+    'the assistant', 'the bot', 'the chatbot',
 }
 
 PREFIX_TRIM = [
