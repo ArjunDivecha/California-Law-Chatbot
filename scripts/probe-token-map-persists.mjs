@@ -47,8 +47,10 @@ await clerkSetup();
 // The same browser-context is re-used across reloads to preserve
 // localStorage + IndexedDB. Each page navigation re-mounts the
 // SanitizerProvider, which should open the same IndexedDB.
+// Headless Chromium needs to ignore self-signed cert errors to reach
+// the local OPF daemon at https://localhost:47822.
 const browser = await chromium.launch({ headless: true });
-const ctx = await browser.newContext();
+const ctx = await browser.newContext({ ignoreHTTPSErrors: true });
 const page = await ctx.newPage();
 
 const errors = [];
@@ -99,7 +101,9 @@ const userText1 = (() => {
 })();
 console.log('round 1 wire user_text:', userText1);
 
-const token1 = (userText1 ?? '').match(/@@CLIENT_\d+@@/)?.[0];
+// Token format is `CLIENT_001` from previewSession.ts (no @@ wrappers).
+const TOKEN_RE = /\bCLIENT_\d+\b/;
+const token1 = (userText1 ?? '').match(TOKEN_RE)?.[0];
 if (!token1) {
   console.error('FAIL: no @@CLIENT_xxx@@ token in round-1 outbound. Browser sent raw or empty.');
   console.error('raw user_text was:', JSON.stringify(userText1).slice(0, 300));
@@ -142,7 +146,7 @@ const userText2 = (() => {
   try { return JSON.parse(body2).user_text; } catch { return null; }
 })();
 console.log('round 2 wire user_text:', userText2);
-const token2 = (userText2 ?? '').match(/@@CLIENT_\d+@@/)?.[0];
+const token2 = (userText2 ?? '').match(TOKEN_RE)?.[0];
 if (!token2) {
   console.error('FAIL: no @@CLIENT_xxx@@ token in round-2 outbound.');
   await browser.close();

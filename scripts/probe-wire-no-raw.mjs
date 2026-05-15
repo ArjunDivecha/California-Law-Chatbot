@@ -59,8 +59,12 @@ function checkBodyForRaw(body, label) {
   return hits;
 }
 
+// `ignoreHTTPSErrors` lets the browser talk to the local OPF daemon's
+// self-signed cert at https://localhost:47822 without the macOS keychain
+// trust chain that the user has set up via install.sh. Headless
+// Chromium doesn't share the user-keychain CA trust.
 const browser = await chromium.launch({ headless: true });
-const ctx = await browser.newContext();
+const ctx = await browser.newContext({ ignoreHTTPSErrors: true });
 const page = await ctx.newPage();
 
 const allOutbound = [];
@@ -119,10 +123,20 @@ await tryRoute('chat', 'http://localhost:5173/v2', 'textarea', async (p) => {
   await p.keyboard.press('Enter');
 });
 
-// Drafting Magic — needs Add source + paste into the panel; minimal probe
-// is just navigating + typing into the first textarea (instructions).
+// Drafting Magic — requires a source to be added before Generate is
+// enabled. Click "Add a source" first, paste the test passage into the
+// new source's text box, then Generate.
 await tryRoute('drafting-magic', 'http://localhost:5173/v2/magic', 'textarea', async (p) => {
-  await p.getByRole('button', { name: /generate/i }).first().click().catch(() => null);
+  // The main "instructions" textarea got our passage. Add a source +
+  // paste into it as well, then submit.
+  await p.getByRole('button', { name: /add a source|\+ source|new source/i }).first().click().catch(() => null);
+  await p.waitForTimeout(500);
+  // Second textarea is the source body
+  const sources = await p.locator('textarea').count();
+  if (sources >= 2) {
+    await p.locator('textarea').nth(1).fill(passage);
+  }
+  await p.getByRole('button', { name: /^generate/i }).first().click().catch(() => null);
 });
 
 // Verify — has its own Verify Citations button
