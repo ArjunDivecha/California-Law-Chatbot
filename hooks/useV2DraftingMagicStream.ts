@@ -4,6 +4,10 @@
  */
 
 import { useCallback, useRef, useState } from 'react';
+import {
+  getChatSanitizer,
+  tokenizeForWire,
+} from '../services/sanitization/chatAdapter';
 
 export interface MagicSource {
   id: string;
@@ -67,12 +71,50 @@ export function useV2DraftingMagicStream() {
     setState({ ...INITIAL, isStreaming: true });
     const ctrl = new AbortController();
     abortRef.current = ctrl;
+
+    // Tokenize every free-text field before send. The packet may carry
+    // entire client documents — these MUST be tokenized; the worst-case
+    // leakage path on this endpoint is a full packet on the wire.
+    let tokenizedOpts: MagicSendOpts;
+    try {
+      const wireInstructions = await tokenizeForWire(opts.instructions ?? '');
+      const tokenizedPacket: MagicSource[] = [];
+      for (const src of opts.packet ?? []) {
+        const wireText = await tokenizeForWire(src.text ?? '');
+        const wireName = await tokenizeForWire(src.name ?? '');
+        const wireDesc = src.description
+          ? await tokenizeForWire(src.description)
+          : undefined;
+        tokenizedPacket.push({
+          ...src,
+          name: wireName.sanitized,
+          text: wireText.sanitized,
+          description: wireDesc?.sanitized ?? src.description,
+        });
+      }
+      tokenizedOpts = {
+        ...opts,
+        instructions: wireInstructions.sanitized,
+        packet: tokenizedPacket,
+      };
+    } catch (err) {
+      setState((s) => ({
+        ...s,
+        isStreaming: false,
+        error: {
+          code: 'sanitizer_unavailable',
+          message: `Sanitization failed: ${(err as Error).message}. The drafting-magic request was blocked to prevent raw client text from leaving the device.`,
+        },
+      }));
+      return;
+    }
+
     let resp: Response;
     try {
       resp = await fetch('/api/agent/drafting-magic', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
-        body: JSON.stringify(opts),
+        body: JSON.stringify(tokenizedOpts),
         signal: ctrl.signal,
       });
     } catch (err) {
@@ -152,16 +194,25 @@ function handleEvent(raw: string, setState: React.Dispatch<React.SetStateAction<
     case 'iteration':
       setState((s) => ({ ...s, round: Number(data.round ?? 0) }));
       break;
-    case 'token':
-      setState((s) => ({ ...s, tokens: s.tokens + String(data.text ?? '') }));
+    case 'token': {
+      const sanitizer = getChatSanitizer();
+      const incoming = String(data.text ?? '');
+      setState((s) => ({ ...s, tokens: s.tokens + sanitizer.rehydrateMessage(incoming) }));
       break;
-    case 'done':
+    }
+    case 'done': {
+      const sanitizer = getChatSanitizer();
+      const result = data.result as MagicDoneSummary | undefined;
+      const rehydratedResult = result
+        ? { ...result, final_text: sanitizer.rehydrateMessage(result.final_text ?? '') }
+        : undefined;
       setState((s) => ({
         ...s,
-        done: data.result as unknown as MagicDoneSummary,
+        done: rehydratedResult ?? (data.result as unknown as MagicDoneSummary),
         isStreaming: false,
       }));
       break;
+    }
     case 'error':
     case 'proxy_error':
       setState((s) => ({

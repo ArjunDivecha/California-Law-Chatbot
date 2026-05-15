@@ -23,6 +23,10 @@
  */
 
 import { useCallback, useRef, useState } from 'react';
+import {
+  getChatSanitizer,
+  tokenizeForWire,
+} from '../services/sanitization/chatAdapter';
 
 export interface V2ToolEvent {
   /** Stable id for keying the React list. */
@@ -130,6 +134,26 @@ export function useV2AgentStream() {
     const ctrl = new AbortController();
     abortRef.current = ctrl;
 
+    // Browser-side tokenization gate (Option C, 6th addendum). Raw text
+    // never leaves the laptop. If the sanitizer is unavailable we fail
+    // closed here rather than send raw to the server.
+    let wireText: string;
+    try {
+      const wire = await tokenizeForWire(opts.user_text);
+      wireText = wire.sanitized;
+    } catch (err) {
+      setState((s) => ({
+        ...s,
+        isStreaming: false,
+        error: {
+          code: 'sanitizer_unavailable',
+          message: `Sanitization failed: ${(err as Error).message}. The request was blocked to prevent raw client text from leaving the device.`,
+          proxy: true,
+        },
+      }));
+      return;
+    }
+
     let resp: Response;
     try {
       resp = await fetch('/api/agent/turn-stream', {
@@ -137,7 +161,10 @@ export function useV2AgentStream() {
         headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
         body: JSON.stringify({
           session_id: opts.session_id,
-          user_text: opts.user_text,
+          // Tokenized text — raw PII has been replaced by @@TOKEN@@
+          // placeholders via the browser-side OPF + IndexedDB token map.
+          // The token map stays on the device.
+          user_text: wireText,
           user_id: opts.user_id,
           model: opts.model,
           system_prompt: opts.system_prompt,
@@ -301,16 +328,31 @@ function handleSseEvent(
       }));
       break;
     }
-    case 'token':
-      setState((s) => ({ ...s, tokens: s.tokens + String(data.text ?? '') }));
+    case 'token': {
+      // Rehydrate token-form tokens (@@CLIENT_001@@ etc.) back to real
+      // names using the device-local IndexedDB map before display.
+      const sanitizer = getChatSanitizer();
+      const incoming = String(data.text ?? '');
+      const rehydrated = sanitizer.rehydrateMessage(incoming);
+      setState((s) => ({ ...s, tokens: s.tokens + rehydrated }));
       break;
-    case 'done':
+    }
+    case 'done': {
+      const sanitizer = getChatSanitizer();
+      const result = data.result as V2DoneSummary | undefined;
+      const rehydratedResult = result
+        ? {
+            ...result,
+            final_text: sanitizer.rehydrateMessage(result.final_text ?? ''),
+          }
+        : undefined;
       setState((s) => ({
         ...s,
-        done: data.result as unknown as V2DoneSummary,
+        done: rehydratedResult ?? (data.result as unknown as V2DoneSummary),
         isStreaming: false,
       }));
       break;
+    }
     case 'error':
       setState((s) => ({
         ...s,

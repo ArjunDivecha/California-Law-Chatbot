@@ -12,6 +12,10 @@
  */
 
 import { useCallback, useRef, useState } from 'react';
+import {
+  getChatSanitizer,
+  tokenizeForWire,
+} from '../services/sanitization/chatAdapter';
 
 export interface V2Verdict {
   index: number;
@@ -78,12 +82,32 @@ export function useV2VerifyStream() {
     const ctrl = new AbortController();
     abortRef.current = ctrl;
 
+    // Tokenize the passage before send — verify-stream's input is a
+    // free-form passage that may contain party names + facts. Citation
+    // patterns (case names, reporters) are explicitly allowlisted in
+    // the sanitizer, so legal citations pass through untokenized.
+    let wireText: string;
+    try {
+      const wire = await tokenizeForWire(text);
+      wireText = wire.sanitized;
+    } catch (err) {
+      setState((s) => ({
+        ...s,
+        isStreaming: false,
+        error: {
+          code: 'sanitizer_unavailable',
+          message: `Sanitization failed: ${(err as Error).message}. The verify request was blocked to prevent raw client text from leaving the device.`,
+        },
+      }));
+      return;
+    }
+
     let resp: Response;
     try {
       resp = await fetch('/api/agent/verify-stream', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
-        body: JSON.stringify({ text }),
+        body: JSON.stringify({ text: wireText }),
         signal: ctrl.signal,
       });
     } catch (err) {
@@ -158,9 +182,17 @@ function handleEvent(raw: string, setState: React.Dispatch<React.SetStateAction<
     return;
   }
 
+  // Rehydrate any tokens the server may have echoed back in citation
+  // strings / case names / reasoning — the user's passage may have
+  // contained tokenized party names that flow into the verifier's
+  // output strings.
+  const sanitizer = getChatSanitizer();
+
   switch (eventKind) {
     case 'manifest': {
-      const citations = (data.citations as string[]) ?? [];
+      const citations = ((data.citations as string[]) ?? []).map((c) =>
+        sanitizer.rehydrateMessage(c),
+      );
       setState((s) => ({
         ...s,
         manifest: citations,
@@ -173,12 +205,12 @@ function handleEvent(raw: string, setState: React.Dispatch<React.SetStateAction<
     case 'verdict': {
       const v: V2Verdict = {
         index: Number(data.index ?? 0),
-        citation: String(data.citation ?? ''),
+        citation: sanitizer.rehydrateMessage(String(data.citation ?? '')),
         status: (data.status as V2Verdict['status']) ?? 'error',
-        case_name: data.case_name as string | undefined,
+        case_name: data.case_name != null ? sanitizer.rehydrateMessage(String(data.case_name)) : undefined,
         match_url: data.match_url as string | undefined,
         confidence: data.confidence as number | undefined,
-        reasoning: data.reasoning as string | undefined,
+        reasoning: data.reasoning != null ? sanitizer.rehydrateMessage(String(data.reasoning)) : undefined,
         tool_rounds: data.tool_rounds as number | undefined,
         elapsed_ms: data.elapsed_ms as number | undefined,
         error: data.error as string | undefined,

@@ -1,8 +1,42 @@
 # Chatbot Reconstruction Plan — Anthropic Agent SDK on Messages API
 
 **Plan file destination:** `/Users/arjundivecha/Dropbox/AAA Backup/A Working/California-Law-Chatbot/docs/MANAGED_AGENTS_RECONSTRUCTION_PLAN.md` *(filename kept for git continuity; contents now describe the Agent SDK path)*
-**Date:** 2026-05-03 (original), **2026-05-10 architecture pivot**, **2026-05-10 ZDR-removal addendum**, **2026-05-12 token-map retention addendum (tentative)**, **2026-05-12 Managed-Agents revisit (scope clarification)**, **2026-05-12 Anthropic legal-industry launch addendum**, **2026-05-13 F&F partner ratifications (sixth addendum)**
-**Status:** Final, post Opus + Codex (3 rounds, approved) + Ultraplan + Council review + ZDR scope verification, + 2026-05-10 plan-level pivot to Anthropic Team plan (no ZDR). **The 2026-05-13 sixth addendum below ratifies the three people-decisions that were blocking Phase 4.5 shadow run.**
+**Date:** 2026-05-03 (original), **2026-05-10 architecture pivot**, **2026-05-10 ZDR-removal addendum**, **2026-05-12 token-map retention addendum (tentative)**, **2026-05-12 Managed-Agents revisit (scope clarification)**, **2026-05-12 Anthropic legal-industry launch addendum**, **2026-05-13 F&F partner ratifications (sixth addendum)**, **2026-05-13 web_search privilege-gate drop (seventh addendum)**, **2026-05-14 confidence-hold-back drop (eighth addendum)**
+**Status:** Final, post Opus + Codex (3 rounds, approved) + Ultraplan + Council review + ZDR scope verification, + 2026-05-10 plan-level pivot to Anthropic Team plan (no ZDR). **The 2026-05-13 sixth addendum below ratifies the three people-decisions that were blocking Phase 4.5 shadow run. The 2026-05-14 eighth addendum drops the confidence-hold-back gate, completing the move to "detector informs, attorney decides."**
+
+---
+
+## 2026-05-14 (eighth addendum) — Drop the confidence-hold-back gate (D19)
+
+**Decided 2026-05-14 by Arjun.** The §E rule "queries with `confidence < 0.98` queue for mandatory human review (default-deny)" is **formally dropped**. The sanitization-audit §4 marked it as "not implemented"; it has never shipped. This addendum closes the loop by removing it from binding policy rather than leaving it as an open implementation item.
+
+### Why now
+
+Triggered during the 2026-05-14 V1→V2 audit (`docs/v1-v2-audit-2026-05-14.md`). The audit identified D19 as "undecided" — plan §E specifies the gate, but the 7th addendum's directional move (detector is informational, attorney is decision authority) implied this gate also no longer fits. Rather than leave an ambiguous item in the plan, F&F principal decision-maker explicitly retires it.
+
+### What changes
+
+- §E "confidence < 0.98 hold-back" rule → **removed**. No code in `agentProxy.ts`, `agentLoop.ts`, or any UI surface will gate on a confidence threshold.
+- The `confidence: 0..1` field still emitted by `analyze()` and the detection pipeline — it remains in the audit record and the V2 UI as an informational confidence chip (analogous to the 7th-addendum privilege chip).
+- The attestation generator (§Y) carries the same wording it does for the privilege flag: confidence is an informational signal, not a gate.
+- D19 in the v1-v2 audit scorecard moves from ❓ undecided to ✅ formally dropped.
+
+### What does NOT change
+
+- `analyze()` still computes and returns `confidence`. The signal is preserved; only the gate is retired.
+- The sanitization layer's primary fail-closed property (OPF unavailable → block inference) is **unchanged** and remains the load-bearing safety property.
+- Every other §E rule (sanitization runs before Anthropic, tool-output sanitization, audit records) is unchanged.
+- The Option C client-side IndexedDB token-map architecture (6th addendum) is unchanged.
+
+### Why this is safe
+
+The 6th addendum already established that the attorney is the legal decision authority. A confidence-threshold gate would substitute a numerical heuristic for that judgment. Since the 7th addendum explicitly retired the parallel substitution (web_search gating), retiring D19 keeps the policy consistent: detection layer informs, attorney decides. The trap manifest (Phase 0.c hard gate) and tool-output sanitization remain the actual safety mechanisms.
+
+### Supersedes
+
+- §E "confidence-based hold-back gate (`confidence < 0.98`)" → removed as a policy item.
+- Anywhere in this plan that mentions confidence-based default-deny → corrected to "confidence is informational; attorney decides."
+- The audit scorecard's D19 ❓ status → ✅ formally dropped.
 
 ---
 

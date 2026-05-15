@@ -54,7 +54,9 @@ const DB_VERSION = 1;
 const ENTITY_STORE = 'entities';
 const META_STORE = 'meta';
 
-// Token prefix per category.
+// Token prefix per category. Categories added post-codex-branch
+// (bar_number, dollar_amount, court_case) are mapped here so the
+// store remains complete vs the SpanCategory union.
 const TOKEN_PREFIX: Record<SpanCategory, string> = {
   name: 'CLIENT',
   ssn: 'SSN',
@@ -69,6 +71,9 @@ const TOKEN_PREFIX: Record<SpanCategory, string> = {
   driver_license: 'LICENSE',
   medical_record: 'MRN',
   client_matter: 'MATTER',
+  bar_number: 'BARNO',
+  dollar_amount: 'AMOUNT',
+  court_case: 'CASE',
 };
 
 interface EntityRecord {

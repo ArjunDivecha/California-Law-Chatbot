@@ -30,6 +30,9 @@ const TOKEN_PREFIX: Record<SpanCategory, string> = {
   driver_license: 'LICENSE',
   medical_record: 'MRN',
   client_matter: 'MATTER',
+  bar_number: 'BARNO',
+  dollar_amount: 'AMOUNT',
+  court_case: 'CASE',
 };
 
 export interface PreviewSegment {

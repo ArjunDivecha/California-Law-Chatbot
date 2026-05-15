@@ -17,6 +17,7 @@ import { V2DraftPage } from './components/v2/V2DraftPage';
 import { V2Sidebar } from './components/v2/V2Sidebar';
 import { V2VerifyPage } from './components/v2/V2VerifyPage';
 import { V2DraftingMagicPage } from './components/v2/V2DraftingMagicPage';
+import { SanitizerProvider } from './hooks/useSanitizer';
 import type { AppMode } from './types';
 
 // ---------------------------------------------------------------------------
@@ -167,29 +168,37 @@ const App: React.FC = () => {
 
   return (
     <ErrorBoundary>
-      <Routes>
-        {/* Sign-in (public) */}
-        <Route path="/sign-in/*" element={<SignInPage />} />
-        <Route path="/sign-up/*" element={<SignInPage />} />
+      {/* SanitizerProvider opens the device-scoped IndexedDB token store
+          and installs RealChatSanitizer as the active ChatSanitizer.
+          Per 6th addendum (Option C): token map lives only on the
+          attorney's device; never sent to the server. The provider
+          renders children immediately with ready=false until init
+          completes, so the rest of the app mounts without delay. */}
+      <SanitizerProvider>
+        <Routes>
+          {/* Sign-in (public) */}
+          <Route path="/sign-in/*" element={<SignInPage />} />
+          <Route path="/sign-up/*" element={<SignInPage />} />
 
-        {/* Protected routes */}
-        <Route
-          path="/*"
-          element={
-            <>
-              <SignedIn>
-                <SignedInShell
-                  sidebarOpen={sidebarOpen}
-                  onToggle={() => setSidebarOpen((o) => !o)}
-                />
-              </SignedIn>
-              <SignedOut>
-                <RedirectToSignIn />
-              </SignedOut>
-            </>
-          }
-        />
-      </Routes>
+          {/* Protected routes */}
+          <Route
+            path="/*"
+            element={
+              <>
+                <SignedIn>
+                  <SignedInShell
+                    sidebarOpen={sidebarOpen}
+                    onToggle={() => setSidebarOpen((o) => !o)}
+                  />
+                </SignedIn>
+                <SignedOut>
+                  <RedirectToSignIn />
+                </SignedOut>
+              </>
+            }
+          />
+        </Routes>
+      </SanitizerProvider>
     </ErrorBoundary>
   );
 };
