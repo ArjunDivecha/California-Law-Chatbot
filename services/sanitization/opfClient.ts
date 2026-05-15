@@ -23,16 +23,35 @@
 
 import type { SpanCategory, Span } from '../../api/_shared/sanitization/index.js';
 
-export const OPF_DAEMON_URL = 'https://localhost:47822';
+// Phase C.2 (2026-05-15, V1→V2 audit): GLiNER replaced stock OPF as the
+// primary detector. Same JSON shape — same /v1/detect endpoint, same
+// span labels (private_person / private_address / etc.) — so this
+// module can talk to either daemon transparently. The probe order
+// prefers the GLiNER daemon (47841/47842) and falls back to the stock
+// OPF daemon (47821/47822) only if GLiNER is unreachable. See
+// docs/phase-c-decision-2026-05-15.md for the architectural decision
+// and benchmark data (GLiNER ~35× faster than OPF).
+export const OPF_DAEMON_URL = 'https://localhost:47842';
 export const OPF_DAEMON_URLS = [
+  // GLiNER (primary)
   OPF_DAEMON_URL,
+  'https://127.0.0.1:47842',
+  'https://[::1]:47842',
+  'http://127.0.0.1:47841',
+  'http://localhost:47841',
+  'http://[::1]:47841',
+  // Stock OPF (fallback — kept for graceful degradation while users
+  // install the GLiNER daemon)
+  'https://localhost:47822',
   'https://127.0.0.1:47822',
   'https://[::1]:47822',
-  // Backward compatibility for existing Chrome/local-development installs.
   'http://127.0.0.1:47821',
   'http://localhost:47821',
   'http://[::1]:47821',
 ];
+// Bridge HTML still served by the original OPF daemon (the GLiNER
+// daemon doesn't ship a bridge yet — Safari-on-HTTPS path uses it for
+// HTTP-loopback fallback).
 export const OPF_BRIDGE_URL = 'http://127.0.0.1:47821/bridge';
 const OPF_BRIDGE_ORIGIN = 'http://127.0.0.1:47821';
 

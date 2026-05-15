@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.fflp.gliner-daemon</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/Users/arjundivecha/.opf-daemon/venv/bin/python</string>
+    <string>/Users/arjundivecha/.gliner-daemon/gliner_daemon.py</string>
+    <string>--host</string>
+    <string>127.0.0.1</string>
+    <string>--port</string>
+    <string>47841</string>
+    <string>--https-port</string>
+    <string>47842</string>
+    <string>--cert-file</string>
+    <string>/Users/arjundivecha/.opf-daemon/certs/localhost-chain.crt.pem</string>
+    <string>--key-file</string>
+    <string>/Users/arjundivecha/.opf-daemon/certs/localhost.key.pem</string>
+  </array>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <dict>
+    <key>SuccessfulExit</key>
+    <false/>
+  </dict>
+  <key>ProcessType</key>
+  <string>Background</string>
+  <key>StandardOutPath</key>
+  <string>/Users/arjundivecha/.gliner-daemon/logs/daemon.out.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/arjundivecha/.gliner-daemon/logs/daemon.err.log</string>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PYTHONUNBUFFERED</key>
+    <string>1</string>
+    <key>PATH</key>
+    <string>/Users/arjundivecha/.opf-daemon/venv/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    <key>TRANSFORMERS_VERBOSITY</key>
+    <string>error</string>
+    <key>TOKENIZERS_PARALLELISM</key>
+    <string>false</string>
+    <key>GLINER_THRESHOLD</key>
+    <string>0.7</string>
+    <key>GLINER_MODEL</key>
+    <string>urchade/gliner_multi_pii-v1</string>
+  </dict>
+</dict>
+</plist>
