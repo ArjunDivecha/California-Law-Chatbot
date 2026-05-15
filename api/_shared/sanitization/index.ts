@@ -81,6 +81,13 @@ export const HIGH_RISK_CATEGORIES: ReadonlySet<SpanCategory> = new Set<SpanCateg
   'driver_license',
   'court_case',
   'client_matter',
+  // Phase C 2026-05-15 (V1→V2 audit): elevated from compound-risk-only
+  // because ISO/long-form dates and ZIPs alone are high-resolution
+  // identifiers in legal context (DOB, residence). Trap manifest's
+  // `must_redact` includes both. Utility tradeoff (agent loses raw
+  // date/zip reasoning) accepted per F&F privacy-first stance.
+  'date',
+  'zip',
 ]);
 
 /**
