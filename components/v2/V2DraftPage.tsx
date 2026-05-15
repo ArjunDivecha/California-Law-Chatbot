@@ -23,6 +23,7 @@ import remarkGfm from 'remark-gfm';
 import { useV2DraftStream } from '../../hooks/useV2DraftStream.ts';
 import { useV2VerifyStream, type V2Verdict } from '../../hooks/useV2VerifyStream.ts';
 import { DEFAULT_TEST_DATA } from '../drafting/defaultTestData.ts';
+import { V2SanitizationChip } from './V2SanitizationChip';
 import { gateOnVerdicts } from '../../services/confidenceGatingV2.ts';
 
 // ---------------------------------------------------------------------------
@@ -351,6 +352,14 @@ export const V2DraftPage: React.FC = () => {
                       className="w-full resize-y rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-pink-400 focus:outline-none"
                       disabled={state.isStreaming}
                     />
+                    {/* Preview chip — scans instructions + every variable
+                        value so the attorney sees what will be tokenized
+                        across the whole submission, not just instructions. */}
+                    <div className="mt-2">
+                      <V2SanitizationChip
+                        text={[instructions, ...Object.values(variables)].filter(Boolean).join('\n')}
+                      />
+                    </div>
                   </label>
 
                   <div className="grid grid-cols-2 gap-3">

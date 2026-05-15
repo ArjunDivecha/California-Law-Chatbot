@@ -63,6 +63,7 @@ import {
 import { extractTextFromFile } from '../draftingMagic/fileTextExtraction';
 import type { GeneratedDraftPackage } from '../draftingMagic/localDraftGeneration';
 import { buildPacketComparisonRows, extractDraftingUnits, getSourceText } from '../draftingMagic/localExtraction';
+import { V2SanitizationChip } from './V2SanitizationChip';
 
 /**
  * Parse V2's streamed markdown (sections delimited by `## SECTION: <name>`
@@ -2058,6 +2059,19 @@ export const V2DraftingMagicPage: React.FC = () => {
                       }}
                       className="mt-3 h-28 w-full resize-none rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm leading-6 text-gray-700 outline-none transition focus:border-pink-300 focus:bg-white focus:ring-2 focus:ring-pink-100"
                     />
+                    {/* Phase C.2 follow-up — sanitization preview chip.
+                        Scans both the instructions AND every included
+                        source's text so the attorney sees the whole
+                        outbound submission's tokenization picture. */}
+                    <div className="mt-2">
+                      <V2SanitizationChip
+                        text={[
+                          attorneyUpdate,
+                          ...sources.filter((s) => s.included).map((s) => s.excerpt ?? ''),
+                        ].filter(Boolean).join('\n')}
+                        compact
+                      />
+                    </div>
                     <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
                       <span className="rounded-md bg-gray-50 px-2 py-1 text-gray-500">Try: Replace Maya Chen with Rachel Stone</span>
                       {instructionResult && <span className="rounded-md bg-emerald-50 px-2 py-1 font-semibold text-emerald-700">{instructionResult}</span>}

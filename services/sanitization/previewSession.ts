@@ -163,12 +163,27 @@ function cloneState(state: PreviewSessionState): PreviewSessionState {
 // Compute — pure function that turns (rawText + state) into PreviewData
 // ---------------------------------------------------------------------------
 
-export function computePreview(rawText: string, state: PreviewSessionState): PreviewData {
+export function computePreview(
+  rawText: string,
+  state: PreviewSessionState,
+  /**
+   * Optional spans from an external detector (e.g. GLiNER daemon). When
+   * provided, they're merged into the analyze() output before de-overlap.
+   * Lets the hook keep its existing state-management while sourcing
+   * detections from the production GLiNER pipeline instead of the
+   * lightweight heuristic.
+   */
+  externalSpans?: ReadonlyArray<Span>,
+): PreviewData {
   if (!rawText || typeof rawText !== 'string') {
     return { segments: [], tokens: [], sanitized: '', categoryCounts: {} };
   }
 
-  const { spans } = analyze(rawText);
+  // Combine analyze() (regex + heuristic name detection — fast & cheap)
+  // with externalSpans (GLiNER, when available). External takes precedence
+  // at overlap because span-based detection is more accurate.
+  const { spans: heuristicSpans } = analyze(rawText);
+  const spans: Span[] = [...heuristicSpans, ...(externalSpans ?? [])];
 
   // Merge in the manual redactions. They may overlap allowlist or not — we
   // trust the attorney's explicit choice over the allowlist in that case.

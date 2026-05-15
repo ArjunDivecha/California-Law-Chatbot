@@ -1,9 +1,10 @@
 /**
  * V2 client-side sanitization preview. Wraps services/sanitization/
  * previewSession.computePreview with React state + a 300ms debounce on
- * the text input. Runs the SAME detector that gates server-side
- * (api/_shared/sanitization/analyze) — no network round-trip; the
- * detector is pure JS that runs in the browser.
+ * the text input. Calls the GLiNER daemon (same detector as the on-send
+ * tokenization path) so the preview is accurate, not just heuristic.
+ * Falls back to the lightweight regex+heuristic path if the daemon is
+ * unreachable.
  *
  * Returns:
  *   - preview      — segments + tokens + sanitized + categoryCounts
@@ -14,6 +15,13 @@
  * web_search gate). The chip and span list let the attorney SEE what
  * the sanitizer found, but neither this hook nor anything downstream
  * blocks submission.
+ *
+ * Detector parity (Phase C.2 follow-up 2026-05-15): the preview now
+ * uses GLiNER too. Previously this hook ran only the regex+heuristic
+ * analyze() — fast enough for keystroke debouncing but missed
+ * lowercase names ("john smith") and slightly-misspelled addresses
+ * that GLiNER catches. GLiNER's 45 ms steady-state is comfortably
+ * under the 300 ms debounce window.
  */
 
 import { useEffect, useRef, useState } from 'react';
@@ -23,6 +31,8 @@ import {
   type PreviewData,
   type PreviewSessionState,
 } from '../services/sanitization/previewSession.ts';
+import { detectSpans } from '../services/sanitization/opfClient.ts';
+import type { Span } from '../api/_shared/sanitization/index.ts';
 
 export type { PreviewData };
 
@@ -46,6 +56,9 @@ export function useV2SanitizationPreview(text: string): {
   // mentions of the same entity get the same CLIENT_001 token. Reset
   // only when the input clears to empty (a fresh turn).
   const sessionRef = useRef<PreviewSessionState>(emptyPreviewSession());
+  // Last-fire timestamp so we discard stale daemon responses that
+  // arrive after a newer keystroke.
+  const lastFireRef = useRef<number>(0);
 
   useEffect(() => {
     if (!text || text.length === 0) {
@@ -55,9 +68,25 @@ export function useV2SanitizationPreview(text: string): {
       return;
     }
     setIsComputing(true);
-    const t = setTimeout(() => {
+    const ts = ++lastFireRef.current;
+    const t = setTimeout(async () => {
+      let glinerSpans: Span[] = [];
       try {
-        const next = computePreview(text, sessionRef.current);
+        const result = await detectSpans(text);
+        glinerSpans = result.spans;
+      } catch {
+        // Daemon unreachable — fall back to the heuristic-only path
+        // (existing analyze() in computePreview). The preview will
+        // miss some cases (single-word lowercase names) but the
+        // on-send tokenization tries the daemon again and may succeed
+        // or fail-closed. Important: do NOT silently send raw — the
+        // failure-closed behavior is on the SEND path, not here.
+        glinerSpans = [];
+      }
+      // Drop if a newer keystroke has fired since.
+      if (ts !== lastFireRef.current) return;
+      try {
+        const next = computePreview(text, sessionRef.current, glinerSpans);
         setPreview(next);
       } catch {
         setPreview(EMPTY);

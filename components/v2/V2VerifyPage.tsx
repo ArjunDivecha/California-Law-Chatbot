@@ -11,6 +11,7 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useV2VerifyStream, type V2Verdict } from '../../hooks/useV2VerifyStream.ts';
+import { V2SanitizationChip } from './V2SanitizationChip';
 
 export const V2VerifyPage: React.FC = () => {
   const [text, setText] = useState('');
@@ -62,6 +63,9 @@ export const V2VerifyPage: React.FC = () => {
                 className="w-full resize-y rounded-lg border border-gray-200 px-3 py-2 text-sm font-mono focus:border-pink-400 focus:outline-none"
                 disabled={state.isStreaming}
               />
+              <div className="mt-2">
+                <V2SanitizationChip text={text} />
+              </div>
               <div className="mt-3 flex items-center gap-2">
                 <button
                   type="button"
