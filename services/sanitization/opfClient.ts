@@ -23,37 +23,30 @@
 
 import type { SpanCategory, Span } from '../../api/_shared/sanitization/index.js';
 
-// Phase C.2 (2026-05-15, V1→V2 audit): GLiNER replaced stock OPF as the
-// primary detector. Same JSON shape — same /v1/detect endpoint, same
-// span labels (private_person / private_address / etc.) — so this
-// module can talk to either daemon transparently. The probe order
-// prefers the GLiNER daemon (47841/47842) and falls back to the stock
-// OPF daemon (47821/47822) only if GLiNER is unreachable. See
-// docs/phase-c-decision-2026-05-15.md for the architectural decision
-// and benchmark data (GLiNER ~35× faster than OPF).
+// Phase C.2 (2026-05-15) + 2026-05-16 .pkg installer prep: GLiNER is
+// the only detector. The earlier stock-OPF (47821/47822) fallback was
+// removed because it contradicts the §Q memo's fail-closed posture
+// partners signed off on — "if the GLiNER daemon crashes or is
+// uninstalled, V2 fails closed — no chat works until the daemon is
+// back". A silent fallback to a lower-quality detector violates that.
+// See docs/phase-c-decision-2026-05-15.md for benchmark data (GLiNER
+// ~35× faster than OPF) and docs/q-ff-communication-memo-2026-05-15.md
+// §"Limits of the design" for the partner-facing semantics.
 export const OPF_DAEMON_URL = 'https://localhost:47842';
 export const OPF_DAEMON_URLS = [
-  // GLiNER (primary)
   OPF_DAEMON_URL,
   'https://127.0.0.1:47842',
   'https://[::1]:47842',
   'http://127.0.0.1:47841',
   'http://localhost:47841',
   'http://[::1]:47841',
-  // Stock OPF (fallback — kept for graceful degradation while users
-  // install the GLiNER daemon)
-  'https://localhost:47822',
-  'https://127.0.0.1:47822',
-  'https://[::1]:47822',
-  'http://127.0.0.1:47821',
-  'http://localhost:47821',
-  'http://[::1]:47821',
 ];
-// Bridge HTML still served by the original OPF daemon (the GLiNER
-// daemon doesn't ship a bridge yet — Safari-on-HTTPS path uses it for
-// HTTP-loopback fallback).
-export const OPF_BRIDGE_URL = 'http://127.0.0.1:47821/bridge';
-const OPF_BRIDGE_ORIGIN = 'http://127.0.0.1:47821';
+// Bridge HTML is served by the GLiNER daemon at /bridge (HTTP-loopback
+// only, since postMessage from HTTPS can address http://127.0.0.1 only
+// via this iframe pattern). The same endpoint port as the daemon
+// itself (47841/HTTP) so there's no separate process.
+export const OPF_BRIDGE_URL = 'http://127.0.0.1:47841/bridge';
+const OPF_BRIDGE_ORIGIN = 'http://127.0.0.1:47841';
 
 const DETECT_TIMEOUT_MS = 30_000;
 const HEALTH_TIMEOUT_MS = 1_500;
