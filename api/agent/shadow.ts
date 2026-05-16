@@ -32,6 +32,7 @@
  */
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { waitUntil } from '@vercel/functions';
 import { runAgentProxy } from '../_lib/agentProxy.js';
 import { Redis } from '@upstash/redis';
 import { createHmac } from 'node:crypto';
@@ -223,6 +224,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // background — V1 must not block on shadow processing.
   res.status(202).json({ ok: true, message: 'shadow run accepted' });
 
-  // Fire-and-forget. Don't await — the response has already flushed.
-  void runShadow(body);
+  // waitUntil keeps the serverless instance alive until runShadow
+  // resolves. Without it, Vercel reclaims the instance the moment the
+  // response flushes and the KV write never happens.
+  waitUntil(runShadow(body));
 }
