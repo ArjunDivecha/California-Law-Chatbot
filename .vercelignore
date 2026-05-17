@@ -1,36 +1,9 @@
-# Dependencies and local environments
-node_modules
-.venv
-
-# VCS and local deployment metadata
 .git
-.vercel
+node_modules
+docs/screenshots/
+reports/
+scripts/probe-*.mjs
+.yarn
 
-# Build/test artifacts
-dist
-dist-ssr
-coverage
-.playwright-cli
-
-# Large local datasets and processing outputs
-data
-scripts/data
-image
-docs
-
-# Local env/log files
-.env
-.env.*
-*.log
-
-# Non-runtime assets and docs
-*.pdf
-*.docx
-*.md
-
-# Local scripts/tests not needed for runtime build
-scripts
-playground
-test-*.js
-test-*.ts
-test-*.py
+# Local-only installer build artifacts (multi-GB .pkg + bundled weights)
+installer-pkg/
