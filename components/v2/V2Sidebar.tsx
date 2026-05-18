@@ -8,9 +8,11 @@
  * chat surface itself is the focus. No V1 chat-mode complexity here.
  */
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '@clerk/clerk-react';
+import { getChatSanitizer } from '../../services/sanitization/chatAdapter';
+import { useSanitizer } from '../../hooks/useSanitizer';
 
 interface SessionSummary {
   session_id: string;
@@ -44,6 +46,20 @@ export const V2Sidebar: React.FC = () => {
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Same rehydration pattern as V2ChatPage: session titles in KV are
+  // tokenized form ("CLIENT_001"), so apply rehydrateMessage at render
+  // time. tokenCount in deps so the list refreshes once the
+  // IndexedDB token map loads after mount.
+  const { tokenCount, unlocked } = useSanitizer();
+  const displayedSessions = useMemo(() => {
+    if (!unlocked || tokenCount === 0) return sessions;
+    const sanitizer = getChatSanitizer();
+    return sessions.map((s) => ({
+      ...s,
+      title: s.title ? sanitizer.rehydrateMessage(s.title) : s.title,
+    }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessions, tokenCount, unlocked]);
 
   const load = useCallback(async () => {
     // Don't fetch until Clerk has finished loading + we're signed in.
@@ -141,12 +157,12 @@ export const V2Sidebar: React.FC = () => {
         {error && (
           <div className="text-xs text-red-600 px-2 py-2">{error}</div>
         )}
-        {!loading && !error && sessions.length === 0 && (
+        {!loading && !error && displayedSessions.length === 0 && (
           <div className="text-xs text-gray-400 px-2 py-3">
             No chats yet. Start one to see it here.
           </div>
         )}
-        {sessions.map((s) => {
+        {displayedSessions.map((s) => {
           const isActive = s.session_id === activeSessionId;
           return (
             <button
