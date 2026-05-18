@@ -37,6 +37,8 @@ import { ConfidentialityAttestation } from '../ConfidentialityAttestation.tsx';
 import { checkAnswer } from '../../services/guardrailsServiceV2.ts';
 import { prune as pruneSources } from '../../services/retrievalPrunerV2.ts';
 import { fetchSessionWithCache, invalidateSession } from '../../utils/chatStoreV2.ts';
+import { getChatSanitizer } from '../../services/sanitization/chatAdapter';
+import { useSanitizer } from '../../hooks/useSanitizer';
 
 type Workflow = 'quick' | 'research';
 
@@ -136,6 +138,19 @@ export const V2ChatPage: React.FC = () => {
   const [messages, setMessages] = useState<DisplayMessage[]>([]);
   const [hydrating, setHydrating] = useState(false);
   const { state, send, reset } = useV2AgentStream();
+  // tokenCount re-renders when the IndexedDB token map loads or grows,
+  // so derived (rehydrated) messages refresh once the map is available.
+  // Bug fix 2026-05-18: prior code set tokenized text directly into
+  // bubbles on session reload, so attorneys saw CLIENT_001/ADDRESS_001
+  // instead of "John Smith" / real addresses.
+  const { tokenCount, unlocked } = useSanitizer();
+  const displayedMessages = useMemo(() => {
+    if (!unlocked || tokenCount === 0) return messages;
+    const sanitizer = getChatSanitizer();
+    return messages.map((m) => ({ ...m, text: sanitizer.rehydrateMessage(m.text) }));
+    // tokenCount in deps so a fresh map-load triggers a re-render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messages, tokenCount, unlocked]);
   const { preview: livePreview, isComputing: previewComputing, hasDetections } =
     useV2SanitizationPreview(draft);
 
@@ -343,7 +358,7 @@ export const V2ChatPage: React.FC = () => {
           />
 
           <div ref={scrollRef} className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
-            {messages.length === 0 && !state.isStreaming && !hydrating && (
+            {displayedMessages.length === 0 && !state.isStreaming && !hydrating && (
               <div className="rounded-2xl border border-gray-200 bg-white p-5 max-w-2xl mx-auto shadow-sm">
                 <div className="text-[13px] font-semibold text-pink-600 uppercase tracking-wider mb-2">
                   V2 Welcome
@@ -358,7 +373,7 @@ export const V2ChatPage: React.FC = () => {
               <div className="text-center text-gray-400 text-sm py-6 italic">Loading prior session…</div>
             )}
 
-            {messages.map((m) => (
+            {displayedMessages.map((m) => (
               <MessageBubble key={m.id} role={m.role} text={m.text} sources={m.sources} workflow={m.workflow} />
             ))}
 
