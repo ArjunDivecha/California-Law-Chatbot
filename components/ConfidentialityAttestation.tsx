@@ -88,9 +88,11 @@ export const ConfidentialityAttestation: React.FC<ConfidentialityAttestationProp
             browser, on this device. It is not stored on our servers, not
             synced across devices, and not sent to any third-party
             retrieval provider (OpenStates, LegiScan, CourtListener,
-            OpenAI) or to the generative model other than{' '}
-            {/* [FFLP-TODO: confirm F&F's preferred phrasing for Bedrock identification] */}
-            AWS Bedrock under a no-operator-access contract.
+            OpenAI) or to the generative model. Only the tokenized text —
+            never the real names — reaches the model, which is{' '}
+            {/* [FFLP-TODO: compliance counsel to finalize provider phrasing] */}
+            Anthropic's Claude (Fable 5) via the Messages API under
+            Anthropic's commercial terms (no training on inputs).
           </li>
           <li>
             <span className="font-semibold">What it doesn't do.</span>{' '}

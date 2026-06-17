@@ -1,0 +1,24 @@
+/*
+ * =============================================================================
+ * index.css — Tailwind CSS entry (build-time pipeline)
+ * =============================================================================
+ *
+ * WHAT THIS DOES:
+ * Imports Tailwind's base/components/utilities so PostCSS (see
+ * postcss.config.cjs + tailwind.config.cjs) compiles every Tailwind class the
+ * app uses into a single first-party stylesheet at build time. This REPLACES
+ * the former `<script src="https://cdn.tailwindcss.com">` Play CDN tag, which
+ * loaded and executed third-party JavaScript in the privileged client context
+ * on every page load — an unacceptable supply-chain surface for an app whose
+ * whole privacy model depends on client-side code integrity (the decrypted
+ * token map lives in the browser).
+ *
+ * INPUT FILES:  none (Tailwind directives are expanded by PostCSS at build).
+ * OUTPUT FILES: bundled into dist/assets/*.css by `vite build`.
+ *
+ * IMPORTED BY: /Users/arjundivecha/Dropbox/AAA Backup/A Working/California-Law-Chatbot-V2/index.tsx
+ * =============================================================================
+ */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;

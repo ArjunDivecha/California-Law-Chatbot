@@ -52,6 +52,11 @@ import {
   getChatSanitizer,
   tokenizeForWire,
 } from '../../services/sanitization/chatAdapter';
+import {
+  decryptWorkspace,
+  encryptWorkspace,
+  isEncrypted,
+} from '../../services/workspaceCrypto';
 import { downloadDraftPackageDocx } from '../draftingMagic/draftDocxExport';
 import {
   markSectionEdited,
@@ -984,18 +989,27 @@ export const V2DraftingMagicPage: React.FC = () => {
   );
 
   useEffect(() => {
+    let cancelled = false;
+    void (async () => {
     try {
-      const savedWorkspace = window.localStorage.getItem(workspaceStorageKey);
-      if (!savedWorkspace) {
-        setWorkspaceLoaded(true);
+      const stored = window.localStorage.getItem(workspaceStorageKey);
+      if (!stored) {
+        if (!cancelled) setWorkspaceLoaded(true);
         return;
       }
 
+      // Workspace blobs are AES-GCM encrypted at rest with a device-local key
+      // (services/workspaceCrypto). Legacy plaintext blobs written before
+      // encryption landed are parsed directly, then re-saved encrypted by the
+      // save effect below.
+      const savedWorkspace = isEncrypted(stored) ? await decryptWorkspace(stored) : stored;
+
       const parsed = JSON.parse(savedWorkspace) as DraftingMagicWorkspaceSnapshot;
       if (parsed.version !== 1 || !Array.isArray(parsed.sources) || !Array.isArray(parsed.rows)) {
-        setWorkspaceLoaded(true);
+        if (!cancelled) setWorkspaceLoaded(true);
         return;
       }
+      if (cancelled) return;
 
       const restoredSources = normalizeDraftingSources(parsed.sources);
       setActiveTab(parsed.activeTab || 'inputs');
@@ -1016,10 +1030,14 @@ export const V2DraftingMagicPage: React.FC = () => {
       setSaveError(null);
     } catch {
       window.localStorage.removeItem(workspaceStorageKey);
-      setSaveError('Saved workspace could not be restored.');
+      if (!cancelled) setSaveError('Saved workspace could not be restored.');
     } finally {
-      setWorkspaceLoaded(true);
+      if (!cancelled) setWorkspaceLoaded(true);
     }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -1047,13 +1065,16 @@ export const V2DraftingMagicPage: React.FC = () => {
       selectedSectionId,
     };
 
-    try {
-      window.localStorage.setItem(workspaceStorageKey, JSON.stringify(snapshot));
-      setLastSavedAt(savedAt);
-      setSaveError(null);
-    } catch {
-      setSaveError('Local browser storage is full or blocked.');
-    }
+    void (async () => {
+      try {
+        const payload = await encryptWorkspace(JSON.stringify(snapshot));
+        window.localStorage.setItem(workspaceStorageKey, payload);
+        setLastSavedAt(savedAt);
+        setSaveError(null);
+      } catch {
+        setSaveError('Local browser storage is full or blocked.');
+      }
+    })();
   }, [
     activeSourceId,
     activeTab,

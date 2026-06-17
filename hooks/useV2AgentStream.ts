@@ -94,6 +94,9 @@ export interface V2TurnState {
   /** Set when Fable returned stop_reason: "refusal". Single-engine policy:
    *  surface it, never fall back to another model. */
   refusal: V2Refusal | null;
+  /** Set when the primary engine was unavailable (404) and the turn failed
+   *  over to another Anthropic model — same provider/posture. Informational. */
+  modelFailover: { from: string; to: string } | null;
   /** Current iteration round (1-indexed) — useful for UI affordances. */
   round: number;
 }
@@ -107,6 +110,7 @@ const INITIAL_STATE: V2TurnState = {
   error: null,
   done: null,
   refusal: null,
+  modelFailover: null,
   round: 0,
 };
 
@@ -333,6 +337,14 @@ function handleSseEvent(
           category: data.category as string | undefined,
           explanation: data.explanation as string | undefined,
         },
+      }));
+      break;
+    case 'model_failover':
+      // Primary engine unavailable on this account; this turn was answered by
+      // the fallback model (same provider). Surface it as an informational note.
+      setState((s) => ({
+        ...s,
+        modelFailover: { from: String(data.from ?? ''), to: String(data.to ?? '') },
       }));
       break;
     case 'tool_use_start': {

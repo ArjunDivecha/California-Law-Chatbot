@@ -428,6 +428,17 @@ export const V2ChatPage: React.FC = () => {
               </div>
             )}
 
+            {state.modelFailover && (
+              <div className="rounded-lg border border-sky-200 bg-sky-50 px-4 py-2.5 text-xs text-sky-800">
+                <span className="font-semibold">{state.modelFailover.from}</span> is not
+                available on this account, so this answer was generated with{' '}
+                <span className="font-semibold">{state.modelFailover.to}</span> — same
+                provider (Anthropic), same privacy posture. Set{' '}
+                <code className="rounded bg-sky-100 px-1">V2_PRIMARY_MODEL</code> to change
+                the default engine.
+              </div>
+            )}
+
             {state.error && (
               <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
                 <strong className="font-semibold">
@@ -563,7 +574,7 @@ const WorkflowToggle: React.FC<{
         />
         <ToggleBtn
           label="Research Memo"
-          sub="Opus · full tools · ~30s"
+          sub="Fable 5 · full tools · ~30s"
           active={workflow === 'research'}
           onClick={() => onSelectWorkflow('research')}
           disabled={disabled}
@@ -820,7 +831,7 @@ const MessageBubble: React.FC<{
                       ? 'bg-blue-50 text-blue-700 border border-blue-200'
                       : 'bg-purple-50 text-purple-700 border border-purple-200'
                   }`}
-                  title={workflow === 'quick' ? 'Generated with Quick Answer (Sonnet, no tools)' : 'Generated with Research Memo (Opus + full tools)'}
+                  title={workflow === 'quick' ? 'Generated with Quick Answer (Sonnet, no tools)' : 'Generated with Research Memo (Fable 5 + full tools)'}
                 >
                   {workflow === 'quick' ? 'Quick' : 'Research'}
                 </span>

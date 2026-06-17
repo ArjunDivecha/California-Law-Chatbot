@@ -153,7 +153,7 @@ export default async function handler(
 async function generateDOCX(
   document: GeneratedDocument,
   options?: ExportDocumentRequest['formatting']
-): Promise<ArrayBuffer> {
+): Promise<Buffer> {
   const formatting = document.formatting;
   
   // Convert markdown content to docx paragraphs

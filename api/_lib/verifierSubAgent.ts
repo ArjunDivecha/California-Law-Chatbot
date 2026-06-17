@@ -222,7 +222,7 @@ export async function verifyCitationViaSubAgent(citationText: string): Promise<V
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) throw new Error('verifyCitationViaSubAgent: ANTHROPIC_API_KEY not configured');
 
-  const client = new Anthropic({ apiKey });
+  const client = new Anthropic({ apiKey, timeout: 90_000, maxRetries: 2 });
   const messages: Anthropic.Messages.MessageParam[] = [
     {
       role: 'user',

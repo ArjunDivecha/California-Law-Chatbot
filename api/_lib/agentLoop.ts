@@ -55,6 +55,42 @@ import { scrubMessage } from './scrubError.js';
 // below + verifierSubAgent.ts). Prior default was claude-opus-4-7 (fifth
 // addendum); switched to Fable 5 per Arjun 2026-06-12.
 const DEFAULT_MODEL = process.env.V2_PRIMARY_MODEL ?? 'claude-fable-5';
+
+// ── Automatic model failover (authorized by Arjun 2026-06-16) ──────────────
+// If the primary engine is unavailable on this account — the Anthropic API
+// returns HTTP 404 not_found_error, e.g. "Claude Fable 5 is not available.
+// Please use Opus 4.8." — transparently retry on this fallback instead of
+// erroring the whole turn. Both are Anthropic models on the SAME Messages API
+// under the SAME Team-plan retention posture, so failover does NOT alter the
+// data-handling / zero-leak invariant (this is why it is allowed, whereas a
+// cross-PROVIDER fallback would not be). Override per-environment with
+// V2_FALLBACK_MODEL. NOTE: this is unavailability failover, NOT refusal
+// fallback — a stop_reason='refusal' is still surfaced and never retried.
+const FALLBACK_MODEL = process.env.V2_FALLBACK_MODEL ?? 'claude-opus-4-8';
+// Process-lifetime memo of models this account can't reach, so a warm function
+// instance skips a dead primary after the first 404 rather than paying the
+// failed round-trip on every subsequent turn.
+const unavailableModels = new Set<string>();
+
+/** Swap a known-unavailable model for the fallback. Never loops the fallback. */
+function resolveModel(requested: string): string {
+  if (requested !== FALLBACK_MODEL && unavailableModels.has(requested)) return FALLBACK_MODEL;
+  return requested;
+}
+
+/**
+ * True when an Anthropic SDK error means "this model isn't available to you"
+ * (HTTP 404 / not_found_error) — the Messages endpoint returns 404 for an
+ * unknown or un-entitled model id — as opposed to a transient transport error.
+ */
+function isModelUnavailableError(err: unknown): boolean {
+  const e = err as { status?: number; error?: { type?: string }; message?: unknown };
+  if (e?.status === 404) return true;
+  if (e?.error?.type === 'not_found_error') return true;
+  const msg = typeof e?.message === 'string' ? e.message.toLowerCase() : '';
+  return msg.includes('not_found_error') || (msg.includes('not available') && msg.includes('model'));
+}
+
 const DEFAULT_MAX_TOKENS = 4096;
 /**
  * Default safety cap on tool-use rounds within one turn. Overridden at
@@ -640,23 +676,43 @@ interface BaseMessagesParams {
 
 type McpServerEntry = ReturnType<typeof buildMcpServers>[number];
 
-function callMessagesCreate(
+async function callMessagesCreate(
   client: Anthropic,
   params: BaseMessagesParams,
   mcpServers: McpServerEntry[],
 ): Promise<Anthropic.Messages.Message> {
-  if (mcpServers.length === 0) {
-    return client.messages.create(params);
+  // One actual API call for a given model id (stable vs beta-MCP surface).
+  const run = (model: string): Promise<Anthropic.Messages.Message> => {
+    const p = { ...params, model };
+    if (mcpServers.length === 0) {
+      return client.messages.create(p);
+    }
+    // Beta surface — types diverge in the SDK between stable and beta, so
+    // we cast at the wire. Functionally equivalent for our parameter set.
+    return client.beta.messages.create({
+      ...p,
+      mcp_servers: mcpServers,
+      betas: [MCP_BETA_HEADER],
+    } as unknown as Anthropic.Beta.Messages.MessageCreateParamsNonStreaming) as unknown as Promise<
+      Anthropic.Messages.Message
+    >;
+  };
+
+  const activeModel = resolveModel(params.model);
+  try {
+    return await run(activeModel);
+  } catch (err) {
+    // Unavailable primary → transparently retry once on the fallback model
+    // (same provider/posture). Refusals are not errors and never reach here.
+    if (activeModel !== FALLBACK_MODEL && isModelUnavailableError(err)) {
+      unavailableModels.add(activeModel);
+      console.warn(
+        `[agentLoop] model ${activeModel} unavailable; failing over to ${FALLBACK_MODEL}`,
+      );
+      return await run(FALLBACK_MODEL);
+    }
+    throw err;
   }
-  // Beta surface — types diverge in the SDK between stable and beta, so
-  // we cast at the wire. Functionally equivalent for our parameter set.
-  return client.beta.messages.create({
-    ...params,
-    mcp_servers: mcpServers,
-    betas: [MCP_BETA_HEADER],
-  } as unknown as Anthropic.Beta.Messages.MessageCreateParamsNonStreaming) as unknown as Promise<
-    Anthropic.Messages.Message
-  >;
 }
 
 // Anthropic SDK >= 0.45 removed the exported `MessageStream` /
@@ -700,7 +756,14 @@ export async function runTurn(opts: RunTurnOptions): Promise<RunTurnResult> {
       : buildSystemPrompt({ user_text: opts.user_text }).prompt);
   const client =
     opts.anthropic_client ??
-    new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY ?? undefined });
+    new Anthropic({
+      apiKey: process.env.ANTHROPIC_API_KEY ?? undefined,
+      // Bound a hung non-streaming call well under Vercel's 300s ceiling so
+      // an Anthropic stall surfaces a clean error instead of blocking the
+      // whole function. The SDK retries transient 429/5xx with backoff.
+      timeout: 120_000,
+      maxRetries: 2,
+    });
 
   // ── 1. Persist the user turn first so a crash mid-loop leaves an
   //       auditable trace.
@@ -858,7 +921,7 @@ export async function runTurn(opts: RunTurnOptions): Promise<RunTurnResult> {
       sanitizedPrompt: opts.user_text,
       flowType: opts.privileged ? 'accuracy_client' : 'public_research',
       userId: opts.user_id ?? null,
-      model,
+      model: resolveModel(model),
       sourceProviders: tools
         .map((t: { name?: string }) => t.name)
         .filter((n): n is string => typeof n === 'string'),
@@ -894,6 +957,13 @@ export async function runTurn(opts: RunTurnOptions): Promise<RunTurnResult> {
  */
 export type TurnStreamEvent =
   | { kind: 'token'; text: string }
+  | {
+      /** Primary engine was unavailable (404); this turn failed over to `to`.
+       *  Same provider / Messages API — emitted so the UI can note it. */
+      kind: 'model_failover';
+      from: string;
+      to: string;
+    }
   | {
       kind: 'tool_use_start';
       tool_use_id: string;
@@ -964,7 +1034,14 @@ export async function* runTurnStream(
       : buildSystemPrompt({ user_text: opts.user_text }).prompt);
   const client =
     opts.anthropic_client ??
-    new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY ?? undefined });
+    new Anthropic({
+      apiKey: process.env.ANTHROPIC_API_KEY ?? undefined,
+      // Generous bound for a long-but-healthy drafting stream, still under
+      // Vercel's 300s ceiling so a truly hung connection aborts with a clean
+      // error rather than being hard-killed mid-flight.
+      timeout: 280_000,
+      maxRetries: 2,
+    });
 
   const existing = await readMessages(opts.session_id).catch(
     () => [] as SessionMessage[],
@@ -1012,6 +1089,8 @@ export async function* runTurnStream(
   // Refusal surfaced from a 'refusal' stop_reason — single-engine policy.
   let refusal: TurnRefusal | undefined;
   let history: SessionMessage[] = [...existing, userMessage];
+  // Set once if this turn fell over from an unavailable primary model.
+  let didModelFailover = false;
 
   const maxIterations = getAgentConfig().max_iterations ?? DEFAULT_MAX_ITERATIONS;
   try {
@@ -1019,10 +1098,17 @@ export async function* runTurnStream(
       yield { kind: 'iteration', round: iter + 1 };
 
       const messages = toAnthropicMessages(history);
+      // Resolve through the failover memo, then guard the model call: an
+      // "unavailable model" 404 (e.g. Fable 5 not entitled on this account)
+      // transparently retries THIS iteration on FALLBACK_MODEL. The body below
+      // is intentionally left at its original indentation inside this try.
+      const activeModel = resolveModel(model);
+      let finalMsg!: Anthropic.Messages.Message;
+      try {
       const stream = callMessagesStream(
         client,
         {
-          model,
+          model: activeModel,
           max_tokens: getAgentConfig().max_tokens ?? DEFAULT_MAX_TOKENS,
           system: systemPrompt,
           messages,
@@ -1099,7 +1185,27 @@ export async function* runTurnStream(
         }
       }
 
-      const finalMsg = await stream.finalMessage();
+      finalMsg = await stream.finalMessage();
+      } catch (streamErr) {
+        // Primary model unavailable on this account → fail over for the rest
+        // of this turn and replay the current iteration on the fallback. The
+        // 404 fires before any token, so nothing partial was yielded.
+        if (
+          !didModelFailover &&
+          activeModel !== FALLBACK_MODEL &&
+          isModelUnavailableError(streamErr)
+        ) {
+          unavailableModels.add(activeModel);
+          didModelFailover = true;
+          console.warn(
+            `[agentLoop] model ${activeModel} unavailable; failing over to ${FALLBACK_MODEL}`,
+          );
+          yield { kind: 'model_failover', from: activeModel, to: FALLBACK_MODEL };
+          iter -= 1;
+          continue;
+        }
+        throw streamErr;
+      }
       if (finalMsg.usage) {
         totalTokens +=
           (finalMsg.usage.input_tokens ?? 0) +
@@ -1227,7 +1333,7 @@ export async function* runTurnStream(
         sanitizedPrompt: opts.user_text,
         flowType: opts.privileged ? 'accuracy_client' : 'public_research',
         userId: opts.user_id ?? null,
-        model,
+        model: resolveModel(model),
         sourceProviders: tools
           .map((t: { name?: string }) => t.name)
           .filter((n): n is string => typeof n === 'string'),
