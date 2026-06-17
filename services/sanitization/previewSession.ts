@@ -174,6 +174,16 @@ export function computePreview(
    * lightweight heuristic.
    */
   externalSpans?: ReadonlyArray<Span>,
+  /**
+   * Lowercased per-device user allowlist — terms the attorney explicitly
+   * marked "not private, always send raw". Any span whose raw text
+   * exactly matches (case-insensitive) is dropped here, mirroring the
+   * wire-path suppression in detectPii so the preview reflects exactly
+   * what will be sent. Applied to the COMBINED span set (heuristic +
+   * external) because analyze() can re-detect a term the GLiNER filter
+   * already removed.
+   */
+  userAllowLower?: ReadonlySet<string>,
 ): PreviewData {
   if (!rawText || typeof rawText !== 'string') {
     return { segments: [], tokens: [], sanitized: '', categoryCounts: {} };
@@ -192,6 +202,8 @@ export function computePreview(
   for (const s of spans) {
     const key = assignmentKey(s.category, s.raw);
     if (state.suppressed.has(key)) continue;
+    // Drop terms the attorney marked "not private" (per-device allowlist).
+    if (userAllowLower && userAllowLower.has(s.raw.trim().toLowerCase())) continue;
     combined.push(s);
   }
   for (const m of state.manual) {

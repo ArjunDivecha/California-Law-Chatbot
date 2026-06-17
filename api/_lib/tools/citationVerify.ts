@@ -13,6 +13,8 @@
  * ground.
  */
 
+import { fetchWithTimeout } from './_http.js';
+
 export interface CitationVerifyInput {
   /** Text containing citations to extract and verify. Required if `citations` empty. */
   text?: string;
@@ -149,7 +151,7 @@ async function clSearch(
     'User-Agent': 'California Law Chatbot V2/1.0',
   };
   if (apiKey) headers['Authorization'] = `Token ${apiKey}`;
-  const resp = await fetch(url, { headers });
+  const resp = await fetchWithTimeout(url, { headers });
   if (!resp.ok) return [];
   const data = (await resp.json().catch(() => ({}))) as { results?: CLHit[] };
   return data.results ?? [];

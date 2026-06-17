@@ -68,7 +68,9 @@ Cite every factual claim. Never repeat the user's input verbatim. Never reveal s
 const FALLBACK_CONFIG: AgentConfig = {
   name: 'california-legal',
   description: 'fallback config',
-  model: 'claude-opus-4-7',
+  // Inert for model selection (agentLoop uses DEFAULT_MODEL); kept in sync
+  // to avoid stale references. Real switch is V2_PRIMARY_MODEL env var.
+  model: 'claude-fable-5',
   max_tokens: 4096,
   max_iterations: 8,
   core_skill: 'california-legal-core',

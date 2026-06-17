@@ -34,6 +34,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { waitUntil } from '@vercel/functions';
 import { runAgentProxy } from '../_lib/agentProxy.js';
+import { handlePreflight, applyCors } from '../_lib/httpGuard.js';
 import { Redis } from '@upstash/redis';
 import { createHmac } from 'node:crypto';
 
@@ -198,15 +199,22 @@ async function writeRecord(rec: ShadowAuditRecord): Promise<void> {
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  if (req.method === 'OPTIONS') {
-    res.status(204).end();
-    return;
-  }
+  if (handlePreflight(req, res)) return;
+  applyCors(req, res);
   if (req.method !== 'POST') {
     res.status(405).json({ error: 'Method Not Allowed' });
+    return;
+  }
+  // Shared-secret gate (fail-closed). Shadow runs the billable agent loop,
+  // so with no V2_SHADOW_SECRET configured — or on a mismatch — we refuse
+  // rather than accept an anonymous, billable run. To re-enable the Phase
+  // 4.5 shadow: set V2_SHADOW_SECRET in V2's env AND have V1's fireShadow
+  // send a matching `x-shadow-secret` header. NOTE: a VITE-bundled secret on
+  // V1 is weak (client-visible); a follow-up should verify the V1 user's
+  // Clerk token instead. Until the secret is set, shadow is disabled.
+  const shadowSecret = process.env.V2_SHADOW_SECRET;
+  if (!shadowSecret || req.headers['x-shadow-secret'] !== shadowSecret) {
+    res.status(401).json({ error: 'unauthorized' });
     return;
   }
 

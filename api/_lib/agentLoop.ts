@@ -48,12 +48,13 @@ import { COMPOUND_RISK_BUCKET_THRESHOLD } from '../_shared/sanitization/compound
 import { buildSystemPrompt, getAgentConfig } from './skills.js';
 import { scrubMessage } from './scrubError.js';
 
-// Anthropic's 2026-05-12 legal-industry launch cites Opus 4.7 as their
-// flagship legal-reasoning model (90.9% on Harvey's BigLaw Bench). V2
-// adopts it as the workbench default per the fifth addendum. Sonnet 4.6
-// remains the right model for a future tier-route (fifth addendum cost-
-// impact note, decision deferred to Arjun pre-Phase-4.5 shadow run).
-const DEFAULT_MODEL = 'claude-opus-4-7';
+// Primary engine for Research/Draft workflows. Defaults to Claude Fable 5
+// (flagship), overridable per-environment via V2_PRIMARY_MODEL in Vercel
+// so Opus<->Fable can be flipped without a code change/redeploy. Quick
+// mode and the citation verifier stay on Sonnet 4.6 (see workflow branches
+// below + verifierSubAgent.ts). Prior default was claude-opus-4-7 (fifth
+// addendum); switched to Fable 5 per Arjun 2026-06-12.
+const DEFAULT_MODEL = process.env.V2_PRIMARY_MODEL ?? 'claude-fable-5';
 const DEFAULT_MAX_TOKENS = 4096;
 /**
  * Default safety cap on tool-use rounds within one turn. Overridden at
@@ -403,6 +404,13 @@ export interface RunTurnOptions {
   anthropic_client?: Anthropic;
 }
 
+export interface TurnRefusal {
+  /** Refusal category from Anthropic stop_details (e.g. a safety topic). */
+  category?: string;
+  /** Human-readable explanation from stop_details. */
+  explanation?: string;
+}
+
 export interface RunTurnResult {
   /** The final assistant text rendered to the user, with all tool_use rounds resolved. */
   final_text: string;
@@ -426,6 +434,14 @@ export interface RunTurnResult {
   tool_output_redactions_by_category: Record<string, number>;
   /** How many tool outputs had their privileged flag fire. */
   tool_outputs_privileged_count: number;
+  /**
+   * Set when stop_reason === 'refusal'. Single-engine policy: SURFACE the
+   * refusal (never fall back to another model); the UI shows category +
+   * explanation and lets the attorney revise. undefined on a normal turn.
+   */
+  refusal?: TurnRefusal;
+  /** True when stop_reason === 'max_tokens' (the answer was truncated). */
+  truncated: boolean;
 }
 
 // System prompt content was extracted into agents/california-legal/skills/*.md
@@ -497,6 +513,14 @@ function extractTextFromAssistantBlocks(
     if (b.type === 'text') parts.push(b.text);
   }
   return parts.join('\n');
+}
+
+/** Pull structured refusal detail off a Message when stop_reason==='refusal'. */
+function extractRefusal(msg: Anthropic.Messages.Message): TurnRefusal {
+  const details = (
+    msg as unknown as { stop_details?: { category?: string; explanation?: string } }
+  ).stop_details;
+  return { category: details?.category, explanation: details?.explanation };
 }
 
 function extractToolUses(blocks: Anthropic.Messages.ContentBlock[]): ToolUseBlock[] {
@@ -729,6 +753,9 @@ export async function runTurn(opts: RunTurnOptions): Promise<RunTurnResult> {
 
   // Build the rolling history we send to the SDK on each iteration.
   let history: SessionMessage[] = [...existing, userMessage];
+  // Refusal surfaced from a 'refusal' stop_reason — single-engine policy:
+  // never fall back to another model; surface it to the attorney.
+  let refusal: TurnRefusal | undefined;
 
   const maxIterations = getAgentConfig().max_iterations ?? DEFAULT_MAX_ITERATIONS;
   for (let iter = 0; iter < maxIterations; iter += 1) {
@@ -766,6 +793,7 @@ export async function runTurn(opts: RunTurnOptions): Promise<RunTurnResult> {
 
     if (toolUses.length === 0) {
       finalText = extractTextFromAssistantBlocks(response.content);
+      if (response.stop_reason === 'refusal') refusal = extractRefusal(response);
       break;
     }
 
@@ -850,6 +878,8 @@ export async function runTurn(opts: RunTurnOptions): Promise<RunTurnResult> {
     tool_output_redactions: toolOutputRedactions,
     tool_output_redactions_by_category: toolOutputByCategory,
     tool_outputs_privileged_count: toolOutputsPrivilegedCount,
+    refusal,
+    truncated: stopReason === 'max_tokens',
   };
 }
 
@@ -900,6 +930,7 @@ export type TurnStreamEvent =
       source_summary?: ToolSourceSummary[];
     }
   | { kind: 'iteration'; round: number }
+  | { kind: 'refusal'; category?: string; explanation?: string }
   | { kind: 'done'; result: RunTurnResult }
   | { kind: 'error'; code: string; message: string };
 
@@ -978,6 +1009,8 @@ export async function* runTurnStream(
   // MCP activity accumulator (Anthropic-dispatched, server-side; we just
   // observe via stream events).
   let mcpToolUses = 0;
+  // Refusal surfaced from a 'refusal' stop_reason — single-engine policy.
+  let refusal: TurnRefusal | undefined;
   let history: SessionMessage[] = [...existing, userMessage];
 
   const maxIterations = getAgentConfig().max_iterations ?? DEFAULT_MAX_ITERATIONS;
@@ -1088,6 +1121,14 @@ export async function* runTurnStream(
       const toolUses = extractToolUses(finalMsg.content);
       if (toolUses.length === 0) {
         finalText = extractTextFromAssistantBlocks(finalMsg.content);
+        if (finalMsg.stop_reason === 'refusal') {
+          refusal = extractRefusal(finalMsg);
+          yield {
+            kind: 'refusal',
+            category: refusal.category,
+            explanation: refusal.explanation,
+          };
+        }
         break;
       }
 
@@ -1208,6 +1249,8 @@ export async function* runTurnStream(
         tool_output_redactions: toolOutputRedactions,
         tool_output_redactions_by_category: toolOutputByCategory,
         tool_outputs_privileged_count: toolOutputsPrivilegedCount,
+        refusal,
+        truncated: stopReason === 'max_tokens',
       },
     };
   } catch (err) {

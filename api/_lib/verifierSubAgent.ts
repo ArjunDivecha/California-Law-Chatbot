@@ -39,9 +39,11 @@ import {
   CEB_SEARCH_TOOL_DEFINITION,
   COURTLISTENER_SEARCH_TOOL_DEFINITION,
   CITATION_VERIFY_TOOL_DEFINITION,
+  STATUTE_VERIFY_TOOL_DEFINITION,
   cebSearch,
   courtlistenerSearch,
   citationVerify,
+  statuteVerify,
 } from './tools/index.js';
 import { getAgentConfig } from './skills.js';
 
@@ -63,6 +65,8 @@ export interface VerifierVerdict {
    *               Attorney should verify against Westlaw/Lexis manually.
    */
   status: 'real' | 'fake' | 'ambiguous';
+  /** 'case' (court decision) or 'statute' (code section). */
+  citation_type?: 'case' | 'statute';
   case_name?: string;
   match_url?: string;
   confidence: number;
@@ -72,6 +76,28 @@ export interface VerifierVerdict {
 }
 
 const VERIFIER_SYSTEM_PROMPT = `You are a citation-verification sub-agent. Given a single legal citation in a user message, decide whether the cited authority is REAL, FAKE, or AMBIGUOUS.
+
+STEP 0 — CLASSIFY THE CITATION FIRST:
+- A **STATUTE / REGULATION citation** names a code section: e.g. "Penal Code § 187", "Code Civ. Proc. § 437c", "Cal. Civ. Code § 1542", "42 U.S.C. § 1983", "21 C.F.R. § 101.9". No party names, no reporter — just a code/title name and a section number.
+- A **CASE citation** names a court decision: e.g. "People v. Anderson (1972) 6 Cal.3d 628". Party names + reporter volume + reporter abbreviation + page + year.
+
+If it is a STATUTE/REGULATION, follow the STATUTE PROTOCOL. Otherwise follow the CASE PROTOCOL.
+
+═══════════════════════════════════════════════════════════
+STATUTE PROTOCOL (code sections — CA codes, U.S.C., C.F.R.)
+═══════════════════════════════════════════════════════════
+1. Call **statute_verify** with the full citation text. It fetches the official source (leginfo for CA, Cornell LII for U.S.C., eCFR.gov for C.F.R.) and returns {outcome, exists, statute_text, source, url}.
+2. Map the tool's outcome to your status:
+   - outcome="verified" → the section EXISTS. Set status \`real\` UNLESS content-match fails (next step).
+   - outcome="not_found" → the section DOES NOT EXIST at the official source. Set status \`fake\` (confidence ≥ 0.9). This is a fabricated/incorrect section number.
+   - outcome="unavailable" → the source could not be reached. Set status \`ambiguous\` — you cannot conclude.
+   - outcome="unparseable" → statute_verify could not parse a cite; fall back to CASE PROTOCOL or return ambiguous.
+3. **CONTENT MATCH (when verified).** If the user's message also asserts what the statute SAYS or stands for, compare that assertion to the returned statute_text. If the statute_text clearly does NOT support the asserted proposition (e.g. the brief says "§ 187 defines burglary" but the text defines murder), set status \`fake\` and explain the mismatch in reasoning — a real section cited for a proposition it doesn't support is still a citation error. If statute_text supports or is consistent with the assertion (or no specific proposition was asserted), keep \`real\`.
+4. Put the official section name/heading in case_name and the source URL in match_url. Set citation_type to "statute".
+
+═══════════════════════════════════════════════════════════
+CASE PROTOCOL (court decisions)
+═══════════════════════════════════════════════════════════
 
 CRITICAL RULES — read carefully:
 
@@ -98,11 +124,17 @@ CRITICAL RULES — read carefully:
 
 When done researching, emit your verdict as a JSON object on a single line, preceded by the literal token "VERDICT:" — no leading whitespace, no trailing text after it. Schema:
 
-VERDICT: {"status":"real"|"fake"|"ambiguous","case_name":"<name as confirmed>","match_url":"<url>","confidence":0.0-1.0,"reasoning":"<one-sentence explanation grounded in what tools returned>"}
+VERDICT: {"status":"real"|"fake"|"ambiguous","citation_type":"case"|"statute","case_name":"<case name or statute heading as confirmed>","match_url":"<url>","confidence":0.0-1.0,"reasoning":"<one-sentence explanation grounded in what tools returned>"}
 
 Good examples:
 
-VERDICT: {"status":"real","case_name":"Navellier v. Sletten","match_url":"https://www.courtlistener.com/opinion/...","confidence":0.98,"reasoning":"citation_verify and courtlistener_search both returned the Cal. Supreme Court 2002 opinion at 29 Cal.4th 82; party names and reporter match exactly."}
+VERDICT: {"status":"real","citation_type":"case","case_name":"Navellier v. Sletten","match_url":"https://www.courtlistener.com/opinion/...","confidence":0.98,"reasoning":"citation_verify and courtlistener_search both returned the Cal. Supreme Court 2002 opinion at 29 Cal.4th 82; party names and reporter match exactly."}
+
+VERDICT: {"status":"real","citation_type":"statute","case_name":"Penal Code § 187 — Murder","match_url":"https://leginfo.legislature.ca.gov/...","confidence":0.98,"reasoning":"statute_verify returned outcome=verified; § 187 exists and its text defines murder, consistent with the citation."}
+
+VERDICT: {"status":"fake","citation_type":"statute","confidence":0.93,"reasoning":"statute_verify returned outcome=not_found for Penal Code § 99999; no such section exists at leginfo. Likely a fabricated section number."}
+
+VERDICT: {"status":"fake","citation_type":"statute","case_name":"Penal Code § 187","match_url":"https://leginfo.legislature.ca.gov/...","confidence":0.85,"reasoning":"§ 187 exists but defines murder; the passage cites it for burglary, a content mismatch."}
 
 VERDICT: {"status":"fake","confidence":0.92,"reasoning":"CourtListener returned 'John Doe v. Gary Settle' (unrelated) as the only hit for 'Hendricks v. California Probate Bureau'; courtlistener_search by case-name returned zero hits. No California Supreme Court opinion exists at 7 Cal.5th 904. Likely fabricated."}
 
@@ -114,6 +146,7 @@ const VERIFIER_TOOLS = [
   CEB_SEARCH_TOOL_DEFINITION,
   COURTLISTENER_SEARCH_TOOL_DEFINITION,
   CITATION_VERIFY_TOOL_DEFINITION,
+  STATUTE_VERIFY_TOOL_DEFINITION,
 ];
 
 interface ToolUseBlock {
@@ -138,6 +171,10 @@ async function dispatchVerifierTool(use: ToolUseBlock): Promise<string> {
         const r = await cebSearch(use.input as { query: string });
         return JSON.stringify(r);
       }
+      case 'statute_verify': {
+        const r = await statuteVerify(use.input as { text: string });
+        return JSON.stringify(r);
+      }
       default:
         return JSON.stringify({ error: `Unknown tool: ${use.name}` });
     }
@@ -160,6 +197,10 @@ function extractVerdict(text: string): VerifierVerdict | null {
     }
     return {
       status: parsed.status,
+      citation_type:
+        parsed.citation_type === 'statute' || parsed.citation_type === 'case'
+          ? parsed.citation_type
+          : undefined,
       case_name: parsed.case_name,
       match_url: parsed.match_url,
       confidence: typeof parsed.confidence === 'number' ? parsed.confidence : 0.5,

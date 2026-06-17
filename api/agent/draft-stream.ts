@@ -33,6 +33,14 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { runAgentProxyStream } from '../_lib/agentProxy.js';
 import { buildSystemPrompt, getAgentConfig } from '../_lib/skills.js';
 import { scrubMessage } from '../_lib/scrubError.js';
+import {
+  handlePreflight,
+  applyCors,
+  requireUser,
+  checkRateLimit,
+  assertSessionAccess,
+  isValidSessionId,
+} from '../_lib/httpGuard.js';
 
 interface DraftStreamBody {
   template_id?: string;
@@ -66,16 +74,17 @@ function formatUserText(body: DraftStreamBody): string {
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-
-  if (req.method === 'OPTIONS') {
-    res.status(204).end();
-    return;
-  }
+  if (handlePreflight(req, res)) return;
+  applyCors(req, res);
   if (req.method !== 'POST') {
     res.status(405).json({ error: 'Method Not Allowed' });
+    return;
+  }
+  const userId = await requireUser(req, res);
+  if (!userId) return;
+  const rl = await checkRateLimit(userId);
+  if (!rl.ok) {
+    res.status(rl.status).json({ error: 'rate_limited', message: rl.message });
     return;
   }
 
@@ -93,8 +102,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
     return;
   }
-  if (!sessionId) {
+  if (!sessionId || !isValidSessionId(sessionId)) {
     res.status(400).json({ error: 'invalid_session_id', message: 'session_id is required' });
+    return;
+  }
+  const access = await assertSessionAccess(sessionId, userId);
+  if (!access.ok) {
+    res.status(access.status).json({ error: 'forbidden', message: access.message });
     return;
   }
 
@@ -139,7 +153,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     for await (const event of runAgentProxyStream({
       session_id: sessionId,
       user_text: userText,
-      user_id: body.user_id ?? null,
+      user_id: userId,
       model: body.model,
       system_prompt: systemPrompt,
     })) {

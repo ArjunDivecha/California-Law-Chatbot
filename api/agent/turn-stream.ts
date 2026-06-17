@@ -30,31 +30,49 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { runAgentProxyStream } from '../_lib/agentProxy.js';
 import { scrubMessage } from '../_lib/scrubError.js';
+import {
+  handlePreflight,
+  applyCors,
+  requireUser,
+  checkRateLimit,
+  assertSessionAccess,
+  isValidSessionId,
+} from '../_lib/httpGuard.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // CORS for the streaming path. Browsers require explicit headers
-  // *before* the stream starts.
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-
-  if (req.method === 'OPTIONS') {
-    res.status(204).end();
-    return;
-  }
+  // Auth + CORS MUST complete before any SSE headers are flushed.
+  if (handlePreflight(req, res)) return;
+  applyCors(req, res);
   if (req.method !== 'POST') {
     res.status(405).json({ error: 'Method Not Allowed' });
+    return;
+  }
+  const userId = await requireUser(req, res);
+  if (!userId) return;
+  const rl = await checkRateLimit(userId);
+  if (!rl.ok) {
+    res.status(rl.status).json({ error: 'rate_limited', message: rl.message });
     return;
   }
 
   const body = (req.body ?? {}) as {
     session_id?: string;
     user_text?: string;
-    user_id?: string | null;
     model?: string;
     system_prompt?: string;
     workflow?: 'quick' | 'research';
   };
+
+  const sessionId = (body.session_id ?? '').trim();
+  if (!isValidSessionId(sessionId)) {
+    res.status(400).json({ error: 'invalid_session_id' });
+    return;
+  }
+  const access = await assertSessionAccess(sessionId, userId);
+  if (!access.ok) {
+    res.status(access.status).json({ error: 'forbidden', message: access.message });
+    return;
+  }
 
   // SSE headers. X-Accel-Buffering disables nginx buffering on
   // intermediaries — without it, events can be batched and feel choppy.
@@ -71,9 +89,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   let terminal: 'done' | 'error' | 'proxy_error' | null = null;
   try {
     for await (const event of runAgentProxyStream({
-      session_id: body.session_id ?? '',
+      session_id: sessionId,
       user_text: body.user_text ?? '',
-      user_id: body.user_id ?? null,
+      user_id: userId,
       model: body.model,
       system_prompt: body.system_prompt,
       workflow: body.workflow,

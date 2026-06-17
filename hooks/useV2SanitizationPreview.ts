@@ -32,6 +32,10 @@ import {
   type PreviewSessionState,
 } from '../services/sanitization/previewSession.ts';
 import { detectSpans } from '../services/sanitization/opfClient.ts';
+import {
+  getUserAllowlistLower,
+  subscribeToUserAllowlist,
+} from '../services/sanitization/userAllowlist.ts';
 import type { Span } from '../api/_shared/sanitization/index.ts';
 
 export type { PreviewData };
@@ -59,6 +63,15 @@ export function useV2SanitizationPreview(text: string): {
   // Last-fire timestamp so we discard stale daemon responses that
   // arrive after a newer keystroke.
   const lastFireRef = useRef<number>(0);
+  // Bumped whenever the user allowlist changes so the preview recomputes
+  // and dismissed (allowlisted) terms disappear from the chips/banner
+  // immediately. Same-tab edits dispatch a CustomEvent; cross-tab edits
+  // fire a StorageEvent — subscribeToUserAllowlist handles both.
+  const [allowlistVersion, setAllowlistVersion] = useState(0);
+  useEffect(
+    () => subscribeToUserAllowlist(() => setAllowlistVersion((v) => v + 1)),
+    []
+  );
 
   useEffect(() => {
     if (!text || text.length === 0) {
@@ -85,8 +98,15 @@ export function useV2SanitizationPreview(text: string): {
       }
       // Drop if a newer keystroke has fired since.
       if (ts !== lastFireRef.current) return;
+      // Pass the per-device user allowlist so computePreview drops any
+      // term the attorney marked "not private" — applied to the combined
+      // heuristic + GLiNER span set (analyze() can re-detect a term we'd
+      // otherwise filter only out of the GLiNER spans). Mirrors the
+      // wire-path suppression in detectPii so the preview matches what
+      // actually gets sent.
+      const allow = getUserAllowlistLower();
       try {
-        const next = computePreview(text, sessionRef.current, glinerSpans);
+        const next = computePreview(text, sessionRef.current, glinerSpans, allow);
         setPreview(next);
       } catch {
         setPreview(EMPTY);
@@ -97,7 +117,7 @@ export function useV2SanitizationPreview(text: string): {
     return () => {
       clearTimeout(t);
     };
-  }, [text]);
+  }, [text, allowlistVersion]);
 
   return {
     preview,

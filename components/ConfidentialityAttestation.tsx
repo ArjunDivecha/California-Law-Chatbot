@@ -11,7 +11,7 @@
  * [FFLP-TODO:…] is the review surface.
  */
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useUser } from '@clerk/clerk-react';
 import { ShieldCheck } from 'lucide-react';
 import { useAttestation } from '../hooks/useAttestation';
@@ -31,19 +31,24 @@ export const ConfidentialityAttestation: React.FC<ConfidentialityAttestationProp
   const { user, isLoaded } = useUser();
   const userId = user?.id ?? null;
   const { attested, acknowledge, ready } = useAttestation(userId);
+  // Soft-gate dismissal is session-local: hides the modal for this mount
+  // only; it re-shows on the next reload until the attorney actually
+  // acknowledges. (Previously dismiss called acknowledge(), permanently
+  // recording attestation — a bug flagged in the 2026-06-16 review.)
+  const [dismissed, setDismissed] = useState(false);
 
   // Avoid modal flash during mount + Clerk bootstrap.
-  if (!isLoaded || !ready || !userId || attested) return null;
+  if (!isLoaded || !ready || !userId || attested || dismissed) return null;
 
   const handleAcknowledge = () => {
     acknowledge();
   };
 
   const handleDismiss = () => {
-    // Soft gate: let the attorney dismiss without acknowledging. Modal
-    // re-shows on next reload. Hard gate mode (softGate=false) omits
-    // this button entirely.
-    acknowledge();
+    // Soft gate: hide for THIS session without recording attestation, so
+    // the modal re-shows on next reload. Hard gate mode (softGate=false)
+    // omits this button entirely.
+    setDismissed(true);
   };
 
   return (

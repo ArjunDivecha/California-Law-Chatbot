@@ -12,6 +12,7 @@
  */
 
 import { useCallback, useRef, useState } from 'react';
+import { useAuth } from '@clerk/clerk-react';
 import {
   getChatSanitizer,
   tokenizeForWire,
@@ -29,6 +30,8 @@ export interface V2Verdict {
    * `error` — sub-agent crashed / network failure
    */
   status: 'real' | 'fake' | 'ambiguous' | 'error' | 'pending';
+  /** 'case' (court decision) or 'statute' (code section). */
+  citation_type?: 'case' | 'statute';
   case_name?: string;
   match_url?: string;
   confidence?: number;
@@ -65,6 +68,7 @@ const INITIAL_STATE: V2VerifyState = {
 export function useV2VerifyStream() {
   const [state, setState] = useState<V2VerifyState>(INITIAL_STATE);
   const abortRef = useRef<AbortController | null>(null);
+  const { getToken } = useAuth();
 
   const reset = useCallback(() => {
     abortRef.current?.abort();
@@ -115,11 +119,16 @@ export function useV2VerifyStream() {
       return;
     }
 
+    const token = await getToken().catch(() => null);
     let resp: Response;
     try {
       resp = await fetch('/api/agent/verify-stream', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'text/event-stream',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({ text: wireText }),
         signal: ctrl.signal,
       });
@@ -174,7 +183,7 @@ export function useV2VerifyStream() {
       setState((s) => ({ ...s, isStreaming: false }));
       abortRef.current = null;
     }
-  }, []);
+  }, [getToken]);
 
   return { state, verify, reset, cancel };
 }
@@ -206,12 +215,18 @@ function handleEvent(raw: string, setState: React.Dispatch<React.SetStateAction<
       const citations = ((data.citations as string[]) ?? []).map((c) =>
         sanitizer.rehydrateMessage(c),
       );
+      const types = (data.citation_types as Array<'case' | 'statute'>) ?? [];
       setState((s) => ({
         ...s,
         manifest: citations,
         // Pre-populate verdicts as `pending` so the UI can show rows
         // with spinners up-front.
-        verdicts: citations.map((c, i) => ({ index: i, citation: c, status: 'pending' })),
+        verdicts: citations.map((c, i) => ({
+          index: i,
+          citation: c,
+          citation_type: types[i],
+          status: 'pending',
+        })),
       }));
       break;
     }
@@ -219,6 +234,7 @@ function handleEvent(raw: string, setState: React.Dispatch<React.SetStateAction<
       const v: V2Verdict = {
         index: Number(data.index ?? 0),
         citation: sanitizer.rehydrateMessage(String(data.citation ?? '')),
+        citation_type: data.citation_type as 'case' | 'statute' | undefined,
         status: (data.status as V2Verdict['status']) ?? 'error',
         case_name: data.case_name != null ? sanitizer.rehydrateMessage(String(data.case_name)) : undefined,
         match_url: data.match_url as string | undefined,

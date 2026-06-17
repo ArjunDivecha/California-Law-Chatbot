@@ -10,6 +10,8 @@
  * Latency baseline (2026-05-12, 5 queries):  p50 1.3s, p95 5.5s.
  */
 
+import { fetchWithTimeout } from './_http.js';
+
 export interface CourtListenerSearchInput {
   /** Search query. Required. */
   query: string;
@@ -107,7 +109,7 @@ export async function courtlistenerSearch(
   if (input.filed_before) url.searchParams.set('filed_before', input.filed_before);
 
   const t0 = performance.now();
-  const resp = await fetch(url, {
+  const resp = await fetchWithTimeout(url, {
     headers: { Authorization: `Token ${apiKey}` },
   });
   const body = (await resp.json().catch(() => ({}))) as RawSearchResponse;

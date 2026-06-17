@@ -23,6 +23,7 @@
  */
 
 import { useCallback, useRef, useState } from 'react';
+import { useAuth } from '@clerk/clerk-react';
 import {
   getChatSanitizer,
   tokenizeForWire,
@@ -76,6 +77,11 @@ export interface V2StreamError {
   proxy: boolean;
 }
 
+export interface V2Refusal {
+  category?: string;
+  explanation?: string;
+}
+
 export interface V2TurnState {
   sanitization: V2Sanitization | null;
   tokens: string;
@@ -85,6 +91,9 @@ export interface V2TurnState {
   isStreaming: boolean;
   error: V2StreamError | null;
   done: V2DoneSummary | null;
+  /** Set when Fable returned stop_reason: "refusal". Single-engine policy:
+   *  surface it, never fall back to another model. */
+  refusal: V2Refusal | null;
   /** Current iteration round (1-indexed) — useful for UI affordances. */
   round: number;
 }
@@ -97,6 +106,7 @@ const INITIAL_STATE: V2TurnState = {
   isStreaming: false,
   error: null,
   done: null,
+  refusal: null,
   round: 0,
 };
 
@@ -113,6 +123,7 @@ interface SendOpts {
 export function useV2AgentStream() {
   const [state, setState] = useState<V2TurnState>(INITIAL_STATE);
   const abortRef = useRef<AbortController | null>(null);
+  const { getToken } = useAuth();
 
   /** Reset state — used between turns. */
   const reset = useCallback(() => {
@@ -185,11 +196,16 @@ export function useV2AgentStream() {
       return;
     }
 
+    const token = await getToken().catch(() => null);
     let resp: Response;
     try {
       resp = await fetch('/api/agent/turn-stream', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'text/event-stream',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify(wireBody),
         signal: ctrl.signal,
       });
@@ -261,7 +277,7 @@ export function useV2AgentStream() {
       setState((s) => ({ ...s, isStreaming: false }));
       abortRef.current = null;
     }
-  }, []);
+  }, [getToken]);
 
   return { state, send, reset, cancel };
 }
@@ -307,6 +323,17 @@ function handleSseEvent(
       break;
     case 'iteration':
       setState((s) => ({ ...s, round: Number(data.round ?? 0) }));
+      break;
+    case 'refusal':
+      // Single-engine policy: surface the refusal; the model was NOT
+      // switched. The 'done' event still follows and ends the stream.
+      setState((s) => ({
+        ...s,
+        refusal: {
+          category: data.category as string | undefined,
+          explanation: data.explanation as string | undefined,
+        },
+      }));
       break;
     case 'tool_use_start': {
       const id = String(data.tool_use_id);

@@ -17,6 +17,7 @@
  */
 
 import { Index } from '@upstash/vector';
+import { fetchWithTimeout } from './_http.js';
 
 export interface CebSearchInput {
   /** The query string. Required. */
@@ -86,7 +87,7 @@ function getIndex(): Index {
 async function embed(query: string): Promise<number[]> {
   const key = process.env.OPENAI_API_KEY;
   if (!key) throw new Error('cebSearch: OPENAI_API_KEY not configured');
-  const resp = await fetch('https://api.openai.com/v1/embeddings', {
+  const resp = await fetchWithTimeout('https://api.openai.com/v1/embeddings', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

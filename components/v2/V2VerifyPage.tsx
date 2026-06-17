@@ -18,7 +18,8 @@ export const V2VerifyPage: React.FC = () => {
   const { state, verify, reset } = useV2VerifyStream();
   const placeholder =
     'Paste any passage of legal text here (a memo, draft, brief — anything) and click Verify. ' +
-    'Every case citation is checked against CourtListener by an adversarial sub-agent; ' +
+    'Every case citation is checked against CourtListener, and every statute/regulation cite ' +
+    '(CA codes, U.S.C., C.F.R.) against the official code, by an adversarial sub-agent; ' +
     'each verdict is real / fake with the model\'s reasoning.';
 
   const onVerify = useCallback(() => {
@@ -100,7 +101,7 @@ export const V2VerifyPage: React.FC = () => {
                 <p className="text-xs text-gray-500">Paste a passage and click Verify.</p>
               )}
               {state.manifest && state.manifest.length === 0 && (
-                <p className="text-xs text-gray-500">No case citations found in the passage.</p>
+                <p className="text-xs text-gray-500">No case or statute citations found in the passage.</p>
               )}
               {state.verdicts.length > 0 && (
                 <div className="space-y-1.5">
@@ -172,6 +173,18 @@ const VerdictRow: React.FC<{ verdict: V2Verdict }> = ({ verdict }) => {
       <span className={`${color} font-bold`}>{tag}</span>
       <div className="flex-1 min-w-0">
         <div className="flex items-baseline gap-2">
+          {verdict.citation_type && (
+            <span
+              className={`text-[9px] font-semibold uppercase tracking-wide rounded px-1 py-0.5 shrink-0 ${
+                verdict.citation_type === 'statute'
+                  ? 'bg-indigo-100 text-indigo-700'
+                  : 'bg-slate-100 text-slate-600'
+              }`}
+              title={verdict.citation_type === 'statute' ? 'Statute / regulation — checked against the official code' : 'Case — checked against CourtListener'}
+            >
+              {verdict.citation_type}
+            </span>
+          )}
           <span className="font-mono text-[11px] text-gray-700 truncate">{verdict.citation}</span>
           {typeof verdict.confidence === 'number' && (
             <span className="text-[10px] text-gray-400 shrink-0">conf {verdict.confidence.toFixed(2)}</span>

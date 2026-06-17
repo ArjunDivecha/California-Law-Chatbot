@@ -33,6 +33,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useV2AgentStream, type V2SourceSummary } from '../../hooks/useV2AgentStream.ts';
 import { useV2SanitizationPreview } from '../../hooks/useV2SanitizationPreview.ts';
+import { addToUserAllowlist } from '../../services/sanitization/userAllowlist.ts';
 import { ConfidentialityAttestation } from '../ConfidentialityAttestation.tsx';
 import { checkAnswer } from '../../services/guardrailsServiceV2.ts';
 import { prune as pruneSources } from '../../services/retrievalPrunerV2.ts';
@@ -400,6 +401,33 @@ export const V2ChatPage: React.FC = () => {
               </div>
             )}
 
+            {state.refusal && (
+              <div className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                <strong className="font-semibold">
+                  ⚠️ Fable declined this request
+                  {state.refusal.category ? ` (${state.refusal.category})` : ''}.
+                </strong>
+                {state.refusal.explanation && (
+                  <div className="mt-1">{state.refusal.explanation}</div>
+                )}
+                <div className="mt-1 text-amber-800/80">
+                  Your message was <span className="font-semibold">not</span> sent to any
+                  other model. You can revise it and try again.
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const lastUser = [...messages].reverse().find((m) => m.role === 'user');
+                    if (lastUser) setDraft(lastUser.text);
+                    reset();
+                  }}
+                  className="mt-2 rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-600"
+                >
+                  Edit &amp; resend
+                </button>
+              </div>
+            )}
+
             {state.error && (
               <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
                 <strong className="font-semibold">
@@ -597,6 +625,19 @@ const LiveSanitizationPanel: React.FC<{
           >
             <span className="font-mono">{t.value}</span>
             <span className="text-amber-700/70">= {t.raw.slice(0, 24)}{t.raw.length > 24 ? '…' : ''}</span>
+            <button
+              type="button"
+              // Mark this term "not private" — adds it to the per-device
+              // user allowlist. detectPii (send path) and the preview both
+              // then skip it, so it goes over the wire as plain text. The
+              // preview recomputes via the allowlist-changed subscription.
+              onClick={() => addToUserAllowlist(t.raw)}
+              title={`Not private — always send "${t.raw.slice(0, 40)}" as-is (this device). Manage under “Allowed terms”.`}
+              aria-label={`Mark "${t.raw}" as not private`}
+              className="ml-0.5 -mr-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full text-amber-700/60 hover:bg-amber-200 hover:text-amber-900"
+            >
+              ×
+            </button>
           </span>
         ))}
         {preview.tokens.length > 8 && (
@@ -622,6 +663,43 @@ const MessageBubble: React.FC<{
 }) => {
   const isUser = role === 'user';
   const [copied, setCopied] = useState(false);
+  const { getMap, tokenCount } = useSanitizer();
+
+  // Highlight protected (tokenized-and-sent) spans in the user's own
+  // bubble. The bubble shows rehydrated REAL names for the attorney, but
+  // every value in the token map is something that was swapped for a
+  // TOKEN before the request left this laptop. Wrapping those values in a
+  // yellow <mark> gives the attorney live visual proof of exactly what was
+  // protected. Display-only: does not touch what is stored or sent.
+  const highlighted = useMemo(() => {
+    if (!isUser) return null;
+    // tokenCount referenced so this recomputes when the IDB map loads.
+    void tokenCount;
+    const values = Array.from(getMap().values())
+      .filter((v) => v && v.trim().length > 1)
+      // Longest first so "John Smith" wins over "John" and we don't make
+      // overlapping/partial matches.
+      .sort((a, b) => b.length - a.length);
+    if (values.length === 0) return null;
+    const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const re = new RegExp(`(${values.map(esc).join('|')})`, 'g');
+    const parts = text.split(re);
+    if (parts.length === 1) return null; // nothing matched
+    const valueSet = new Set(values);
+    return parts.map((part, i) =>
+      valueSet.has(part) ? (
+        <mark
+          key={i}
+          title="Protected — sent as a token, never as the real value"
+          className="rounded px-0.5 bg-yellow-300 text-gray-900"
+        >
+          {part}
+        </mark>
+      ) : (
+        <React.Fragment key={i}>{part}</React.Fragment>
+      )
+    );
+  }, [isUser, text, getMap, tokenCount]);
 
   const handleCopy = useCallback(async () => {
     try {
@@ -670,7 +748,7 @@ const MessageBubble: React.FC<{
           }`}
         >
           {isUser ? (
-            text
+            highlighted ?? text
           ) : (
             <ReactMarkdown
               remarkPlugins={[remarkGfm]}

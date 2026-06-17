@@ -4,6 +4,7 @@
  */
 
 import { useCallback, useRef, useState } from 'react';
+import { useAuth } from '@clerk/clerk-react';
 import {
   getChatSanitizer,
   tokenizeForWire,
@@ -61,6 +62,7 @@ const INITIAL: MagicState = {
 export function useV2DraftingMagicStream() {
   const [state, setState] = useState<MagicState>(INITIAL);
   const abortRef = useRef<AbortController | null>(null);
+  const { getToken } = useAuth();
 
   const reset = useCallback(() => {
     abortRef.current?.abort();
@@ -122,11 +124,16 @@ export function useV2DraftingMagicStream() {
       return;
     }
 
+    const token = await getToken().catch(() => null);
     let resp: Response;
     try {
       resp = await fetch('/api/agent/drafting-magic', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'text/event-stream',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify(tokenizedOpts),
         signal: ctrl.signal,
       });
@@ -174,7 +181,7 @@ export function useV2DraftingMagicStream() {
       setState((s) => ({ ...s, isStreaming: false }));
       abortRef.current = null;
     }
-  }, []);
+  }, [getToken]);
 
   return { state, send, reset };
 }
@@ -206,6 +213,19 @@ function handleEvent(raw: string, setState: React.Dispatch<React.SetStateAction<
       break;
     case 'iteration':
       setState((s) => ({ ...s, round: Number(data.round ?? 0) }));
+      break;
+    case 'refusal':
+      // Single-engine policy: surface, never fall back to another model.
+      setState((s) => ({
+        ...s,
+        error: {
+          code: 'refusal',
+          message: `Fable declined this request${
+            data.category ? ` (${data.category})` : ''
+          }: ${(data.explanation as string) ?? 'no explanation provided'}. Not sent to any other model — revise and try again.`,
+        },
+        isStreaming: false,
+      }));
       break;
     case 'token': {
       const sanitizer = getChatSanitizer();

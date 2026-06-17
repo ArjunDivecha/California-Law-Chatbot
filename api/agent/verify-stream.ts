@@ -30,24 +30,27 @@
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { extractCitations } from '../_lib/tools/citationVerify.js';
+import { extractStatuteCitations } from '../_lib/tools/statuteVerify.js';
 import { verifyCitationViaSubAgent } from '../_lib/verifierSubAgent.js';
 import {
   detectPiiServerBackstop,
   RawInputDetectedError,
 } from '../../services/sanitization/detectionPipeline.js';
 import { scrubMessage } from '../_lib/scrubError.js';
+import { handlePreflight, applyCors, requireUser, checkRateLimit } from '../_lib/httpGuard.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-
-  if (req.method === 'OPTIONS') {
-    res.status(204).end();
-    return;
-  }
+  if (handlePreflight(req, res)) return;
+  applyCors(req, res);
   if (req.method !== 'POST') {
     res.status(405).json({ error: 'Method Not Allowed' });
+    return;
+  }
+  const userId = await requireUser(req, res);
+  if (!userId) return;
+  const rl = await checkRateLimit(userId);
+  if (!rl.ok) {
+    res.status(rl.status).json({ error: 'rate_limited', message: rl.message });
     return;
   }
 
@@ -83,12 +86,43 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     res.write(`event: ${kind}\ndata: ${JSON.stringify(data)}\n\n`);
   };
 
+  // Find the sentence containing a given substring so the statute
+  // verifier can content-match the asserted proposition against the real
+  // statutory text. Falls back to the bare citation if not located.
+  const sentenceFor = (needle: string): string => {
+    const idx = text.indexOf(needle);
+    if (idx === -1) return needle;
+    const start = Math.max(
+      text.lastIndexOf('.', idx) + 1,
+      text.lastIndexOf('\n', idx) + 1,
+    );
+    let end = text.indexOf('.', idx + needle.length);
+    if (end === -1) end = text.length;
+    return text.slice(start, end + 1).trim() || needle;
+  };
+
   try {
-    const extracted = extractCitations(text);
+    // Case citations (reporter patterns) + statute/regulation citations
+    // (CA codes, U.S.C., C.F.R.). Each becomes one verification row. For
+    // statutes we send the surrounding sentence as the query so the
+    // verifier can also check the brief's claim against the real text;
+    // the displayed citation stays the bare cite.
+    const caseCites = extractCitations(text).map((c) => ({
+      display: c.text,
+      query: c.text,
+      type: 'case' as const,
+    }));
+    const statuteCites = extractStatuteCitations(text).map((s) => ({
+      display: s.raw,
+      query: sentenceFor(s.raw),
+      type: 'statute' as const,
+    }));
+    const extracted = [...caseCites, ...statuteCites];
     writeEvent('manifest', {
       kind: 'manifest',
       citation_count: extracted.length,
-      citations: extracted.map((c) => c.text),
+      citations: extracted.map((c) => c.display),
+      citation_types: extracted.map((c) => c.type),
     });
 
     if (extracted.length === 0) {
@@ -112,14 +146,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     for (let i = 0; i < extracted.length; i += 1) {
       const c = extracted[i];
       try {
-        const verdict = await verifyCitationViaSubAgent(c.text);
+        const verdict = await verifyCitationViaSubAgent(c.query);
         if (verdict.status === 'real') verifiedCount += 1;
         else if (verdict.status === 'fake') fakeCount += 1;
         else ambiguousCount += 1;
         writeEvent('verdict', {
           kind: 'verdict',
           index: i,
-          citation: c.text,
+          citation: c.display,
+          citation_type: verdict.citation_type ?? c.type,
           status: verdict.status,
           case_name: verdict.case_name,
           match_url: verdict.match_url,
@@ -133,7 +168,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         writeEvent('verdict', {
           kind: 'verdict',
           index: i,
-          citation: c.text,
+          citation: c.display,
+          citation_type: c.type,
           status: 'error',
           error: scrubMessage(err instanceof Error ? err.message : String(err)),
         });

@@ -17,6 +17,7 @@
  */
 
 import { useCallback, useRef, useState } from 'react';
+import { useAuth } from '@clerk/clerk-react';
 import {
   getChatSanitizer,
   tokenizeForWire,
@@ -102,6 +103,7 @@ export interface DraftSendOpts {
 export function useV2DraftStream() {
   const [state, setState] = useState<V2DraftState>(INITIAL_STATE);
   const abortRef = useRef<AbortController | null>(null);
+  const { getToken } = useAuth();
 
   const reset = useCallback(() => {
     abortRef.current?.abort();
@@ -166,11 +168,16 @@ export function useV2DraftStream() {
       return;
     }
 
+    const token = await getToken().catch(() => null);
     let resp: Response;
     try {
       resp = await fetch('/api/agent/draft-stream', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'text/event-stream',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify(tokenizedOpts),
         signal: ctrl.signal,
       });
@@ -239,7 +246,7 @@ export function useV2DraftStream() {
       setState((s) => ({ ...s, isStreaming: false }));
       abortRef.current = null;
     }
-  }, []);
+  }, [getToken]);
 
   return { state, send, reset, cancel };
 }
@@ -283,6 +290,21 @@ function handleSseEvent(
       break;
     case 'iteration':
       setState((s) => ({ ...s, round: Number(data.round ?? 0) }));
+      break;
+    case 'refusal':
+      // Single-engine policy: surface, never fall back. Map to the draft
+      // page's existing error banner so it isn't a blank result.
+      setState((s) => ({
+        ...s,
+        error: {
+          code: 'refusal',
+          message: `Fable declined this request${
+            data.category ? ` (${data.category})` : ''
+          }: ${(data.explanation as string) ?? 'no explanation provided'}. Your draft request was not sent to any other model — revise and try again.`,
+          proxy: true,
+        },
+        isStreaming: false,
+      }));
       break;
     case 'tool_use_start': {
       const id = String(data.tool_use_id);

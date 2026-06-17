@@ -47,6 +47,11 @@ import {
   californiaCodeLookup,
   type CaCodeLookupInput,
 } from './californiaCodeLookupTool.js';
+import {
+  STATUTE_VERIFY_TOOL_DEFINITION,
+  statuteVerify,
+  type StatuteVerifyInput,
+} from './statuteVerify.js';
 import { buildMcpServerSpec, hasMcpToolsets } from './mcpRegistry.js';
 export { hasMcpToolsets };
 
@@ -58,6 +63,7 @@ export type ToolDefinition =
   | typeof OPENSTATES_SEARCH_TOOL_DEFINITION
   | typeof CITATION_VERIFY_TOOL_DEFINITION
   | typeof CALIFORNIA_CODE_LOOKUP_TOOL_DEFINITION
+  | typeof STATUTE_VERIFY_TOOL_DEFINITION
   | {
       type: 'web_search_20250305';
       name: 'web_search';
@@ -99,6 +105,7 @@ export function buildToolsArray(privileged: boolean): ToolDefinition[] {
     OPENSTATES_SEARCH_TOOL_DEFINITION,
     CITATION_VERIFY_TOOL_DEFINITION,
     CALIFORNIA_CODE_LOOKUP_TOOL_DEFINITION,
+    STATUTE_VERIFY_TOOL_DEFINITION,
     WEB_SEARCH_TOOL,
   ];
   // MCP toolsets (per 2026-05-12 fifth addendum). Each MCP entry in the
@@ -208,6 +215,16 @@ export async function dispatchTool(use: ToolUseBlock): Promise<ToolResultBlock> 
           content: JSON.stringify(result),
         };
       }
+      case 'statute_verify': {
+        const result = await statuteVerify(
+          use.input as unknown as StatuteVerifyInput,
+        );
+        return {
+          type: 'tool_result',
+          tool_use_id: use.id,
+          content: JSON.stringify(result),
+        };
+      }
       default:
         return {
           type: 'tool_result',
@@ -233,6 +250,8 @@ export {
   legiscanSearch,
   openstatesSearch,
   citationVerify,
+  californiaCodeLookup,
+  statuteVerify,
 };
 export {
   CEB_SEARCH_TOOL_DEFINITION,
@@ -240,4 +259,6 @@ export {
   LEGISCAN_SEARCH_TOOL_DEFINITION,
   OPENSTATES_SEARCH_TOOL_DEFINITION,
   CITATION_VERIFY_TOOL_DEFINITION,
+  CALIFORNIA_CODE_LOOKUP_TOOL_DEFINITION,
+  STATUTE_VERIFY_TOOL_DEFINITION,
 };

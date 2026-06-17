@@ -30,6 +30,7 @@ export interface SessionRedis {
     opts?: { ex?: number; nx?: boolean },
   ): Promise<unknown>;
   get(key: string): Promise<string | null>;
+  incr(key: string): Promise<number>;
   del(key: string): Promise<number>;
   expire(key: string, seconds: number): Promise<unknown>;
   // Sorted-set methods for the per-user session index. @upstash/redis
@@ -340,4 +341,31 @@ export async function acquireLock(sessionId: string): Promise<boolean> {
 export async function releaseLock(sessionId: string): Promise<void> {
   const redis = resolveRedis();
   await redis.del(lockKey(sessionId));
+}
+
+// ---------------------------------------------------------------------------
+// Per-user rate limit (fixed window)
+// ---------------------------------------------------------------------------
+
+/**
+ * Increment and return the request count for `userId` in the current
+ * fixed window (default 60s). Returns null when the store is unavailable —
+ * callers FAIL OPEN (per Arjun 2026-06-16: don't lock out the firm's
+ * attorneys if Redis hiccups; the limiter exists to stop runaway client
+ * loops, not to be a hard cost ceiling).
+ */
+export async function rateLimitHit(
+  userId: string,
+  windowSeconds = 60,
+): Promise<number | null> {
+  try {
+    const redis = resolveRedis();
+    const bucket = Math.floor(Date.now() / (windowSeconds * 1000));
+    const key = `ratelimit:${userId}:${bucket}`;
+    const count = await redis.incr(key);
+    if (count === 1) await redis.expire(key, windowSeconds);
+    return count;
+  } catch {
+    return null; // fail open
+  }
 }

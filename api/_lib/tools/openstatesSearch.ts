@@ -6,6 +6,8 @@
  * Key: OPENSTATES_API_KEY (sent via `X-API-Key` header).
  */
 
+import { fetchWithTimeout } from './_http.js';
+
 export interface OpenStatesSearchInput {
   /** Free-text query — bill keywords or identifier. Required. */
   query: string;
@@ -73,7 +75,7 @@ export async function openstatesSearch(
   url.searchParams.set('sort', 'updated_desc');
 
   const t0 = performance.now();
-  const resp = await fetch(url, { headers: { 'X-API-Key': apiKey } });
+  const resp = await fetchWithTimeout(url, { headers: { 'X-API-Key': apiKey } });
   const body = (await resp.json().catch(() => ({}))) as OpenStatesSearchResponse;
   if (!resp.ok) {
     throw new Error(

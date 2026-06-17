@@ -1,181 +1,142 @@
 /**
- * V2 drafting surface. Reachable at /v2/draft (gated by Clerk SignedIn,
- * same posture as /v2). Three-pane flow:
+ * =============================================================================
+ * V2DraftPage — "Draft a document" surface (reachable at /v2/draft).
+ * =============================================================================
  *
- *   1. Template picker — 4 cards for legal_memo, demand_letter,
- *      client_letter, motion_compel
- *   2. Variables form — dynamic per-template inputs (text, textarea,
- *      date, select, number)
- *   3. Streaming output — privilege chip + tool pills + live token
- *      stream as the agent loop runs. Drives /api/agent/draft-stream.
+ * WHAT THIS DOES (plain English):
+ * The attorney loads an EXISTING document — by pasting text or uploading a
+ * file (.txt/.md/.doc/.docx/.pdf) — and then tells the assistant, in plain
+ * language, what to change OR asks it what should change. The assistant does
+ * NOT silently rewrite the document. Instead it PROPOSES a list of discrete
+ * changes in the chat panel; the attorney approves or rejects each one, and
+ * only approved edits are applied to the document on the left. The result can
+ * be exported to Word / PDF / HTML.
  *
- * Mirrors V2ChatPage's visual language (Georgia serif, FAFAF8 bg, pink
- * accents). Standalone — does not share state with the chat surface,
- * which is deliberate per Phase 4: drafting and chat are distinct
- * workflows.
+ * SANITIZATION: every send runs through useV2AgentStream.send(), which calls
+ * tokenizeForWire() on the ENTIRE payload (document + instruction) BEFORE it
+ * leaves the browser. Client names, addresses, dollar amounts, etc. are
+ * replaced with CLIENT_001 / ADDRESS_002 placeholders on the wire; the
+ * model's reply is rehydrated to real values for display only.
+ *
+ * ENGINE: 'research' workflow, no model override → primary engine
+ * (Claude Fable 5 via V2_PRIMARY_MODEL).
+ *
+ * INPUT FILES:  none read from disk here. Uploaded files are read in-browser
+ *               via extractTextFromFile().
+ * OUTPUT FILES: exports generated server-side by /api/export-document and
+ *               downloaded by the browser; nothing written locally here.
+ * =============================================================================
  */
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useUser } from '@clerk/clerk-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { useV2DraftStream } from '../../hooks/useV2DraftStream.ts';
-import { useV2VerifyStream, type V2Verdict } from '../../hooks/useV2VerifyStream.ts';
-import { DEFAULT_TEST_DATA } from '../drafting/defaultTestData.ts';
-import { V2SanitizationChip } from './V2SanitizationChip';
-import { gateOnVerdicts } from '../../services/confidenceGatingV2.ts';
-
-// ---------------------------------------------------------------------------
-// Template metadata — UI-side mirror of api/templates.ts. Kept in sync via
-// review; an automated test that diffs the two would be a Phase 4.x
-// hardening item.
-// ---------------------------------------------------------------------------
-
-interface VariableField {
-  id: string;
-  name: string;
-  type: 'text' | 'textarea' | 'date' | 'select' | 'number';
-  required?: boolean;
-  placeholder?: string;
-  default?: string;
-  options?: string[];
-}
-
-interface TemplateMeta {
-  id: 'legal_memo' | 'demand_letter' | 'client_letter' | 'motion_compel';
-  name: string;
-  description: string;
-  estimatedTime: string;
-  variables: VariableField[];
-}
-
-const TEMPLATES: TemplateMeta[] = [
-  {
-    id: 'legal_memo',
-    name: 'Legal Research Memorandum',
-    description:
-      'Internal IRAC/CREAC analysis of a discrete legal question. 6 sections — Question Presented, Brief Answer, Facts, Analysis, Conclusion.',
-    estimatedTime: '60–120 seconds',
-    variables: [
-      { id: 'to', name: 'To (Partner / Supervising Attorney)', type: 'text', required: true, placeholder: 'Jane Partner' },
-      { id: 'from', name: 'From (Drafting Attorney)', type: 'text', required: true, placeholder: 'John Associate' },
-      { id: 'client_matter', name: 'Client / Matter', type: 'text', required: true, placeholder: 'Estate of Smith' },
-      { id: 'date', name: 'Date', type: 'date', required: true },
-      { id: 'subject', name: 'Subject (Re:)', type: 'text', required: true, placeholder: 'Validity of holographic codicil' },
-    ],
-  },
-  {
-    id: 'demand_letter',
-    name: 'Demand Letter',
-    description:
-      'External formal demand — payment, breach, cease-and-desist, return of property, or specific performance. 7 sections, served under California civil law.',
-    estimatedTime: '45–90 seconds',
-    variables: [
-      { id: 'sender_name', name: 'Sender Name (Attorney)', type: 'text', required: true, placeholder: 'A. Counsel' },
-      { id: 'sender_firm', name: 'Sender Firm', type: 'text', placeholder: 'Femme & Femme Law' },
-      { id: 'sender_address', name: 'Sender Address', type: 'textarea', required: true, placeholder: '123 Main St\nOakland, CA 94612' },
-      { id: 'recipient_name', name: 'Recipient Name', type: 'text', required: true, placeholder: 'ABC Construction Co.' },
-      { id: 'recipient_address', name: 'Recipient Address', type: 'textarea', required: true, placeholder: '500 Oak Ave\nOakland, CA 94612' },
-      { id: 'date', name: 'Date', type: 'date', required: true },
-      {
-        id: 'demand_type',
-        name: 'Type of Demand',
-        type: 'select',
-        required: true,
-        options: ['Payment of Debt', 'Breach of Contract', 'Cease and Desist', 'Return of Property', 'Performance of Agreement'],
-      },
-      { id: 'amount', name: 'Amount Demanded (if applicable)', type: 'text', placeholder: '$10,000.00' },
-      { id: 'response_deadline', name: 'Response Deadline (days)', type: 'number', required: true, default: '30' },
-      { id: 'client_name', name: 'Client Name', type: 'text', required: true, placeholder: "Smith Properties LLC" },
-    ],
-  },
-  {
-    id: 'client_letter',
-    name: 'Client Advisory Letter',
-    description:
-      'Privileged attorney–client communication explaining a matter, presenting options with pros/cons, and recommending a path forward. 7 sections.',
-    estimatedTime: '45–90 seconds',
-    variables: [
-      { id: 'attorney_name', name: 'Attorney Name', type: 'text', required: true, placeholder: 'A. Counsel' },
-      { id: 'firm_name', name: 'Firm Name', type: 'text', placeholder: 'Femme & Femme Law' },
-      { id: 'firm_address', name: 'Firm Address', type: 'textarea', required: true, placeholder: '123 Main St\nOakland, CA 94612' },
-      { id: 'client_name', name: 'Client Name', type: 'text', required: true, placeholder: "Maria Garcia" },
-      { id: 'client_address', name: 'Client Address', type: 'textarea', required: true, placeholder: '789 Elm St\nOakland, CA 94612' },
-      { id: 'date', name: 'Date', type: 'date', required: true },
-      { id: 'matter_description', name: 'Matter Description', type: 'text', required: true, placeholder: 'Workplace harassment claim' },
-      { id: 'salutation', name: 'Salutation', type: 'text', required: true, default: 'Dear' },
-    ],
-  },
-  {
-    id: 'motion_compel',
-    name: 'Motion to Compel Discovery',
-    description:
-      'California Superior Court motion under CCP §§ 2030.300 / 2031.310 / 2033.290 for further discovery responses. 10 sections including caption, MPA, declaration, separate statement reference.',
-    estimatedTime: '120–180 seconds',
-    variables: [
-      {
-        id: 'court_name',
-        name: 'Court',
-        type: 'select',
-        required: true,
-        options: [
-          'Superior Court of California, County of Los Angeles',
-          'Superior Court of California, County of San Francisco',
-          'Superior Court of California, County of San Diego',
-          'Superior Court of California, County of Orange',
-          'Superior Court of California, County of Santa Clara',
-          'Superior Court of California, County of Alameda',
-          'Superior Court of California, County of Sacramento',
-          'Superior Court of California, County of Riverside',
-          'Superior Court of California, County of San Bernardino',
-        ],
-      },
-      { id: 'case_number', name: 'Case Number', type: 'text', required: true, placeholder: '24CV001234' },
-      { id: 'plaintiff', name: 'Plaintiff(s)', type: 'text', required: true },
-      { id: 'defendant', name: 'Defendant(s)', type: 'text', required: true },
-      { id: 'moving_party', name: 'Moving Party', type: 'text', required: true, placeholder: 'Plaintiff [Name]' },
-      { id: 'responding_party', name: 'Responding Party', type: 'text', required: true, placeholder: 'Defendant [Name]' },
-      { id: 'attorney_name', name: 'Attorney Name', type: 'text', required: true },
-      { id: 'firm_name', name: 'Firm Name', type: 'text' },
-      { id: 'bar_number', name: 'State Bar Number', type: 'text', required: true, placeholder: '123456' },
-      {
-        id: 'discovery_type',
-        name: 'Discovery Type',
-        type: 'select',
-        required: true,
-        options: [
-          'Form Interrogatories',
-          'Special Interrogatories',
-          'Request for Production of Documents',
-          'Request for Admissions',
-          'Deposition Questions',
-        ],
-      },
-      { id: 'discovery_set_number', name: 'Discovery Set Number', type: 'text', required: true, default: 'One' },
-      { id: 'hearing_date', name: 'Hearing Date', type: 'date', required: true },
-      { id: 'hearing_time', name: 'Hearing Time', type: 'text', required: true, placeholder: '9:00 a.m.' },
-      { id: 'hearing_department', name: 'Department', type: 'text', required: true, placeholder: '22' },
-      { id: 'meet_confer_attempts', name: 'Meet-and-Confer Attempts', type: 'text', placeholder: '3 letters' },
-      { id: 'deficient_response_examples', name: 'Deficient Responses (item numbers)', type: 'text', placeholder: 'Nos. 3, 7, 12, 18' },
-    ],
-  },
-];
+import { useV2AgentStream } from '../../hooks/useV2AgentStream.ts';
+import { useSanitizer } from '../../hooks/useSanitizer';
+import { addToUserAllowlist } from '../../services/sanitization/userAllowlist.ts';
+import { useV2SanitizationPreview } from '../../hooks/useV2SanitizationPreview.ts';
+import { extractTextFromFile } from '../draftingMagic/fileTextExtraction';
 
 function newSessionId(): string {
   return `v2d_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
-function toolHumanName(name: string): string {
-  switch (name) {
-    case 'ceb_search': return 'CEB practice guides';
-    case 'courtlistener_search': return 'CourtListener case law';
-    case 'legiscan_search': return 'LegiScan';
-    case 'openstates_search': return 'OpenStates';
-    case 'citation_verify': return 'Citation verifier';
-    case 'web_search': return 'Web search';
-    default: return name;
+const ACCEPTED_FILE_TYPES = '.txt,.md,.doc,.docx,.pdf';
+
+// System prompt: the model PROPOSES changes as structured JSON. It must not
+// return a rewritten document — only a list of discrete, reviewable edits.
+const PROPOSAL_SYSTEM_PROMPT = `You are a meticulous legal document editor at a California law firm.
+The user gives you a CURRENT DOCUMENT and either an instruction or a question about what to change.
+
+Do NOT rewrite the whole document. Instead, propose a list of DISCRETE, individually-reviewable changes.
+
+Output ONLY a single JSON object, no preamble or commentary, in exactly this shape:
+{"changes":[
+  {"section":"<short location label, e.g. 'Section 3 — Term'>",
+   "description":"<one short sentence: what to change>",
+   "rationale":"<one short sentence: why>",
+   "find":"<the EXACT text from the current document to replace — copy it verbatim, long enough to be unique>",
+   "replace":"<the new text to put in its place>"}
+]}
+
+RULES:
+- "find" MUST be an exact verbatim substring of the current document so the change can be applied automatically. If a change is an INSERTION, set "find" to the existing sentence it should follow and include that sentence at the start of "replace".
+- Keep each change small and atomic — one idea per change. Prefer several small changes over one large one.
+- Placeholder tokens like CLIENT_001, ADDRESS_002, AMOUNT_003 stand in for redacted private info. Preserve them EXACTLY in both "find" and "replace"; never expand, rename, or invent values.
+- If the user asked a question ("what would you change?"), still answer as a list of proposed changes.
+- If nothing should change, return {"changes":[]}.`;
+
+function buildEditRequest(documentText: string, instruction: string): string {
+  return `CURRENT DOCUMENT:
+"""
+${documentText}
+"""
+
+INSTRUCTION:
+${instruction}`;
+}
+
+interface Proposal {
+  id: string;
+  section: string;
+  description: string;
+  rationale: string;
+  find: string;
+  replace: string;
+  status: 'pending' | 'applied' | 'rejected' | 'unmatched';
+}
+
+interface ChatTurn {
+  instruction: string;
+  proposals: Proposal[];
+  /** Set when the model returned something we could not parse as changes. */
+  rawNote?: string;
+}
+
+// Extract the first JSON object from a model reply (handles ```json fences
+// and incidental prose around it).
+function parseChangesJson(text: string): Array<Omit<Proposal, 'id' | 'status'>> | null {
+  if (!text) return null;
+  let body = text.trim();
+  const fence = body.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  if (fence) body = fence[1].trim();
+  const start = body.indexOf('{');
+  const end = body.lastIndexOf('}');
+  if (start === -1 || end === -1 || end <= start) return null;
+  try {
+    const obj = JSON.parse(body.slice(start, end + 1));
+    if (!obj || !Array.isArray(obj.changes)) return null;
+    return obj.changes
+      .filter((c: unknown) => c && typeof c === 'object')
+      .map((c: Record<string, unknown>) => ({
+        section: String(c.section ?? 'Change'),
+        description: String(c.description ?? ''),
+        rationale: String(c.rationale ?? ''),
+        find: String(c.find ?? ''),
+        replace: String(c.replace ?? ''),
+      }));
+  } catch {
+    return null;
   }
+}
+
+// Apply find→replace to the document. Tries exact match first, then a
+// whitespace-tolerant regex match. Returns the new document, or null if the
+// "find" text could not be located.
+function applyChange(doc: string, find: string, replace: string): string | null {
+  if (!find) return null;
+  if (doc.includes(find)) return doc.replace(find, replace);
+  // Whitespace-tolerant fallback.
+  const esc = find.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s+');
+  try {
+    const re = new RegExp(esc);
+    if (re.test(doc)) return doc.replace(re, replace.replace(/\$/g, '$$$$'));
+  } catch {
+    /* ignore bad regex */
+  }
+  return null;
 }
 
 // ---------------------------------------------------------------------------
@@ -185,771 +146,656 @@ function toolHumanName(name: string): string {
 export const V2DraftPage: React.FC = () => {
   const { user } = useUser();
   const userId = user?.id ?? null;
-
-  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
-  const [variables, setVariables] = useState<Record<string, string>>({});
-  const [instructions, setInstructions] = useState('');
-  const [maxLength, setMaxLength] = useState<'short' | 'medium' | 'long'>('medium');
-  const [tone, setTone] = useState<'formal' | 'persuasive' | 'neutral'>('neutral');
   const [sessionId] = useState(() => newSessionId());
-  const { state, send, reset } = useV2DraftStream();
-  const verifyHook = useV2VerifyStream();
+  const { state, send, reset } = useV2AgentStream();
 
-  const template = useMemo(
-    () => TEMPLATES.find((t) => t.id === selectedTemplateId) ?? null,
-    [selectedTemplateId],
+  // Source-loading state (before any document is loaded).
+  const [pasteText, setPasteText] = useState('');
+  const [uploadBusy, setUploadBusy] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uploadedName, setUploadedName] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Editing state (after a document is loaded).
+  const [documentText, setDocumentText] = useState<string | null>(null);
+  const [instruction, setInstruction] = useState('');
+  const [history, setHistory] = useState<ChatTurn[]>([]);
+
+  // ----- Source loading -----
+  const onUploadClick = useCallback(() => fileInputRef.current?.click(), []);
+
+  const onFileChosen = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadBusy(true);
+    setUploadError(null);
+    try {
+      const extracted = await extractTextFromFile(file);
+      const text = extracted.text.trim();
+      if (!text) {
+        setUploadError('No readable text found in that file.');
+      } else {
+        setPasteText(text);
+        setUploadedName(file.name);
+        if (extracted.warning) setUploadError(extracted.warning);
+      }
+    } catch (err) {
+      setUploadError(`Could not read file: ${(err as Error).message}`);
+    } finally {
+      setUploadBusy(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  }, []);
+
+  const onLoadDocument = useCallback(() => {
+    const text = pasteText.trim();
+    if (text.length < 10) return;
+    setDocumentText(text);
+  }, [pasteText]);
+
+  // ----- Instruction → proposals -----
+  const onSubmitInstruction = useCallback(() => {
+    const instr = instruction.trim();
+    if (!instr || !documentText || state.isStreaming) return;
+    setHistory((h) => [...h, { instruction: instr, proposals: [] }]);
+    setInstruction('');
+    send({
+      session_id: sessionId,
+      user_id: userId,
+      user_text: buildEditRequest(documentText, instr),
+      system_prompt: PROPOSAL_SYSTEM_PROMPT,
+      // 'research' (no model override) → primary engine = Claude Fable 5.
+      workflow: 'research',
+    });
+  }, [instruction, documentText, state.isStreaming, send, sessionId, userId]);
+
+  // When a turn completes, parse the model's reply into proposals and attach
+  // them to the latest chat turn. The document is NOT changed yet — the user
+  // approves each proposal individually.
+  const lastDoneRef = useRef<unknown>(null);
+  React.useEffect(() => {
+    if (state.done && state.done !== lastDoneRef.current) {
+      lastDoneRef.current = state.done;
+      const reply = (state.done.final_text || state.tokens || '').trim();
+      const parsed = parseChangesJson(reply);
+      setHistory((h) => {
+        if (h.length === 0) return h;
+        const next = [...h];
+        const turn = { ...next[next.length - 1] };
+        if (parsed && parsed.length > 0) {
+          turn.proposals = parsed.map((p, i) => ({
+            ...p,
+            id: `${Date.now()}_${i}`,
+            status: 'pending' as const,
+          }));
+        } else if (parsed && parsed.length === 0) {
+          turn.rawNote = 'No changes suggested.';
+        } else {
+          turn.rawNote = reply.slice(0, 600);
+        }
+        next[next.length - 1] = turn;
+        return next;
+      });
+      reset();
+    }
+  }, [state.done, state.tokens, reset]);
+
+  // ----- Approve / reject a proposal -----
+  const setProposalStatus = useCallback(
+    (turnIdx: number, propId: string, status: Proposal['status'], newDoc?: string) => {
+      setHistory((h) => {
+        const next = [...h];
+        const turn = { ...next[turnIdx] };
+        turn.proposals = turn.proposals.map((p) => (p.id === propId ? { ...p, status } : p));
+        next[turnIdx] = turn;
+        return next;
+      });
+      if (newDoc !== undefined) setDocumentText(newDoc);
+    },
+    [],
   );
 
-  const onSelectTemplate = useCallback((id: TemplateMeta['id']) => {
-    setSelectedTemplateId(id);
-    // Pre-fill defaults
-    const t = TEMPLATES.find((x) => x.id === id);
-    if (t) {
-      const init: Record<string, string> = {};
-      for (const v of t.variables) {
-        if (v.default) init[v.id] = v.default;
-        else if (v.type === 'date') init[v.id] = new Date().toISOString().slice(0, 10);
+  const onApprove = useCallback(
+    (turnIdx: number, prop: Proposal, overrideReplace?: string) => {
+      if (!documentText) return;
+      const replacement = overrideReplace !== undefined ? overrideReplace : prop.replace;
+      const updated = applyChange(documentText, prop.find, replacement);
+      if (updated === null) {
+        setProposalStatus(turnIdx, prop.id, 'unmatched');
+      } else {
+        // Persist the edited replacement on the proposal so the
+        // before/after view reflects what was actually applied.
+        setHistory((h) => {
+          const next = [...h];
+          const turn = { ...next[turnIdx] };
+          turn.proposals = turn.proposals.map((p) =>
+            p.id === prop.id ? { ...p, replace: replacement, status: 'applied' as const } : p,
+          );
+          next[turnIdx] = turn;
+          return next;
+        });
+        setDocumentText(updated);
       }
-      setVariables(init);
-    }
+    },
+    [documentText, setProposalStatus],
+  );
+
+  const onReject = useCallback(
+    (turnIdx: number, prop: Proposal) => setProposalStatus(turnIdx, prop.id, 'rejected'),
+    [setProposalStatus],
+  );
+
+  const onApproveAll = useCallback(
+    (turnIdx: number) => {
+      setHistory((h) => {
+        const next = [...h];
+        const turn = { ...next[turnIdx] };
+        let doc = documentText ?? '';
+        turn.proposals = turn.proposals.map((p) => {
+          if (p.status !== 'pending') return p;
+          const updated = applyChange(doc, p.find, p.replace);
+          if (updated === null) return { ...p, status: 'unmatched' as const };
+          doc = updated;
+          return { ...p, status: 'applied' as const };
+        });
+        next[turnIdx] = turn;
+        setDocumentText(doc);
+        return next;
+      });
+    },
+    [documentText],
+  );
+
+  const onStartOver = useCallback(() => {
+    setDocumentText(null);
+    setPasteText('');
+    setUploadedName(null);
+    setUploadError(null);
+    setHistory([]);
+    setInstruction('');
     reset();
   }, [reset]);
 
-  const onSubmit = useCallback(
-    (e: React.FormEvent) => {
-      e.preventDefault();
-      if (!template || state.isStreaming) return;
-      void send({
-        session_id: sessionId,
-        template_id: template.id,
-        variables,
-        user_instructions: instructions.trim(),
-        options: { maxLength, tone, citationStyle: 'california' },
-        user_id: userId,
-      });
-    },
-    [template, state.isStreaming, send, sessionId, variables, instructions, maxLength, tone, userId],
-  );
-
-  const requiredMissing = useMemo(() => {
-    if (!template) return [];
-    return template.variables
-      .filter((v) => v.required && !(variables[v.id] && variables[v.id].trim()))
-      .map((v) => v.name);
-  }, [template, variables]);
-
-  const canSubmit = template && requiredMissing.length === 0 && instructions.trim().length > 10 && !state.isStreaming;
-
-  const privilegedBadge = useMemo(() => {
-    if (!state.sanitization) return null;
-    const { privileged, compound_risk_buckets, redactions_count } = state.sanitization;
-    // Informational only — sanitization still detects, but the
-    // privileged flag no longer gates web_search (7th addendum).
-    if (privileged) {
-      const reasons: string[] = [];
-      if (compound_risk_buckets > 0) reasons.push(`compound risk ×${compound_risk_buckets}`);
-      if (redactions_count > 0) reasons.push(`${redactions_count} redaction${redactions_count > 1 ? 's' : ''}`);
-      return (
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800">
-          ⚠️ Privileged content detected
-          {reasons.length > 0 && <span className="text-amber-700/80">({reasons.join(' · ')})</span>}
-        </span>
-      );
-    }
-    return (
-      <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">
-        🌐 No privileged content detected
-      </span>
-    );
-  }, [state.sanitization]);
-
+  // -------------------------------------------------------------------------
+  // Render — load screen vs editor
+  // -------------------------------------------------------------------------
   return (
     <div
       className="flex flex-col h-screen"
       style={{ backgroundColor: '#FAFAF8', fontFamily: 'Georgia, "Times New Roman", serif' }}
     >
-      <header className="bg-white border-b border-gray-100 px-6 py-4">
-        <div className="mx-auto flex max-w-5xl items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl overflow-hidden shadow-sm">
-              <img src="/Heart Favicon.png" alt="Logo" className="w-full h-full object-contain" />
-            </div>
-            <div>
-              <h1 className="text-lg font-semibold text-gray-900">California Law Chatbot</h1>
-              <span className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-pink-500">
-                V2 Drafting · Anthropic Agent Loop
-              </span>
-            </div>
-          </div>
-          <div className="flex items-center gap-3 text-xs">
-            <Link to="/v2" className="rounded-full bg-gray-100 px-3 py-1.5 text-gray-700 hover:bg-gray-200">
-              ← Chat
-            </Link>
-            <span className="text-gray-400">
-              session: <span className="font-mono">{sessionId.slice(0, 14)}…</span>
-            </span>
-          </div>
+      <header className="bg-white border-b border-gray-100 px-6 py-3 flex items-center justify-between">
+        <div>
+          <h1 className="text-lg font-semibold text-gray-900">California Law Chatbot</h1>
+          <p className="text-xs font-semibold uppercase tracking-wide text-pink-500">
+            V2 Draft · edit a document
+          </p>
         </div>
+        <Link to="/v2" className="text-xs rounded-full bg-gray-100 hover:bg-gray-200 px-3 py-1.5 text-gray-700">
+          ← Chat
+        </Link>
       </header>
 
-      <main className="flex-1 overflow-hidden">
-        <div className="mx-auto h-full max-w-5xl flex flex-col px-6 py-6 overflow-y-auto">
-          {!template && (
-            <TemplatePicker templates={TEMPLATES} onSelect={onSelectTemplate} />
-          )}
-
-          {template && (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* LEFT: form */}
-              <section className="rounded-2xl border border-gray-200 bg-white p-5">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-lg font-semibold text-gray-900">{template.name}</h2>
-                  <div className="flex items-center gap-3">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        // P3.1 — pre-fill from defaultTestData for fast iteration
-                        const td = DEFAULT_TEST_DATA[template.id];
-                        if (td) {
-                          setVariables(td.variables);
-                          setInstructions(td.instructions);
-                        }
-                      }}
-                      className="text-xs rounded-full border border-pink-300 text-pink-700 hover:bg-pink-50 px-2 py-0.5"
-                      disabled={state.isStreaming}
-                      title="Pre-fill variables + instructions with a known-good example"
-                    >
-                      Use test data
-                    </button>
-                    <button
-                      onClick={() => onSelectTemplate(null as any)}
-                      className="text-xs text-pink-600 hover:underline"
-                      disabled={state.isStreaming}
-                    >
-                      Change template
-                    </button>
-                  </div>
-                </div>
-                <p className="text-xs text-gray-500 mb-4">{template.description}</p>
-
-                <form onSubmit={onSubmit} className="space-y-3">
-                  <VariableForm
-                    template={template}
-                    values={variables}
-                    onChange={(id, value) => setVariables((v) => ({ ...v, [id]: value }))}
-                    disabled={state.isStreaming}
-                  />
-
-                  <label className="block">
-                    <span className="block text-xs font-semibold text-gray-700 mb-1">
-                      Drafting Instructions <span className="text-red-500">*</span>
-                    </span>
-                    <textarea
-                      value={instructions}
-                      onChange={(e) => setInstructions(e.target.value)}
-                      placeholder="Facts of the matter and what you need analyzed / drafted. The more specific, the better the draft."
-                      rows={5}
-                      className="w-full resize-y rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-pink-400 focus:outline-none"
-                      disabled={state.isStreaming}
-                    />
-                    {/* Preview chip — scans instructions + every variable
-                        value so the attorney sees what will be tokenized
-                        across the whole submission, not just instructions. */}
-                    <div className="mt-2">
-                      <V2SanitizationChip
-                        text={[instructions, ...Object.values(variables)].filter(Boolean).join('\n')}
-                      />
-                    </div>
-                  </label>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <label className="block">
-                      <span className="block text-xs font-semibold text-gray-700 mb-1">Length</span>
-                      <select
-                        value={maxLength}
-                        onChange={(e) => setMaxLength(e.target.value as typeof maxLength)}
-                        className="w-full rounded-lg border border-gray-200 px-2 py-1.5 text-sm"
-                        disabled={state.isStreaming}
-                      >
-                        <option value="short">Short</option>
-                        <option value="medium">Medium</option>
-                        <option value="long">Long</option>
-                      </select>
-                    </label>
-                    <label className="block">
-                      <span className="block text-xs font-semibold text-gray-700 mb-1">Tone</span>
-                      <select
-                        value={tone}
-                        onChange={(e) => setTone(e.target.value as typeof tone)}
-                        className="w-full rounded-lg border border-gray-200 px-2 py-1.5 text-sm"
-                        disabled={state.isStreaming}
-                      >
-                        <option value="neutral">Neutral</option>
-                        <option value="formal">Formal</option>
-                        <option value="persuasive">Persuasive</option>
-                      </select>
-                    </label>
-                  </div>
-
-                  {requiredMissing.length > 0 && (
-                    <div className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-800">
-                      Missing required: {requiredMissing.join(', ')}
-                    </div>
-                  )}
-
-                  <button
-                    type="submit"
-                    disabled={!canSubmit}
-                    className="w-full rounded-lg bg-pink-500 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-pink-600 disabled:cursor-not-allowed disabled:bg-gray-300"
-                  >
-                    {state.isStreaming ? 'Drafting…' : `Draft ${template.name}`}
-                  </button>
-                  <p className="text-[11px] text-gray-400 text-center">
-                    Est. {template.estimatedTime}. Streams sections as the model produces them.
-                  </p>
-                </form>
-              </section>
-
-              {/* RIGHT: streaming output */}
-              <section className="rounded-2xl border border-gray-200 bg-white p-5 min-h-[500px] overflow-hidden flex flex-col">
-                <h2 className="text-lg font-semibold text-gray-900 mb-3">Draft Output</h2>
-
-                {!state.isStreaming && !state.tokens && !state.error && (
-                  <div className="text-center text-sm text-gray-400 py-12">
-                    Fill in the form and click Draft to begin. Output streams here in real time.
-                  </div>
-                )}
-
-                {(state.isStreaming || state.tokens) && (
-                  <div className="space-y-3 flex-1 overflow-y-auto">
-                    {privilegedBadge && <div>{privilegedBadge}</div>}
-
-                    {/* Section-progress bar (P3.5) — fills as the model
-                        emits `## SECTION:` markers so the attorney can
-                        see what's done vs still pending. */}
-                    {template && state.tokens && (
-                      <SectionProgressBar
-                        draftText={state.tokens}
-                        expectedSections={getExpectedSections(template.id)}
-                      />
-                    )}
-
-                    {state.toolEvents.length > 0 && (
-                      <div className="flex flex-wrap gap-1.5">
-                        {state.toolEvents.map((t) => (
-                          <ToolPill key={t.id} tool={t} />
-                        ))}
-                      </div>
-                    )}
-
-                    {state.tokens && (
-                      <div className="text-[13px] leading-relaxed text-gray-900 v2-md">
-                        <ReactMarkdown
-                          remarkPlugins={[remarkGfm]}
-                          components={{
-                            a: ({ node, ...props }) => (
-                              <a
-                                {...props}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-pink-600 underline hover:text-pink-700"
-                              />
-                            ),
-                            h2: ({ node, ...props }) => (
-                              <h2
-                                {...props}
-                                className="mt-4 mb-2 text-sm font-semibold uppercase tracking-wider text-pink-600 border-t border-gray-100 pt-3"
-                              />
-                            ),
-                          }}
-                        >
-                          {state.tokens}
-                        </ReactMarkdown>
-                        {state.isStreaming && <span className="ml-1 inline-block animate-pulse">▍</span>}
-                      </div>
-                    )}
-
-                    {!state.tokens && state.round > 0 && (
-                      <div className="text-sm text-gray-500 italic">
-                        {state.round === 1 ? 'Researching…' : `Working on round ${state.round}…`}
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {state.error && (
-                  <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 mt-3">
-                    <strong className="font-semibold">
-                      {state.error.proxy ? 'Gate error' : 'Stream error'} —{' '}
-                    </strong>
-                    <span className="font-mono text-xs">{state.error.code}</span>
-                    <div className="mt-1">{state.error.message}</div>
-                  </div>
-                )}
-
-                {state.quality_warning && (
-                  <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 mt-3">
-                    <strong className="font-semibold">Quality warning — </strong>
-                    <span className="text-xs">
-                      {state.quality_warning.issues.join(', ')}
-                      {state.quality_warning.missing_sections.length > 0 &&
-                        ` (missing: ${state.quality_warning.missing_sections.join(', ')})`}
-                    </span>
-                    <div className="text-xs mt-1 text-amber-700">
-                      The draft may be incomplete. Consider clicking Draft again.
-                    </div>
-                  </div>
-                )}
-
-                {state.done && (
-                  <div className="text-xs text-gray-400 text-right mt-3 border-t border-gray-100 pt-2">
-                    {state.done.tool_rounds} tool round{state.done.tool_rounds === 1 ? '' : 's'} ·{' '}
-                    {state.done.total_tokens.toLocaleString()} tokens ·{' '}
-                    {Math.round(state.done.elapsed_ms / 100) / 10}s ·{' '}
-                    stop={state.done.stop_reason}
-                  </div>
-                )}
-
-                {state.done && state.tokens && template && (
-                  <DocumentPreviewPanel
-                    draftText={state.tokens}
-                    template={template}
-                    variables={variables}
-                    sessionId={sessionId}
-                    userId={userId}
-                  />
-                )}
-
-                {state.done && state.tokens && template && (
-                  <ExportPanel
-                    draftText={state.tokens}
-                    template={template}
-                  />
-                )}
-
-                {state.done && state.tokens && (
-                  <VerificationPanel
-                    draftText={state.tokens}
-                    verifyHook={verifyHook}
-                  />
-                )}
-              </section>
-            </div>
-          )}
-        </div>
-      </main>
-    </div>
-  );
-};
-
-// ---------------------------------------------------------------------------
-// Subcomponents
-// ---------------------------------------------------------------------------
-
-const TemplatePicker: React.FC<{
-  templates: TemplateMeta[];
-  onSelect: (id: TemplateMeta['id']) => void;
-}> = ({ templates, onSelect }) => (
-  <div>
-    <h2 className="text-xl font-semibold text-gray-900 mb-2">Choose a document type</h2>
-    <p className="text-sm text-gray-500 mb-6">
-      Each template streams a structured California-legal draft with verified citations. The
-      drafting Skill, system prompt, and tools are selected automatically by template.
-    </p>
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      {templates.map((t) => (
-        <button
-          key={t.id}
-          type="button"
-          onClick={() => onSelect(t.id)}
-          className="text-left rounded-2xl border border-gray-200 bg-white p-5 hover:border-pink-400 hover:shadow-sm transition"
-        >
-          <div className="flex items-baseline justify-between mb-2">
-            <h3 className="text-base font-semibold text-gray-900">{t.name}</h3>
-            <span className="text-[11px] text-gray-400 font-mono">{t.id}</span>
-          </div>
-          <p className="text-xs text-gray-600 leading-relaxed mb-3">{t.description}</p>
-          <div className="text-[11px] text-pink-600 font-semibold">{t.estimatedTime}</div>
-        </button>
-      ))}
-    </div>
-  </div>
-);
-
-const VariableForm: React.FC<{
-  template: TemplateMeta;
-  values: Record<string, string>;
-  onChange: (id: string, value: string) => void;
-  disabled?: boolean;
-}> = ({ template, values, onChange, disabled }) => (
-  <div className="grid grid-cols-1 gap-2">
-    {template.variables.map((v) => (
-      <label key={v.id} className="block">
-        <span className="block text-xs font-semibold text-gray-700 mb-0.5">
-          {v.name}
-          {v.required && <span className="text-red-500"> *</span>}
-        </span>
-        {v.type === 'textarea' ? (
-          <textarea
-            value={values[v.id] ?? ''}
-            onChange={(e) => onChange(v.id, e.target.value)}
-            placeholder={v.placeholder}
-            rows={2}
-            disabled={disabled}
-            className="w-full rounded border border-gray-200 px-2 py-1 text-sm focus:border-pink-400 focus:outline-none"
-          />
-        ) : v.type === 'select' ? (
-          <select
-            value={values[v.id] ?? ''}
-            onChange={(e) => onChange(v.id, e.target.value)}
-            disabled={disabled}
-            className="w-full rounded border border-gray-200 px-2 py-1 text-sm"
-          >
-            <option value="">Select…</option>
-            {v.options?.map((o) => (
-              <option key={o} value={o}>{o}</option>
-            ))}
-          </select>
-        ) : (
-          <input
-            type={v.type === 'number' ? 'number' : v.type === 'date' ? 'date' : 'text'}
-            value={values[v.id] ?? ''}
-            onChange={(e) => onChange(v.id, e.target.value)}
-            placeholder={v.placeholder}
-            disabled={disabled}
-            className="w-full rounded border border-gray-200 px-2 py-1 text-sm focus:border-pink-400 focus:outline-none"
-          />
-        )}
-      </label>
-    ))}
-  </div>
-);
-
-/**
- * DocumentPreviewPanel (P3.2 + P3.3) — breaks the streamed draft into
- * sections after `done` and lets the attorney edit/revise per-section.
- *
- *   Edit:    inline textarea, "Save" → updates local section text
- *   Revise:  small textarea for revision instructions → POST to
- *            /api/agent/revise-section → replacement streams in
- *
- * Local state owns the sections; Export + Verification panels read from
- * a recombined text passed back up via callback. (Future: lift state if
- * we need cross-pane consistency.)
- */
-const DocumentPreviewPanel: React.FC<{
-  draftText: string;
-  template: TemplateMeta;
-  variables: Record<string, string>;
-  sessionId: string;
-  userId: string | null;
-}> = ({ draftText, template, variables, sessionId, userId }) => {
-  const initialSections = useMemo(() => parseDraftSections(draftText), [draftText]);
-  const [sections, setSections] = useState(initialSections);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [revisingId, setRevisingId] = useState<string | null>(null);
-  const [revisionDrafts, setRevisionDrafts] = useState<Record<string, string>>({});
-  const [revisionInstructions, setRevisionInstructions] = useState<Record<string, string>>({});
-  const [revisionStreamingId, setRevisionStreamingId] = useState<string | null>(null);
-  const [revisionError, setRevisionError] = useState<string | null>(null);
-
-  useEffect(() => {
-    setSections(initialSections);
-  }, [initialSections]);
-
-  const onSave = useCallback((id: string, newText: string) => {
-    setSections((prev) => prev.map((s) => (s.sectionId === id ? { ...s, content: newText, wordCount: newText.split(/\s+/).filter((w) => w).length } : s)));
-    setEditingId(null);
-  }, []);
-
-  const onRevise = useCallback(
-    async (sectionId: string) => {
-      const section = sections.find((s) => s.sectionId === sectionId);
-      if (!section) return;
-      const instructions = revisionInstructions[sectionId]?.trim();
-      if (!instructions) return;
-      setRevisionStreamingId(sectionId);
-      setRevisionError(null);
-      // Gather other sections as context
-      const fullContext = sections
-        .filter((s) => s.sectionId !== sectionId)
-        .map((s) => `## SECTION: ${s.sectionId}\n${s.content}`)
-        .join('\n\n');
-      try {
-        const resp = await fetch('/api/agent/revise-section', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            template_id: template.id,
-            section_id: sectionId,
-            section_name: section.sectionName,
-            current_text: section.content,
-            revision_instructions: instructions,
-            variables,
-            full_context: fullContext,
-            session_id: sessionId,
-            user_id: userId,
-          }),
-        });
-        if (!resp.ok || !resp.body) {
-          setRevisionError(`HTTP ${resp.status}`);
-          setRevisionStreamingId(null);
-          return;
-        }
-        const reader = resp.body.getReader();
-        const decoder = new TextDecoder('utf-8');
-        let buffer = '';
-        let newText = '';
-        while (true) {
-          const { value, done } = await reader.read();
-          if (done) break;
-          buffer += decoder.decode(value, { stream: true });
-          let sep = buffer.indexOf('\n\n');
-          while (sep !== -1) {
-            const raw = buffer.slice(0, sep);
-            buffer = buffer.slice(sep + 2);
-            const lines = raw.split('\n');
-            let kind = '';
-            let data = '';
-            for (const l of lines) {
-              if (l.startsWith('event: ')) kind = l.slice(7);
-              else if (l.startsWith('data: ')) data = l.slice(6);
-            }
-            if (kind === 'token' && data) {
-              try {
-                const payload = JSON.parse(data);
-                newText += payload.text ?? '';
-                setRevisionDrafts((d) => ({ ...d, [sectionId]: newText }));
-              } catch {}
-            }
-            sep = buffer.indexOf('\n\n');
-          }
-        }
-        // On finish, commit the revision into the section text
-        if (newText.trim()) {
-          setSections((prev) => prev.map((s) => (s.sectionId === sectionId ? { ...s, content: newText.trim(), wordCount: newText.split(/\s+/).filter((w) => w).length } : s)));
-        }
-        setRevisingId(null);
-        setRevisionStreamingId(null);
-        setRevisionDrafts((d) => {
-          const { [sectionId]: _drop, ...rest } = d;
-          return rest;
-        });
-        setRevisionInstructions((d) => ({ ...d, [sectionId]: '' }));
-      } catch (err) {
-        setRevisionError((err as Error).message);
-        setRevisionStreamingId(null);
-      }
-    },
-    [sections, revisionInstructions, template.id, variables, sessionId, userId],
-  );
-
-  return (
-    <div className="mt-4 border-t border-gray-200 pt-4">
-      <h3 className="text-sm font-semibold text-gray-900 mb-3">Document Preview ({sections.length} sections)</h3>
-      <div className="space-y-3">
-        {sections.map((s) => {
-          const isEditing = editingId === s.sectionId;
-          const isRevising = revisingId === s.sectionId;
-          const isStreaming = revisionStreamingId === s.sectionId;
-          const streamingText = revisionDrafts[s.sectionId];
-          return (
-            <div key={s.sectionId} className="rounded-lg border border-gray-200 bg-white p-3">
-              <div className="flex items-center justify-between mb-2">
-                <div className="text-[12px] font-semibold uppercase tracking-wider text-pink-600">
-                  {s.sectionName} <span className="text-gray-400 font-normal normal-case">· {s.wordCount} words</span>
-                </div>
-                <div className="flex items-center gap-2 text-[11px]">
-                  {!isEditing && !isRevising && (
-                    <>
-                      <button type="button" className="text-pink-600 hover:underline" onClick={() => setEditingId(s.sectionId)}>
-                        Edit
-                      </button>
-                      <button type="button" className="text-pink-600 hover:underline" onClick={() => setRevisingId(s.sectionId)}>
-                        Revise with AI
-                      </button>
-                    </>
-                  )}
-                </div>
+      {!documentText ? (
+        <LoadScreen
+          pasteText={pasteText}
+          setPasteText={setPasteText}
+          uploadBusy={uploadBusy}
+          uploadError={uploadError}
+          uploadedName={uploadedName}
+          fileInputRef={fileInputRef}
+          onUploadClick={onUploadClick}
+          onFileChosen={onFileChosen}
+          onLoadDocument={onLoadDocument}
+        />
+      ) : (
+        <div className="flex-1 min-h-0 flex">
+          {/* Left: the document (only changes when a proposal is approved) */}
+          <div className="flex-1 min-w-0 flex flex-col border-r border-gray-200">
+            <div className="flex items-center justify-between px-6 py-2 border-b border-gray-100 bg-white">
+              <h2 className="text-sm font-semibold text-gray-900">Document</h2>
+              <div className="flex items-center gap-2">
+                <ExportButtons documentText={documentText} disabled={state.isStreaming} />
+                <button
+                  type="button"
+                  onClick={onStartOver}
+                  className="text-xs rounded-full bg-gray-100 hover:bg-gray-200 px-3 py-1.5 text-gray-600"
+                >
+                  New document
+                </button>
               </div>
-              {isEditing ? (
-                <SectionEditor
-                  initialText={s.content}
-                  onSave={(t) => onSave(s.sectionId, t)}
-                  onCancel={() => setEditingId(null)}
-                />
-              ) : isRevising ? (
-                <SectionReviser
-                  current={s.content}
-                  instructions={revisionInstructions[s.sectionId] ?? ''}
-                  onChangeInstructions={(t) =>
-                    setRevisionInstructions((d) => ({ ...d, [s.sectionId]: t }))
-                  }
-                  onSubmit={() => onRevise(s.sectionId)}
-                  onCancel={() => {
-                    setRevisingId(null);
-                    setRevisionInstructions((d) => ({ ...d, [s.sectionId]: '' }));
-                  }}
-                  streaming={isStreaming}
-                  streamingText={streamingText}
-                  error={isStreaming ? null : revisionError}
-                />
-              ) : (
-                <div className="text-[13px] text-gray-900 v2-md">
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{s.content}</ReactMarkdown>
+            </div>
+            <div className="flex-1 overflow-y-auto px-8 py-6">
+              <article className="v2-md max-w-3xl mx-auto text-[15px] leading-relaxed text-gray-900">
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>{documentText}</ReactMarkdown>
+              </article>
+            </div>
+          </div>
+
+          {/* Right: instruction chat + proposal cards */}
+          <div className="w-[420px] shrink-0 flex flex-col bg-white">
+            <div className="px-4 py-2 border-b border-gray-100">
+              <h2 className="text-sm font-semibold text-gray-900">Tell it what to change</h2>
+              <p className="text-[11px] text-gray-500">It proposes changes — you approve each one.</p>
+            </div>
+            <div className="flex-1 overflow-y-auto px-4 py-3 space-y-4">
+              {history.length === 0 && (
+                <p className="text-xs text-gray-500">
+                  Type an instruction or a question — e.g.{' '}
+                  <em>"What would you change to protect the tenant?"</em> or{' '}
+                  <em>"Make the tone more formal."</em> Nothing changes until you approve it.
+                </p>
+              )}
+              {history.map((turn, turnIdx) => (
+                <div key={turnIdx} className="space-y-2">
+                  <div className="flex justify-end">
+                    <div className="max-w-[90%] rounded-2xl bg-pink-500 text-white px-3 py-2 text-[13px] whitespace-pre-wrap">
+                      <InstructionWithHighlight text={turn.instruction} />
+                    </div>
+                  </div>
+
+                  {turn.rawNote && (
+                    <div className="text-[12px] text-gray-600 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 whitespace-pre-wrap">
+                      {turn.rawNote}
+                    </div>
+                  )}
+
+                  {turn.proposals.length > 0 && (
+                    <ProposalList
+                      proposals={turn.proposals}
+                      onApprove={(p, override) => onApprove(turnIdx, p, override)}
+                      onReject={(p) => onReject(turnIdx, p)}
+                      onApproveAll={() => onApproveAll(turnIdx)}
+                    />
+                  )}
                 </div>
+              ))}
+              {state.isStreaming && (
+                <div className="text-[11px] text-gray-400 pl-1">Reviewing the document and drafting proposed changes…</div>
+              )}
+              {state.error && (
+                <div className="text-[11px] text-red-600 pl-1">Error: {state.error.message}</div>
               )}
             </div>
-          );
-        })}
-      </div>
+
+            <div className="border-t border-gray-100 p-3">
+              <div className="mb-2">
+                <InstructionSanitizationChips combinedText={`${documentText}\n${instruction}`} />
+              </div>
+              <textarea
+                value={instruction}
+                onChange={(e) => setInstruction(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    onSubmitInstruction();
+                  }
+                }}
+                rows={3}
+                placeholder="Describe a change, or ask what should change…"
+                disabled={state.isStreaming}
+                className="w-full resize-none rounded-lg border border-gray-200 px-3 py-2 text-[14px] focus:outline-none focus:ring-2 focus:ring-pink-300"
+              />
+              <div className="mt-2 flex justify-end">
+                <button
+                  type="button"
+                  onClick={onSubmitInstruction}
+                  disabled={!instruction.trim() || state.isStreaming}
+                  className="rounded-full bg-pink-500 hover:bg-pink-600 disabled:bg-gray-300 text-white text-sm font-semibold px-5 py-1.5"
+                >
+                  {state.isStreaming ? 'Working…' : 'Propose changes'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
-const SectionEditor: React.FC<{ initialText: string; onSave: (t: string) => void; onCancel: () => void }> = ({
-  initialText,
-  onSave,
-  onCancel,
-}) => {
-  const [text, setText] = useState(initialText);
+// ---------------------------------------------------------------------------
+// Proposal list — approve/reject each change
+// ---------------------------------------------------------------------------
+const ProposalList: React.FC<{
+  proposals: Proposal[];
+  onApprove: (p: Proposal, overrideReplace?: string) => void;
+  onReject: (p: Proposal) => void;
+  onApproveAll: () => void;
+}> = ({ proposals, onApprove, onReject, onApproveAll }) => {
+  const pending = proposals.filter((p) => p.status === 'pending').length;
   return (
-    <div>
-      <textarea
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        rows={Math.min(20, Math.max(4, Math.ceil(text.length / 80)))}
-        className="w-full rounded-lg border border-gray-200 px-3 py-2 text-[13px] font-mono focus:border-pink-400 focus:outline-none"
-      />
-      <div className="flex items-center gap-2 mt-2 text-xs">
-        <button type="button" onClick={() => onSave(text)} className="rounded bg-pink-500 hover:bg-pink-600 text-white px-3 py-1 font-semibold">
-          Save
-        </button>
-        <button type="button" onClick={onCancel} className="text-pink-600 hover:underline">
-          Cancel
-        </button>
-      </div>
-    </div>
-  );
-};
-
-const SectionReviser: React.FC<{
-  current: string;
-  instructions: string;
-  onChangeInstructions: (t: string) => void;
-  onSubmit: () => void;
-  onCancel: () => void;
-  streaming: boolean;
-  streamingText?: string;
-  error: string | null;
-}> = ({ current, instructions, onChangeInstructions, onSubmit, onCancel, streaming, streamingText, error }) => (
-  <div className="space-y-2">
-    <div className="text-[12px] text-gray-500 italic">Current:</div>
-    <div className="text-[13px] text-gray-700 v2-md bg-gray-50 rounded p-2 max-h-32 overflow-y-auto">
-      <ReactMarkdown remarkPlugins={[remarkGfm]}>{current}</ReactMarkdown>
-    </div>
-    {!streaming ? (
-      <>
-        <textarea
-          value={instructions}
-          onChange={(e) => onChangeInstructions(e.target.value)}
-          placeholder="Tell the model what to change — e.g., 'cut to 200 words', 'add a citation to Williams v. Superior Court', 'change tone to more aggressive'."
-          rows={3}
-          className="w-full rounded-lg border border-gray-200 px-3 py-2 text-[13px] focus:border-pink-400 focus:outline-none"
-        />
-        <div className="flex items-center gap-2 text-xs">
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <span className="text-[11px] font-semibold text-gray-700">
+          {proposals.length} proposed change{proposals.length > 1 ? 's' : ''}
+          {pending > 0 ? ` · ${pending} to review` : ' · all reviewed'}
+        </span>
+        {pending > 0 && (
           <button
             type="button"
-            onClick={onSubmit}
-            disabled={!instructions.trim()}
-            className="rounded bg-pink-500 hover:bg-pink-600 disabled:bg-gray-300 text-white px-3 py-1 font-semibold"
+            onClick={onApproveAll}
+            className="text-[11px] font-semibold text-pink-600 hover:text-pink-700"
           >
-            Revise
+            Approve all
           </button>
-          <button type="button" onClick={onCancel} className="text-pink-600 hover:underline">
-            Cancel
-          </button>
-        </div>
-      </>
-    ) : (
-      <div className="text-[13px] text-gray-900 v2-md bg-pink-50 border border-pink-200 rounded p-2">
-        <div className="text-[10px] font-semibold uppercase tracking-wider text-pink-600 mb-1">
-          Streaming revision…
-        </div>
-        <ReactMarkdown remarkPlugins={[remarkGfm]}>{streamingText ?? '…'}</ReactMarkdown>
-        <span className="inline-block animate-pulse">▍</span>
+        )}
       </div>
-    )}
-    {error && <div className="text-[11px] text-red-600">Revision error: {error}</div>}
-  </div>
-);
+      {proposals.map((p) => (
+        <ProposalCard
+          key={p.id}
+          proposal={p}
+          onApprove={(override) => onApprove(p, override)}
+          onReject={() => onReject(p)}
+        />
+      ))}
+    </div>
+  );
+};
 
-/**
- * Parse the streamed draft text into sections by `## SECTION: <id>`
- * markers. Returns the sections in document order. Pre-section preamble
- * (the model's narration before the first SECTION marker) is dropped.
- */
-function parseDraftSections(text: string): Array<{ sectionId: string; sectionName: string; content: string; wordCount: number }> {
-  const re = /## SECTION: (\w+)\s*\n/g;
-  const markers: Array<{ id: string; start: number; end: number }> = [];
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(text)) !== null) {
-    markers.push({ id: m[1], start: m.index, end: re.lastIndex });
-  }
-  const out: Array<{ sectionId: string; sectionName: string; content: string; wordCount: number }> = [];
-  for (let i = 0; i < markers.length; i += 1) {
-    const head = markers[i];
-    const tailStart = i + 1 < markers.length ? markers[i + 1].start : text.length;
-    const content = text.slice(head.end, tailStart).trim();
-    out.push({
-      sectionId: head.id,
-      sectionName: head.id.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
-      content,
-      wordCount: content.split(/\s+/).filter((w) => w).length,
-    });
-  }
-  return out;
-}
+const ProposalCard: React.FC<{
+  proposal: Proposal;
+  onApprove: (overrideReplace?: string) => void;
+  onReject: () => void;
+}> = ({ proposal, onApprove, onReject }) => {
+  const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(proposal.replace);
+  const statusBadge = {
+    pending: null,
+    applied: <span className="text-[10px] font-semibold text-emerald-700">✓ Applied</span>,
+    rejected: <span className="text-[10px] font-semibold text-gray-400">Skipped</span>,
+    unmatched: <span className="text-[10px] font-semibold text-amber-700">⚠ Couldn’t locate text — apply manually</span>,
+  }[proposal.status];
 
-/**
- * Export panel — three buttons (docx / pdf / html) that POST the parsed
- * draft to /api/export-document and trigger a download.
- */
-const ExportPanel: React.FC<{ draftText: string; template: TemplateMeta }> = ({ draftText, template }) => {
+  return (
+    <div
+      className={`rounded-lg border px-3 py-2 text-[12px] ${
+        proposal.status === 'applied'
+          ? 'border-emerald-200 bg-emerald-50/50'
+          : proposal.status === 'rejected'
+          ? 'border-gray-200 bg-gray-50 opacity-70'
+          : proposal.status === 'unmatched'
+          ? 'border-amber-200 bg-amber-50'
+          : 'border-gray-200 bg-white'
+      }`}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <div className="font-semibold text-gray-800">{proposal.section}</div>
+          <div className="text-gray-700">{proposal.description}</div>
+          {proposal.rationale && <div className="text-[11px] text-gray-500 mt-0.5">{proposal.rationale}</div>}
+        </div>
+        {statusBadge}
+      </div>
+
+      {(proposal.find || proposal.replace) && (
+        <button
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          className="mt-1 text-[10px] text-gray-400 hover:text-gray-600"
+        >
+          {open ? 'Hide before/after' : 'Show before/after'}
+        </button>
+      )}
+      {open && (
+        <div className="mt-1 space-y-1">
+          <div className="rounded bg-red-50 border border-red-100 px-2 py-1 text-[11px] text-red-900 line-through whitespace-pre-wrap">
+            {proposal.find.slice(0, 400)}
+          </div>
+          <div className="rounded bg-emerald-50 border border-emerald-100 px-2 py-1 text-[11px] text-emerald-900 whitespace-pre-wrap">
+            {proposal.replace.slice(0, 400)}
+          </div>
+        </div>
+      )}
+
+      {/* Modify mode — edit the replacement text before applying. */}
+      {proposal.status === 'pending' && editing && (
+        <div className="mt-2 space-y-1">
+          <label className="text-[10px] text-gray-500">Edit the new text, then Apply:</label>
+          <textarea
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            rows={Math.min(8, Math.max(3, Math.ceil(draft.length / 60)))}
+            className="w-full resize-y rounded border border-gray-300 px-2 py-1 text-[12px] focus:outline-none focus:ring-2 focus:ring-pink-300"
+          />
+        </div>
+      )}
+
+      {proposal.status === 'pending' && (
+        <div className="mt-2 flex items-center gap-2">
+          {editing ? (
+            <>
+              <button
+                type="button"
+                onClick={() => onApprove(draft)}
+                className="rounded-full bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-semibold px-3 py-1"
+              >
+                ✓ Apply edited
+              </button>
+              <button
+                type="button"
+                onClick={() => { setEditing(false); setDraft(proposal.replace); }}
+                className="rounded-full bg-gray-100 hover:bg-gray-200 text-gray-700 text-[11px] font-semibold px-3 py-1"
+              >
+                Cancel
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={() => onApprove()}
+                className="rounded-full bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-semibold px-3 py-1"
+              >
+                ✓ Approve
+              </button>
+              <button
+                type="button"
+                onClick={() => { setDraft(proposal.replace); setEditing(true); setOpen(true); }}
+                className="rounded-full bg-indigo-100 hover:bg-indigo-200 text-indigo-700 text-[11px] font-semibold px-3 py-1"
+              >
+                ✎ Modify
+              </button>
+              <button
+                type="button"
+                onClick={onReject}
+                className="rounded-full bg-gray-100 hover:bg-gray-200 text-gray-700 text-[11px] font-semibold px-3 py-1"
+              >
+                ✗ Reject
+              </button>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ---------------------------------------------------------------------------
+// Load screen
+// ---------------------------------------------------------------------------
+const LoadScreen: React.FC<{
+  pasteText: string;
+  setPasteText: (s: string) => void;
+  uploadBusy: boolean;
+  uploadError: string | null;
+  uploadedName: string | null;
+  fileInputRef: React.RefObject<HTMLInputElement>;
+  onUploadClick: () => void;
+  onFileChosen: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onLoadDocument: () => void;
+}> = ({
+  pasteText, setPasteText, uploadBusy, uploadError, uploadedName,
+  fileInputRef, onUploadClick, onFileChosen, onLoadDocument,
+}) => {
+  const { preview } = useV2SanitizationPreview(pasteText);
+  const detectionCount = preview.tokens.length;
+  return (
+    <div className="flex-1 overflow-y-auto">
+      <div className="max-w-3xl mx-auto px-6 py-10">
+        <h2 className="text-xl font-semibold text-gray-900 mb-1">Start with your document</h2>
+        <p className="text-sm text-gray-600 mb-5">
+          Paste your document below, or upload a file (.txt, .doc, .docx, .pdf). Then you'll tell the
+          assistant what to change — it proposes edits and you approve each one. Private details are
+          replaced with placeholders before anything is sent.
+        </p>
+
+        <div className="flex items-center gap-3 mb-3">
+          <button
+            type="button"
+            onClick={onUploadClick}
+            disabled={uploadBusy}
+            className="rounded-full bg-gray-100 hover:bg-gray-200 disabled:opacity-60 text-gray-800 text-sm font-semibold px-4 py-2"
+          >
+            {uploadBusy ? 'Reading file…' : '⬆ Upload a file'}
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept={ACCEPTED_FILE_TYPES}
+            onChange={onFileChosen}
+            className="hidden"
+          />
+          {uploadedName && (
+            <span className="text-xs text-gray-500">Loaded from <strong>{uploadedName}</strong></span>
+          )}
+        </div>
+
+        <textarea
+          value={pasteText}
+          onChange={(e) => setPasteText(e.target.value)}
+          rows={16}
+          placeholder="Paste your document text here…"
+          className="w-full resize-y rounded-lg border border-gray-200 px-4 py-3 text-[14px] leading-relaxed focus:outline-none focus:ring-2 focus:ring-pink-300"
+          style={{ fontFamily: 'Georgia, serif' }}
+        />
+
+        {uploadError && <p className="mt-2 text-xs text-amber-700">{uploadError}</p>}
+
+        <div className="mt-3 flex items-center justify-between">
+          <span className="text-xs text-gray-500">
+            {pasteText.trim().length > 0
+              ? `${pasteText.trim().split(/\s+/).length} words${detectionCount > 0 ? ` · ${detectionCount} private item${detectionCount > 1 ? 's' : ''} will be protected` : ''}`
+              : 'Nothing loaded yet.'}
+          </span>
+          <button
+            type="button"
+            onClick={onLoadDocument}
+            disabled={pasteText.trim().length < 10}
+            className="rounded-full bg-pink-500 hover:bg-pink-600 disabled:bg-gray-300 text-white text-sm font-semibold px-6 py-2"
+          >
+            Load document →
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ---------------------------------------------------------------------------
+// Instruction sanitization chips (with "not private" dismiss). Scrollable so
+// every detection in a long document is reviewable.
+// ---------------------------------------------------------------------------
+const InstructionSanitizationChips: React.FC<{ combinedText: string }> = ({ combinedText }) => {
+  const { preview, hasDetections } = useV2SanitizationPreview(combinedText);
+  if (!hasDetections) {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700">
+        🔒 Nothing private detected — safe to send
+      </span>
+    );
+  }
+  return (
+    <div className="space-y-1">
+      <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-semibold text-amber-800">
+        🔒 {preview.tokens.length} item{preview.tokens.length > 1 ? 's' : ''} protected before sending
+        {preview.tokens.length > 8 && (
+          <span className="font-normal text-amber-700/70">· scroll to review all</span>
+        )}
+      </span>
+      <div className="flex flex-wrap gap-1 max-h-28 overflow-y-auto pr-1">
+        {preview.tokens.map((t) => (
+          <span
+            key={t.value}
+            className="inline-flex items-center gap-1 rounded bg-amber-50 border border-amber-200 px-1.5 py-0.5 text-[10px] text-amber-900"
+            title={`Will be sent as ${t.value}`}
+          >
+            <span className="font-mono">{t.value}</span>
+            <span className="text-amber-700/70">= {t.raw.slice(0, 20)}{t.raw.length > 20 ? '…' : ''}</span>
+            <button
+              type="button"
+              onClick={() => addToUserAllowlist(t.raw)}
+              title={`Not private — always send "${t.raw.slice(0, 40)}" as-is (this device).`}
+              aria-label={`Mark "${t.raw}" as not private`}
+              className="ml-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full text-amber-700/60 hover:bg-amber-200 hover:text-amber-900"
+            >
+              ×
+            </button>
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+// Highlight protected values inside the attorney's instruction bubble.
+const InstructionWithHighlight: React.FC<{ text: string }> = ({ text }) => {
+  const { getMap, tokenCount } = useSanitizer();
+  const nodes = useMemo(() => {
+    void tokenCount;
+    const values = Array.from(getMap().values())
+      .filter((v) => v && v.trim().length > 1)
+      .sort((a, b) => b.length - a.length);
+    if (values.length === 0) return null;
+    const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const re = new RegExp(`(${values.map(esc).join('|')})`, 'g');
+    const parts = text.split(re);
+    if (parts.length === 1) return null;
+    const set = new Set(values);
+    return parts.map((p, i) =>
+      set.has(p) ? (
+        <mark key={i} className="rounded px-0.5 bg-yellow-300 text-gray-900" title="Protected — sent as a token">{p}</mark>
+      ) : (
+        <React.Fragment key={i}>{p}</React.Fragment>
+      )
+    );
+  }, [text, getMap, tokenCount]);
+  return <>{nodes ?? text}</>;
+};
+
+// ---------------------------------------------------------------------------
+// Export — POST the current document to /api/export-document as a single
+// section and download the result.
+// ---------------------------------------------------------------------------
+const ExportButtons: React.FC<{ documentText: string; disabled?: boolean }> = ({ documentText, disabled }) => {
   const [busy, setBusy] = useState<null | 'docx' | 'pdf' | 'html'>(null);
-  const [error, setError] = useState<string | null>(null);
-
   const onExport = useCallback(
     async (format: 'docx' | 'pdf' | 'html') => {
       setBusy(format);
-      setError(null);
       try {
-        const sections = parseDraftSections(draftText);
-        if (sections.length === 0) {
-          setError('Could not parse any sections from the draft.');
-          setBusy(null);
-          return;
-        }
         const doc = {
           id: `v2_doc_${Date.now()}`,
-          templateId: template.id,
-          templateName: template.name,
+          templateId: 'edited_document',
+          templateName: 'Document',
           createdAt: new Date().toISOString(),
-          sections: sections.map((s) => ({
-            sectionId: s.sectionId,
-            sectionName: s.sectionName,
-            content: s.content,
-            wordCount: s.wordCount,
-            citations: [],
-            generatedAt: new Date().toISOString(),
-            revisionCount: 0,
-          })),
+          sections: [
+            {
+              sectionId: 'body',
+              sectionName: 'Document',
+              content: documentText,
+              wordCount: documentText.split(/\s+/).length,
+              citations: [],
+              generatedAt: new Date().toISOString(),
+              revisionCount: 0,
+            },
+          ],
           formatting: {
             fontFamily: 'Times New Roman',
             fontSize: 12,
-            lineSpacing: template.id === 'legal_memo' ? 'double' : 'single',
+            lineSpacing: 'single',
             margins: { top: 1, bottom: 1, left: 1, right: 1 },
-            pageNumbers: template.id === 'legal_memo' || template.id === 'motion_compel',
+            pageNumbers: false,
           },
         };
         const resp = await fetch('/api/export-document', {
@@ -957,335 +803,36 @@ const ExportPanel: React.FC<{ draftText: string; template: TemplateMeta }> = ({ 
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ document: doc, format }),
         });
-        if (!resp.ok) {
-          const errBody = await resp.text().catch(() => '');
-          setError(`Export failed: HTTP ${resp.status} ${errBody.slice(0, 120)}`);
-          setBusy(null);
-          return;
-        }
+        if (!resp.ok) return;
         const blob = await resp.blob();
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `${template.id}-${Date.now()}.${format}`;
+        a.download = `document-${Date.now()}.${format}`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
-      } catch (err) {
-        setError((err as Error).message);
       } finally {
         setBusy(null);
       }
     },
-    [draftText, template],
+    [documentText],
   );
-
   return (
-    <div className="mt-4 border-t border-gray-200 pt-4">
-      <div className="flex items-center justify-between mb-2">
-        <h3 className="text-sm font-semibold text-gray-900">Export</h3>
-      </div>
-      <div className="flex items-center gap-2">
-        {(['docx', 'pdf', 'html'] as const).map((fmt) => (
-          <button
-            key={fmt}
-            type="button"
-            onClick={() => onExport(fmt)}
-            disabled={busy !== null}
-            className="rounded-full bg-pink-500 hover:bg-pink-600 disabled:bg-gray-300 text-white text-xs font-semibold px-3 py-1.5"
-          >
-            {busy === fmt ? 'Generating…' : `Export ${fmt.toUpperCase()}`}
-          </button>
-        ))}
-      </div>
-      {error && (
-        <div className="mt-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-800">{error}</div>
-      )}
+    <div className="flex items-center gap-1.5">
+      {(['docx', 'pdf', 'html'] as const).map((fmt) => (
+        <button
+          key={fmt}
+          type="button"
+          onClick={() => onExport(fmt)}
+          disabled={disabled || busy !== null}
+          className="rounded-full bg-pink-500 hover:bg-pink-600 disabled:bg-gray-300 text-white text-[11px] font-semibold px-2.5 py-1"
+        >
+          {busy === fmt ? '…' : fmt.toUpperCase()}
+        </button>
+      ))}
     </div>
-  );
-};
-
-/**
- * Verification panel — appears after a draft completes. Triggers the
- * Phase 3 verifier sub-agent over every citation found in the streamed
- * draft text. Renders per-citation rows progressively: pending →
- * verified / fake / error. Mean latency ~18s/citation, so the user
- * sees citations resolve one-by-one over a few minutes.
- */
-const VerificationPanel: React.FC<{
-  draftText: string;
-  verifyHook: ReturnType<typeof useV2VerifyStream>;
-}> = ({ draftText, verifyHook }) => {
-  const { state, verify, reset } = verifyHook;
-
-  return (
-    <div className="mt-4 border-t border-gray-200 pt-4">
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-semibold text-gray-900">Citation Verification</h3>
-        {!state.isStreaming && !state.done && !state.manifest && (
-          <button
-            type="button"
-            onClick={() => void verify(draftText)}
-            className="rounded-full bg-pink-500 hover:bg-pink-600 text-white text-xs font-semibold px-3 py-1.5"
-          >
-            Verify Citations
-          </button>
-        )}
-        {(state.done || state.isStreaming) && (
-          <button
-            type="button"
-            onClick={() => {
-              reset();
-              void verify(draftText);
-            }}
-            className="text-xs text-pink-600 hover:underline"
-            disabled={state.isStreaming}
-          >
-            Re-run
-          </button>
-        )}
-      </div>
-
-      {!state.manifest && !state.isStreaming && (
-        <p className="text-xs text-gray-500">
-          Click <strong>Verify Citations</strong> to run an adversarial check on every
-          case citation in this draft. Each citation is verified by a separate
-          agent that uses CourtListener and CEB; ~18s per citation.
-        </p>
-      )}
-
-      {state.manifest && state.manifest.length === 0 && (
-        <p className="text-xs text-gray-500">No case citations found in the draft.</p>
-      )}
-
-      {state.verdicts.length > 0 && (
-        <div className="space-y-1.5">
-          {state.verdicts.map((v) => (
-            <VerdictRow key={v.index} verdict={v} />
-          ))}
-        </div>
-      )}
-
-      {state.done && (
-        <>
-          <div className="mt-3 rounded-lg bg-gray-50 border border-gray-200 px-3 py-2 text-xs text-gray-700 flex items-center justify-between">
-            <div>
-              <strong className="text-gray-900">{state.done.verified}</strong> verified ·{' '}
-              <strong className="text-gray-900">{state.done.fake}</strong> not verified ·{' '}
-              <strong className="text-gray-900">{state.done.total}</strong> total
-            </div>
-            <div className="text-gray-400">
-              {Math.round(state.done.elapsed_ms / 1000)}s
-            </div>
-          </div>
-          {/* P4.1 — confidence gate verdict */}
-          <ConfidenceChip verdicts={state.verdicts} />
-        </>
-      )}
-
-      {state.error && (
-        <div className="mt-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-800">
-          Verification error — {state.error.message}
-        </div>
-      )}
-    </div>
-  );
-};
-
-/**
- * ConfidenceChip — surfaces the aggregate confidence gate (P4.1) after
- * verification completes. Color-coded badge + caveat.
- */
-const ConfidenceChip: React.FC<{ verdicts: V2Verdict[] }> = ({ verdicts }) => {
-  const result = useMemo(() => gateOnVerdicts(verdicts), [verdicts]);
-  const palette: Record<typeof result.level, string> = {
-    high: 'bg-emerald-50 text-emerald-800 border-emerald-200',
-    medium: 'bg-amber-50 text-amber-800 border-amber-200',
-    low: 'bg-orange-50 text-orange-800 border-orange-200',
-    fail: 'bg-red-50 text-red-800 border-red-200',
-  };
-  const icon: Record<typeof result.level, string> = {
-    high: '✓',
-    medium: '⚠',
-    low: '⚠',
-    fail: '✗',
-  };
-  return (
-    <div className={`mt-2 rounded-lg border px-3 py-2 text-xs ${palette[result.level]}`}>
-      <div className="flex items-center gap-2 font-semibold">
-        <span>{icon[result.level]}</span>
-        <span className="uppercase tracking-wider">Confidence: {result.level}</span>
-        {typeof result.score === 'number' && (
-          <span className="font-mono text-[10px] opacity-70">({result.score.toFixed(2)})</span>
-        )}
-      </div>
-      <div className="mt-0.5 text-[11px] opacity-90">{result.caveat}</div>
-    </div>
-  );
-};
-
-const VerdictRow: React.FC<{ verdict: V2Verdict }> = ({ verdict }) => {
-  if (verdict.status === 'pending') {
-    return (
-      <div className="flex items-start gap-2 text-xs text-gray-500">
-        <span className="animate-spin">⟳</span>
-        <span className="flex-1 font-mono text-[11px]">{verdict.citation.slice(0, 100)}</span>
-      </div>
-    );
-  }
-  if (verdict.status === 'error') {
-    return (
-      <div className="flex items-start gap-2 text-xs text-red-700">
-        <span>✗</span>
-        <div className="flex-1">
-          <div className="font-mono text-[11px]">{verdict.citation.slice(0, 100)}</div>
-          <div className="text-[11px] text-red-600">Error: {verdict.error}</div>
-        </div>
-      </div>
-    );
-  }
-  const isReal = verdict.status === 'real';
-  const isAmbiguous = verdict.status === 'ambiguous';
-  const tag = isReal ? '✓' : isAmbiguous ? '?' : '✗';
-  const color = isReal
-    ? 'text-emerald-700'
-    : isAmbiguous
-    ? 'text-amber-700'
-    : 'text-red-700';
-  const bg = isReal
-    ? 'bg-emerald-50 border-emerald-200'
-    : isAmbiguous
-    ? 'bg-amber-50 border-amber-200'
-    : 'bg-red-50 border-red-200';
-  return (
-    <div className={`flex items-start gap-2 text-xs rounded border ${bg} px-2 py-1.5`}>
-      <span className={`${color} font-bold`}>{tag}</span>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-baseline gap-2">
-          <span className="font-mono text-[11px] text-gray-700 truncate">{verdict.citation}</span>
-          {typeof verdict.confidence === 'number' && (
-            <span className="text-[10px] text-gray-400 shrink-0">
-              conf {verdict.confidence.toFixed(2)}
-            </span>
-          )}
-          {isAmbiguous && (
-            <span className="text-[10px] font-semibold text-amber-800 shrink-0">VERIFY MANUALLY</span>
-          )}
-        </div>
-        {verdict.case_name && verdict.match_url && isReal && (
-          <a
-            href={verdict.match_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-[11px] text-pink-600 underline hover:text-pink-700"
-          >
-            {verdict.case_name}
-          </a>
-        )}
-        {verdict.reasoning && (
-          <div className="text-[11px] text-gray-600 mt-0.5">{verdict.reasoning}</div>
-        )}
-      </div>
-    </div>
-  );
-};
-
-/**
- * Expected section IDs per template — mirrors EXPECTED_SECTIONS in
- * api/agent/draft-stream.ts. Used by SectionProgressBar.
- */
-function getExpectedSections(templateId: string): string[] {
-  switch (templateId) {
-    case 'legal_memo':
-      return ['header', 'question_presented', 'brief_answer', 'facts', 'analysis', 'conclusion'];
-    case 'demand_letter':
-      return ['letterhead', 'introduction', 'factual_background', 'legal_basis', 'demand', 'consequences', 'closing'];
-    case 'client_letter':
-      return ['letterhead', 'introduction', 'facts_summary', 'legal_analysis', 'options', 'next_steps', 'closing'];
-    case 'motion_compel':
-      return ['caption', 'notice_of_motion', 'mpa_introduction', 'mpa_facts', 'mpa_argument', 'mpa_prayer', 'declaration', 'separate_statement', 'pos_reference', 'signature'];
-    default:
-      return [];
-  }
-}
-
-/**
- * Section progress bar (P3.5) — for each expected section, render a
- * tick that fills as the model emits `## SECTION: <id>` for that
- * section. Adapted from V1's OrchestrationVisual concept.
- */
-const SectionProgressBar: React.FC<{ draftText: string; expectedSections: string[] }> = ({
-  draftText,
-  expectedSections,
-}) => {
-  if (expectedSections.length === 0) return null;
-  // Build emitted-set from the streaming text
-  const emitted = new Set<string>();
-  const re = /## SECTION: (\w+)/g;
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(draftText)) !== null) emitted.add(m[1]);
-  const completed = expectedSections.filter((s) => emitted.has(s)).length;
-  return (
-    <div className="rounded-lg bg-gray-50 border border-gray-200 px-3 py-2">
-      <div className="flex items-center justify-between mb-1.5">
-        <div className="text-[11px] font-semibold uppercase tracking-wider text-gray-700">
-          Section progress
-        </div>
-        <div className="text-[11px] text-gray-500 font-mono">
-          {completed} / {expectedSections.length}
-        </div>
-      </div>
-      <div className="flex items-center gap-0.5">
-        {expectedSections.map((s) => {
-          const done = emitted.has(s);
-          const inProgress = !done && emitted.size === expectedSections.indexOf(s);
-          return (
-            <div
-              key={s}
-              className={`flex-1 h-1.5 rounded-sm ${
-                done ? 'bg-pink-500' : inProgress ? 'bg-pink-300 animate-pulse' : 'bg-gray-200'
-              }`}
-              title={s}
-            />
-          );
-        })}
-      </div>
-      <div className="flex items-center justify-between text-[10px] text-gray-400 mt-1">
-        <span className="truncate" title={expectedSections.join(', ')}>
-          {expectedSections[0]?.replace(/_/g, ' ')}
-        </span>
-        <span className="truncate" title={expectedSections[expectedSections.length - 1]}>
-          {expectedSections[expectedSections.length - 1]?.replace(/_/g, ' ')}
-        </span>
-      </div>
-    </div>
-  );
-};
-
-const ToolPill: React.FC<{ tool: { name: string; status: string; elapsed_ms?: number } }> = ({
-  tool,
-}) => {
-  const name = toolHumanName(tool.name);
-  if (tool.status === 'running') {
-    return (
-      <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-3 py-1 text-xs text-blue-700 border border-blue-200">
-        <span className="animate-spin">⟳</span> Searching {name}…
-      </span>
-    );
-  }
-  if (tool.status === 'error') {
-    return (
-      <span className="inline-flex items-center gap-1.5 rounded-full bg-red-50 px-3 py-1 text-xs text-red-700 border border-red-200">
-        ✗ {name} failed
-      </span>
-    );
-  }
-  return (
-    <span className="inline-flex items-center gap-1.5 rounded-full bg-gray-50 px-3 py-1 text-xs text-gray-700 border border-gray-200">
-      ✓ {name}
-      {typeof tool.elapsed_ms === 'number' && ` · ${Math.round(tool.elapsed_ms)}ms`}
-    </span>
   );
 };
 

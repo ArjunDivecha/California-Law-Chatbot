@@ -7,6 +7,8 @@
  * LegiScan key required (`LEGISCAN_API_KEY`). Returns the top N bill hits.
  */
 
+import { fetchWithTimeout } from './_http.js';
+
 export interface LegiscanSearchInput {
   /** Free-text query (e.g., "tenant relocation Oakland", "AB 1482"). Required. */
   query: string;
@@ -64,7 +66,7 @@ export async function legiscanSearch(
   const url = `https://api.legiscan.com/?key=${encodeURIComponent(apiKey)}&op=search&state=${encodeURIComponent(state)}&query=${encodeURIComponent(q)}`;
 
   const t0 = performance.now();
-  const resp = await fetch(url);
+  const resp = await fetchWithTimeout(url);
   const body = (await resp.json().catch(() => ({}))) as LegiscanSearchResponse;
   if (!resp.ok) {
     throw new Error(`legiscanSearch HTTP ${resp.status}: ${JSON.stringify(body).slice(0, 200)}`);
