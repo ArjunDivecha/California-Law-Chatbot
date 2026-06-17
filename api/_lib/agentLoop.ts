@@ -366,9 +366,18 @@ export function sanitizeToolOutput(
     options?.toolName === 'citation_verify' ||
     options?.toolName === 'ceb_search';
   const safeRanges = captionAware ? findCaptionSafeRanges(content) : [];
+  // Dates in tool OUTPUT are public-record (legislative action/effective
+  // dates, case dates, web results). The client's own dates were tokenized
+  // before any query reached a tool, so a tool result never carries the
+  // client's raw date — redacting here only strips citable public dates and
+  // pushes the model toward stale memory (reported: legislative dates blanked,
+  // EO dates confabulated). Exempt `date` from tool-output redaction only;
+  // input-side date tokenization is unchanged, and ssn/phone/email/etc. in a
+  // tool output still get redacted.
+  const highRiskNoDates = highRiskRaw.filter((s) => s.category !== 'date');
   const highRisk = captionAware
-    ? highRiskRaw.filter((s) => !(s.category === 'name' && spanInsideAnyRange(s, safeRanges)))
-    : highRiskRaw;
+    ? highRiskNoDates.filter((s) => !(s.category === 'name' && spanInsideAnyRange(s, safeRanges)))
+    : highRiskNoDates;
 
   if (highRisk.length === 0 && compoundBuckets < COMPOUND_RISK_BUCKET_THRESHOLD) {
     return { content, attestation: null };

@@ -91,6 +91,24 @@ export const HIGH_RISK_CATEGORIES: ReadonlySet<SpanCategory> = new Set<SpanCateg
 ]);
 
 /**
+ * Categories the per-device user allowlist may NEVER override. The allowlist
+ * exists to clear false positives (a public name, a bill-subject date, a
+ * courthouse address) — but these financial / medical / government-ID values
+ * are essentially never legitimately "public", so even an explicit allowlist
+ * entry must not let them reach the wire raw. Enforced by BOTH the browser
+ * wire-guard and the server backstop, so the allowlist can never become an
+ * SSN / card / bank-account bypass.
+ */
+export const NEVER_ALLOWLISTABLE_CATEGORIES: ReadonlySet<SpanCategory> = new Set<SpanCategory>([
+  'ssn',
+  'tin',
+  'credit_card',
+  'bank_account',
+  'medical_record',
+  'driver_license',
+]);
+
+/**
  * Minimum confidence floor contributed by each name-detection heuristic
  * signal. Deterministic regex patterns (non-name) are treated as 1.0 and
  * do not reduce confidence. OPF ML detections are also treated as 1.0 —

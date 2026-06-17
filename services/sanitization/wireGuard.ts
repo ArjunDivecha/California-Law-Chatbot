@@ -25,7 +25,27 @@
  */
 
 import { runPatterns } from '../../api/_shared/sanitization/patterns.js';
-import { HIGH_RISK_CATEGORIES } from '../../api/_shared/sanitization/index.js';
+import { HIGH_RISK_CATEGORIES, NEVER_ALLOWLISTABLE_CATEGORIES } from '../../api/_shared/sanitization/index.js';
+import { getUserAllowlistLower } from './userAllowlist.js';
+
+/**
+ * A wire-guard regex match is exempt when the attorney explicitly marked it
+ * "not privileged" (the per-device user allowlist). Without this, the
+ * allowlist "x" silently fails: `tokenizeForWire` correctly leaves the term
+ * raw, but this guard then blocks the send. The wire-guard regex and the
+ * GLiNER preview can pick slightly different span boundaries for the same
+ * value (e.g. "December 11, 2025" vs "11, 2025"), so accept overlap in either
+ * direction with a small length floor to avoid trivial matches.
+ */
+function coveredByUserAllowlist(raw: string, allow: ReadonlySet<string>): boolean {
+  const r = raw.trim().toLowerCase();
+  if (!r) return false;
+  if (allow.has(r)) return true;
+  for (const a of allow) {
+    if (a.length >= 3 && (a.includes(r) || r.includes(a))) return true;
+  }
+  return false;
+}
 
 export class WireGuardError extends Error {
   public readonly categories: string[];
@@ -52,7 +72,18 @@ export class WireGuardError extends Error {
 export function assertNoRawPii(body: string | object): void {
   const text = typeof body === 'string' ? body : JSON.stringify(body);
   if (!text) return;
-  const matches = runPatterns(text).filter((m) => HIGH_RISK_CATEGORIES.has(m.category));
+  const allow = getUserAllowlistLower();
+  const matches = runPatterns(text)
+    .filter((m) => HIGH_RISK_CATEGORIES.has(m.category))
+    // Honor the attorney's per-device allowlist — a term marked "not
+    // privileged" is intentionally sent raw and must not trip the guard.
+    // Catastrophic categories (ssn/cards/bank/medical/dl) can NEVER be
+    // allowlisted, so they always block regardless of the allowlist.
+    .filter(
+      (m) =>
+        NEVER_ALLOWLISTABLE_CATEGORIES.has(m.category) ||
+        !coveredByUserAllowlist(m.raw, allow),
+    );
   if (matches.length === 0) return;
   const cats = Array.from(new Set(matches.map((m) => m.category)));
   throw new WireGuardError(cats, matches.length);

@@ -45,6 +45,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     user_text?: string;
     model?: string;
     system_prompt?: string;
+    user_allowlist?: string[];
   };
 
   const sessionId = (body.session_id ?? '').trim();
@@ -64,6 +65,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     user_id: userId,
     model: body.model,
     system_prompt: body.system_prompt,
+    user_allowlist: body.user_allowlist,
   });
 
   if (result.ok === false) {

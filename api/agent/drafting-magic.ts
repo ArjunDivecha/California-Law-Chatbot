@@ -67,6 +67,7 @@ interface DraftingMagicBody {
   output_type?: 'draft' | 'review_memo';
   session_id?: string;
   user_id?: string | null;
+  user_allowlist?: string[];
 }
 
 const DRAFTING_MAGIC_SYSTEM_PROMPT_ADDENDUM = `
@@ -184,6 +185,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       session_id: sessionId,
       user_text: userText,
       user_id: userId,
+      user_allowlist: body.user_allowlist,
       system_prompt: systemPrompt,
     })) {
       writeEvent(event.kind, event);

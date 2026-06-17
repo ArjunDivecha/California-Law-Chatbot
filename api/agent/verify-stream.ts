@@ -56,6 +56,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const body = (req.body ?? {}) as {
     text?: string;
+    user_allowlist?: string[];
   };
 
   const text = (body.text ?? '').trim();
@@ -67,7 +68,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Server-side regex backstop. Browser is expected to tokenize via
   // useV2VerifyStream → tokenizeForWire before send (per 6th-addendum
   // Option C). If raw PII slips through, fail-closed with 503.
-  const detection = detectPiiServerBackstop(text);
+  const userAllow = new Set(
+    (Array.isArray(body.user_allowlist) ? body.user_allowlist : [])
+      .map((s) => String(s).trim().toLowerCase())
+      .filter(Boolean),
+  );
+  const detection = detectPiiServerBackstop(text, userAllow);
   if (detection.spans.length > 0) {
     const cats = Array.from(new Set(detection.spans.map((s) => s.category)));
     const err = new RawInputDetectedError(cats, detection.spans.length);

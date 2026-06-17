@@ -10,6 +10,7 @@ import {
   tokenizeForWire,
 } from '../services/sanitization/chatAdapter';
 import { assertNoRawPii } from '../services/sanitization/wireGuard';
+import { getUserAllowlist } from '../services/sanitization/userAllowlist';
 
 export interface MagicSource {
   id: string;
@@ -134,7 +135,7 @@ export function useV2DraftingMagicStream() {
           Accept: 'text/event-stream',
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify(tokenizedOpts),
+        body: JSON.stringify({ ...tokenizedOpts, user_allowlist: getUserAllowlist() }),
         signal: ctrl.signal,
       });
     } catch (err) {

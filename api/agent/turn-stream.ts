@@ -61,6 +61,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     model?: string;
     system_prompt?: string;
     workflow?: 'quick' | 'research';
+    user_allowlist?: string[];
   };
 
   const sessionId = (body.session_id ?? '').trim();
@@ -92,6 +93,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       session_id: sessionId,
       user_text: body.user_text ?? '',
       user_id: userId,
+      user_allowlist: body.user_allowlist,
       model: body.model,
       system_prompt: body.system_prompt,
       workflow: body.workflow,

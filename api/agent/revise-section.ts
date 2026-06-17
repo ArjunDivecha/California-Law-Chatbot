@@ -43,6 +43,7 @@ interface ReviseBody {
   full_context?: string;
   session_id?: string;
   user_id?: string | null;
+  user_allowlist?: string[];
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -120,6 +121,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       session_id: sessionId,
       user_text: userText,
       user_id: userId,
+      user_allowlist: body.user_allowlist,
       system_prompt: systemPrompt,
     })) {
       writeEvent(event.kind, event);

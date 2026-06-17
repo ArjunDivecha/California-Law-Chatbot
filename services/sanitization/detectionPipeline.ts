@@ -29,6 +29,7 @@ import {
   type AnalyzeResult,
   type Span,
   HIGH_RISK_CATEGORIES,
+  NEVER_ALLOWLISTABLE_CATEGORIES,
   computeConfidence,
 } from '../../api/_shared/sanitization/index.js';
 import {
@@ -518,7 +519,30 @@ export async function detectPii(
  *     responsible. If a name appears here raw, browser-side
  *     tokenization failed and the request is rejected.
  */
-export function detectPiiServerBackstop(text: string): DetectionPipelineResult {
+/**
+ * True when a regex span's text was marked "not privileged" by the attorney
+ * (per-device user allowlist, forwarded from the client in the request body).
+ * Boundary-tolerant in both directions because the server regex and the
+ * browser GLiNER preview can choose slightly different spans for one value.
+ */
+function spanCoveredByUserAllowlist(
+  text: string,
+  span: Span,
+  allow: ReadonlySet<string>,
+): boolean {
+  const raw = text.slice(span.start, span.end).trim().toLowerCase();
+  if (!raw) return false;
+  if (allow.has(raw)) return true;
+  for (const a of allow) {
+    if (a.length >= 3 && (a.includes(raw) || raw.includes(a))) return true;
+  }
+  return false;
+}
+
+export function detectPiiServerBackstop(
+  text: string,
+  userAllowlistLower?: ReadonlySet<string>,
+): DetectionPipelineResult {
   if (!text || typeof text !== 'string') {
     return {
       spans: [],
@@ -539,6 +563,15 @@ export function detectPiiServerBackstop(text: string): DetectionPipelineResult {
   let suppressedByAllowlist = 0;
   for (const span of regexSpans) {
     if (overlapsAllowlist(span.start, span.end, allowlist)) {
+      suppressedByAllowlist += 1;
+    } else if (
+      userAllowlistLower &&
+      !NEVER_ALLOWLISTABLE_CATEGORIES.has(span.category) &&
+      spanCoveredByUserAllowlist(text, span, userAllowlistLower)
+    ) {
+      // Attorney marked this term "not privileged" on their device — it is
+      // sent raw by intent, so it must not trip the server backstop either.
+      // (Catastrophic categories — ssn/cards/etc. — can never be allowlisted.)
       suppressedByAllowlist += 1;
     } else {
       filteredSpans.push(span);

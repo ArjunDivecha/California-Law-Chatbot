@@ -50,6 +50,7 @@ interface DraftStreamBody {
   session_id?: string;
   user_id?: string | null;
   model?: string;
+  user_allowlist?: string[];
 }
 
 function formatUserText(body: DraftStreamBody): string {
@@ -154,6 +155,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       session_id: sessionId,
       user_text: userText,
       user_id: userId,
+      user_allowlist: body.user_allowlist,
       model: body.model,
       system_prompt: systemPrompt,
     })) {

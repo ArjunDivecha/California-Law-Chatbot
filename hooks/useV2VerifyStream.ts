@@ -18,6 +18,7 @@ import {
   tokenizeForWire,
 } from '../services/sanitization/chatAdapter';
 import { assertNoRawPii } from '../services/sanitization/wireGuard';
+import { getUserAllowlist } from '../services/sanitization/userAllowlist';
 
 export interface V2Verdict {
   index: number;
@@ -129,7 +130,7 @@ export function useV2VerifyStream() {
           Accept: 'text/event-stream',
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({ text: wireText }),
+        body: JSON.stringify({ text: wireText, user_allowlist: getUserAllowlist() }),
         signal: ctrl.signal,
       });
     } catch (err) {

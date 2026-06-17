@@ -47,6 +47,16 @@ import {
   writeRedactionEnvelope,
 } from '../_shared/auditLog.js';
 
+/**
+ * Build a lowercased Set of the attorney's "not privileged" terms from a
+ * proxy request, so the server backstop honors the per-device allowlist.
+ * Empty set when none provided.
+ */
+function allowSetFromReq(req: AgentProxyRequest): ReadonlySet<string> {
+  const list = Array.isArray(req.user_allowlist) ? req.user_allowlist : [];
+  return new Set(list.map((s) => String(s).trim().toLowerCase()).filter(Boolean));
+}
+
 export interface AgentProxyRequest {
   session_id: string;
   user_text: string;
@@ -55,6 +65,10 @@ export interface AgentProxyRequest {
   model?: string;
   /** Optional system prompt override. */
   system_prompt?: string;
+  /** Per-device terms the attorney marked "not privileged" (sent raw by
+   *  intent). The server backstop honors these — otherwise the allowlist
+   *  "x" silently fails at the gate. */
+  user_allowlist?: string[];
   /** Workflow selector — 'quick' (Sonnet, no tools) or 'research' (default). */
   workflow?: Workflow;
 }
@@ -95,7 +109,7 @@ export async function runAgentProxy(req: AgentProxyRequest): Promise<AgentProxyR
   // (OPF + IndexedDB). Server runs deterministic patterns only; if any
   // raw PII is detected, fail-closed — the request shouldn't have
   // reached here as raw.
-  const detection = detectPiiServerBackstop(userText);
+  const detection = detectPiiServerBackstop(userText, allowSetFromReq(req));
   if (detection.spans.length > 0) {
     const cats = Array.from(new Set(detection.spans.map((s) => s.category)));
     const err = new RawInputDetectedError(cats, detection.spans.length);
@@ -205,7 +219,7 @@ export async function* runAgentProxyStream(
 
   // Server-side regex backstop (per Option C). Browser tokenizes;
   // server rejects anything still matching raw PII patterns.
-  const detection = detectPiiServerBackstop(userText);
+  const detection = detectPiiServerBackstop(userText, allowSetFromReq(req));
   if (detection.spans.length > 0) {
     const cats = Array.from(new Set(detection.spans.map((s) => s.category)));
     const rawErr = new RawInputDetectedError(cats, detection.spans.length);
