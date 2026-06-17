@@ -1,20 +1,56 @@
 """
-GLiNER local detection daemon — companion to the OPF daemon at
-:47821/:47822. Adopted as the primary PII detector per
-docs/phase-c-decision-2026-05-15.md.
+=============================================================================
+SCRIPT NAME: gliner_daemon.py
+=============================================================================
 
-Listens on:
-  http://127.0.0.1:47841/v1/detect   (HTTP, browser-fallback)
-  https://127.0.0.1:47842/v1/detect  (HTTPS — required for HTTPS pages)
+DESCRIPTION:
+    Local HTTP daemon that runs a GLiNER model for PII (personally
+    identifiable information) detection. Listens on two TCP ports (HTTP
+    and HTTPS) under 127.0.0.1 only and exposes a /v1/detect endpoint
+    that accepts text and returns detected PII spans. Designed as a
+    drop-in replacement for the OPF daemon so that opfClient.ts can call
+    either endpoint with minimal code changes.
 
-Same JSON shape as the OPF daemon so opfClient.ts can call either with
-minimal code change. Filters that the trap suite proved Phase C-clear:
-  - threshold 0.7
-  - stoplist of common-term FPs (ethnic adjectives, day names, etc.)
-  - prefix-trim on person spans ("Mr. Smith" → "Smith", title untouched)
+    The daemon lazy-loads the GLiNER model on the first /v1/detect
+    request (cold start ~7 s) and unloads it after 10 minutes of
+    inactivity to reclaim memory. Detection applies a 0.7 confidence
+    threshold, a stoplist of common false-positive terms (ethnic
+    adjectives, day names, legal roles, etc.), and a prefix-trim for
+    person spans ("Mr. Smith" -> "Smith"). Also provides a browser-
+    bridge HTML page at /bridge that proxies requests via postMessage,
+    allowing HTTPS web apps (e.g. the California Law Chatbot on Vercel)
+    to communicate with the local daemon.
 
-Lazy-loads the model on first /v1/detect call (~7s cold). Idle-unloads
-after 10 minutes of inactivity. Bind 127.0.0.1 only — never network.
+INPUT FILES:
+    (none -- this script is a network daemon. SSL certificate and key
+    files may be specified via --cert-file/--key-file CLI arguments,
+    and the GLiNER model is loaded from HuggingFace hub or local
+    cache; none of these are hard-coded paths.)
+
+OUTPUT FILES:
+    (none -- this script only logs to stderr and writes JSON responses
+    over HTTP. No persistent files are produced.)
+
+VERSION: 1.0
+LAST UPDATED: 2026-06-05
+AUTHOR: Arjun Divecha
+
+DEPENDENCIES:
+    - gliner (PyPI package)
+    - Python standard library: http.server, ssl, json, logging,
+      threading, time
+
+USAGE:
+    python gliner_daemon.py
+    python gliner_daemon.py --port 47841 --https-port 47842 \\
+        --cert-file /path/to/cert.pem --key-file /path/to/key.pem
+
+NOTES:
+    - Binds only to 127.0.0.1 by default; refuses non-loopback hosts.
+    - HTTPS mode requires --cert-file and --key-file.
+    - The model name can be overridden with the GLINER_MODEL env var.
+    - The detection threshold can be overridden with GLINER_THRESHOLD.
+=============================================================================
 """
 from __future__ import annotations
 
@@ -172,6 +208,28 @@ STOPLIST_LOWER = {
     # Generic user/system role words that GLiNER mistags as person
     'user', 'users', 'the user', 'the system', 'the model', 'the agent',
     'the assistant', 'the bot', 'the chatbot',
+    # Government bodies, public offices & agencies. In statute/bill text these
+    # are the SUBJECT or AUTHORITY, never a private client — but GLiNER tags the
+    # Title-Case phrase as a 'person'. (Reported FP: SB 524 bill title.)
+    'law enforcement', 'law enforcement agency', 'law enforcement agencies',
+    'secretary of state', 'attorney general', 'district attorney',
+    'public defender', 'state controller', 'state treasurer',
+    'governor', 'lieutenant governor', 'legislature', 'state legislature',
+    'state assembly', 'state senate', 'general assembly',
+    'board of supervisors', 'city council', 'county counsel',
+    'department of justice', 'department of motor vehicles',
+    'franchise tax board', 'employment development department',
+    'department of corrections', 'department of public health',
+    'highway patrol', 'california highway patrol',
+    'public utilities commission', 'air resources board',
+    # Legislative / technical SUBJECT terms (the topic a bill regulates —
+    # never client PII). Exact-full-span match only, so a real org like
+    # "Artificial Intelligence Corp." (a longer span) is unaffected.
+    'artificial intelligence', 'machine learning', 'generative ai',
+    'automated decision', 'automated decision system',
+    'automated decision systems', 'facial recognition',
+    'autonomous vehicle', 'autonomous vehicles', 'data broker',
+    'criminal justice', 'public safety',
 }
 
 PREFIX_TRIM = [
