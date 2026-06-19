@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <!-- PyInstaller bundles Python.framework + a bunch of compiled C extensions
+       (PyTorch, transformers, etc.) which are signed by their original
+       packagers, NOT by our Developer ID. Hardened Runtime refuses to load
+       libraries with a different Team ID by default. These entitlements
+       relax that just enough for PyInstaller binaries to start, while still
+       satisfying Apple notarization. -->
+
+  <!-- Allow loading dylibs with a different signature/Team ID. Required
+       because Python.framework is signed by python.org, not P8U4R52G69. -->
+  <key>com.apple.security.cs.disable-library-validation</key>
+  <true/>
+
+  <!-- PyTorch + several transformers paths allocate writable+executable
+       memory pages (JIT-style codegen). Required for the model to load. -->
+  <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
+  <true/>
+
+  <!-- PyInstaller bootloader sets PYI_* and other env vars during extraction. -->
+  <key>com.apple.security.cs.allow-dyld-environment-variables</key>
+  <true/>
+</dict>
+</plist>

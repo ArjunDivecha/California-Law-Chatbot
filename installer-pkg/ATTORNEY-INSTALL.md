@@ -5,23 +5,25 @@ You'll do this once on your laptop. It takes about 5 minutes. After this, the ch
 ## Before you start
 
 You need:
-- The file **FFLP-Sanitizer-1.0.0.pkg** (Arjun will email it to you)
+- The Dropbox link to **FFLP-Sanitizer-1.0.1.pkg** (Arjun sent this to you)
 - About 3 GB of free disk space on your Mac
 - Your Mac's login password (the one you type to unlock your screen)
 
-## Step 1 — Save the file
+## Step 1 — Download the file
 
-Open the email from Arjun, click the attachment, and save it to your Downloads folder. You'll see the file in Finder when you open Downloads.
+Click the Dropbox link Arjun sent you. Dropbox will show a preview page with a **Download** button (top right). Click it. Save to your **Downloads** folder. The download is about 2 GB so it'll take a couple of minutes on a normal connection.
+
+When it finishes, open the **Downloads** folder in Finder. You should see **FFLP-Sanitizer-1.0.1.pkg** there.
 
 ## Step 2 — Right-click to open
 
 **Don't double-click it.** That's important. Instead:
 
 1. Open the **Downloads** folder in Finder.
-2. **Right-click** (or Control-click, or two-finger click on a trackpad) the file **FFLP-Sanitizer-1.0.0.pkg**.
+2. **Right-click** (or Control-click, or two-finger click on a trackpad) the file **FFLP-Sanitizer-1.0.1.pkg**.
 3. From the menu that appears, choose **Open**.
 
-A window will pop up that says something like *"FFLP-Sanitizer-1.0.0.pkg" can't be opened because Apple cannot check it for malicious software*. There will be a button labeled **Open Anyway**. **Click Open Anyway.**
+A window will pop up that says something like *"FFLP-Sanitizer-1.0.1.pkg" can't be opened because Apple cannot check it for malicious software*. There will be a button labeled **Open Anyway**. **Click Open Anyway.**
 
 (If you double-clicked by accident and the warning didn't have an "Open Anyway" button — just close it, go back to Finder, and right-click → Open. That works.)
 
@@ -45,6 +47,31 @@ The privacy filter starts itself automatically. You don't have to do anything �
 
 If you see that yellow chip with the swap symbol, you're done. The filter is working.
 
+## Step 5 — Clean up older versions (only if you tested an earlier one)
+
+**Skip this section if this is your first time installing anything from Arjun.** This is only for the few people who got an earlier dev version during testing.
+
+We tested two earlier privacy filters (internally called "OPF" and the dev GLiNER build) before settling on the one in this installer. They no longer do anything — the new installer replaces them entirely — but if either one was ever set up on your Mac, it's sitting on disk taking up roughly 1 GB and running a small process you don't need.
+
+To remove them cleanly:
+
+1. Open **Terminal** (press Cmd+Space, type `Terminal`, press Return).
+2. Copy and paste this exact block, then press Return:
+
+```
+launchctl unload ~/Library/LaunchAgents/com.fflp.opf-daemon.plist 2>/dev/null
+launchctl unload ~/Library/LaunchAgents/com.fflp.gliner-daemon.plist 2>/dev/null
+rm -f ~/Library/LaunchAgents/com.fflp.opf-daemon.plist
+rm -rf ~/.opf-daemon
+rm -rf ~/.gliner-daemon
+launchctl load ~/Library/LaunchAgents/com.fflp.gliner-daemon.plist 2>/dev/null
+echo "Cleanup done."
+```
+
+3. You should see `Cleanup done.` printed at the end. Close Terminal.
+
+The block is safe to run even if you never had those older versions installed — it checks for each thing and silently skips anything that isn't there. It does NOT touch the new privacy filter from this installer; the last line restarts it cleanly so the chip in the chatbot keeps working.
+
 ## Troubleshooting
 
 **The chip stays gray and says "Checking…"**
@@ -58,7 +85,7 @@ curl http://localhost:47841/v1/health
 You should see a JSON response with `"ok": true`. If you see "Connection refused" instead, the filter isn't running and we'll need to look at it together.
 
 **I want to uninstall**
-Email Arjun. There's a 5-second command to fully remove it. (Or run `sudo /Library/Application\ Support/FFLP/gliner-daemon/bin/uninstall.sh` if it gets bundled.)
+Email Arjun. There's a 5-second command to fully remove it.
 
 ## What this filter actually does
 

@@ -1,0 +1,572 @@
+<!doctype html>
+<!--
+=============================================================================
+FILE: playground/v2-matter-workspace-mockup.html
+=============================================================================
+
+DESCRIPTION:
+Static, self-contained UI mockup of the proposed "Matter Workspace" evolution
+of the California Law Chatbot V2 (per FABLE5-DEEP-DIVE-REPORT.md and
+COMPETITIVE-SCOPE-EXPANSION.md). Four switchable views via the gray mockup
+chrome bar at the top (the bar itself is NOT product UI):
+
+  1. Chat        — matter-scoped research chat: matter sidebar with grouped
+                   sessions + Runs, matter-context chip & token meter,
+                   workflow toggle row, privilege chip, tool pills, assistant
+                   answer with Sources (incl. Matter documents group),
+                   deterministic deadline worksheet card, live sanitization
+                   preview on the composer.
+  2. Matter      — the Matter panel: document list with per-doc tokenization
+                   status (done / in-progress / rejected scan), token meter,
+                   Memory / Deadlines / Activity tabs, spend chip.
+  3. Run         — a Verified Drafting Run: phase rail, checkpoint card
+                   (authority approval with verification verdicts + treatment
+                   chips), task-budget meter.
+  4. States      — gallery of new UI states: refusal banner, truncation,
+                   fail-closed sanitizer error, session expired, scan
+                   rejection, "what Anthropic sees" wire view.
+
+Design language matches the shipped V2 app (components/v2/*): light mode ONLY,
+Georgia serif, #FAFAF8 canvas, white cards, pink-500 accents, amber privilege
+chips, emerald clean chips. All names/matters are fictional. No network
+requests, no build step — open directly in a browser.
+
+INPUT FILES:  none (fully self-contained; no external assets or fonts)
+OUTPUT FILES: none (static mockup; nothing is written or fetched)
+
+VERSION: 1.0   DATE: 2026-06-12   AUTHOR: Claude Fable 5 (for Arjun Divecha)
+=============================================================================
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>V2 Matter Workspace — UI Mockup</title>
+<style>
+  :root{
+    --canvas:#FAFAF8; --card:#ffffff; --ink:#111827; --ink-2:#374151; --ink-3:#6b7280; --ink-4:#9ca3af;
+    --line:#e5e7eb; --line-soft:#f3f4f6;
+    --pink:#ec4899; --pink-deep:#be185d; --pink-soft:#fdf2f8; --pink-line:#fbcfe8;
+    --amber-bg:#fef3c7; --amber-ink:#92400e; --amber-line:#fde68a; --amber-soft:#fffbeb;
+    --green-bg:#d1fae5; --green-ink:#047857; --green-soft:#ecfdf5;
+    --blue-bg:#eff6ff; --blue-ink:#1d4ed8; --blue-line:#bfdbfe;
+    --red-bg:#fef2f2; --red-ink:#b91c1c; --red-line:#fecaca;
+    --indigo-bg:#eef2ff; --indigo-ink:#4338ca;
+    --slate-bg:#f1f5f9; --slate-ink:#475569;
+    --mark:#fde047;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--canvas);color:var(--ink);font-family:Georgia,"Times New Roman",serif;font-size:15px}
+  .mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+
+  /* ---- mockup chrome (not product UI) ---- */
+  .chrome{position:sticky;top:0;z-index:50;background:#1f2937;color:#e5e7eb;display:flex;align-items:center;gap:10px;
+          padding:8px 14px;font-family:ui-monospace,Menlo,monospace;font-size:12px}
+  .chrome .lbl{color:#9ca3af}
+  .chrome button{font:inherit;background:#374151;color:#e5e7eb;border:1px solid #4b5563;border-radius:6px;padding:4px 12px;cursor:pointer}
+  .chrome button.on{background:var(--pink);border-color:var(--pink);color:#fff}
+  .chrome .note{margin-left:auto;color:#9ca3af}
+
+  /* ---- app shell ---- */
+  .shell{display:flex;height:calc(100vh - 37px);min-height:680px}
+  .view{display:none;flex:1;min-width:0;display:none}
+  .view.on{display:flex}
+
+  /* sidebar */
+  .side{width:264px;flex:0 0 264px;background:#fff;border-right:1px solid var(--line-soft);display:flex;flex-direction:column}
+  .side .brand{display:flex;gap:10px;align-items:center;padding:14px 14px 10px}
+  .logo{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,#f9a8d4,#ec4899);color:#fff;display:flex;
+        align-items:center;justify-content:center;font-size:18px;box-shadow:0 1px 2px rgba(0,0,0,.08)}
+  .brand b{font-size:13.5px;display:block;line-height:1.15}
+  .brand .v2{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--pink);font-weight:700}
+  .newmatter{margin:6px 12px 10px;background:var(--pink);color:#fff;border:none;border-radius:10px;padding:8px 10px;
+             font:inherit;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,.08)}
+  .sect{padding:10px 14px 4px;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-4);font-weight:700}
+  .mlist{padding:0 8px}
+  .matter{border-radius:10px;padding:8px 10px;margin:2px 0;cursor:pointer}
+  .matter:hover{background:#fafafa}
+  .matter.on{background:var(--pink-soft);border:1px solid var(--pink-line)}
+  .matter .nm{font-size:13px;font-weight:700;color:var(--ink-2);display:flex;justify-content:space-between;gap:6px}
+  .matter .meta{font-size:11px;color:var(--ink-3);margin-top:2px}
+  .sessions{margin:4px 0 2px 10px;border-left:2px solid var(--pink-line);padding-left:8px}
+  .sess{font-size:12px;color:var(--ink-3);padding:3px 6px;border-radius:6px;cursor:pointer}
+  .sess.on{color:var(--pink-deep);background:#fff;font-weight:700}
+  .sess:hover{background:#fff}
+  .run{display:flex;gap:8px;align-items:flex-start;border-radius:10px;padding:7px 10px;margin:2px 8px;font-size:12px;cursor:pointer}
+  .run:hover{background:#fafafa}
+  .run .st{flex:0 0 auto;margin-top:1px}
+  .run b{display:block;font-size:12.5px;color:var(--ink-2)}
+  .run span{color:var(--ink-3);font-size:11px}
+  .side .foot{margin-top:auto;border-top:1px solid var(--line-soft);padding:10px 14px;font-size:11.5px;color:var(--ink-3)}
+  .dot{display:inline-block;width:7px;height:7px;border-radius:99px;background:#10b981;margin-right:5px}
+
+  /* main column */
+  .main{flex:1;min-width:0;display:flex;flex-direction:column}
+  .hdr{background:#fff;border-bottom:1px solid var(--line-soft);padding:12px 22px;display:flex;align-items:center;gap:14px}
+  .hdr h1{font-size:16.5px;margin:0;font-weight:700}
+  .hdr .tag{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--pink);font-weight:700}
+  .hdr .right{margin-left:auto;display:flex;align-items:center;gap:10px}
+  .mchip{background:var(--pink-soft);border:1px solid var(--pink-line);color:var(--pink-deep);border-radius:999px;
+         padding:5px 12px;font-size:12px;font-weight:700;display:flex;align-items:center;gap:8px}
+  .meter{width:90px;height:6px;background:#fce7f3;border-radius:99px;overflow:hidden}
+  .meter i{display:block;height:100%;width:48%;background:var(--pink)}
+  .sid{font-size:11px;color:var(--ink-4)}
+
+  .wrap{flex:1;overflow:auto;display:flex;flex-direction:column}
+  .inner{width:100%;max-width:880px;margin:0 auto;padding:14px 24px 28px}
+
+  /* workflow row */
+  .flows{display:flex;gap:8px;margin:4px 0 14px}
+  .flow{flex:1;background:#fff;border:1px solid var(--line);border-radius:10px;padding:8px 11px;cursor:pointer}
+  .flow:hover{border-color:var(--pink-line)}
+  .flow.on{background:var(--pink-soft);border-color:#f9a8d4}
+  .flow b{display:block;font-size:12px;color:var(--ink-2)}
+  .flow.on b{color:var(--pink-deep)}
+  .flow span{font-size:10px;color:var(--ink-3)}
+  .flow.nav b::after{content:" →"}
+
+  /* chips */
+  .chip{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:4px 11px;font-size:11.5px;font-weight:700}
+  .chip.amber{background:var(--amber-bg);color:var(--amber-ink)}
+  .chip.green{background:var(--green-bg);color:var(--green-ink)}
+  .chip.gray{background:var(--line-soft);color:var(--ink-2)}
+  .chip.small{font-size:10.5px;padding:3px 9px}
+  .pill{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:4px 11px;font-size:11.5px;border:1px solid var(--line);background:#f9fafb;color:var(--ink-2)}
+  .pill.run{background:var(--blue-bg);border-color:var(--blue-line);color:var(--blue-ink)}
+
+  /* bubbles */
+  .row{display:flex;margin:10px 0}
+  .row.user{justify-content:flex-end}
+  .bub{max-width:86%;border-radius:18px;padding:13px 16px;line-height:1.55;font-size:14.5px}
+  .bub.user{background:var(--pink);color:#fff;white-space:pre-wrap}
+  .bub.user mark{background:var(--mark);color:#1f2937;border-radius:3px;padding:0 2px}
+  .bub.ai{background:#fff;border:1px solid var(--line);box-shadow:0 1px 2px rgba(0,0,0,.04);color:var(--ink)}
+  .bub.ai h4{margin:.2em 0 .4em;font-size:14.5px}
+  .bub.ai ul{margin:.3em 0 .5em;padding-left:20px}
+  .bub.ai li{margin:3px 0}
+  .ok{color:var(--green-ink);font-weight:700}
+  .cite{color:var(--pink-deep);text-decoration:underline;cursor:pointer}
+  .subline{font-size:11px;color:var(--ink-4);margin:4px 2px}
+
+  /* cards */
+  .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:13px 15px;margin:10px 0;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+  .card .cap{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);font-weight:700;margin-bottom:7px;display:flex;align-items:center;gap:8px}
+  table{border-collapse:collapse;width:100%;font-size:12.5px}
+  th{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-4);text-align:left;padding:5px 8px;border-bottom:1px solid var(--line)}
+  td{padding:7px 8px;border-bottom:1px solid var(--line-soft);vertical-align:top;color:var(--ink-2)}
+  tr:last-child td{border-bottom:none}
+  .rule{font-size:10.5px;background:var(--indigo-bg);color:var(--indigo-ink);border-radius:6px;padding:1px 7px;white-space:nowrap}
+
+  /* sources */
+  .src{background:#f9fafb;border:1px solid var(--line);border-radius:12px;padding:10px 13px;margin:8px 0;font-size:12px}
+  .src .grp{color:var(--pink-deep);font-weight:700;font-size:11px;margin:6px 0 2px}
+  .src li{margin:2px 0;color:var(--ink-2)}
+  .src .v{background:var(--green-bg);color:var(--green-ink);border-radius:5px;font-size:9.5px;padding:1px 6px;margin-left:6px;font-weight:700}
+  .acts{display:flex;gap:12px;align-items:center;font-size:11.5px;color:var(--ink-4);margin:4px 2px}
+  .acts span:hover{color:var(--pink-deep);cursor:pointer}
+  .badge{border:1px solid #ddd6fe;background:#f5f3ff;color:#6d28d9;border-radius:999px;padding:2px 9px;font-size:10px;font-weight:700}
+
+  /* composer */
+  .composer{border-top:1px solid var(--line-soft);background:#fff;padding:14px 24px 16px}
+  .cwrap{max-width:880px;margin:0 auto}
+  .crow{display:flex;gap:10px;align-items:flex-end}
+  textarea{flex:1;resize:none;border:1px solid var(--line);border-radius:12px;padding:10px 12px;font:inherit;font-size:14px;height:58px;color:var(--ink)}
+  textarea:focus{outline:none;border-color:#f9a8d4}
+  .send{background:var(--pink);color:#fff;border:none;border-radius:10px;padding:10px 18px;font:inherit;font-weight:700;font-size:14px;cursor:pointer}
+  .live{margin-top:9px;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+  .tok{display:inline-flex;align-items:center;gap:6px;background:var(--amber-soft);border:1px solid var(--amber-line);
+       color:var(--amber-ink);border-radius:7px;padding:2px 8px;font-size:11px}
+  .tok .x{color:#b45309;cursor:pointer;font-weight:700}
+  .hint{font-size:10.5px;color:var(--ink-4)}
+
+  /* matter panel */
+  .ptabs{display:flex;gap:6px;margin:2px 0 12px}
+  .ptab{font:inherit;font-size:12.5px;font-weight:700;border:1px solid var(--line);background:#fff;color:var(--ink-3);
+        border-radius:999px;padding:6px 14px;cursor:pointer}
+  .ptab.on{background:var(--pink-soft);border-color:#f9a8d4;color:var(--pink-deep)}
+  .ppane{display:none}.ppane.on{display:block}
+  .drop{border:2px dashed var(--pink-line);border-radius:14px;background:var(--pink-soft);color:var(--pink-deep);
+        text-align:center;padding:18px;font-size:13px;margin-top:12px}
+  .bar{height:6px;border-radius:99px;background:var(--line-soft);overflow:hidden;min-width:90px}
+  .bar i{display:block;height:100%;background:var(--pink)}
+  .st-ok{color:var(--green-ink);font-weight:700;font-size:12px}
+  .st-err{color:var(--red-ink);font-weight:700;font-size:12px}
+  .memo{display:flex;justify-content:space-between;gap:14px;border-bottom:1px solid var(--line-soft);padding:9px 2px}
+  .memo:last-child{border-bottom:none}
+  .memo .del{color:var(--ink-4);cursor:pointer;font-size:11px}
+  .memo .del:hover{color:var(--red-ink)}
+  .prov{font-size:10.5px;color:var(--ink-4);margin-top:2px}
+
+  /* run page */
+  .rail{display:flex;align-items:center;gap:0;margin:6px 0 16px;flex-wrap:wrap}
+  .ph{display:flex;align-items:center;gap:8px;background:#fff;border:1px solid var(--line);border-radius:999px;padding:7px 14px;font-size:12.5px;font-weight:700;color:var(--ink-3)}
+  .ph.done{border-color:#a7f3d0;background:var(--green-soft);color:var(--green-ink)}
+  .ph.wait{border-color:var(--amber-line);background:var(--amber-soft);color:var(--amber-ink);box-shadow:0 0 0 3px #fef3c7}
+  .ph small{font-weight:400;font-size:10px;display:block}
+  .arr{color:var(--ink-4);padding:0 7px;font-size:13px}
+  .btn{font:inherit;font-weight:700;font-size:13px;border-radius:10px;padding:9px 16px;cursor:pointer;border:1px solid var(--line);background:#fff;color:var(--ink-2)}
+  .btn.primary{background:var(--pink);border-color:var(--pink);color:#fff}
+  .btn.subtle{color:var(--ink-3)}
+  .verd{border-radius:6px;padding:1px 8px;font-size:10.5px;font-weight:700}
+  .verd.real{background:var(--green-bg);color:var(--green-ink)}
+  .verd.amb{background:var(--amber-bg);color:var(--amber-ink)}
+  .treat{background:var(--slate-bg);color:var(--slate-ink);border-radius:6px;padding:1px 8px;font-size:10.5px;font-weight:700}
+  .treat.warn{background:#ffedd5;color:#c2410c}
+
+  /* states gallery */
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:8px}
+  .state{border-radius:14px;border:1px solid var(--line);background:#fff;padding:14px 16px}
+  .state .cap{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-4);font-weight:700;margin-bottom:8px}
+  .banner{border-radius:12px;padding:12px 14px;font-size:13px;line-height:1.5}
+  .banner.amber{background:var(--amber-soft);border:1px solid var(--amber-line);color:var(--amber-ink)}
+  .banner.red{background:var(--red-bg);border:1px solid var(--red-line);color:var(--red-ink)}
+  .banner.gray{background:#f9fafb;border:1px solid var(--line);color:var(--ink-2)}
+  .banner b{display:block;margin-bottom:3px}
+  .banner .row2{margin-top:9px;display:flex;gap:8px}
+  .wire{background:#f9fafb;border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:12px;color:var(--ink-2)}
+</style>
+</head>
+<body>
+
+<!-- ███ mockup chrome — NOT product UI ███ -->
+<div class="chrome">
+  <span class="lbl">MOCKUP&nbsp;VIEWS:</span>
+  <button class="on" data-v="chat" onclick="show('chat',this)">1 · Chat</button>
+  <button data-v="matter" onclick="show('matter',this)">2 · Matter panel</button>
+  <button data-v="runs" onclick="show('runs',this)">3 · Drafting Run</button>
+  <button data-v="states" onclick="show('states',this)">4 · New states</button>
+  <span class="note">V2 Matter Workspace mockup · light mode · fictional data</span>
+</div>
+
+<!-- ════════════════ VIEW 1 — CHAT ════════════════ -->
+<div class="shell view on" id="v-chat">
+  <aside class="side">
+    <div class="brand"><div class="logo">♥</div><div><b>California Law Chatbot</b><span class="v2">V2 · Matter Workspace</span></div></div>
+    <button class="newmatter">+ New matter</button>
+    <div class="sect">Matters</div>
+    <div class="mlist">
+      <div class="matter on">
+        <div class="nm">Chen-Ortiz — Confirmatory Adoption <span>📁12</span></div>
+        <div class="meta">standard · 483K tokens · Alameda Co.</div>
+        <div class="sessions">
+          <div class="sess on">Streamlined eligibility — today</div>
+          <div class="sess">Donor contract questions — Jun 10</div>
+          <div class="sess">Intake review — Jun 9</div>
+        </div>
+      </div>
+      <div class="matter"><div class="nm">Park Family — Estate Plan <span>📁7</span></div><div class="meta">standard · 121K tokens</div></div>
+      <div class="matter"><div class="nm">Rivera — Known Donor Agreement <span>📁3</span></div><div class="meta">standard · 38K tokens</div></div>
+    </div>
+    <div class="sect">Runs</div>
+    <div class="run"><span class="st">⏸</span><div><b>Adoption packet draft</b><span>Chen-Ortiz · awaiting your review</span></div></div>
+    <div class="run"><span class="st">✓</span><div><b>Estate plan review</b><span>Park · finished Jun 11</span></div></div>
+    <div class="foot"><span class="dot"></span>Privacy filter: healthy · 45ms<br><span style="color:#9ca3af">Signed in as R. Schiff</span></div>
+  </aside>
+
+  <div class="main">
+    <div class="hdr">
+      <div class="logo">♥</div>
+      <div><h1>California Law Chatbot</h1><span class="tag">Research · Fable 5</span></div>
+      <div class="right">
+        <span class="mchip">📁 Chen-Ortiz Adoption · 12 docs · 483K / 1M <span class="meter"><i></i></span></span>
+        <span class="sid mono">v2_1781382…</span>
+      </div>
+    </div>
+
+    <div class="wrap"><div class="inner">
+      <div class="flows">
+        <div class="flow"><b>Quick Answer</b><span>Sonnet · no tools · ~5s</span></div>
+        <div class="flow on"><b>Research Memo</b><span>Fable · full tools · matter context</span></div>
+        <div class="flow"><b>Stress-test</b><span>argue the other side</span></div>
+        <div class="flow nav"><b>Draft Document</b><span>templates · packets</span></div>
+        <div class="flow nav"><b>Verify Citations</b><span>cases + statutes</span></div>
+      </div>
+
+      <div class="row user"><div class="bub user">Can we use the streamlined confirmatory adoption for <mark>Maya Chen-Ortiz</mark> and <mark>Jordan Chen-Ortiz</mark>? They married <mark>June 2023</mark>, and <mark>Ezra</mark> was born <mark>March 12, 2025</mark> via IVF with a known donor.</div></div>
+      <div class="subline" style="text-align:right">highlighted = sent as tokens · real names never left this Mac · <u>view wire form</u></div>
+
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin:8px 0">
+        <span class="chip amber">⚠️ Privileged content detected <span style="font-weight:400">(5 redactions)</span></span>
+        <span class="pill">✓ Matter documents · 230ms</span>
+        <span class="pill">✓ CEB practice guides · 412ms</span>
+        <span class="pill">✓ statute_verify · 1.2s</span>
+        <span class="pill">✓ memory · 88ms</span>
+      </div>
+
+      <div class="row"><div class="bub ai">
+        <h4>Yes — this family qualifies for the streamlined path (Fam. Code § 9000.5).</h4>
+        Because <b>Maya</b> and <b>Jordan</b> were married before <b>Ezra</b>’s birth and conceived through assisted reproduction, the confirmatory stepparent-adoption procedure applies:
+        <ul>
+          <li><span class="ok">✓ Married at birth</span> — marriage certificate (<span class="cite">Marriage certificate.pdf, p.1</span>) predates the birth (<span class="cite">Birth certificate.pdf</span>).</li>
+          <li><span class="ok">✓ Assisted reproduction</span> — known-donor IVF; the donor’s written waiver is at <span class="cite">Donor agreement §4</span>.</li>
+          <li><span class="ok">✓ No home study, no hearing</span> unless the court orders one for good cause — § 9000.5(b) <span class="badge">verified · leginfo</span>.</li>
+        </ul>
+        <b>Packet:</b> ADOPT-200 (request), ADOPT-210 (agreement — <i>must be notarized or signed before the clerk</i>), ADOPT-215 (proposed order), plus Alameda County’s local cover sheet. I can assemble this as a Drafting Run with the forms pre-filled for your review.
+      </div></div>
+
+      <div class="card">
+        <div class="cap">Deadline worksheet — computed by deadline_calc (deterministic, not model arithmetic)</div>
+        <table>
+          <tr><th>Step</th><th>Date</th><th>Basis</th></tr>
+          <tr><td>ADOPT-210 notarization</td><td>before filing</td><td><span class="rule">Fam C § 9000.5(c)</span></td></tr>
+          <tr><td>File packet (Alameda)</td><td>target Jun 26, 2026</td><td><span class="rule">attorney target</span></td></tr>
+          <tr><td>Clerk processing est.</td><td>~6–8 weeks</td><td><span class="rule">local practice note</span></td></tr>
+          <tr><td>Order signed (no hearing path)</td><td>est. mid-Aug 2026</td><td><span class="rule">§ 9000.5(b)</span></td></tr>
+        </table>
+      </div>
+
+      <div class="src">
+        <div style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);font-weight:700">Sources</div>
+        <div class="grp">Matter documents (3)</div>
+        <ul style="margin:2px 0;padding-left:18px">
+          <li>Marriage certificate.pdf — p.1</li>
+          <li>Birth certificate — Ezra.pdf — p.1</li>
+          <li>Known donor agreement (executed).docx — §4</li>
+        </ul>
+        <div class="grp">Statutes (1)</div>
+        <ul style="margin:2px 0;padding-left:18px"><li>Fam. Code § 9000.5 — leginfo.legislature.ca.gov <span class="v">verified · content match</span></li></ul>
+        <div class="grp">CEB Practice Guides (1)</div>
+        <ul style="margin:2px 0;padding-left:18px"><li>California Adoption Practice, ch. 3 (stepparent &amp; confirmatory) · score 0.86</li></ul>
+      </div>
+
+      <div class="acts"><span>⧉ Copy</span>·<span>⎙ Print</span>·<span>＋ Start Drafting Run from this</span>·<span class="badge">Research</span>
+        <span style="margin-left:auto">2 tool rounds · 18,420 tokens · 9.2s · cache 96% · stop=end_turn</span></div>
+    </div></div>
+
+    <div class="composer"><div class="cwrap">
+      <div class="crow">
+        <textarea placeholder="Ask about this matter…">What should we tell the donor about his rights after the adoption order?</textarea>
+        <button class="send">Send</button>
+      </div>
+      <div class="live">
+        <span class="chip amber small">⚠️ Will tokenize: 1 name</span>
+        <span class="tok"><span class="mono">CLIENT_003</span> = the donor (Daniel R.) <span class="x">×</span></span>
+        <span class="hint">× = mark “not private” (this device) · web search stays available — your call</span>
+      </div>
+    </div></div>
+  </div>
+</div>
+
+<!-- ════════════════ VIEW 2 — MATTER PANEL ════════════════ -->
+<div class="shell view" id="v-matter">
+  <aside class="side">
+    <div class="brand"><div class="logo">♥</div><div><b>California Law Chatbot</b><span class="v2">V2 · Matter Workspace</span></div></div>
+    <button class="newmatter">+ New matter</button>
+    <div class="sect">Matters</div>
+    <div class="mlist">
+      <div class="matter on"><div class="nm">Chen-Ortiz — Confirmatory Adoption <span>📁12</span></div><div class="meta">standard · 483K tokens</div></div>
+      <div class="matter"><div class="nm">Park Family — Estate Plan <span>📁7</span></div><div class="meta">standard · 121K tokens</div></div>
+      <div class="matter"><div class="nm">Rivera — Known Donor Agreement <span>📁3</span></div><div class="meta">standard · 38K tokens</div></div>
+    </div>
+    <div class="foot"><span class="dot"></span>Privacy filter: healthy · 45ms</div>
+  </aside>
+
+  <div class="main">
+    <div class="hdr">
+      <div class="logo">♥</div>
+      <div><h1>Chen-Ortiz — Confirmatory Adoption</h1><span class="tag">Matter panel</span></div>
+      <div class="right">
+        <span class="chip gray">mode: standard</span>
+        <span class="chip green">$14.32 this month · 96% cached</span>
+      </div>
+    </div>
+
+    <div class="wrap"><div class="inner">
+      <div class="card" style="display:flex;align-items:center;gap:14px">
+        <div style="flex:1"><div class="cap" style="margin:0 0 5px">Matter context · 483,200 of 1,000,000 tokens</div>
+          <div class="bar" style="height:8px"><i style="width:48%"></i></div></div>
+        <button class="btn">Open in chat</button><button class="btn primary">Start Drafting Run</button>
+      </div>
+
+      <div class="ptabs">
+        <button class="ptab on" onclick="pane('docs',this)">Documents (12)</button>
+        <button class="ptab" onclick="pane('mem',this)">Memory (4)</button>
+        <button class="ptab" onclick="pane('ddl',this)">Deadlines (3)</button>
+        <button class="ptab" onclick="pane('act',this)">Activity</button>
+      </div>
+
+      <div class="ppane on" id="p-docs">
+        <div class="card">
+          <table>
+            <tr><th>Document</th><th>Pages</th><th>Tokens</th><th>Detections</th><th>Status</th><th></th></tr>
+            <tr><td><b>Known donor agreement (executed).docx</b></td><td>14</td><td>9,840</td>
+                <td><span class="chip amber small">3 names · 2 dates</span></td><td class="st-ok">✓ tokenized</td><td><u>view</u></td></tr>
+            <tr><td><b>Marriage certificate.pdf</b></td><td>1</td><td>610</td>
+                <td><span class="chip amber small">2 names · 1 date</span></td><td class="st-ok">✓ tokenized</td><td><u>view</u></td></tr>
+            <tr><td><b>Birth certificate — Ezra.pdf</b></td><td>1</td><td>540</td>
+                <td><span class="chip amber small">3 names · 1 date</span></td><td class="st-ok">✓ tokenized</td><td><u>view</u></td></tr>
+            <tr><td><b>Intake questionnaire (signed).pdf</b></td><td>9</td><td>6,212</td>
+                <td><span class="chip amber small">5 names · 2 addrs · 3 dates</span></td><td class="st-ok">✓ tokenized</td><td><u>view</u></td></tr>
+            <tr><td><b>Email export — donor thread.pst</b></td><td>—</td><td>—</td>
+                <td><span class="hint">detecting…</span></td>
+                <td><div class="bar"><i style="width:64%"></i></div><span class="hint">tokenizing on this Mac · 64%</span></td><td></td></tr>
+            <tr><td><b>Hospital records (scan).pdf</b></td><td>22</td><td>—</td>
+                <td>—</td><td class="st-err">✗ no text layer — can’t redact pixels on-device yet <u>why?</u></td><td><u>remove</u></td></tr>
+          </table>
+        </div>
+        <div class="drop">⬆ Drop documents here — each one is tokenized <b>on this Mac</b> before anything leaves it</div>
+      </div>
+
+      <div class="ppane" id="p-mem">
+        <div class="card">
+          <div class="cap">Matter memory — written by the agent in token-space; shown rehydrated; stored under this matter, deletable any time</div>
+          <div class="memo"><div>Clients prefer <b>“parent”</b> (never “mother/father”) in all drafted documents.<div class="prov">written by agent · Jun 10 · turn 14 · session “Donor contract questions”</div></div><span class="del">delete</span></div>
+          <div class="memo"><div>Donor (<b>Daniel R.</b>) has signed waiver of parental claims — Donor agreement §4; do not treat as presumed parent under § 7613.<div class="prov">written by agent · Jun 10 · turn 17</div></div><span class="del">delete</span></div>
+          <div class="memo"><div>Target: adoption order entered <b>before Ezra’s 18-month checkup</b> (clients traveling Sept).<div class="prov">written by agent · Jun 9 · intake review</div></div><span class="del">delete</span></div>
+          <div class="memo"><div>Second parent <b>Jordan</b> is the non-birth parent; VDOP signed at hospital — confirmatory adoption is belt-and-suspenders for interstate travel.<div class="prov">written by agent · Jun 9</div></div><span class="del">delete</span></div>
+        </div>
+      </div>
+
+      <div class="ppane" id="p-ddl">
+        <div class="card">
+          <div class="cap">Deadlines &amp; clocks — deterministic (deadline_calc) · exportable worksheet</div>
+          <table>
+            <tr><th>Item</th><th>Date</th><th>Basis</th><th>Status</th></tr>
+            <tr><td>ADOPT-210 notarization</td><td>before filing</td><td><span class="rule">Fam C § 9000.5(c)</span></td><td class="st-ok">pending</td></tr>
+            <tr><td>File adoption packet</td><td>Jun 26, 2026</td><td><span class="rule">attorney target</span></td><td class="st-ok">on track</td></tr>
+            <tr><td>Travel constraint (clients away)</td><td>Sept 2026</td><td><span class="rule">from memory</span></td><td class="st-ok">noted</td></tr>
+          </table>
+        </div>
+      </div>
+
+      <div class="ppane" id="p-act">
+        <div class="card">
+          <div class="cap">Activity (audit excerpts — HMAC-only on the server)</div>
+          <table>
+            <tr><td class="mono" style="font-size:11px">Jun 12 09:41</td><td>turn · research · 5 redactions · privileged=true · 18,420 tok · cache 96%</td></tr>
+            <tr><td class="mono" style="font-size:11px">Jun 12 09:38</td><td>doc ingested · “Intake questionnaire” · 10 spans tokenized on device</td></tr>
+            <tr><td class="mono" style="font-size:11px">Jun 11 21:40</td><td>drafting run started · “Adoption packet draft” · budget 800K</td></tr>
+          </table>
+        </div>
+      </div>
+    </div></div>
+  </div>
+</div>
+
+<!-- ════════════════ VIEW 3 — DRAFTING RUN ════════════════ -->
+<div class="shell view" id="v-runs">
+  <aside class="side">
+    <div class="brand"><div class="logo">♥</div><div><b>California Law Chatbot</b><span class="v2">V2 · Matter Workspace</span></div></div>
+    <div class="sect">Runs</div>
+    <div class="run" style="background:var(--pink-soft);border:1px solid var(--pink-line);border-radius:10px"><span class="st">⏸</span><div><b>Adoption packet draft</b><span>Chen-Ortiz · awaiting your review</span></div></div>
+    <div class="run"><span class="st">✓</span><div><b>Estate plan review</b><span>Park · finished Jun 11</span></div></div>
+    <div class="run"><span class="st">✓</span><div><b>Prenup disclosure table</b><span>Rivera · finished Jun 8</span></div></div>
+    <div class="foot"><span class="dot"></span>Privacy filter: healthy</div>
+  </aside>
+
+  <div class="main">
+    <div class="hdr">
+      <div class="logo">♥</div>
+      <div><h1>Drafting Run — Adoption packet (Chen-Ortiz)</h1><span class="tag">Verified Drafting Run · Fable 5</span></div>
+      <div class="right">
+        <span class="chip gray">budget 312K / 800K</span>
+        <button class="btn subtle">Pause</button><button class="btn subtle">Cancel</button>
+      </div>
+    </div>
+
+    <div class="wrap"><div class="inner">
+      <div class="rail">
+        <span class="ph done">✓ Research<small>14 sources</small></span><span class="arr">→</span>
+        <span class="ph done">✓ Outline<small>approved Jun 11, 9:52pm</small></span><span class="arr">→</span>
+        <span class="ph wait">⏸ Authorities<small>awaiting your review</small></span><span class="arr">→</span>
+        <span class="ph">Draft<small>4 documents + 3 forms</small></span><span class="arr">→</span>
+        <span class="ph">Verify<small>every citation</small></span><span class="arr">→</span>
+        <span class="ph">Final<small>packet + report</small></span>
+      </div>
+
+      <div class="card" style="border-color:var(--amber-line);box-shadow:0 0 0 3px #fffbeb">
+        <div class="cap">Checkpoint 2 of 3 — approve authorities <span class="chip amber small">run is paused until you decide</span></div>
+        <table>
+          <tr><th>Authority</th><th>For</th><th>Verification</th><th>Treatment</th></tr>
+          <tr><td><b>Fam. Code § 9000.5</b></td><td>streamlined procedure</td><td><span class="verd real">✓ verified · content match</span></td><td><span class="treat">current · leginfo</span></td></tr>
+          <tr><td><b>Fam. Code § 7613(b)</b></td><td>donor is not a parent</td><td><span class="verd real">✓ verified · content match</span></td><td><span class="treat">current</span></td></tr>
+          <tr><td><b>Cal. Rules of Court 5.730</b></td><td>adoption hearing practice</td><td><span class="verd real">✓ verified</span></td><td><span class="treat">current</span></td></tr>
+          <tr><td><b>In re M.C. (2011) 195 Cal.App.4th 197</b></td><td>parentage background</td><td><span class="verd real">✓ verified · CourtListener</span></td><td><span class="treat warn">distinguished ×2 since — review</span></td></tr>
+          <tr><td><b>Adoption of Kelsey S. (1992) 1 Cal.4th 816</b></td><td>donor-rights footnote</td><td><span class="verd amb">? ambiguous — VERIFY MANUALLY</span></td><td><span class="treat">—</span></td></tr>
+        </table>
+        <div class="hint" style="margin-top:8px">FAIL IS FAIL: unapproved or unverified authorities never enter the draft. Rejecting one sends the run back to Research for a replacement.</div>
+        <div style="display:flex;gap:8px;margin-top:11px">
+          <button class="btn primary">Approve all 5 &amp; continue</button>
+          <button class="btn">Approve checked only</button>
+          <button class="btn subtle">Reject &amp; revise research</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="cap">✓ Checkpoint 1 — outline (approved)</div>
+        <div style="font-size:13px;color:var(--ink-2)">Packet: ADOPT-200 · ADOPT-210 · ADOPT-215 · Alameda cover sheet · client instruction letter (EN + ES) · donor notice letter. <u>View outline</u></div>
+      </div>
+
+      <div class="card">
+        <div class="cap">What happens after approval</div>
+        <div style="font-size:13px;color:var(--ink-2)">Draft phase fills the three Judicial Council forms as <b>token-space field maps</b>; your browser writes real names into the PDFs <b>locally, after rehydration</b> — the filled forms never exist on a server. Verify phase re-checks every citation, then the run halts at Final for your signature-ready review.</div>
+      </div>
+    </div></div>
+  </div>
+</div>
+
+<!-- ════════════════ VIEW 4 — NEW STATES ════════════════ -->
+<div class="shell view" id="v-states">
+  <div class="main" style="background:var(--canvas)">
+    <div class="hdr">
+      <div class="logo">♥</div>
+      <div><h1>New UI states introduced by the roadmap</h1><span class="tag">P0 + workspace states · gallery</span></div>
+    </div>
+    <div class="wrap"><div class="inner">
+      <div class="grid">
+
+        <div class="state"><div class="cap">P0 — Refusal (single-engine policy: surface, never fall back)</div>
+          <div class="banner amber"><b>⚠️ Fable declined this request.</b>
+            Category: <i>safety — explanation provided</i>. “I can’t help draft this particular declaration as framed; it asks me to characterize a third party’s mental state as fact.”
+            <br><span style="font-size:11.5px">Your message was <span style="font-weight:700">not</span> sent to any other model.</span>
+            <div class="row2"><button class="btn" style="font-size:12px">Edit &amp; resend</button><button class="btn subtle" style="font-size:12px">Why? ▾</button></div>
+          </div></div>
+
+        <div class="state"><div class="cap">P0 — Truncation (stop=max_tokens)</div>
+          <div class="banner gray"><b>Response reached its length limit.</b> The draft stopped mid-section.
+            <div class="row2"><button class="btn primary" style="font-size:12px">Continue from here</button><button class="btn subtle" style="font-size:12px">Shorten scope</button></div>
+          </div></div>
+
+        <div class="state"><div class="cap">Fail-closed — privacy filter down (existing behavior, clearer copy)</div>
+          <div class="banner red"><b>✗ Privacy filter unreachable — request blocked.</b>
+            Nothing left this Mac. Chat is disabled until the on-device filter is back.
+            <div class="row2"><button class="btn" style="font-size:12px">Retry</button><button class="btn subtle" style="font-size:12px">Open install guide</button></div>
+          </div></div>
+
+        <div class="state"><div class="cap">P0 — session expired (endpoints now authenticated)</div>
+          <div class="banner gray"><b>Your sign-in expired.</b> Reconnect to keep working — your draft is saved on this device.
+            <div class="row2"><button class="btn primary" style="font-size:12px">Sign in again</button></div>
+          </div></div>
+
+        <div class="state"><div class="cap">Matter ingest — scanned PDF rejected (vision gated)</div>
+          <div class="banner red"><b>“Hospital records (scan).pdf” can’t be added yet.</b>
+            It has no text layer, and pixels can’t be tokenized on-device today. Options: get a text copy, retype the 3 pages you need, or wait for on-device OCR + redaction (roadmap).
+          </div></div>
+
+        <div class="state"><div class="cap">Transparency — “what Anthropic sees” (wire view)</div>
+          <div class="wire"><b style="font-size:11px;letter-spacing:.06em">WIRE FORM (tokenized)</b><br>
+            <span class="mono" style="font-size:11.5px">Can we use the streamlined confirmatory adoption for CLIENT_001 and CLIENT_002? They married DATE_014, and CLIENT_004 was born DATE_015 via IVF with a known donor.</span><br>
+            <span class="hint">Token map lives only in this browser’s encrypted store. Server &amp; model never see real values.</span>
+          </div></div>
+
+      </div>
+    </div></div>
+  </div>
+</div>
+
+<script>
+  function show(id, btn){
+    document.querySelectorAll('.view').forEach(v=>v.classList.remove('on'));
+    document.getElementById('v-'+id).classList.add('on');
+    document.querySelectorAll('.chrome button').forEach(b=>b.classList.remove('on'));
+    btn.classList.add('on');
+  }
+  function pane(id, btn){
+    document.querySelectorAll('.ppane').forEach(p=>p.classList.remove('on'));
+    document.getElementById('p-'+id).classList.add('on');
+    document.querySelectorAll('.ptab').forEach(b=>b.classList.remove('on'));
+    btn.classList.add('on');
+  }
+</script>
+</body>
+</html>

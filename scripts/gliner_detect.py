@@ -1,23 +1,50 @@
 #!/usr/bin/env python3
 """
-GLiNER-based PII detector — subprocess wrapper for the trap harness.
+=============================================================================
+SCRIPT NAME: gliner_detect.py
+=============================================================================
 
-Usage:
-  echo '{"text": "..."}' | gliner_detect.py
-  python gliner_detect.py "text on argv"
+DESCRIPTION:
+    GLiNER-based PII (Personally Identifiable Information) detector designed
+    as a subprocess wrapper for the California Law Chatbot V2 trap harness.
+    Loads the urchade/gliner_multi_pii-v1 model once per process, accepts
+    text via command-line argument or stdin (one JSON per line with a "text"
+    field), runs entity detection, maps detected PII labels to a V2
+    SpanCategory taxonomy (name, street_address, phone, email, date, ssn,
+    credit_card, driver_license, medical_record, zip), applies a stoplist
+    filter and prefix-trim logic to suppress false positives on common legal
+    role terms and generic geographic/nationality words, and outputs results
+    as JSON to stdout. Designed for batch use by feeding multiple texts per
+    line on stdin to amortize the model load cost. Serves as a third PII
+    detector alongside the OPF (AI4Privacy) and regex detectors, providing
+    uncorrelated failure modes since GLiNER is trained on a different corpus.
 
-Output JSON to stdout:
-  {"spans": [{"start": 0, "end": 4, "label": "name", "text": "..."}, ...]}
+INPUT FILES:
+    (none — script reads text from sys.argv or stdin, not from named files)
 
-Maps GLiNER's PII labels → V2 SpanCategory taxonomy. Only emits the
-categories we care about for tokenization. The model loads once per
-process — for batch use, prefer feeding multiple texts through stdin
-(one JSON per line) to amortize load cost.
+OUTPUT FILES:
+    (none — script writes JSON result objects to stdout only)
 
-Per V1→V2 audit 2026-05-14 Phase C: GLiNER (urchade/gliner_multi_pii-v1)
-is span-based and trained on a different corpus than the AI4Privacy
-OPF family, so its failure modes are uncorrelated. Use as a 3rd
-detector alongside stock OPF + regex.
+VERSION: 1.0
+LAST UPDATED: 2026-06-05
+AUTHOR: Arjun Divecha
+
+DEPENDENCIES:
+    - gliner (GLiNER model library)
+    - transformers (HuggingFace model loading, suppressed verbosity)
+    - tokenizers (parallelism suppressed)
+
+USAGE:
+    python gliner_detect.py "text to scan"
+    echo '{"text": "text to scan"}' | python gliner_detect.py
+
+NOTES:
+    - Model loads once per process (~1-2s warmup).
+    - Detection threshold defaults to 0.7; override via GLINER_THRESHOLD env var.
+    - Designed as a 3rd detector alongside OPF + regex per the V1->V2 audit.
+    - GLiNER failure modes are uncorrelated with AI4Privacy OPF family.
+    - Entirely subprocess-based: no file I/O, communicates via stdin/stdout.
+=============================================================================
 """
 
 import json

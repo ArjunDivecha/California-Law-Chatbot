@@ -1,0 +1,1926 @@
+{
+  "generated_at": "2026-05-15T06:36:34.960Z",
+  "label": "gliner-only",
+  "manifest_version": 2,
+  "manifest_authored": "2026-05-12",
+  "elapsed_seconds": 0,
+  "totals": {
+    "total": 120,
+    "pass": 18,
+    "fail": 102,
+    "wire_leaks": 0
+  },
+  "by_category": {
+    "compound_identifier": {
+      "total": 25,
+      "pass": 0,
+      "fail": 25
+    },
+    "single_word_name": {
+      "total": 10,
+      "pass": 0,
+      "fail": 10
+    },
+    "tool_output_reintroduction": {
+      "total": 11,
+      "pass": 11,
+      "fail": 0
+    },
+    "financial": {
+      "total": 10,
+      "pass": 0,
+      "fail": 10
+    },
+    "adversarial": {
+      "total": 10,
+      "pass": 7,
+      "fail": 3
+    },
+    "mixed_direct_pii": {
+      "total": 54,
+      "pass": 0,
+      "fail": 54
+    }
+  },
+  "failed": [
+    {
+      "id": "T-W1-001",
+      "category": "compound_identifier",
+      "w_item": "W1",
+      "missed": [],
+      "falsePositives": [
+        {
+          "substr": "Vietnamese",
+          "predictedSpan": {
+            "start": 33,
+            "end": 49,
+            "category": "name",
+            "raw": "Vietnamese widow"
+          }
+        },
+        {
+          "substr": "widow",
+          "predictedSpan": {
+            "start": 33,
+            "end": 49,
+            "category": "name",
+            "raw": "Vietnamese widow"
+          }
+        }
+      ],
+      "wireLeaks": [],
+      "privilegedExpected": true,
+      "privilegedActual": false
+    },
+    {
+      "id": "T-W1-002",
+      "category": "compound_identifier",
+      "w_item": "W1",
+      "missed": [],
+      "falsePositives": [
+        {
+          "substr": "Sunset District",
+          "predictedSpan": {
+            "start": 30,
+            "end": 45,
+            "category": "street_address",
+            "raw": "Sunset District"
+          }
+        },
+        {
+          "substr": "Cantonese",
+          "predictedSpan": {
+            "start": 0,
+            "end": 26,
+            "category": "name",
+            "raw": "Cantonese-speaking widower"
+          }
+        },
+        {
+          "substr": "radiology",
+          "predictedSpan": {
+            "start": 66,
+            "end": 95,
+            "category": "name",
+            "raw": "third-year radiology resident"
+          }
+        }
+      ],
+      "wireLeaks": [],
+      "privilegedExpected": true,
+      "privilegedActual": false
+    },
+    {
+      "id": "T-W1-003",
+      "category": "compound_identifier",
+      "w_item": "W1",
+      "missed": [],
+      "falsePositives": [
+        {
+          "substr": "Pico-Union",
+          "predictedSpan": {
+            "start": 28,
+            "end": 38,
+            "category": "street_address",
+            "raw": "Pico-Union"
+          }
+        },
+        {
+          "substr": "Salvadoran",
+          "predictedSpan": {
+            "start": 0,
+            "end": 10,
+            "category": "name",
+            "raw": "Salvadoran"
+          }
+        }
+      ],
+      "wireLeaks": [],
+      "privilegedExpected": true,
+      "privilegedActual": false
+    },
+    {
+      "id": "T-W1-004",
+      "category": "compound_identifier",
+      "w_item": "W1",
+      "missed": [],
+      "falsePositives": [
+        {
+          "substr": "Roseville",
+          "predictedSpan": {
+            "start": 44,
+            "end": 62,
+            "category": "street_address",
+            "raw": "house in Roseville"
+          }
+        },
+        {
+          "substr": "Iranian",
+          "predictedSpan": {
+            "start": 0,
+            "end": 16,
+            "category": "name",
+            "raw": "Iranian post-doc"
+          }
+        }
+      ],
+      "wireLeaks": [],
+      "privilegedExpected": true,
+      "privilegedActual": false
+    },
+    {
+      "id": "T-W1-005",
+      "category": "compound_identifier",
+      "w_item": "W1",
+      "missed": [],
+      "falsePositives": [
+        {
+          "substr": "Yuba City",
+          "predictedSpan": {
+            "start": 23,
+            "end": 32,
+            "category": "street_address",
+            "raw": "Yuba City"
+          }
+        },
+        {
+          "substr": "Sikh",
+          "predictedSpan": {
+            "start": 0,
+            "end": 19,
+            "category": "name",
+            "raw": "Sikh business owner"
+          }
+        }
+      ],
+      "wireLeaks": [],
+      "privilegedExpected": true,
+      "privilegedActual": false
+    },
+    {
+      "id": "T-W1-006",
+      "category": "compound_identifier",
+      "w_item": "W1",
+      "missed": [],
+      "falsePositives": [
+        {
+          "substr": "South LA",
+          "predictedSpan": {
+            "start": 23,
+            "end": 31,
+            "category": "street_address",
+            "raw": "South LA"
+          }
+        },
+        {
+          "substr": "sheriff's deputy",
+          "predictedSpan": {
+            "start": 82,
+            "end": 105,
+            "category": "name",
+            "raw": "county sheriff's deputy"
+          }
+        }
+      ],
+      "wireLeaks": [],
+      "privilegedExpected": true,
+      "privilegedActual": false
+    },
+    {
+      "id": "T-W1-007",
+      "category": "compound_identifier",
+      "w_item": "W1",
+      "missed": [],
+      "falsePositives": [
+        {
+          "substr": "Fresno County",
+          "predictedSpan": {
+            "start": 16,
+            "end": 48,
+            "category": "street_address",
+            "raw": "Fresno County, Section 8 housing"
+          }
+        },
+        {
+          "substr": "Section 8",
+          "predictedSpan": {
+            "start": 16,
+            "end": 48,
+            "category": "street_address",
+            "raw": "Fresno County, Section 8 housing"
+          }
+        },
+        {
+          "substr": "Hmong",
+          "predictedSpan": {
+            "start": 0,
+            "end": 12,
+            "category": "name",
+            "raw": "Hmong farmer"
+          }
+        }
+      ],
+      "wireLeaks": [],
+      "privilegedExpected": true,
+      "privilegedActual": false
+    },
+    {
+      "id": "T-W1-008",
+      "category": "compound_identifier",
+      "w_item": "W1",
+      "missed": [],
+      "falsePositives": [
+        {
+          "substr": "Koreatown",
+          "predictedSpan": {
+            "start": 32,
+            "end": 41,
+            "category": "street_address",
+            "raw": "Koreatown"
+          }
+        },
+        {
+          "substr": "Burbank",
+          "predictedSpan": {
+            "start": 99,
+            "end": 113,
+            "category": "street_address",
+            "raw": "Burbank studio"
+          }
+        }
+      ],
+      "wireLeaks": [],
+      "privilegedExpected": true,
+      "privilegedActual": false
+    },
+    {
+      "id": "T-W1-009",
+      "category": "compound_identifier",
+      "w_item": "W1",
+      "missed": [],
+      "falsePositives": [
+        {
+          "substr": "Hollywood Hills",
+          "predictedSpan": {
+            "start": 39,
+            "end": 54,
+            "category": "street_address",
+            "raw": "Hollywood Hills"
+          }
+        },
+        {
+          "substr": "Glendale",
+          "predictedSpan": {
+            "start": 128,
+            "end": 136,
+            "category": "street_address",
+            "raw": "Glendale"
+          }
+        },
+        {
+          "substr": "Brazilian",
+          "predictedSpan": {
+            "start": 0,
+            "end": 21,
+            "category": "name",
+            "raw": "Brazilian-American DJ"
+          }
+        },
+        {
+          "substr": "Portuguese",
+          "predictedSpan": {
+            "start": 97,
+            "end": 124,
+            "category": "name",
+            "raw": "Portuguese-language teacher"
+          }
+        }
+      ],
+      "wireLeaks": [],
+      "privilegedExpected": true,
+      "privilegedActual": false
+    },
+    {
+      "id": "T-W1-010",
+      "category": "compound_identifier",
+      "w_item": "W1",
+      "missed": [],
+      "falsePositives": [
+        {
+          "substr": "Westwood",
+          "predictedSpan": {
+            "start": 25,
+            "end": 33,
+            "category": "street_address",
+            "raw": "Westwood"
+          }
+        },
+        {
+          "substr": "Mid-City",
+          "predictedSpan": {
+            "start": 92,
+            "end": 100,
+            "category": "street_address",
+            "raw": "Mid-City"
+          }
+        },
+        {
+          "substr": "Pakistani",
+          "predictedSpan": {
+            "start": 0,
+            "end": 21,
+            "category": "name",
+            "raw": "Pakistani taxi driver"
+          }
+        },
+        {
+          "substr": "imam",
+          "predictedSpan": {
+            "start": 72,
+            "end": 76,
+            "category": "name",
+            "raw": "imam"
+          }
+        }
+      ],
+      "wireLeaks": [],
+      "privilegedExpected": true,
+      "privilegedActual": false
+    },
+    {
+      "id": "T-W1-011",
+      "category": "compound_identifier",
+      "w_item": "W1",
+      "missed": [],
+      "falsePositives": [
+        {
+          "substr": "Long Beach",
+          "predictedSpan": {
+            "start": 24,
+            "end": 48,
+            "category": "street_address",
+            "raw": "Long Beach Cambodia Town"
+          }
+        },
+        {
+          "substr": "Cambodian",
+          "predictedSpan": {
+            "start": 0,
+            "end": 20,
+            "category": "name",
+            "raw": "Cambodian shop owner"
+          }
+        }
+      ],
+      "wireLeaks": [],
+      "privilegedExpected": true,
+      "privilegedActual": false
+    },
+    {
+      "id": "T-W1-012",
+      "category": "compound_identifier",
+      "w_item": "W1",
+      "missed": [],
+      "falsePositives": [
+        {
+          "substr": "Bishop",
+          "predictedSpan": {
+            "start": 41,
+            "end": 47,
+            "category": "street_address",
+            "raw": "Bishop"
+          }
+        },
+        {
+          "substr": "Native American",
+          "predictedSpan": {
+            "start": 0,
+            "end": 35,
+            "category": "name",
+            "raw": "Native American casino-tribe member"
+          }
+        }
+      ],
+      "wireLeaks": [],
+      "privilegedExpected": true,
+      "privilegedActual": false
+    },
+    {
+      "id": "T-W1-013",
+      "category": "compound_identifier",
+      "w_item": "W1",
+      "missed": [],
+      "falsePositives": [
+        {
+          "substr": "Sunnyvale",
+          "predictedSpan": {
+            "start": 28,
+            "end": 44,
+            "category": "street_address",
+            "raw": "Sunnyvale on H1B"
+          }
+        },
+        {
+          "substr": "H1B",
+          "predictedSpan": {
+            "start": 28,
+            "end": 44,
+            "category": "street_address",
+            "raw": "Sunnyvale on H1B"
+          }
+        },
+        {
+          "substr": "Indian",
+          "predictedSpan": {
+            "start": 0,
+            "end": 24,
+            "category": "name",
+            "raw": "Indian software engineer"
+          }
+        }
+      ],
+      "wireLeaks": [],
+      "privilegedExpected": true,
+      "privilegedActual": false
+    },
+    {
+      "id": "T-W1-014",
+      "category": "compound_identifier",
+      "w_item": "W1",
+      "missed": [],
+      "falsePositives": [
+        {
+          "substr": "Filipino",
+          "predictedSpan": {
+            "start": 0,
+            "end": 27,
+            "category": "name",
+            "raw": "Filipino nursing-home owner"
+          }
+        }
+      ],
+      "wireLeaks": [],
+      "privilegedExpected": true,
+      "privilegedActual": false
+    },
+    {
+      "id": "T-W1-015",
+      "category": "compound_identifier",
+      "w_item": "W1",
+      "missed": [],
+      "falsePositives": [
+        {
+          "substr": "La Habra",
+          "predictedSpan": {
+            "start": 56,
+            "end": 64,
+            "category": "street_address",
+            "raw": "La Habra"
+          }
+        },
+        {
+          "substr": "Lebanese",
+          "predictedSpan": {
+            "start": 0,
+            "end": 30,
+            "category": "name",
+            "raw": "Lebanese-American restaurateur"
+          }
+        },
+        {
+          "substr": "restaurateur",
+          "predictedSpan": {
+            "start": 0,
+            "end": 30,
+            "category": "name",
+            "raw": "Lebanese-American restaurateur"
+          }
+        }
+      ],
+      "wireLeaks": [],
+      "privilegedExpected": true,
+      "privilegedActual": false
+    },
+    {
+      "id": "T-W1-016",
+      "category": "compound_identifier",
+      "w_item": "W1",
+      "missed": [],
+      "falsePositives": [
+        {
+          "substr": "Sherman Oaks",
+          "predictedSpan": {
+            "start": 49,
+            "end": 72,
+            "category": "street_address",
+            "raw": "Sherman Oaks and Encino"
+          }
+        },
+        {
+          "substr": "Encino",
+          "predictedSpan": {
+            "start": 49,
+            "end": 72,
+            "category": "street_address",
+            "raw": "Sherman Oaks and Encino"
+          }
+        },
+        {
+          "substr": "Russian",
+          "predictedSpan": {
+            "start": 0,
+            "end": 30,
+            "category": "name",
+            "raw": "Russian-speaking dental couple"
+          }
+        }
+      ],
+      "wireLeaks": [],
+      "privilegedExpected": true,
+      "privilegedActual": false
+    },
+    {
+      "id": "T-W1-017",
+      "category": "compound_identifier",
+      "w_item": "W1",
+      "missed": [],
+      "falsePositives": [
+        {
+          "substr": "Bakersfield",
+          "predictedSpan": {
+            "start": 22,
+            "end": 33,
+            "category": "street_address",
+            "raw": "Bakersfield"
+          }
+        },
+        {
+          "substr": "Mexican",
+          "predictedSpan": {
+            "start": 0,
+            "end": 18,
+            "category": "name",
+            "raw": "Mexican landscaper"
+          }
+        },
+        {
+          "substr": "EB-3",
+          "predictedSpan": {
+            "start": 60,
+            "end": 64,
+            "category": "driver_license",
+            "raw": "EB-3"
+          }
+        }
+      ],
+      "wireLeaks": [],
+      "privilegedExpected": true,
+      "privilegedActual": false
+    },
+    {
+      "id": "T-W1-018",
+      "category": "compound_identifier",
+      "w_item": "W1",
+      "missed": [],
+      "falsePositives": [
+        {
+          "substr": "Pico-Robertson",
+          "predictedSpan": {
+            "start": 32,
+            "end": 46,
+            "category": "street_address",
+            "raw": "Pico-Robertson"
+          }
+        },
+        {
+          "substr": "Orthodox",
+          "predictedSpan": {
+            "start": 0,
+            "end": 28,
+            "category": "name",
+            "raw": "Orthodox Jewish orthodontist"
+          }
+        }
+      ],
+      "wireLeaks": [],
+      "privilegedExpected": true,
+      "privilegedActual": false
+    },
+    {
+      "id": "T-W1-019",
+      "category": "compound_identifier",
+      "w_item": "W1",
+      "missed": [],
+      "falsePositives": [
+        {
+          "substr": "African-American",
+          "predictedSpan": {
+            "start": 0,
+            "end": 23,
+            "category": "name",
+            "raw": "African-American pastor"
+          }
+        },
+        {
+          "substr": "pastor",
+          "predictedSpan": {
+            "start": 0,
+            "end": 23,
+            "category": "name",
+            "raw": "African-American pastor"
+          }
+        }
+      ],
+      "wireLeaks": [],
+      "privilegedExpected": true,
+      "privilegedActual": false
+    },
+    {
+      "id": "T-W1-020",
+      "category": "compound_identifier",
+      "w_item": "W1",
+      "missed": [],
+      "falsePositives": [
+        {
+          "substr": "Harker",
+          "predictedSpan": {
+            "start": 89,
+            "end": 95,
+            "category": "street_address",
+            "raw": "Harker"
+          }
+        },
+        {
+          "substr": "Chinese",
+          "predictedSpan": {
+            "start": 0,
+            "end": 14,
+            "category": "name",
+            "raw": "Chinese family"
+          }
+        }
+      ],
+      "wireLeaks": [],
+      "privilegedExpected": true,
+      "privilegedActual": false
+    },
+    {
+      "id": "T-W4-001",
+      "category": "single_word_name",
+      "w_item": "W4",
+      "missed": [],
+      "falsePositives": [
+        {
+          "substr": "Tuesday",
+          "predictedSpan": {
+            "start": 23,
+            "end": 30,
+            "category": "date",
+            "raw": "Tuesday"
+          }
+        }
+      ],
+      "wireLeaks": [],
+      "privilegedExpected": true,
+      "privilegedActual": false
+    },
+    {
+      "id": "T-W4-002",
+      "category": "single_word_name",
+      "w_item": "W4",
+      "missed": [],
+      "falsePositives": [],
+      "wireLeaks": [],
+      "privilegedExpected": true,
+      "privilegedActual": false
+    },
+    {
+      "id": "T-W4-003",
+      "category": "single_word_name",
+      "w_item": "W4",
+      "missed": [],
+      "falsePositives": [],
+      "wireLeaks": [],
+      "privilegedExpected": true,
+      "privilegedActual": false
+    },
+    {
+      "id": "T-W4-004",
+      "category": "single_word_name",
+      "w_item": "W4",
+      "missed": [],
+      "falsePositives": [],
+      "wireLeaks": [],
+      "privilegedExpected": true,
+      "privilegedActual": false
+    },
+    {
+      "id": "T-W4-005",
+      "category": "single_word_name",
+      "w_item": "W4",
+      "missed": [],
+      "falsePositives": [],
+      "wireLeaks": [],
+      "privilegedExpected": true,
+      "privilegedActual": false
+    },
+    {
+      "id": "T-W4-006",
+      "category": "single_word_name",
+      "w_item": "W4",
+      "missed": [],
+      "falsePositives": [],
+      "wireLeaks": [],
+      "privilegedExpected": true,
+      "privilegedActual": false
+    },
+    {
+      "id": "T-W4-007",
+      "category": "single_word_name",
+      "w_item": "W4",
+      "missed": [],
+      "falsePositives": [
+        {
+          "substr": "Friday",
+          "predictedSpan": {
+            "start": 27,
+            "end": 33,
+            "category": "date",
+            "raw": "Friday"
+          }
+        }
+      ],
+      "wireLeaks": [],
+      "privilegedExpected": true,
+      "privilegedActual": false
+    },
+    {
+      "id": "T-W4-008",
+      "category": "single_word_name",
+      "w_item": "W4",
+      "missed": [],
+      "falsePositives": [
+        {
+          "substr": "14th",
+          "predictedSpan": {
+            "start": 35,
+            "end": 39,
+            "category": "date",
+            "raw": "14th"
+          }
+        }
+      ],
+      "wireLeaks": [],
+      "privilegedExpected": true,
+      "privilegedActual": false
+    },
+    {
+      "id": "T-W4-009",
+      "category": "single_word_name",
+      "w_item": "W4",
+      "missed": [],
+      "falsePositives": [
+        {
+          "substr": "yesterday",
+          "predictedSpan": {
+            "start": 17,
+            "end": 26,
+            "category": "date",
+            "raw": "yesterday"
+          }
+        }
+      ],
+      "wireLeaks": [],
+      "privilegedExpected": true,
+      "privilegedActual": false
+    },
+    {
+      "id": "T-W4-010",
+      "category": "single_word_name",
+      "w_item": "W4",
+      "missed": [],
+      "falsePositives": [],
+      "wireLeaks": [],
+      "privilegedExpected": true,
+      "privilegedActual": false
+    },
+    {
+      "id": "T-W3-001",
+      "category": "financial",
+      "w_item": "W3",
+      "missed": [],
+      "falsePositives": [],
+      "wireLeaks": [],
+      "privilegedExpected": true,
+      "privilegedActual": false
+    },
+    {
+      "id": "T-W3-002",
+      "category": "financial",
+      "w_item": "W3",
+      "missed": [],
+      "falsePositives": [],
+      "wireLeaks": [],
+      "privilegedExpected": true,
+      "privilegedActual": false
+    },
+    {
+      "id": "T-W3-003",
+      "category": "financial",
+      "w_item": "W3",
+      "missed": [],
+      "falsePositives": [],
+      "wireLeaks": [],
+      "privilegedExpected": true,
+      "privilegedActual": false
+    },
+    {
+      "id": "T-W3-004",
+      "category": "financial",
+      "w_item": "W3",
+      "missed": [],
+      "falsePositives": [],
+      "wireLeaks": [],
+      "privilegedExpected": true,
+      "privilegedActual": false
+    },
+    {
+      "id": "T-W3-005",
+      "category": "financial",
+      "w_item": "W3",
+      "missed": [],
+      "falsePositives": [],
+      "wireLeaks": [],
+      "privilegedExpected": true,
+      "privilegedActual": false
+    },
+    {
+      "id": "T-W3-006",
+      "category": "financial",
+      "w_item": "W3",
+      "missed": [],
+      "falsePositives": [],
+      "wireLeaks": [],
+      "privilegedExpected": true,
+      "privilegedActual": false
+    },
+    {
+      "id": "T-W3-007",
+      "category": "financial",
+      "w_item": "W3",
+      "missed": [],
+      "falsePositives": [
+        {
+          "substr": "beneficiary",
+          "predictedSpan": {
+            "start": 40,
+            "end": 51,
+            "category": "name",
+            "raw": "beneficiary"
+          }
+        }
+      ],
+      "wireLeaks": [],
+      "privilegedExpected": true,
+      "privilegedActual": false
+    },
+    {
+      "id": "T-W3-008",
+      "category": "financial",
+      "w_item": "W3",
+      "missed": [],
+      "falsePositives": [],
+      "wireLeaks": [],
+      "privilegedExpected": true,
+      "privilegedActual": false
+    },
+    {
+      "id": "T-W3-009",
+      "category": "financial",
+      "w_item": "W3",
+      "missed": [],
+      "falsePositives": [],
+      "wireLeaks": [],
+      "privilegedExpected": true,
+      "privilegedActual": false
+    },
+    {
+      "id": "T-W3-010",
+      "category": "financial",
+      "w_item": "W3",
+      "missed": [],
+      "falsePositives": [],
+      "wireLeaks": [],
+      "privilegedExpected": true,
+      "privilegedActual": false
+    },
+    {
+      "id": "T-ADV-003",
+      "category": "adversarial",
+      "w_item": "adversarial",
+      "missed": [],
+      "falsePositives": [],
+      "wireLeaks": [],
+      "privilegedExpected": true,
+      "privilegedActual": false
+    },
+    {
+      "id": "T-ADV-009",
+      "category": "adversarial",
+      "w_item": "adversarial",
+      "missed": [],
+      "falsePositives": [],
+      "wireLeaks": [],
+      "privilegedExpected": true,
+      "privilegedActual": false
+    },
+    {
+      "id": "T-ADV-010",
+      "category": "adversarial",
+      "w_item": "adversarial",
+      "missed": [],
+      "falsePositives": [],
+      "wireLeaks": [],
+      "privilegedExpected": true,
+      "privilegedActual": false
+    },
+    {
+      "id": "T-PII-001",
+      "category": "mixed_direct_pii",
+      "w_item": "direct_pii",
+      "missed": [],
+      "falsePositives": [
+        {
+          "substr": "Los Angeles",
+          "predictedSpan": {
+            "start": 34,
+            "end": 75,
+            "category": "street_address",
+            "raw": "1234 Olvera Street, Los Angeles, CA 90012"
+          }
+        }
+      ],
+      "wireLeaks": [],
+      "privilegedExpected": true,
+      "privilegedActual": false
+    },
+    {
+      "id": "T-PII-002",
+      "category": "mixed_direct_pii",
+      "w_item": "direct_pii",
+      "missed": [],
+      "falsePositives": [],
+      "wireLeaks": [],
+      "privilegedExpected": true,
+      "privilegedActual": false
+    },
+    {
+      "id": "T-PII-003",
+      "category": "mixed_direct_pii",
+      "w_item": "direct_pii",
+      "missed": [],
+      "falsePositives": [],
+      "wireLeaks": [],
+      "privilegedExpected": true,
+      "privilegedActual": false
+    },
+    {
+      "id": "T-PII-004",
+      "category": "mixed_direct_pii",
+      "w_item": "direct_pii",
+      "missed": [],
+      "falsePositives": [],
+      "wireLeaks": [],
+      "privilegedExpected": true,
+      "privilegedActual": false
+    },
+    {
+      "id": "T-PII-005",
+      "category": "mixed_direct_pii",
+      "w_item": "direct_pii",
+      "missed": [],
+      "falsePositives": [
+        {
+          "substr": "November",
+          "predictedSpan": {
+            "start": 48,
+            "end": 56,
+            "category": "date",
+            "raw": "November"
+          }
+        }
+      ],
+      "wireLeaks": [],
+      "privilegedExpected": true,
+      "privilegedActual": false
+    },
+    {
+      "id": "T-PII-006",
+      "category": "mixed_direct_pii",
+      "w_item": "direct_pii",
+      "missed": [],
+      "falsePositives": [
+        {
+          "substr": "San Jose",
+          "predictedSpan": {
+            "start": 51,
+            "end": 80,
+            "category": "street_address",
+            "raw": "88 Industrial Drive, San Jose"
+          }
+        }
+      ],
+      "wireLeaks": [],
+      "privilegedExpected": true,
+      "privilegedActual": false
+    },
+    {
+      "id": "T-PII-007",
+      "category": "mixed_direct_pii",
+      "w_item": "direct_pii",
+      "missed": [],
+      "falsePositives": [
+        {
+          "substr": "yesterday",
+          "predictedSpan": {
+            "start": 52,
+            "end": 61,
+            "category": "date",
+            "raw": "yesterday"
+          }
+        }
+      ],
+      "wireLeaks": [],
+      "privilegedExpected": true,
+      "privilegedActual": false
+    },
+    {
+      "id": "T-PII-008",
+      "category": "mixed_direct_pii",
+      "w_item": "direct_pii",
+      "missed": [],
+      "falsePositives": [],
+      "wireLeaks": [],
+      "privilegedExpected": true,
+      "privilegedActual": false
+    },
+    {
+      "id": "T-PII-009",
+      "category": "mixed_direct_pii",
+      "w_item": "direct_pii",
+      "missed": [],
+      "falsePositives": [],
+      "wireLeaks": [],
+      "privilegedExpected": true,
+      "privilegedActual": false
+    },
+    {
+      "id": "T-PII-010",
+      "category": "mixed_direct_pii",
+      "w_item": "direct_pii",
+      "missed": [],
+      "falsePositives": [],
+      "wireLeaks": [],
+      "privilegedExpected": true,
+      "privilegedActual": false
+    },
+    {
+      "id": "T-PII-011",
+      "category": "mixed_direct_pii",
+      "w_item": "direct_pii",
+      "missed": [],
+      "falsePositives": [
+        {
+          "substr": "Witness",
+          "predictedSpan": {
+            "start": 0,
+            "end": 22,
+            "category": "name",
+            "raw": "Witness Min-jeong Park"
+          }
+        },
+        {
+          "substr": "Metro station",
+          "predictedSpan": {
+            "start": 38,
+            "end": 68,
+            "category": "street_address",
+            "raw": "Wilshire Western Metro station"
+          }
+        }
+      ],
+      "wireLeaks": [],
+      "privilegedExpected": true,
+      "privilegedActual": false
+    },
+    {
+      "id": "T-PII-012",
+      "category": "mixed_direct_pii",
+      "w_item": "direct_pii",
+      "missed": [],
+      "falsePositives": [
+        {
+          "substr": "Co-trustee",
+          "predictedSpan": {
+            "start": 0,
+            "end": 10,
+            "category": "name",
+            "raw": "Co-trustee"
+          }
+        }
+      ],
+      "wireLeaks": [],
+      "privilegedExpected": true,
+      "privilegedActual": false
+    },
+    {
+      "id": "T-PII-013",
+      "category": "mixed_direct_pii",
+      "w_item": "direct_pii",
+      "missed": [],
+      "falsePositives": [],
+      "wireLeaks": [],
+      "privilegedExpected": true,
+      "privilegedActual": false
+    },
+    {
+      "id": "T-PII-014",
+      "category": "mixed_direct_pii",
+      "w_item": "direct_pii",
+      "missed": [],
+      "falsePositives": [
+        {
+          "substr": "Mr.",
+          "predictedSpan": {
+            "start": 17,
+            "end": 39,
+            "category": "name",
+            "raw": "Mr. Hassan Al-Mansouri"
+          }
+        }
+      ],
+      "wireLeaks": [],
+      "privilegedExpected": true,
+      "privilegedActual": false
+    },
+    {
+      "id": "T-PII-015",
+      "category": "mixed_direct_pii",
+      "w_item": "direct_pii",
+      "missed": [],
+      "falsePositives": [],
+      "wireLeaks": [],
+      "privilegedExpected": true,
+      "privilegedActual": false
+    },
+    {
+      "id": "T-PII-016",
+      "category": "mixed_direct_pii",
+      "w_item": "direct_pii",
+      "missed": [],
+      "falsePositives": [
+        {
+          "substr": "Dr.",
+          "predictedSpan": {
+            "start": 15,
+            "end": 33,
+            "category": "name",
+            "raw": "Dr. Ibrahim Khalil"
+          }
+        }
+      ],
+      "wireLeaks": [],
+      "privilegedExpected": true,
+      "privilegedActual": false
+    },
+    {
+      "id": "T-PII-017",
+      "category": "mixed_direct_pii",
+      "w_item": "direct_pii",
+      "missed": [],
+      "falsePositives": [],
+      "wireLeaks": [],
+      "privilegedExpected": true,
+      "privilegedActual": false
+    },
+    {
+      "id": "T-PII-018",
+      "category": "mixed_direct_pii",
+      "w_item": "direct_pii",
+      "missed": [],
+      "falsePositives": [],
+      "wireLeaks": [],
+      "privilegedExpected": true,
+      "privilegedActual": false
+    },
+    {
+      "id": "T-PII-019",
+      "category": "mixed_direct_pii",
+      "w_item": "direct_pii",
+      "missed": [],
+      "falsePositives": [],
+      "wireLeaks": [],
+      "privilegedExpected": true,
+      "privilegedActual": false
+    },
+    {
+      "id": "T-PII-020",
+      "category": "mixed_direct_pii",
+      "w_item": "direct_pii",
+      "missed": [],
+      "falsePositives": [],
+      "wireLeaks": [],
+      "privilegedExpected": true,
+      "privilegedActual": false
+    },
+    {
+      "id": "T-PII-021",
+      "category": "mixed_direct_pii",
+      "w_item": "direct_pii",
+      "missed": [],
+      "falsePositives": [],
+      "wireLeaks": [],
+      "privilegedExpected": true,
+      "privilegedActual": false
+    },
+    {
+      "id": "T-PII-022",
+      "category": "mixed_direct_pii",
+      "w_item": "direct_pii",
+      "missed": [],
+      "falsePositives": [],
+      "wireLeaks": [],
+      "privilegedExpected": true,
+      "privilegedActual": false
+    },
+    {
+      "id": "T-PII-023",
+      "category": "mixed_direct_pii",
+      "w_item": "direct_pii",
+      "missed": [],
+      "falsePositives": [],
+      "wireLeaks": [],
+      "privilegedExpected": true,
+      "privilegedActual": false
+    },
+    {
+      "id": "T-PII-024",
+      "category": "mixed_direct_pii",
+      "w_item": "direct_pii",
+      "missed": [],
+      "falsePositives": [],
+      "wireLeaks": [],
+      "privilegedExpected": true,
+      "privilegedActual": false
+    },
+    {
+      "id": "T-PII-025",
+      "category": "mixed_direct_pii",
+      "w_item": "direct_pii",
+      "missed": [],
+      "falsePositives": [],
+      "wireLeaks": [],
+      "privilegedExpected": true,
+      "privilegedActual": false
+    },
+    {
+      "id": "T-PII-026",
+      "category": "mixed_direct_pii",
+      "w_item": "direct_pii",
+      "missed": [],
+      "falsePositives": [],
+      "wireLeaks": [],
+      "privilegedExpected": true,
+      "privilegedActual": false
+    },
+    {
+      "id": "T-PII-027",
+      "category": "mixed_direct_pii",
+      "w_item": "direct_pii",
+      "missed": [],
+      "falsePositives": [],
+      "wireLeaks": [],
+      "privilegedExpected": true,
+      "privilegedActual": false
+    },
+    {
+      "id": "T-PII-028",
+      "category": "mixed_direct_pii",
+      "w_item": "direct_pii",
+      "missed": [],
+      "falsePositives": [],
+      "wireLeaks": [],
+      "privilegedExpected": true,
+      "privilegedActual": false
+    },
+    {
+      "id": "T-PII-029",
+      "category": "mixed_direct_pii",
+      "w_item": "direct_pii",
+      "missed": [],
+      "falsePositives": [],
+      "wireLeaks": [],
+      "privilegedExpected": true,
+      "privilegedActual": false
+    },
+    {
+      "id": "T-PII-030",
+      "category": "mixed_direct_pii",
+      "w_item": "direct_pii",
+      "missed": [],
+      "falsePositives": [],
+      "wireLeaks": [],
+      "privilegedExpected": true,
+      "privilegedActual": false
+    },
+    {
+      "id": "T-PII-031",
+      "category": "mixed_direct_pii",
+      "w_item": "direct_pii",
+      "missed": [],
+      "falsePositives": [
+        {
+          "substr": "Petitioner",
+          "predictedSpan": {
+            "start": 0,
+            "end": 10,
+            "category": "name",
+            "raw": "Petitioner"
+          }
+        }
+      ],
+      "wireLeaks": [],
+      "privilegedExpected": true,
+      "privilegedActual": false
+    },
+    {
+      "id": "T-PII-032",
+      "category": "mixed_direct_pii",
+      "w_item": "direct_pii",
+      "missed": [],
+      "falsePositives": [
+        {
+          "substr": "client",
+          "predictedSpan": {
+            "start": 37,
+            "end": 46,
+            "category": "name",
+            "raw": "my client"
+          }
+        }
+      ],
+      "wireLeaks": [],
+      "privilegedExpected": true,
+      "privilegedActual": false
+    },
+    {
+      "id": "T-PII-033",
+      "category": "mixed_direct_pii",
+      "w_item": "direct_pii",
+      "missed": [],
+      "falsePositives": [
+        {
+          "substr": "Wells Fargo",
+          "predictedSpan": {
+            "start": 31,
+            "end": 42,
+            "category": "name",
+            "raw": "Wells Fargo"
+          }
+        }
+      ],
+      "wireLeaks": [],
+      "privilegedExpected": true,
+      "privilegedActual": false
+    },
+    {
+      "id": "T-PII-034",
+      "category": "mixed_direct_pii",
+      "w_item": "direct_pii",
+      "missed": [],
+      "falsePositives": [
+        {
+          "substr": "2023 surgery",
+          "predictedSpan": {
+            "start": 62,
+            "end": 66,
+            "category": "date",
+            "raw": "2023"
+          }
+        }
+      ],
+      "wireLeaks": [],
+      "privilegedExpected": true,
+      "privilegedActual": false
+    },
+    {
+      "id": "T-PII-035",
+      "category": "mixed_direct_pii",
+      "w_item": "direct_pii",
+      "missed": [],
+      "falsePositives": [
+        {
+          "substr": "12/27",
+          "predictedSpan": {
+            "start": 46,
+            "end": 51,
+            "category": "date",
+            "raw": "12/27"
+          }
+        }
+      ],
+      "wireLeaks": [],
+      "privilegedExpected": true,
+      "privilegedActual": false
+    },
+    {
+      "id": "T-PII-036",
+      "category": "mixed_direct_pii",
+      "w_item": "direct_pii",
+      "missed": [],
+      "falsePositives": [],
+      "wireLeaks": [],
+      "privilegedExpected": true,
+      "privilegedActual": false
+    },
+    {
+      "id": "T-PII-037",
+      "category": "mixed_direct_pii",
+      "w_item": "direct_pii",
+      "missed": [],
+      "falsePositives": [],
+      "wireLeaks": [],
+      "privilegedExpected": true,
+      "privilegedActual": false
+    },
+    {
+      "id": "T-PII-038",
+      "category": "mixed_direct_pii",
+      "w_item": "direct_pii",
+      "missed": [],
+      "falsePositives": [],
+      "wireLeaks": [],
+      "privilegedExpected": true,
+      "privilegedActual": false
+    },
+    {
+      "id": "T-PII-039",
+      "category": "mixed_direct_pii",
+      "w_item": "direct_pii",
+      "missed": [],
+      "falsePositives": [
+        {
+          "substr": "San Jose",
+          "predictedSpan": {
+            "start": 87,
+            "end": 122,
+            "category": "street_address",
+            "raw": "1200 Aborn Road, San Jose, CA 95121"
+          }
+        }
+      ],
+      "wireLeaks": [],
+      "privilegedExpected": true,
+      "privilegedActual": false
+    },
+    {
+      "id": "T-PII-040",
+      "category": "mixed_direct_pii",
+      "w_item": "direct_pii",
+      "missed": [],
+      "falsePositives": [],
+      "wireLeaks": [],
+      "privilegedExpected": true,
+      "privilegedActual": false
+    },
+    {
+      "id": "T-FF-001",
+      "category": "compound_identifier",
+      "w_item": "W1",
+      "missed": [],
+      "falsePositives": [],
+      "wireLeaks": [],
+      "privilegedExpected": true,
+      "privilegedActual": false
+    },
+    {
+      "id": "T-FF-002",
+      "category": "mixed_direct_pii",
+      "w_item": "direct_pii",
+      "missed": [],
+      "falsePositives": [],
+      "wireLeaks": [],
+      "privilegedExpected": true,
+      "privilegedActual": false
+    },
+    {
+      "id": "T-FF-003",
+      "category": "mixed_direct_pii",
+      "w_item": "direct_pii",
+      "missed": [],
+      "falsePositives": [],
+      "wireLeaks": [],
+      "privilegedExpected": true,
+      "privilegedActual": false
+    },
+    {
+      "id": "T-FF-004",
+      "category": "mixed_direct_pii",
+      "w_item": "direct_pii",
+      "missed": [],
+      "falsePositives": [
+        {
+          "substr": "morning",
+          "predictedSpan": {
+            "start": 32,
+            "end": 44,
+            "category": "date",
+            "raw": "this morning"
+          }
+        }
+      ],
+      "wireLeaks": [],
+      "privilegedExpected": true,
+      "privilegedActual": false
+    },
+    {
+      "id": "T-FF-005",
+      "category": "mixed_direct_pii",
+      "w_item": "direct_pii",
+      "missed": [],
+      "falsePositives": [],
+      "wireLeaks": [],
+      "privilegedExpected": true,
+      "privilegedActual": false
+    },
+    {
+      "id": "T-FF-006",
+      "category": "mixed_direct_pii",
+      "w_item": "direct_pii",
+      "missed": [],
+      "falsePositives": [
+        {
+          "substr": "Friday",
+          "predictedSpan": {
+            "start": 42,
+            "end": 48,
+            "category": "date",
+            "raw": "Friday"
+          }
+        }
+      ],
+      "wireLeaks": [],
+      "privilegedExpected": true,
+      "privilegedActual": false
+    },
+    {
+      "id": "T-FF-007",
+      "category": "mixed_direct_pii",
+      "w_item": "direct_pii",
+      "missed": [],
+      "falsePositives": [],
+      "wireLeaks": [],
+      "privilegedExpected": true,
+      "privilegedActual": false
+    },
+    {
+      "id": "T-FF-008",
+      "category": "mixed_direct_pii",
+      "w_item": "direct_pii",
+      "missed": [],
+      "falsePositives": [
+        {
+          "substr": "family trust",
+          "predictedSpan": {
+            "start": 34,
+            "end": 52,
+            "category": "name",
+            "raw": "Phong family trust"
+          }
+        }
+      ],
+      "wireLeaks": [],
+      "privilegedExpected": true,
+      "privilegedActual": false
+    },
+    {
+      "id": "T-FF-009",
+      "category": "mixed_direct_pii",
+      "w_item": "direct_pii",
+      "missed": [],
+      "falsePositives": [],
+      "wireLeaks": [],
+      "privilegedExpected": true,
+      "privilegedActual": false
+    },
+    {
+      "id": "T-FF-010",
+      "category": "mixed_direct_pii",
+      "w_item": "direct_pii",
+      "missed": [],
+      "falsePositives": [
+        {
+          "substr": "Tuesday",
+          "predictedSpan": {
+            "start": 56,
+            "end": 68,
+            "category": "date",
+            "raw": "next Tuesday"
+          }
+        }
+      ],
+      "wireLeaks": [],
+      "privilegedExpected": true,
+      "privilegedActual": false
+    },
+    {
+      "id": "T-FF-011",
+      "category": "mixed_direct_pii",
+      "w_item": "direct_pii",
+      "missed": [],
+      "falsePositives": [
+        {
+          "substr": "Tuesday",
+          "predictedSpan": {
+            "start": 45,
+            "end": 60,
+            "category": "date",
+            "raw": "Tuesday at 2 PM"
+          }
+        },
+        {
+          "substr": "2 PM",
+          "predictedSpan": {
+            "start": 45,
+            "end": 60,
+            "category": "date",
+            "raw": "Tuesday at 2 PM"
+          }
+        }
+      ],
+      "wireLeaks": [],
+      "privilegedExpected": true,
+      "privilegedActual": false
+    },
+    {
+      "id": "T-FF-012",
+      "category": "mixed_direct_pii",
+      "w_item": "direct_pii",
+      "missed": [],
+      "falsePositives": [],
+      "wireLeaks": [],
+      "privilegedExpected": true,
+      "privilegedActual": false
+    },
+    {
+      "id": "T-FF-013",
+      "category": "compound_identifier",
+      "w_item": "W1",
+      "missed": [],
+      "falsePositives": [
+        {
+          "substr": "Korean-American",
+          "predictedSpan": {
+            "start": 27,
+            "end": 42,
+            "category": "name",
+            "raw": "Korean-American"
+          }
+        },
+        {
+          "substr": "Mexican-American",
+          "predictedSpan": {
+            "start": 95,
+            "end": 121,
+            "category": "name",
+            "raw": "Mexican-American architect"
+          }
+        },
+        {
+          "substr": "Bishop O'Dowd",
+          "predictedSpan": {
+            "start": 144,
+            "end": 157,
+            "category": "street_address",
+            "raw": "Bishop O'Dowd"
+          }
+        },
+        {
+          "substr": "architect",
+          "predictedSpan": {
+            "start": 95,
+            "end": 121,
+            "category": "name",
+            "raw": "Mexican-American architect"
+          }
+        }
+      ],
+      "wireLeaks": [],
+      "privilegedExpected": true,
+      "privilegedActual": false
+    },
+    {
+      "id": "T-FF-014",
+      "category": "compound_identifier",
+      "w_item": "W1",
+      "missed": [],
+      "falsePositives": [
+        {
+          "substr": "Vietnamese-American",
+          "predictedSpan": {
+            "start": 19,
+            "end": 38,
+            "category": "name",
+            "raw": "Vietnamese-American"
+          }
+        },
+        {
+          "substr": "Boeing engineer",
+          "predictedSpan": {
+            "start": 40,
+            "end": 63,
+            "category": "name",
+            "raw": "retired Boeing engineer"
+          }
+        },
+        {
+          "substr": "Long Beach",
+          "predictedSpan": {
+            "start": 67,
+            "end": 77,
+            "category": "street_address",
+            "raw": "Long Beach"
+          }
+        },
+        {
+          "substr": "Sacramento",
+          "predictedSpan": {
+            "start": 121,
+            "end": 131,
+            "category": "street_address",
+            "raw": "Sacramento"
+          }
+        },
+        {
+          "substr": "Surviving spouse",
+          "predictedSpan": {
+            "start": 0,
+            "end": 16,
+            "category": "name",
+            "raw": "Surviving spouse"
+          }
+        }
+      ],
+      "wireLeaks": [],
+      "privilegedExpected": true,
+      "privilegedActual": false
+    },
+    {
+      "id": "T-FF-015",
+      "category": "mixed_direct_pii",
+      "w_item": "direct_pii",
+      "missed": [],
+      "falsePositives": [],
+      "wireLeaks": [],
+      "privilegedExpected": true,
+      "privilegedActual": false
+    },
+    {
+      "id": "T-FF-016",
+      "category": "mixed_direct_pii",
+      "w_item": "direct_pii",
+      "missed": [],
+      "falsePositives": [],
+      "wireLeaks": [],
+      "privilegedExpected": true,
+      "privilegedActual": false
+    },
+    {
+      "id": "T-FF-017",
+      "category": "compound_identifier",
+      "w_item": "W1",
+      "missed": [],
+      "falsePositives": [
+        {
+          "substr": "Iranian-American",
+          "predictedSpan": {
+            "start": 0,
+            "end": 23,
+            "category": "name",
+            "raw": "Iranian-American couple"
+          }
+        },
+        {
+          "substr": "Cupertino",
+          "predictedSpan": {
+            "start": 27,
+            "end": 36,
+            "category": "street_address",
+            "raw": "Cupertino"
+          }
+        },
+        {
+          "substr": "Cisco",
+          "predictedSpan": {
+            "start": 87,
+            "end": 111,
+            "category": "name",
+            "raw": "Cisco principal engineer"
+          }
+        },
+        {
+          "substr": "engineer",
+          "predictedSpan": {
+            "start": 87,
+            "end": 111,
+            "category": "name",
+            "raw": "Cisco principal engineer"
+          }
+        }
+      ],
+      "wireLeaks": [],
+      "privilegedExpected": true,
+      "privilegedActual": false
+    },
+    {
+      "id": "T-FF-019",
+      "category": "compound_identifier",
+      "w_item": "W1",
+      "missed": [],
+      "falsePositives": [
+        {
+          "substr": "twins",
+          "predictedSpan": {
+            "start": 64,
+            "end": 69,
+            "category": "name",
+            "raw": "twins"
+          }
+        }
+      ],
+      "wireLeaks": [],
+      "privilegedExpected": true,
+      "privilegedActual": false
+    },
+    {
+      "id": "T-FF-020",
+      "category": "mixed_direct_pii",
+      "w_item": "direct_pii",
+      "missed": [],
+      "falsePositives": [
+        {
+          "substr": "family trust",
+          "predictedSpan": {
+            "start": 84,
+            "end": 96,
+            "category": "name",
+            "raw": "family trust"
+          }
+        }
+      ],
+      "wireLeaks": [],
+      "privilegedExpected": true,
+      "privilegedActual": false
+    }
+  ]
+}

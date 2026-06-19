@@ -1,4 +1,41 @@
-"""Simple Upstash query test"""
+"""
+=============================================================================
+SCRIPT NAME: test_simple_query.py
+=============================================================================
+
+DESCRIPTION:
+    Tests querying an Upstash vector database index. Loads OpenAI and Upstash
+    credentials from a .env file, generates an embedding for the query string
+    "trust administration" via the OpenAI embeddings API, then sends two
+    vector-search queries to Upstash: one without a namespace filter and one
+    with the namespace "ceb_trusts_estates". Results are printed to stdout.
+
+INPUT FILES:
+    /Users/arjundivecha/Dropbox/AAA Backup/A Working/California-Law-Chatbot-V2/.env
+        Environment variables loaded by python-dotenv: UPSTASH_VECTOR_REST_URL,
+        UPSTASH_VECTOR_REST_TOKEN, and OPENAI_API_KEY.
+
+OUTPUT FILES:
+    (none — this script only prints results to stdout)
+
+VERSION: 1.0
+LAST UPDATED: 2026-06-05
+AUTHOR: Arjun Divecha
+
+DEPENDENCIES:
+    - requests
+    - python-dotenv
+    - openai (API accessed via HTTP, not SDK)
+
+USAGE:
+    python test_simple_query.py
+
+NOTES:
+    - Requires a valid .env file with Upstash and OpenAI credentials.
+    - The Upstash vector index must already exist and be populated with data.
+    - No output files are written; all results are console-only.
+=============================================================================
+"""
 import os
 import requests
 from dotenv import load_dotenv

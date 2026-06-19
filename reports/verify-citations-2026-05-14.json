@@ -1,0 +1,81 @@
+{
+  "generated_at": "2026-05-14T19:02:16.559Z",
+  "total_seconds": 105.8,
+  "passed": 4,
+  "total": 6,
+  "parity": "4/6",
+  "results": [
+    {
+      "name": "Marvin v. Marvin",
+      "expected": [
+        "real"
+      ],
+      "actual": "real",
+      "pass": true,
+      "reasoning": "Multiple CEB practice guides cite 'Marvin v Marvin (1976) 18 C3d 660' verbatim with consistent pinpoint pages; CL not_found is expected for 1976 Cal. Supreme Court opinions not yet indexed.",
+      "confidence": 0.98,
+      "match_url": null,
+      "elapsed_ms": 18774
+    },
+    {
+      "name": "Tarasoff v. Regents",
+      "expected": [
+        "real"
+      ],
+      "actual": "real",
+      "pass": true,
+      "reasoning": "Two separate CEB practice guides cite this case verbatim as '(1976) 17 C3d 425' with matching party names, year, reporter, and holding. Citation is real; CourtListener absence is an indexing gap only.",
+      "confidence": 0.99,
+      "match_url": null,
+      "elapsed_ms": 19195
+    },
+    {
+      "name": "Miranda v. Arizona",
+      "expected": [
+        "real"
+      ],
+      "actual": "ambiguous",
+      "pass": false,
+      "reasoning": "citation_verify returned not_found (U.S. Reports often absent from CL index); courtlistener_search was rate-limited (HTTP 429); CEB returned no hit. Zero confirmatory AND zero contradictory evidence —",
+      "confidence": 0.45,
+      "match_url": null,
+      "elapsed_ms": 19019
+    },
+    {
+      "name": "Coca-Cola Co. v. Koke Co.",
+      "expected": [
+        "real"
+      ],
+      "actual": "ambiguous",
+      "pass": false,
+      "reasoning": "citation_verify returned not_found; courtlistener_search rate-limited; CEB had no hit. Zero contradictory evidence; CourtListener's pre-1924 coverage is sparse. Manual Westlaw/Lexis verification requi",
+      "confidence": 0.45,
+      "match_url": null,
+      "elapsed_ms": 27124
+    },
+    {
+      "name": "Smith v. Hallucinated Holdings",
+      "expected": [
+        "fake"
+      ],
+      "actual": "fake",
+      "pass": true,
+      "reasoning": "citation_verify returned not_found, and '99 Cal.5th' is structurally impossible — Cal.5th only reached ~vol. 20s by 2024; vol. 99 cannot exist, making this a self-contradicting citation.",
+      "confidence": 0.95,
+      "match_url": null,
+      "elapsed_ms": 10675
+    },
+    {
+      "name": "People v. Phantom",
+      "expected": [
+        "fake"
+      ],
+      "actual": "fake",
+      "pass": true,
+      "reasoning": "citation_verify returned not_found; courtlistener_search rate-limited. Independently, page 4567 in 88 Cal.App.5th is implausibly high — Cal. App. volumes never reach that page number, strongly indicat",
+      "confidence": 0.82,
+      "match_url": null,
+      "elapsed_ms": 10329
+    }
+  ]
+}

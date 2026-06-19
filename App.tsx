@@ -184,17 +184,29 @@ const App: React.FC = () => {
           <Route
             path="/*"
             element={
-              <>
-                <SignedIn>
-                  <SignedInShell
-                    sidebarOpen={sidebarOpen}
-                    onToggle={() => setSidebarOpen((o) => !o)}
-                  />
-                </SignedIn>
-                <SignedOut>
-                  <RedirectToSignIn />
-                </SignedOut>
-              </>
+              // DEV-ONLY auth bypass: on a local Vite dev server
+              // (import.meta.env.DEV) we skip Clerk sign-in entirely so the
+              // app loads for UI iteration without a passkey/OAuth dance.
+              // This branch is dead code in any production build (DEV is
+              // false), so it can never weaken prod auth.
+              import.meta.env.DEV ? (
+                <SignedInShell
+                  sidebarOpen={sidebarOpen}
+                  onToggle={() => setSidebarOpen((o) => !o)}
+                />
+              ) : (
+                <>
+                  <SignedIn>
+                    <SignedInShell
+                      sidebarOpen={sidebarOpen}
+                      onToggle={() => setSidebarOpen((o) => !o)}
+                    />
+                  </SignedIn>
+                  <SignedOut>
+                    <RedirectToSignIn />
+                  </SignedOut>
+                </>
+              )
             }
           />
         </Routes>

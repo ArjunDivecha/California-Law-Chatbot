@@ -1,21 +1,52 @@
 """
-================================================================================
-CEB RAG DIRECT UPSTASH TEST
-================================================================================
-INPUT FILES:
-  - None (queries Upstash Vector database directly)
-  - Requires: .env file with UPSTASH_VECTOR_REST_URL and UPSTASH_VECTOR_REST_TOKEN
-
-OUTPUT FILES:
-  - Console output with test results
+=============================================================================
+SCRIPT NAME: test_upstash_direct.py
+=============================================================================
 
 DESCRIPTION:
-  Tests the CEB RAG system by querying Upstash Vector database directly,
-  bypassing the need for a running web server.
+    Tests the CEB RAG (California Continuing Education of the Bar
+    Retrieval-Augmented Generation) system by querying the Upstash Vector
+    database directly, bypassing the need for a running web server.
+
+    The script loads credentials from a .env file, then for each of three
+    legal verticals (trusts & estates, family law, business litigation)
+    generates an embedding via the OpenAI API and queries the Upstash
+    vector index in the corresponding namespace (ceb_<category>). Results
+    including metadata (title, citation, page number, section) are printed
+    to the console with pass/fail status per test.
+
+INPUT FILES:
+    /Users/arjundivecha/Dropbox/AAA Backup/A Working/California-Law-Chatbot-V2/.env
+        Environment file containing UPSTASH_VECTOR_REST_URL,
+        UPSTASH_VECTOR_REST_TOKEN, and OPENAI_API_KEY.
+
+OUTPUT FILES:
+    (none — this script only prints results to stdout)
 
 VERSION: 1.0
-LAST UPDATED: 2025-11-02
-================================================================================
+LAST UPDATED: 2026-06-05
+AUTHOR: Arjun Divecha
+
+DEPENDENCIES:
+    - os
+    - sys
+    - json
+    - requests
+    - datetime
+    - python-dotenv
+
+USAGE:
+    python test_upstash_direct.py
+
+NOTES:
+    - Requires valid credentials in .env (UPSTASH_VECTOR_REST_URL,
+      UPSTASH_VECTOR_REST_TOKEN, OPENAI_API_KEY).
+    - The Upstash Vector database must be populated with CEB content
+      under namespaces ceb_trusts_estates, ceb_family_law, and
+      ceb_business_litigation.
+    - Calls the OpenAI embeddings API (text-embedding-3-small model)
+      which incurs cost per query.
+=============================================================================
 """
 
 import os

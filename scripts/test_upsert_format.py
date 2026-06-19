@@ -1,4 +1,41 @@
-"""Test correct Upstash upsert format"""
+"""
+=============================================================================
+SCRIPT NAME: test_upsert_format.py
+=============================================================================
+
+DESCRIPTION:
+    Tests the correct format for Upstash vector database upsert operations.
+    Generates a text embedding via the OpenAI Embeddings API, then upserts
+    the vector into an Upstash vector index with metadata. After a short
+    indexing delay, queries the index to verify the vector was stored
+    correctly and results can be retrieved.
+
+INPUT FILES:
+    /Users/arjundivecha/Dropbox/AAA Backup/A Working/California-Law-Chatbot-V2/.env
+        Environment variables loaded via python-dotenv: UPSTASH_VECTOR_REST_URL,
+        UPSTASH_VECTOR_REST_TOKEN, and OPENAI_API_KEY.
+
+OUTPUT FILES:
+    (none — this script only prints results to stdout)
+
+VERSION: 1.0
+LAST UPDATED: 2026-06-05
+AUTHOR: Arjun Divecha
+
+DEPENDENCIES:
+    - python-dotenv
+    - requests
+
+USAGE:
+    python scripts/test_upsert_format.py
+
+NOTES:
+    - Requires a running Upstash vector index and valid OpenAI API key,
+      both configured in the .env file.
+    - The script sends test vectors to the configured Upstash namespace
+      and then queries them back to confirm the upsert succeeded.
+=============================================================================
+"""
 import os
 import time
 import requests

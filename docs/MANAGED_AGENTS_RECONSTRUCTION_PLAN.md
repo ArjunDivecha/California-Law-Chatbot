@@ -1,8 +1,46 @@
 # Chatbot Reconstruction Plan — Anthropic Agent SDK on Messages API
 
 **Plan file destination:** `/Users/arjundivecha/Dropbox/AAA Backup/A Working/California-Law-Chatbot/docs/MANAGED_AGENTS_RECONSTRUCTION_PLAN.md` *(filename kept for git continuity; contents now describe the Agent SDK path)*
-**Date:** 2026-05-03 (original), **2026-05-10 architecture pivot**, **2026-05-10 ZDR-removal addendum**, **2026-05-12 token-map retention addendum (tentative)**, **2026-05-12 Managed-Agents revisit (scope clarification)**, **2026-05-12 Anthropic legal-industry launch addendum**, **2026-05-13 F&F partner ratifications (sixth addendum)**, **2026-05-13 web_search privilege-gate drop (seventh addendum)**, **2026-05-14 confidence-hold-back drop (eighth addendum)**, **2026-05-15 GLiNER replaces OPF as primary detector (ninth addendum)**
+**Date:** 2026-05-03 (original), **2026-05-10 architecture pivot**, **2026-05-10 ZDR-removal addendum**, **2026-05-12 token-map retention addendum (tentative)**, **2026-05-12 Managed-Agents revisit (scope clarification)**, **2026-05-12 Anthropic legal-industry launch addendum**, **2026-05-13 F&F partner ratifications (sixth addendum)**, **2026-05-13 web_search privilege-gate drop (seventh addendum)**, **2026-05-14 confidence-hold-back drop (eighth addendum)**, **2026-05-15 GLiNER replaces OPF as primary detector (ninth addendum)**, **2026-06-02 Morgan v. V2X compliance — contractual second net + protected-discovery mode §Z (tenth addendum)**
 **Status:** Final. The 2026-05-15 ninth addendum below records the empirical Phase C decision to swap stock OPF for GLiNER (urchade/gliner_multi_pii-v1) as the primary PII detector after the §0.c trap-gate experiments, plus the related extension of HIGH_RISK_CATEGORIES with `date` and `zip`.
+
+---
+
+## 2026-06-02 (tenth addendum) — Morgan v. V2X: a contractual second net exists; ZDR not required; protected-discovery mode (§Z)
+
+**Decided 2026-06-02 by Arjun, from a verified deep-research sweep of provider terms (research task `wam1v300o`) read against *Morgan v. V2X, Inc.*, 2026 WL 864223 (D. Colo., Mar. 30 2026). Full attorney memo: `docs/morgan-memo-to-rachel-lyla-2026-06-02.md`.**
+
+**Finding.** *Morgan* is the first court order conditioning AI use on protected discovery, and it sets a **contractual** standard, not a Zero-Data-Retention one: before CONFIDENTIAL material may be input to an AI tool, the provider must be contractually (1) barred from training on inputs, (2) barred from third-party disclosure except as essential to deliver the service, and (3) required to delete on request — and the party must **retain written documentation** of those protections.
+
+This forces a correction to the **2026-05-10 second addendum**, which concluded "**sanitization is the only line of defense**" and "**there is no second net**," on the premise that without enterprise ZDR anything reaching `api.anthropic.com` has no contractual protection. **That premise is wrong.** Anthropic's standard **Commercial Terms of Service** — which the Team plan operates under — already prohibit training on Inputs/Outputs for *all* commercial customers (Section B), and an auto-incorporated **DPA** supplies the confidentiality, sub-processor flow-down, and deletion-on-request that *Morgan* prongs 2–3 require. **No enterprise plan, no minimum spend, no ZDR.** The contractual second net already exists; F&F only has to *capture and retain* the (free) documents to satisfy *Morgan*'s written-documentation prong.
+
+**What this changes:**
+
+| Item | Second addendum (2026-05-10) | This tenth addendum (2026-06-02) |
+|---|---|---|
+| Lines of defense | Sanitization is the **only** line of defense | Sanitization stays the **primary** control and the privilege/waiver **minimizer**; the **Commercial Terms + DPA are a contractual second net** that satisfies *Morgan* for whatever reaches Anthropic |
+| Phase 0.a paperwork | "Removed. No DPA, no BAA." | **Restored as a free, ~1-hour documentation-capture step** (not enterprise, not a gate that can stall): download + date-stamp Anthropic Commercial Terms + DPA, OpenAI DPA, storage DPA → `compliance/providers.json` (§Z.2). This *is* *Morgan*'s "written documentation." |
+| "No second net → migration stops if sanitization can't hit zero" | Binding | **Softened.** The §0.c trap gate still targets zero leaks and remains the privilege/waiver control, but a single sanitization miss is **no longer an unprotected breach in the *Morgan* sense** — the contract bars training/disclosure and compels deletion. The project no longer rests on one point of failure. |
+| ZDR | "Permanently off the table" | Still not pursued and **still not required.** ZDR remains *optional hardening* (by application; not gated by a dollar floor). Team plan + DPA is the *Morgan* baseline. |
+| §Q memo framing | "Team plan; sanitization is the contractual boundary" | Corrected: Team plan **+ Commercial Terms + DPA** are the contractual boundary that meets *Morgan*; sanitization is defense-in-depth. Draft: `docs/morgan-memo-to-rachel-lyla-2026-06-02.md`. |
+
+**New capability — protected-discovery mode (new §Z).** *Morgan* governs **opposing-party discovery designated CONFIDENTIAL under a protective order** — a category distinct from the F&F **client** privilege the sanitizer targets (the sanitizer does attorney-client/PII redaction, not an adversary's CONFIDENTIAL designations). §Z adds a `protected_discovery` matter mode: approved-provider pre-flight (Z.2), court-order-driven tool/egress lockdown (Z.3), a firm-controlled store + local/DPA embeddings so confidential discovery never reaches a third-party datastore (Z.4), a per-turn provider/tool manifest (Z.5), and a Morgan Compliance Pack extending §Y (Z.6).
+
+**What does NOT change:**
+- The sanitization-first wedge, strict-mode fail-closed sanitizer, tool-output sanitization, and the §0.c 100-trap hard gate. Sanitization is still mandatory and still aims for zero.
+- The 6th-addendum **Option C** retention model (token map in attorney-side IndexedDB; Upstash holds only the metadata audit envelope). §Z.4's concern is *matter content* in `messages`/embeddings, not the token map.
+- The 7th addendum (web_search always available for ordinary matters; attorney decides) and 8th addendum (no confidence gate). §Z.3's omission of web_search/MCP applies **only** to `protected_discovery` and is **court-order-driven, not a heuristic substituting for attorney judgment** — a deliberately different basis from the retired gates.
+- Messages API runtime, Opus 4.7 default, the deletion math, every other section.
+
+**Why this is safe.** It only *adds* a contractual protection that was always available and *captures free documents*. It removes no sanitization control. It corrects an over-pessimistic premise that both overstated project risk and — ironically — left F&F **non-compliant with *Morgan*'s documentation prong** by declining the free DPA. For attorney-client privilege/waiver, sanitization-minimization still matters and is unchanged; the contract governs what happens to whatever transits, and *Morgan*'s work-product holding (AI tools are not adversaries; use does not waive) supports the posture.
+
+**Plan supersession order.** This 2026-06-02 tenth addendum supersedes:
+- The 2026-05-10 second addendum's "sanitization is the only line of defense / no second net" framing and its "Phase 0.a removed; no DPA" row → sanitization primary; DPA is the contractual second net; Phase 0.a restored as free documentation capture.
+- The first-addendum / Context wording "ZDR-eligible under enterprise terms (Phase 0 paperwork)" → ZDR optional; Commercial Terms + DPA are the *Morgan* baseline.
+- The body §0.a, §0.c, Phase 4.5 gate, and §Q text still naming "enterprise ZDR DPA / BAA / SOC 2" as a requirement → those become optional hardening; the binding gate is "Commercial Terms + DPA captured in `compliance/providers.json`," plus the unchanged trap gate, plus (for protected-discovery matters) §Z.2–Z.4.
+- Adds **§Z (Protected Discovery Mode)** as a new architecture-details section.
+
+The 2nd addendum's other content (Team-plan retention facts, training opt-out, tool-output sanitization, trap-gate promotion) stands.
 
 ---
 
@@ -1123,6 +1161,73 @@ The boundary is intentional and documented in the artifact. F&F's competence rul
 - Standalone `verify-attestation` CLI tool with documented usage for opposing counsel
 - Bulk-export endpoint for litigation-hold response
 - Phase 6 acceptance test: generate an attestation for a Phase 1 spike session and verify the standalone tool validates it cleanly
+
+---
+
+### Z. Protected Discovery Mode (Morgan compliance)
+
+Added by the 2026-06-02 tenth addendum. §Z is the design for using V2 in matters where **opposing-party discovery is designated CONFIDENTIAL under a protective order** — see *Morgan v. V2X, Inc.*, 2026 WL 864223 (D. Colo.) and `docs/morgan-memo-to-rachel-lyla-2026-06-02.md`.
+
+#### Z.0 Why this is its own mode
+The sanitizer (§E) is built to redact **F&F client** privilege/PII. A protective order protects a **different** category — the *opposing party's* CONFIDENTIAL discovery, which the sanitizer is not designed to detect. *Morgan* conditions putting that material into an AI tool on the provider being contractually bound (no-train + no-disclose + delete + documentation). Per the tenth addendum, Anthropic's Commercial Terms + DPA meet that bar with no enterprise plan; §Z operationalizes it per matter.
+
+#### Z.1 Two compliance tiers
+`matter_mode`, set at matter creation:
+
+| Tier | When | Controls |
+|---|---|---|
+| `standard` (default) | Research/drafting; no protective order | §E sanitization (client-privilege), 7th-addendum tool behavior (web_search available, attorney decides), Option C retention, Upstash + OpenAI-under-DPA fine |
+| `protected_discovery` | Matter under a protective order with CONFIDENTIAL opposing-party discovery | Superset: Z.2 provider pre-flight, Z.3 court-order tool lockdown, Z.4 firm-controlled storage, Z.5 manifest, Z.6 pack. Sanitization still runs as defense-in-depth. |
+
+#### Z.2 Approved-provider register + per-matter pre-flight
+`compliance/providers.json` (committed, hash-anchored to the audit log) records, per provider in the data path (Anthropic inference, OpenAI embeddings, the firm-controlled store of Z.4, Vercel transport): the captured contract artifact (Commercial Terms / DPA), retrieval date, SHA-256, and which *Morgan* prong each clause satisfies. This file *is* *Morgan*'s retained "written documentation." Before any `messages.create()` or tool call on a `protected_discovery` matter, `agentLoop.ts` verifies every provider it will touch has a green, in-date record; a missing/expired record **blocks the turn** (fail-closed, consistent with the sanitizer's strict mode). `standard` matters log the register state but do not block.
+
+#### Z.3 Court-order tool & egress lockdown — a deliberate exception to the 7th addendum
+The 7th addendum dropped heuristic `web_search` gating because *the attorney* decides, not a confidence heuristic. `protected_discovery` is different: *the court* has decided, via the protective order, that CONFIDENTIAL material may not reach tools that aren't contractually bound. So in this mode `buildToolsArray()` builds a **deny-by-default** set:
+- `web_search` (arbitrary egress) **omitted** — unconditional, court-order-driven (not the retired heuristic).
+- `mcp_servers` / connectors **omitted** (the 4th/5th addenda note MCP calls fall outside ZDR; for these matters, omit entirely).
+- Allowed: only the in-process legal-data tools whose backends are on the §U egress allowlist.
+- CI (§S): a `protected_discovery` request never yields a `messages.create` whose `tools` array contains `web_search` or an `mcp_*` block.
+
+This restores a tool restriction for these matters **without** reopening the heuristic-gating debate the 7th addendum closed — the basis is the court order, applied per matter at attorney direction, not a detector output.
+
+#### Z.4 Storage-chain remediation
+Under Option C (6th addendum) the token map already lives in attorney-side IndexedDB and Upstash holds only the metadata audit envelope — so privileged *client* content is already off Upstash. The remaining gap is **matter content**: the sanitized `session:{id}:messages` and the embedding queries can still carry opposing-party CONFIDENTIAL discovery (which the client-privilege sanitizer is not built to catch), and Upstash's own ToS prohibits "restricted/sensitive" data. For `protected_discovery` only:
+
+| Hop | `standard` | `protected_discovery` |
+|---|---|---|
+| Conversation `messages` + audit mirror (§D) | Upstash KV (DPA, encryption-at-rest on) | **Firm-controlled store** — local SQLite/sqlite-vec or the firm's own Postgres/pgvector. No third-party datastore in the chain. |
+| CEB vector search (`ceb_search`) | Upstash Vector + OpenAI `text-embedding-3-small` (under DPA) | **Local embeddings (BGE-M3 / Qwen3-Embedding) over a firm-controlled index**, or OpenAI-under-DPA if accepted. Local path needs a one-time re-embed of the 77,406-vector CEB corpus (OpenAI 1536-dim vectors are not interchangeable). |
+
+#### Z.5 Per-turn provider/tool manifest — extends §Y
+Each `protected_discovery` turn records: every provider/tool touched, the `providers.json` SHA each was checked against, the §F data-classification verdict per hop, and the Z.2 pre-flight pass/fail. Appended to the audit log (§G) and inlined into the §Y attestation — so the firm can show a court, per turn, exactly which contractually-bound providers saw what.
+
+#### Z.6 Morgan Compliance Pack — extends §Y
+A matter/session-scoped superset of the §Y attestation, bundling what *Morgan* asks a party to retain: the signed §Y attestation; the Z.2 provider records (Terms/DPA PDFs + SHAs + dates) for this matter's path; the Z.5 manifests; a **plain-English residual-retention statement** (Anthropic's ~30-day T&S retention + flagged-content carve-outs — disclosed, not concealed); deletion/hold evidence; and the §Y attorney review-attestation slot. Generated by extending §Y's `POST /api/attestations` with `?scope=matter&pack=morgan`; verified by the same `verify-attestation` CLI.
+
+#### Z.7 Disclosure update — extends §X
+The disclosure surface gains a protected-discovery line: the **name** of the AI platform may be discoverable (per *Morgan*), while prompts, strategy, and outputs remain attorney work product.
+
+#### Z.8 What it proves (and doesn't)
+
+| Provable | Not provable |
+|---|---|
+| Every provider that touched CONFIDENTIAL discovery was contractually bound (no-train/no-disclose/delete) at the time | That the legal analysis was correct |
+| Which tools/providers each turn used; that web/MCP egress was blocked | That the attorney reviewed the output (the §Y review companion covers this) |
+| That confidential discovery never reached a third-party datastore in this tier | That no leak occurred outside the modeled data path |
+| Retained, date-stamped written documentation of the contractual protections | That a court won't impose a stricter bar than *Morgan* on a given matter |
+
+#### Z.9 Deliverables & phase placement
+- **Phase 0.a (now, free):** capture + date-stamp Anthropic Commercial Terms + DPA, OpenAI DPA, storage DPA → seed `compliance/providers.json` (per the tenth addendum; replaces the obsolete "enterprise ZDR DPA" bullet).
+- **Phase 4 (UI):** `matter_mode` setting + matter-creation UI; `agentLoop.ts` Z.2 pre-flight + Z.3 lockdown; firm-controlled store adapter (Z.4) behind a storage interface so `standard` keeps using Upstash unchanged; Z.7 disclosure copy.
+- **Before Phase 4.5:** `providers.json` green for standard-tier providers; **protected-discovery matters excluded from the shadow run until their tier's register is green and the §Z.3 CI passes.**
+- **Phase 6 (with §Y):** Morgan Compliance Pack generator + `verify-attestation` coverage.
+- **CI (§S/§T):** Z.3 tool-lockdown test; a test that no `protected_discovery` write targets Upstash; provider-register freshness check.
+
+#### Z.10 Open decisions for Arjun / F&F counsel
+- Scope: will F&F run protected-discovery matters? If no, §Z stays dormant and `standard` + captured DPAs (tenth addendum) suffices.
+- Embedding path for protected matters: OpenAI-under-DPA (no re-index, one more provider) vs local embeddings (one-time CEB re-index, zero third parties). Default recommendation: local.
+- Firm-controlled store: embedded SQLite/sqlite-vec (simplest) vs firm Postgres/pgvector (if multi-device access needed).
 
 ---
 

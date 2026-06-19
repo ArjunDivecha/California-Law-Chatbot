@@ -42,7 +42,7 @@ TEAM_ID="${TEAM_ID:-P8U4R52G69}"
 
 # Bundle metadata
 BUNDLE_ID="com.fflp.gliner-daemon"
-VERSION="${VERSION:-1.0.0}"
+VERSION="${VERSION:-1.0.1}"
 PKG_NAME="FFLP-Sanitizer-${VERSION}.pkg"
 INSTALL_LOCATION="/Library/Application Support/FFLP/gliner-daemon"
 
@@ -125,11 +125,17 @@ stage_payload() {
   chmod +x "$installdir/bin/fflp-gliner-daemon"
   # Ship the pre-populated HF cache so first cold-load is offline
   cp -R "$BUILD/hf-cache/." "$installdir/hf-cache/"
-  # Sign the daemon binary itself (must happen before pkg signing)
+  # Sign the daemon binary with PyInstaller-compatible entitlements.
+  # Without the entitlements file, Hardened Runtime refuses to load
+  # the embedded Python.framework (signed by python.org, not our
+  # Developer ID) and the daemon crash-loops on startup.
   codesign --deep --force --options runtime --timestamp \
+    --entitlements "$TEMPLATES/entitlements.plist" \
     --sign "$APP_IDENTITY" \
     "$installdir/bin/fflp-gliner-daemon"
   codesign --verify --verbose "$installdir/bin/fflp-gliner-daemon" 2>&1 | tail -3
+  echo "  entitlements on signed binary:"
+  codesign -d --entitlements - "$installdir/bin/fflp-gliner-daemon" 2>&1 | grep -E "com.apple.security" | head -5
   du -sh "$installdir/hf-cache"
   info "payload staged at $PAYLOAD"
 }
