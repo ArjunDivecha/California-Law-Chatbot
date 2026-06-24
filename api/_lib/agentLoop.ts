@@ -22,9 +22,10 @@
 
 import Anthropic from '@anthropic-ai/sdk';
 import {
-  buildToolsArray,
+  buildToolsForPolicy,
   buildMcpServers,
   dispatchTool,
+  policyIdForTool,
   type ToolUseBlock,
 } from './tools/index.js';
 import {
@@ -48,6 +49,14 @@ import { COMPOUND_RISK_BUCKET_THRESHOLD } from '../_shared/sanitization/compound
 import { buildSystemPrompt, getAgentConfig } from './skills.js';
 import { scrubMessage } from './scrubError.js';
 import { assertZdrEligibleModel } from './zdrModels.js';
+import {
+  decidePolicy,
+  type PolicyDecision,
+  type MatterMode,
+  type ClientAiConsentStatus,
+  type DataClass,
+} from './compliance/policyEngine.js';
+import { guardToolQuery, extractQueryString } from './compliance/toolQueryGuard.js';
 
 // Primary engine for Research/Draft workflows. Defaults to Claude Opus 4.8 —
 // GA and ZERO-DATA-RETENTION-eligible under F&F's enterprise terms. Overridable
@@ -601,6 +610,7 @@ function extractToolUses(blocks: Anthropic.Messages.ContentBlock[]): ToolUseBloc
 async function dispatchWithCache(
   sessionId: string,
   use: ToolUseBlock,
+  decision?: PolicyDecision,
 ): Promise<{
   tool_use_id: string;
   content: string;
@@ -612,6 +622,29 @@ async function dispatchWithCache(
    *  Empty on cache hits (we don't have the raw anymore). */
   source_summary: ToolSourceSummary[];
 }> {
+  // P3: guard the OUTBOUND tool query before it can leave the system. Blocks
+  // disallowed tools and any confidential/protected query the PII detector
+  // flags as carrying client facts (incl. prompt-injection exfiltration).
+  // Runs BEFORE the cache read so a now-blocked tool can't be served a stale
+  // (previously-allowed) cached result.
+  if (decision) {
+    const guard = guardToolQuery({
+      toolPolicyId: policyIdForTool(use.name),
+      toolName: use.name,
+      query: extractQueryString(use.input),
+      decision,
+    });
+    if (!guard.allowed) {
+      return {
+        tool_use_id: use.id,
+        content: `Tool "${use.name}" was blocked by compliance policy: ${guard.reason}`,
+        is_error: true,
+        sanitization: null,
+        source_summary: [],
+      };
+    }
+  }
+
   const cached = await readToolResult(sessionId, use.id).catch(() => null);
   if (cached) {
     // Cached results are already sanitized (we wrote the sanitized form
@@ -765,6 +798,36 @@ function callMessagesStream(
  * number of tool-use rounds internally up to MAX_ITERATIONS. Returns
  * the final assistant text and round telemetry.
  */
+/**
+ * P3: compute the server-authoritative PolicyDecision for this turn.
+ * Matter binding (session meta) drives the mode; UNAMBIGUOUS PII in the input
+ * (SSN, bank, email, phone — NOT bare names/dates, which are frequently
+ * public-record case names) escalates it. Client-consent ENFORCEMENT is wired
+ * in P6; until a consent-capture mechanism exists, consent defaults to
+ * 'allowed' so tool gating engages without hard-blocking confidential matters.
+ */
+export async function computeTurnPolicy(
+  sessionId: string,
+  userText: string,
+): Promise<PolicyDecision> {
+  const meta = await readMeta(sessionId).catch(() => null);
+  const boundMode: MatterMode = meta?.matter_mode ?? 'public_research';
+  const consent: ClientAiConsentStatus = meta?.client_ai_consent ?? 'allowed';
+  const spans = analyze(userText ?? '').spans;
+  const hardPii = spans.some(
+    (s: Span) =>
+      HIGH_RISK_CATEGORIES.has(s.category) && s.category !== 'name' && s.category !== 'date',
+  );
+  const detectedDataClasses: DataClass[] = hardPii ? ['client_confidential'] : [];
+  return decidePolicy({
+    matterMode: boundMode,
+    clientConsent: consent,
+    detectedDataClasses,
+    requestedAction: 'tool_call',
+    userRole: 'attorney',
+  });
+}
+
 export async function runTurn(opts: RunTurnOptions): Promise<RunTurnResult> {
   const t0 = performance.now();
   const turnId = opts.turn_id ?? newTurnId();
@@ -819,11 +882,17 @@ export async function runTurn(opts: RunTurnOptions): Promise<RunTurnResult> {
   // Quick workflow → no tools at all (Sonnet answers directly). Research
   // (default) → full V2 tool set (CEB/CourtListener/LegiScan/OpenStates/
   // citation_verify/web_search).
+  // P3: server-authoritative gating — the tools array is built from the
+  // PolicyDecision (web_search omitted in confidential/protected, MCP dropped
+  // for confidential, etc.), not unconditionally.
+  const policy = await computeTurnPolicy(opts.session_id, opts.user_text);
   const tools =
     workflow === 'quick'
       ? ([] as unknown as Anthropic.Messages.Tool[])
-      : (buildToolsArray(opts.privileged) as unknown as Anthropic.Messages.Tool[]);
-  const mcpServers = buildMcpServers(opts.privileged);
+      : (buildToolsForPolicy(policy, opts.privileged) as unknown as Anthropic.Messages.Tool[]);
+  const mcpServers = policy.allowedTools.includes('mcp')
+    ? buildMcpServers(opts.privileged)
+    : [];
 
   // ── 3. Loop: call messages.create → if assistant emitted tool_use,
   //       dispatch and append tool_result, loop again. Cap at
@@ -888,7 +957,7 @@ export async function runTurn(opts: RunTurnOptions): Promise<RunTurnResult> {
     // synthetic "user" message per Anthropic's convention.
     toolRounds += 1;
     const toolResults = await Promise.all(
-      toolUses.map((use) => dispatchWithCache(opts.session_id, use)),
+      toolUses.map((use) => dispatchWithCache(opts.session_id, use, policy)),
     );
 
     // Accumulate tool-output sanitization telemetry across the turn.
@@ -1092,11 +1161,17 @@ export async function* runTurnStream(
   // Quick workflow → no tools at all (Sonnet answers directly). Research
   // (default) → full V2 tool set (CEB/CourtListener/LegiScan/OpenStates/
   // citation_verify/web_search).
+  // P3: server-authoritative gating — the tools array is built from the
+  // PolicyDecision (web_search omitted in confidential/protected, MCP dropped
+  // for confidential, etc.), not unconditionally.
+  const policy = await computeTurnPolicy(opts.session_id, opts.user_text);
   const tools =
     workflow === 'quick'
       ? ([] as unknown as Anthropic.Messages.Tool[])
-      : (buildToolsArray(opts.privileged) as unknown as Anthropic.Messages.Tool[]);
-  const mcpServers = buildMcpServers(opts.privileged);
+      : (buildToolsForPolicy(policy, opts.privileged) as unknown as Anthropic.Messages.Tool[]);
+  const mcpServers = policy.allowedTools.includes('mcp')
+    ? buildMcpServers(opts.privileged)
+    : [];
 
   let totalTokens = 0;
   let toolRounds = 0;
@@ -1284,7 +1359,7 @@ export async function* runTurnStream(
       }> = [];
       for (const use of toolUses) {
         const dt0 = performance.now();
-        const result = await dispatchWithCache(opts.session_id, use);
+        const result = await dispatchWithCache(opts.session_id, use, policy);
         const elapsed = performance.now() - dt0;
         // Tool-output sanitization telemetry (audit §8 #8 compliance).
         if (result.sanitization) {
