@@ -25,13 +25,7 @@ import {
   NumberFormat,
 } from 'docx';
 import { jsPDF } from 'jspdf';
-
-// CORS headers
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type',
-};
+import { applyResponseSecurity, headerString } from './_shared/routeSecurity.js';
 
 interface GeneratedSection {
   sectionId: string;
@@ -84,23 +78,19 @@ export default async function handler(
   req: VercelRequest,
   res: VercelResponse
 ) {
+  // Strict CORS allowlist + hardening headers (replaces wildcard CORS).
+  const origin = headerString(req.headers.origin);
+  applyResponseSecurity(res, origin, { methods: 'POST, OPTIONS' });
+
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-    return res.status(200).end();
+    return res.status(204).end();
   }
 
   // Only allow POST
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
-
-  // Set CORS headers
-  Object.entries(corsHeaders).forEach(([key, value]) => {
-    res.setHeader(key, value);
-  });
 
   try {
     const request: ExportDocumentRequest = req.body;
