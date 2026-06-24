@@ -70,16 +70,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(400).json({ error: 'session_id required' });
   }
   const meta = await readMeta(sessionId);
-  if (!meta) return res.status(404).json({ error: 'session not found' });
-  if (meta.user_id !== userId) return res.status(403).json({ error: 'forbidden' });
+  // Ownership: enforce only when the session already exists. A not-yet-persisted
+  // session (no meta until the first turn) is claimed by the caller on POST.
+  if (meta && meta.user_id !== userId) return res.status(403).json({ error: 'forbidden' });
 
   if (req.method === 'GET') {
-    const att = await getAttestations(sessionId);
+    const att = meta ? await getAttestations(sessionId) : null;
     return res.status(200).json({
-      matter_id: meta.matter_id ?? null,
-      matter_mode: meta.matter_mode ?? 'public_research',
-      protected_locked: meta.protected_locked ?? false,
-      consent: att.consent,
+      matter_id: meta?.matter_id ?? null,
+      matter_mode: meta?.matter_mode ?? 'public_research',
+      protected_locked: meta?.protected_locked ?? false,
+      consent: att?.consent ?? 'not_obtained',
     });
   }
 
@@ -89,7 +90,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!requested) return res.status(400).json({ error: 'invalid matter_mode' });
 
   const transition = validateMatterTransition(
-    { matterMode: meta.matter_mode ?? 'public_research', protectedLocked: meta.protected_locked ?? false },
+    { matterMode: meta?.matter_mode ?? 'public_research', protectedLocked: meta?.protected_locked ?? false },
     requested,
     { attorneyOverride: Boolean(req.body?.attorney_override) },
   );
@@ -98,6 +99,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   await writeMeta(sessionId, {
+    ...(meta ? {} : { user_id: userId, created_at: new Date().toISOString(), schema_version: 1, model: '' }),
+    last_active_at: new Date().toISOString(),
     matter_mode: transition.next.matterMode,
     protected_locked: transition.next.protectedLocked,
     ...(typeof req.body?.matter_id === 'string' ? { matter_id: req.body.matter_id } : {}),
