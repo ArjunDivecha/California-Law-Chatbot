@@ -7,6 +7,7 @@
  */
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { applyResponseSecurity, headerString } from './_shared/routeSecurity.js';
 
 export const config = {
   maxDuration: 30,
@@ -16,13 +17,11 @@ export default async function handler(
   req: VercelRequest,
   res: VercelResponse
 ) {
-  // CORS headers
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  // Strict CORS allowlist + hardening headers (replaces wildcard CORS).
+  applyResponseSecurity(res, headerString(req.headers.origin), { methods: 'GET, OPTIONS' });
 
   if (req.method === 'OPTIONS') {
-    return res.status(200).end();
+    return res.status(204).end();
   }
 
   try {
