@@ -27,6 +27,7 @@
     "@vercel/blob": "^2.3.3",
     "@vercel/functions": "^3.6.0",
     "@vercel/kv": "^3.0.0",
+    "better-sqlite3": "^12.11.1",
     "docx": "^9.5.1",
     "dotenv": "^17.2.3",
     "jspdf": "^4.0.0",
@@ -38,7 +39,8 @@
     "react-dom": "^19.2.0",
     "react-markdown": "^9.0.1",
     "react-router-dom": "^7.14.0",
-    "remark-gfm": "^4.0.0"
+    "remark-gfm": "^4.0.0",
+    "sqlite-vec": "^0.1.9"
   },
   "devDependencies": {
     "@clerk/testing": "^2.0.27",
