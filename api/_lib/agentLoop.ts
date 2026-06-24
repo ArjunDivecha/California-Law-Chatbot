@@ -39,7 +39,8 @@ import {
   indexUserSession,
   type SessionMessage,
 } from './sessionStore.js';
-import { buildAuditRecord, writeAuditRecord } from '../_shared/auditLog.js';
+import { buildAuditRecord, writeAuditRecord, writeTurnManifest, computeHmac } from '../_shared/auditLog.js';
+import { buildTurnManifest } from './compliance/turnManifest.js';
 import {
   analyze,
   HIGH_RISK_CATEGORIES,
@@ -1029,6 +1030,19 @@ export async function runTurn(opts: RunTurnOptions): Promise<RunTurnResult> {
     }),
   );
 
+  // P4: per-turn compliance manifest (hashes/metadata only; fails open).
+  await writeTurnManifest(
+    buildTurnManifest({
+      turnId,
+      sessionId: opts.session_id,
+      model: resolveModel(model),
+      decision: policy,
+      toolsCalled: [],
+      sanitizedPromptHmac: computeHmac(opts.user_text),
+      timestamp: new Date().toISOString(),
+    }),
+  );
+
   return {
     final_text: finalText,
     tool_rounds: toolRounds,
@@ -1444,6 +1458,19 @@ export async function* runTurnStream(
         latencyMs: Math.round(elapsedMs),
         statusCode: 200,
         warningFlags: auditWarnings.length > 0 ? auditWarnings : undefined,
+      }),
+    );
+
+    // P4: per-turn compliance manifest (hashes/metadata only; fails open).
+    await writeTurnManifest(
+      buildTurnManifest({
+        turnId,
+        sessionId: opts.session_id,
+        model: resolveModel(model),
+        decision: policy,
+        toolsCalled: [],
+        sanitizedPromptHmac: computeHmac(opts.user_text),
+        timestamp: new Date().toISOString(),
       }),
     );
 

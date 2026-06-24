@@ -124,6 +124,31 @@ export async function writeAuditRecord(record: AuditRecord): Promise<void> {
   }
 }
 
+function manifestKey(now: Date = new Date()): string {
+  const y = now.getUTCFullYear();
+  const m = String(now.getUTCMonth() + 1).padStart(2, '0');
+  const d = String(now.getUTCDate()).padStart(2, '0');
+  return `manifest:${y}-${m}-${d}`;
+}
+
+/**
+ * Write a per-turn compliance manifest (PRD §5.9). The manifest carries
+ * hashes + metadata ONLY — never raw client text (enforced by
+ * compliance/turnManifest.ts). Fails OPEN, like writeAuditRecord; the turn is
+ * never gated on it. NB §5.9a: the retention/discoverability posture of this
+ * store is a counsel decision; 90 days mirrors the audit log by default.
+ */
+export async function writeTurnManifest(manifest: unknown): Promise<void> {
+  try {
+    const key = manifestKey();
+    const sink = resolveSink();
+    await sink.lpush(key, JSON.stringify(manifest));
+    await sink.expire(key, DAILY_TTL_SECONDS);
+  } catch (err) {
+    console.warn('[auditLog] manifest write failed:', (err as { message?: string })?.message ?? err);
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Per-redaction envelope-encrypted audit record (D15, KV schema L129–147)
 // ---------------------------------------------------------------------------
