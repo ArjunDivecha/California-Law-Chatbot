@@ -180,6 +180,13 @@ export interface SessionMeta {
   client_ai_consent?: ClientAiConsentStatus;
   /** When true, protected_discovery is locked on and cannot be downgraded in-session. */
   protected_locked?: boolean;
+  // ── Server-side attestations (P6 compliance) ────────────────────────────
+  consent_version?: string;
+  consent_signer?: string;
+  consent_at?: string;
+  policy_ack_version?: string;
+  policy_ack_signer?: string;
+  policy_ack_at?: string;
 }
 
 export async function readMeta(sessionId: string): Promise<SessionMeta | null> {
@@ -204,6 +211,12 @@ export async function readMeta(sessionId: string): Promise<SessionMeta | null> {
         : hash.protected_locked === 'false'
           ? false
           : undefined,
+    consent_version: hash.consent_version || undefined,
+    consent_signer: hash.consent_signer || undefined,
+    consent_at: hash.consent_at || undefined,
+    policy_ack_version: hash.policy_ack_version || undefined,
+    policy_ack_signer: hash.policy_ack_signer || undefined,
+    policy_ack_at: hash.policy_ack_at || undefined,
   };
 }
 

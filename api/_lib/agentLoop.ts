@@ -812,7 +812,12 @@ export async function computeTurnPolicy(
 ): Promise<PolicyDecision> {
   const meta = await readMeta(sessionId).catch(() => null);
   const boundMode: MatterMode = meta?.matter_mode ?? 'public_research';
-  const consent: ClientAiConsentStatus = meta?.client_ai_consent ?? 'allowed';
+  // P6: enforce REAL client consent for explicitly-bound confidential/protected
+  // matters (recorded via compliance/attestations.ts). A public matter that
+  // merely ESCALATED on detected PII gets tool hardening (web_search dropped),
+  // NOT a hard consent block — the attorney still gets a ZDR-Anthropic answer.
+  const consent: ClientAiConsentStatus =
+    boundMode === 'public_research' ? 'allowed' : meta?.client_ai_consent ?? 'not_obtained';
   const spans = analyze(userText ?? '').spans;
   const hardPii = spans.some(
     (s: Span) =>
