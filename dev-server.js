@@ -142,6 +142,11 @@ app.all('/api/chats', async (req, res) => {
   await handler(req, res);
 });
 
+app.all('/api/matter-context', async (req, res) => {
+  const handler = await loadHandler('./api/matter-context.ts');
+  await handler(req, res);
+});
+
 // V2 agent loop — non-streaming + streaming endpoints
 app.all('/api/agent/turn', async (req, res) => {
   const handler = await loadHandler('./api/agent/turn.ts');
