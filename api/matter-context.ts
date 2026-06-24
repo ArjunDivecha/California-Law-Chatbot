@@ -20,8 +20,8 @@
  * =============================================================================
  */
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { verifyToken } from '@clerk/backend';
 import { applyResponseSecurity, headerString } from './_shared/routeSecurity.js';
+import { requireUser } from './_lib/httpGuard.js';
 import { readMeta, writeMeta } from './_lib/sessionStore.js';
 import { validateMatterTransition, parseMatterMode } from './_lib/compliance/matterContext.js';
 import { recordClientConsent, getAttestations } from './_lib/compliance/attestations.js';
@@ -31,39 +31,14 @@ const CONSENT_VALUES = new Set<ClientAiConsentStatus>([
   'not_obtained', 'allowed', 'restricted', 'prohibited', 'revoked',
 ]);
 
-async function getUserId(req: VercelRequest): Promise<string> {
-  const secretKey = process.env.CLERK_SECRET_KEY;
-  if (!secretKey) throw Object.assign(new Error('CLERK_SECRET_KEY not set'), { status: 500 });
-  let token: string | undefined;
-  const auth = req.headers.authorization;
-  if (auth?.startsWith('Bearer ')) {
-    token = auth.slice(7);
-  } else {
-    const cookie = req.headers.cookie ?? '';
-    const m = cookie.match(/(?:^|;\s*)__session=([^;]+)/);
-    token = m ? decodeURIComponent(m[1]) : undefined;
-  }
-  if (!token) throw Object.assign(new Error('No session token'), { status: 401 });
-  try {
-    const payload = await verifyToken(token, { secretKey });
-    if (!payload.sub) throw new Error('No userId in token');
-    return payload.sub;
-  } catch {
-    throw Object.assign(new Error('Authentication failed'), { status: 401 });
-  }
-}
-
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   applyResponseSecurity(res, headerString(req.headers.origin), { methods: 'GET, POST, OPTIONS' });
   if (req.method === 'OPTIONS') return res.status(204).end();
 
-  let userId: string;
-  try {
-    userId = await getUserId(req);
-  } catch (e) {
-    const status = (e as { status?: number }).status ?? 401;
-    return res.status(status).json({ error: (e as Error).message });
-  }
+  // Shared auth guard (verifies Clerk token; uses the dev-user bypass locally,
+  // never on Vercel). Consistent with all other agent/session routes.
+  const userId = await requireUser(req, res);
+  if (!userId) return;
 
   const sessionId = (req.method === 'GET' ? req.query.session_id : req.body?.session_id) as string | undefined;
   if (!sessionId || typeof sessionId !== 'string') {

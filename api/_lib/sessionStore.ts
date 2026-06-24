@@ -205,10 +205,12 @@ export async function readMeta(sessionId: string): Promise<SessionMeta | null> {
     matter_id: hash.matter_id || undefined,
     matter_mode: (hash.matter_mode as MatterMode) || undefined,
     client_ai_consent: (hash.client_ai_consent as ClientAiConsentStatus) || undefined,
+    // @upstash/redis auto-parses 'true'/'false' back to booleans on read, so
+    // accept BOTH the string and boolean forms (String() normalizes either).
     protected_locked:
-      hash.protected_locked === 'true'
+      String(hash.protected_locked) === 'true'
         ? true
-        : hash.protected_locked === 'false'
+        : String(hash.protected_locked) === 'false'
           ? false
           : undefined,
     consent_version: hash.consent_version || undefined,
