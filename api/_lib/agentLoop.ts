@@ -47,35 +47,50 @@ import {
 import { COMPOUND_RISK_BUCKET_THRESHOLD } from '../_shared/sanitization/compoundRisk.js';
 import { buildSystemPrompt, getAgentConfig } from './skills.js';
 import { scrubMessage } from './scrubError.js';
+import { assertZdrEligibleModel } from './zdrModels.js';
 
-// Primary engine for Research/Draft workflows. Defaults to Claude Fable 5
-// (flagship), overridable per-environment via V2_PRIMARY_MODEL in Vercel
-// so Opus<->Fable can be flipped without a code change/redeploy. Quick
-// mode and the citation verifier stay on Sonnet 4.6 (see workflow branches
-// below + verifierSubAgent.ts). Prior default was claude-opus-4-7 (fifth
-// addendum); switched to Fable 5 per Arjun 2026-06-12.
-const DEFAULT_MODEL = process.env.V2_PRIMARY_MODEL ?? 'claude-fable-5';
+// Primary engine for Research/Draft workflows. Defaults to Claude Opus 4.8 —
+// GA and ZERO-DATA-RETENTION-eligible under F&F's enterprise terms. Overridable
+// per-environment via V2_PRIMARY_MODEL in Vercel, but ONLY to another
+// ZDR-eligible model (enforced by assertZdrEligibleModel in resolveModel,
+// which fails closed). Quick mode and the citation verifier stay on Sonnet 4.6
+// (also ZDR-eligible). NOTE: the prior default `claude-fable-5` is BOTH
+// non-ZDR-eligible (a "Covered Model" requiring 30-day retention) AND was
+// suspended for all customers 2026-06-12 — it must never receive client
+// content. See docs/PRD_COPRAC_ZDR_COMPLIANCE.md §5.8 and
+// docs/ZDR_ENTERPRISE_IMPLICATIONS.md (Priority 1).
+const DEFAULT_MODEL = process.env.V2_PRIMARY_MODEL ?? 'claude-opus-4-8';
 
 // ── Automatic model failover (authorized by Arjun 2026-06-16) ──────────────
 // If the primary engine is unavailable on this account — the Anthropic API
-// returns HTTP 404 not_found_error, e.g. "Claude Fable 5 is not available.
-// Please use Opus 4.8." — transparently retry on this fallback instead of
-// erroring the whole turn. Both are Anthropic models on the SAME Messages API
-// under the SAME Team-plan retention posture, so failover does NOT alter the
-// data-handling / zero-leak invariant (this is why it is allowed, whereas a
-// cross-PROVIDER fallback would not be). Override per-environment with
-// V2_FALLBACK_MODEL. NOTE: this is unavailability failover, NOT refusal
-// fallback — a stop_reason='refusal' is still surfaced and never retried.
+// returns HTTP 404 not_found_error — transparently retry on this fallback
+// instead of erroring the whole turn. Both primary and fallback MUST be
+// ZDR-ELIGIBLE Anthropic models on the SAME Messages API, so failover does NOT
+// alter the zero-data-retention / zero-leak invariant (this is why it is
+// allowed, whereas a cross-PROVIDER fallback would not be). The resolved model
+// is checked by assertZdrEligibleModel() in resolveModel below, which fails
+// CLOSED — so even an env override cannot introduce a non-ZDR model. Override
+// per-environment with V2_FALLBACK_MODEL. NOTE: this is unavailability
+// failover, NOT refusal fallback — stop_reason='refusal' is surfaced, never retried.
 const FALLBACK_MODEL = process.env.V2_FALLBACK_MODEL ?? 'claude-opus-4-8';
 // Process-lifetime memo of models this account can't reach, so a warm function
 // instance skips a dead primary after the first 404 rather than paying the
 // failed round-trip on every subsequent turn.
 const unavailableModels = new Set<string>();
 
-/** Swap a known-unavailable model for the fallback. Never loops the fallback. */
+/**
+ * Swap a known-unavailable model for the fallback, then assert the FINAL model
+ * is ZDR-eligible (fail-closed) before it can be used. Putting the assertion
+ * here makes it the single chokepoint every Anthropic call passes through
+ * (create, stream, and failover-retry paths all call resolveModel).
+ */
 function resolveModel(requested: string): string {
-  if (requested !== FALLBACK_MODEL && unavailableModels.has(requested)) return FALLBACK_MODEL;
-  return requested;
+  const resolved =
+    requested !== FALLBACK_MODEL && unavailableModels.has(requested)
+      ? FALLBACK_MODEL
+      : requested;
+  assertZdrEligibleModel(resolved);
+  return resolved;
 }
 
 /**
