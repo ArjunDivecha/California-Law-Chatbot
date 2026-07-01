@@ -38,6 +38,7 @@ import {
 } from '../../api/_shared/sanitization/allowlist.js';
 import { runPatterns } from '../../api/_shared/sanitization/patterns.js';
 import { detectNames } from '../../api/_shared/sanitization/detectNames.js';
+import { STOPLIST_LOWER as GEO_AND_ROLE_STOPLIST } from './glinerPostProcess.js';
 import {
   detectCompoundRisk,
   COMPOUND_RISK_BUCKET_THRESHOLD,
@@ -461,7 +462,28 @@ export async function detectPii(
     afterUserAllow.push(...splitSpanByUserAllowlist(span, userAllowSet));
   }
   const suppressedByAllowlist = all.length - afterUserAllow.length;
-  const merged = mergeSpans(afterUserAllow);
+  const mergedRaw = mergeSpans(afterUserAllow);
+
+  // Bare-place / generic-term suppression (2026-06-30, browser-GLiNER
+  // integration). A span whose ENTIRE text is a bare place name or a
+  // generic stoplisted term — "San Jose", "Long Beach", "Fresno County",
+  // "Marin County" — is never client-identifying on its own, yet several
+  // upstream paths can emit one as a standalone span: GLiNER tagging a
+  // city as street_address, the OPF/GLiNER internal name-split leaving a
+  // city residual, or the bigram name scanner. Rather than patch each
+  // generator, drop these uniformly here, AFTER the merge. The
+  // compound-risk pass still fires `privileged` on the COMBINATION
+  // (ethnicity + neighborhood + role), so confidentiality is unaffected —
+  // this only removes over-redaction false-positives on public geography.
+  // A full address ("88 Industrial Drive, San Jose") is a LONGER span, so
+  // its text is not a bare place and is NOT dropped.
+  const isBarePlaceOrTerm = (raw: string): boolean => {
+    const t = raw.trim().toLowerCase();
+    if (GEO_AND_ROLE_STOPLIST.has(t)) return true;       // shared CA-city / role / org stoplist
+    if (/^[a-z][a-z.'\- ]*\b(county|city)$/.test(t)) return true; // "<X> County" / "<X> City"
+    return false;
+  };
+  const merged = mergedRaw.filter((s) => !isBarePlaceOrTerm(s.raw));
 
   // OPF spans don't carry heuristic signal labels, so confidence is
   // modelled as 1.0 for the OPF path. The heuristic fallback path uses

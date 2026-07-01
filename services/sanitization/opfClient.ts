@@ -22,6 +22,16 @@
  */
 
 import type { SpanCategory, Span } from '../../api/_shared/sanitization/index.js';
+import * as webDetector from './glinerWebClient.js';
+
+// Detector selection (V2 2026-06-30). VITE_DETECTOR=web routes detection to
+// the in-browser GLiNER engine (glinerWebClient); anything else (default
+// 'daemon') keeps the existing local-daemon transport below. Flip back with
+// a single env var. See playground/browser-gliner/RESULTS.md for the
+// fp32-in-browser validation (120/120, 0 wire leaks). Node-safe env read.
+const DETECTOR =
+  ((import.meta as unknown as { env?: Record<string, string> }).env?.VITE_DETECTOR) || 'daemon';
+const USE_WEB_DETECTOR = DETECTOR === 'web';
 
 // Phase C.2 (2026-05-15) + 2026-05-16 .pkg installer prep: GLiNER is
 // the only detector. The earlier stock-OPF (47821/47822) fallback was
@@ -113,6 +123,8 @@ export interface DaemonHealth {
   lastRequestAgeS: number | null;
   idleUnloadSeconds: number;
   version: string;
+  /** Model download/init progress — populated by the in-browser detector. */
+  loadProgress?: import('./glinerWebClient.js').LoadProgress;
 }
 
 export type DaemonStatus =
@@ -199,6 +211,7 @@ async function waitForBridgeReady(timeoutMs: number): Promise<void> {
 }
 
 export async function connectBridge(timeoutMs = 12_000): Promise<void> {
+  if (USE_WEB_DETECTOR) return webDetector.connectBridge(); // in-page engine: no Safari bridge
   if (!isBrowserRuntime()) throw new Error('OPF bridge is only available in a browser');
   attachBridgeListener();
   if (!bridgeWindow || bridgeWindow.closed) {
@@ -298,6 +311,7 @@ async function fetchFromDaemon(
  * Lightweight health probe. Returns within ~1.5s or rejects.
  */
 export async function getHealth(): Promise<DaemonHealth> {
+  if (USE_WEB_DETECTOR) return webDetector.getHealth();
   const res = await fetchFromDaemon('/v1/health', { method: 'GET' }, HEALTH_TIMEOUT_MS);
   const data = (await res.json()) as {
     ok: boolean;
@@ -376,6 +390,9 @@ export async function detectSpans(
 ): Promise<DetectResult> {
   if (detectSpansOverride) {
     return detectSpansOverride(text, opts);
+  }
+  if (USE_WEB_DETECTOR) {
+    return webDetector.detectSpans(text, opts);
   }
   const res = await fetchFromDaemon(
     '/v1/detect',

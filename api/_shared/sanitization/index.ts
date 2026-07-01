@@ -28,6 +28,13 @@ export interface Span {
   raw: string;
   /** Free-form label (e.g., the pattern name or the name-signal) for audit. */
   label: string;
+  /**
+   * Optional detector confidence in [0,1]. Populated by the in-browser
+   * GLiNER detector (glinerWebClient) per span; absent for regex/heuristic
+   * spans and for the daemon path (the daemon dropped GLiNER's score).
+   * Available to feed the §E `confidence < 0.98` gate.
+   */
+  score?: number;
 }
 
 export interface AnalyzeResult {

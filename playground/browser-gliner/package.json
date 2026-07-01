@@ -1,0 +1,19 @@
+{
+  "name": "browser-gliner-prototype",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "ISOLATED prototype: run urchade/gliner_multi_pii-v1 as int8 ONNX in-browser (GLiNER.js + onnxruntime-web), score against the 120-trap manifest, measure latency. Touches no production code.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "gliner": "^0.0.19",
+    "onnxruntime-web": "^1.27.0"
+  },
+  "devDependencies": {
+    "vite": "^8.1.2"
+  }
+}
