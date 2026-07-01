@@ -162,6 +162,17 @@ async function requestPersistentStorage(): Promise<void> {
   } catch { /* ignore */ }
 }
 
+// Known on-disk sizes per ONNX variant (bytes). Used only as a fallback for
+// the progress meter when the CORS response hides Content-Length. Approximate
+// is fine — the meter just needs a denominator.
+function expectedTotalBytes(url: string): number | null {
+  if (/fp16/i.test(url)) return 579_717_643;
+  if (/q4f16/i.test(url)) return 471_000_000;
+  if (/int8|uint8|quantized/i.test(url)) return 349_000_000;
+  if (/fp32|model_fp32|\/model\.onnx/i.test(url)) return 1_157_129_714;
+  return null;
+}
+
 async function fetchModelBytes(): Promise<Uint8Array> {
   // Persist across reloads so a large fp32/fp16 download happens at most once.
   const cache = typeof caches !== 'undefined' ? await caches.open(CACHE_NAME) : null;
@@ -180,7 +191,12 @@ async function fetchModelBytes(): Promise<Uint8Array> {
   const resp = await fetch(MODEL_URL, { mode: 'cors', cache: 'no-store' });
   if (!resp.ok) throw new Error(`GLiNER model download failed: HTTP ${resp.status} for ${MODEL_URL}`);
 
-  const totalBytes = Number(resp.headers.get('content-length')) || null;
+  // Vercel Blob's CORS response does NOT expose Content-Length to fetch()
+  // (no Access-Control-Expose-Headers), so resp.headers.get('content-length')
+  // is null in the browser even though the file has a known size. Fall back
+  // to the known size for this model variant so the % meter works.
+  const headerLen = Number(resp.headers.get('content-length')) || 0;
+  const totalBytes = headerLen > 0 ? headerLen : expectedTotalBytes(MODEL_URL);
   setProgress({ phase: 'downloading', fromCache: false, receivedBytes: 0, totalBytes, percent: totalBytes ? 0 : null });
 
   // Stream so we can report progress AND avoid a single giant arrayBuffer()
@@ -221,6 +237,14 @@ async function fetchModelBytes(): Promise<Uint8Array> {
   return bytes;
 }
 
+/** Reject if `p` doesn't settle within `ms` — so a hung engine init can't wedge the app forever. */
+function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
+  return Promise.race([
+    p,
+    new Promise<T>((_, reject) => setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms)),
+  ]);
+}
+
 async function newEngine(provider: 'webgpu' | 'wasm', modelBytes: Uint8Array): Promise<EngineHandle> {
   const { Gliner } = await import('gliner');
   const gliner = new Gliner({
@@ -250,14 +274,18 @@ async function load(): Promise<EngineHandle> {
     // a performance/availability fallback ONLY — fp32 passes the trap gate
     // identically on both providers (see playground/browser-gliner/RESULTS.md),
     // so it is NOT a quality degradation.
+    // Init is timed out so a hung WebGPU driver can't wedge the app forever —
+    // it falls back to WASM instead. WebGPU init is normally a few seconds;
+    // 30s only trips on a genuine hang. WASM gets a longer budget (fp32 graph).
     let eng: EngineHandle;
     try {
-      eng = await newEngine(PROVIDER_PREF, modelBytes);
+      eng = await withTimeout(newEngine(PROVIDER_PREF, modelBytes), 30_000, `${PROVIDER_PREF} init`);
       activeProvider = PROVIDER_PREF;
     } catch (err) {
       if (PROVIDER_PREF === 'wasm') throw err;
-      console.warn(`[glinerWebClient] ${PROVIDER_PREF} init failed, falling back to wasm:`, err);
-      eng = await newEngine('wasm', modelBytes);
+      console.warn(`[glinerWebClient] ${PROVIDER_PREF} init failed/timed out, falling back to wasm:`, err);
+      setProgress({ phase: 'initializing' });
+      eng = await withTimeout(newEngine('wasm', modelBytes), 120_000, 'wasm init');
       activeProvider = 'wasm';
     }
     loaded = true;

@@ -113,6 +113,76 @@ async function deleteDb(): Promise<void> {
   });
 }
 
+// True when the in-browser GLiNER detector is active (vs the local daemon).
+// The download progress meter only applies to the web detector.
+const IS_WEB_DETECTOR =
+  ((import.meta as unknown as { env?: Record<string, string> }).env?.VITE_DETECTOR) === 'web';
+
+interface ModelLoadProgress {
+  phase: 'idle' | 'downloading' | 'initializing' | 'ready' | 'error';
+  receivedBytes: number;
+  totalBytes: number | null;
+  fromCache: boolean;
+  percent: number | null;
+}
+
+/**
+ * Fixed top banner shown while the ~1.1 GB on-device model downloads/initializes
+ * on first visit, so the multi-minute first load shows real progress instead of a
+ * silent hang. Auto-hides once ready or on an instant CacheStorage hit. Light mode.
+ */
+const ModelLoadingBanner: React.FC<{ progress: ModelLoadProgress | null }> = ({ progress }) => {
+  if (!progress) return null;
+  const { phase, receivedBytes, totalBytes, percent, fromCache } = progress;
+  if (phase === 'idle') return null;
+  // Instant CacheStorage hit still surfaces the green "ready" flag below, but
+  // skip the transient download/init states (they'd flash for milliseconds).
+  if (fromCache && (phase === 'downloading' || phase === 'initializing')) return null;
+
+  const mb = (n: number) => (n / 1048576).toFixed(0);
+  const isReady = phase === 'ready';
+  const isErr = phase === 'error';
+
+  let label: string;
+  if (phase === 'downloading') {
+    label = totalBytes
+      ? `Loading on-device privacy filter… ${percent ?? 0}%  (${mb(receivedBytes)} / ${mb(totalBytes)} MB)`
+      : `Loading on-device privacy filter… ${mb(receivedBytes)} MB`;
+  } else if (phase === 'initializing') {
+    label = 'Initializing on-device privacy filter…';
+  } else if (isReady) {
+    label = 'On-device privacy filter active — client data is filtered on your device before anything is sent.';
+  } else {
+    label = 'On-device privacy filter failed to load — reload the page to retry.';
+  }
+
+  const bg = isReady ? '#ecfdf5' : isErr ? '#fef2f2' : '#fffbeb';
+  const border = isReady ? '#a7f3d0' : isErr ? '#fecaca' : '#fde68a';
+  const color = isReady ? '#047857' : isErr ? '#b91c1c' : '#92400e';
+  const icon = isReady ? '✅' : isErr ? '⚠️' : '🔒';
+
+  return (
+    <div style={{
+      position: 'fixed', top: 0, left: 0, right: 0, zIndex: 9999,
+      background: bg, borderBottom: `1px solid ${border}`, color,
+      font: '13px -apple-system, system-ui, sans-serif', padding: '8px 14px',
+    }}>
+      <div style={{ maxWidth: 920, margin: '0 auto', display: 'flex', alignItems: 'center', gap: 12 }}>
+        <span aria-hidden>{icon}</span>
+        <span style={{ flex: '0 0 auto', fontWeight: isReady ? 600 : 400 }}>{label}</span>
+        {phase === 'downloading' && typeof percent === 'number' && (
+          <span style={{ flex: 1, height: 6, background: '#fde68a', borderRadius: 4, overflow: 'hidden' }}>
+            <span style={{ display: 'block', height: '100%', width: `${percent}%`, background: '#d97706', transition: 'width .3s ease' }} />
+          </span>
+        )}
+        {phase === 'downloading' && (
+          <span style={{ flex: '0 0 auto', color: '#b45309', fontSize: 12 }}>one-time · cached after</span>
+        )}
+      </div>
+    </div>
+  );
+};
+
 export const SanitizerProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const storeRef = useRef<SanitizationStore | null>(null);
   const sanitizerRef = useRef<RealChatSanitizer | null>(null);
@@ -121,6 +191,7 @@ export const SanitizerProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [tokenCount, setTokenCount] = useState(0);
   const [initError, setInitError] = useState<string | null>(null);
   const [daemonStatus, setDaemonStatus] = useState<DaemonStatus>({ state: 'unknown' });
+  const [modelProgress, setModelProgress] = useState<ModelLoadProgress | null>(null);
 
   const openStore = useCallback(async () => {
     if (!hasBrowserStorage()) {
@@ -237,6 +308,37 @@ export const SanitizerProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     };
   }, []);
 
+  // Fast progress poll for the in-browser model download (web detector only).
+  // getHealth() is a cheap in-page state read in web mode, so ~700ms polling is
+  // fine; it stops once the model is loaded (or errors).
+  useEffect(() => {
+    if (!IS_WEB_DETECTOR) return;
+    let stopped = false;
+    const tick = async () => {
+      try {
+        const h = await getHealth();
+        const p = (h.loadProgress ?? null) as ModelLoadProgress | null;
+        if (h.modelLoaded || p?.phase === 'ready') {
+          stopped = true;
+          // Positive "downloaded & running" confirmation, then auto-hide.
+          setModelProgress({ phase: 'ready', receivedBytes: 0, totalBytes: null, fromCache: p?.fromCache ?? false, percent: 100 });
+          window.setTimeout(() => setModelProgress(null), 6000);
+        } else if (p?.phase === 'error') {
+          stopped = true;
+          setModelProgress(p); // keep the error visible (no auto-hide)
+        } else {
+          setModelProgress(p);
+        }
+      } catch { /* ignore transient */ }
+    };
+    void tick();
+    const id = window.setInterval(() => {
+      if (stopped) { window.clearInterval(id); return; }
+      void tick();
+    }, 700);
+    return () => { stopped = true; window.clearInterval(id); };
+  }, []);
+
   const reset = useCallback(async () => {
     setUnlocked(false);
     setTokenCount(0);
@@ -284,7 +386,12 @@ export const SanitizerProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     [unlocked, ready, tokenCount, reset, initError, getMap, addEntity, forgetToken, daemonStatus]
   );
 
-  return <SanitizerContext.Provider value={value}>{children}</SanitizerContext.Provider>;
+  return (
+    <SanitizerContext.Provider value={value}>
+      {IS_WEB_DETECTOR && <ModelLoadingBanner progress={modelProgress} />}
+      {children}
+    </SanitizerContext.Provider>
+  );
 };
 
 export function useSanitizer(): SanitizerContextValue {
