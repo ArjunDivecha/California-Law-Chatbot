@@ -1,4 +1,41 @@
-"""Simple Upstash query test"""
+"""
+=============================================================================
+SCRIPT NAME: test_simple_query.py
+=============================================================================
+
+DESCRIPTION:
+    Tests vector search queries against an Upstash vector database. This script
+    generates an embedding for the query string "trust administration" using
+    OpenAI's text-embedding-3-small model, then sends two search queries to
+    an Upstash vector index: one without a namespace filter and one scoped to
+    the "ceb_trusts_estates" namespace. Results (status codes and response
+    text) are printed to stdout for comparison.
+
+INPUT FILES:
+    /Users/arjundivecha/Dropbox/AAA Backup/A Working/California-Law-Chatbot-bedrock-confidentiality/.env
+        Environment file containing UPSTASH_VECTOR_REST_URL,
+        UPSTASH_VECTOR_REST_TOKEN, and OPENAI_API_KEY.
+
+OUTPUT FILES:
+    (none — this script only prints to stdout)
+
+VERSION: 1.0
+LAST UPDATED: 2026-06-05
+AUTHOR: Arjun Divecha
+
+DEPENDENCIES:
+    - requests
+    - python-dotenv
+
+USAGE:
+    python scripts/test_simple_query.py
+
+NOTES:
+    - Requires a working .env file with Upstash and OpenAI credentials.
+    - The Upstash index must already exist and be populated with vectors.
+    - Network access to api.openai.com and the Upstash REST endpoint is required.
+=============================================================================
+"""
 import os
 import requests
 from dotenv import load_dotenv

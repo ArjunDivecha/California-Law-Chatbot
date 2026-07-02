@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>NER latency test — transformers.js</title>
+  <style>
+    body { font: 14px/1.5 ui-sans-serif, system-ui; max-width: 920px; margin: 24px auto; padding: 0 16px; background: #fafaf8; color: #111; }
+    h1 { font-size: 18px; margin: 0 0 4px; }
+    .sub { color: #666; margin-bottom: 16px; }
+    textarea { width: 100%; min-height: 70px; padding: 8px; font: 13px ui-monospace, monospace; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; }
+    button { padding: 6px 12px; margin-right: 8px; border: 1px solid #888; background: #fff; border-radius: 6px; cursor: pointer; }
+    button:hover { background: #eee; }
+    button:disabled { opacity: 0.4; cursor: default; }
+    select { padding: 4px 8px; }
+    .row { margin: 12px 0; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    pre { background: #fff; border: 1px solid #ddd; padding: 10px; border-radius: 6px; white-space: pre-wrap; word-break: break-word; }
+    .stat { display: inline-block; padding: 2px 8px; background: #eef; border-radius: 4px; margin-right: 6px; }
+    .ok { background: #dfd; }
+    .warn { background: #ffd; }
+    .err { background: #fdd; }
+    .label { font-weight: 600; color: #444; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; }
+    .entity { background: #fde68a; padding: 1px 4px; border-radius: 3px; }
+    .entity-PER { background: #fde68a; }
+    .entity-ORG { background: #bae6fd; }
+    .entity-LOC { background: #bbf7d0; }
+    .entity-MISC { background: #e9d5ff; }
+  </style>
+</head>
+<body>
+  <h1>NER latency test <span style="font-size:11px;color:#0a0;font-weight:normal">build v3 — subword aggregation</span></h1>
+  <div class="sub">Loads a transformers.js NER model in the browser and measures cold-load + warm-inference latency on real prompts. Nothing leaves the machine.</div>
+
+  <div class="row">
+    <span class="label">Model</span>
+    <select id="model">
+      <option value="Xenova/bert-base-NER">Xenova/bert-base-NER (~110 MB, baseline)</option>
+      <option value="Xenova/bert-base-multilingual-cased-ner-hrl">multilingual NER HRL (~190 MB)</option>
+      <option value="onnx-community/multilingual-e5-small">e5-small (sanity check, not NER)</option>
+    </select>
+    <button id="load">Load model</button>
+    <span id="loadStat"></span>
+  </div>
+
+  <div class="row">
+    <span class="label">Test prompt</span>
+  </div>
+  <textarea id="prompt">i want arjun Divecha to write a will - his birthdate is 12/26/1955 and his address is 123 main street palo alto ca 94301</textarea>
+
+  <div class="row">
+    <button id="run" disabled>Run inference</button>
+    <button id="run10" disabled>Run x10 (warm)</button>
+    <span id="runStat"></span>
+  </div>
+
+  <div class="row"><span class="label">Detected entities</span></div>
+  <pre id="entities">(no run yet)</pre>
+
+  <div class="row"><span class="label">Annotated text</span></div>
+  <pre id="annotated">(no run yet)</pre>
+
+  <div class="row"><span class="label">Log</span></div>
+  <pre id="log"></pre>
+
+  <script type="module">
+    import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.0.0';
+
+    // Use cached models from browser IndexedDB across reloads.
+    env.useBrowserCache = true;
+    env.allowLocalModels = false;
+
+    const $ = (id) => document.getElementById(id);
+    const log = (msg, cls = '') => {
+      const t = new Date().toISOString().slice(11, 23);
+      $('log').textContent += `[${t}] ${msg}\n`;
+      $('log').scrollTop = $('log').scrollHeight;
+      if (cls) console.log(cls, msg); else console.log(msg);
+    };
+
+    let nerPipeline = null;
+    let currentModel = null;
+
+    $('load').addEventListener('click', async () => {
+      const modelId = $('model').value;
+      $('load').disabled = true;
+      $('run').disabled = true;
+      $('run10').disabled = true;
+      $('loadStat').textContent = 'loading…';
+      log(`Loading ${modelId}…`);
+      const t0 = performance.now();
+      try {
+        nerPipeline = await pipeline('token-classification', modelId, {
+          // Aggregate sub-word pieces back into single entity spans.
+          // Newer transformers.js exposes this via the pipe call options.
+        });
+        currentModel = modelId;
+        const ms = (performance.now() - t0).toFixed(0);
+        $('loadStat').innerHTML = `<span class="stat ok">loaded in ${ms} ms</span>`;
+        log(`Loaded in ${ms} ms`);
+        $('run').disabled = false;
+        $('run10').disabled = false;
+      } catch (err) {
+        $('loadStat').innerHTML = `<span class="stat err">load failed</span>`;
+        log(`ERROR: ${err.message || err}`);
+      } finally {
+        $('load').disabled = false;
+      }
+    });
+
+    function annotate(text, entities) {
+      // Sort by start ascending, then walk and wrap.
+      const sorted = [...entities].filter(e => e.start != null && e.end != null).sort((a, b) => a.start - b.start);
+      let cursor = 0;
+      const parts = [];
+      for (const e of sorted) {
+        const s = e.start;
+        const en = e.end;
+        if (s < cursor) continue;
+        parts.push(escapeHtml(text.slice(cursor, s)));
+        const tag = (e.entity_group || e.entity || '').replace(/^[BI]-/, '');
+        parts.push(`<span class="entity entity-${tag}" title="${tag} · score=${(e.score ?? 0).toFixed(2)}">${escapeHtml(text.slice(s, en))}</span>`);
+        cursor = en;
+      }
+      parts.push(escapeHtml(text.slice(cursor)));
+      return parts.join('');
+    }
+    function escapeHtml(s) {
+      return s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+    }
+
+    /**
+     * Aggregate subword pieces back into entity spans with character offsets.
+     * transformers.js v3 returns raw token-classification output (B-XXX / I-XXX
+     * with `##` BPE markers) rather than the HuggingFace Python pipeline's
+     * pre-aggregated entity_group output. We rebuild it here.
+     */
+    function aggregateEntities(prompt, raw) {
+      // Walk the raw tokens, group adjacent B-/I- with the same tag.
+      // Quirk: this model labels every subword of the *first* word of an
+      // entity as B-XXX (so "arjun" → "a"/"##r"/"##jun" all B-PER), then
+      // I-XXX for subsequent words. Treat a subword (## prefix) as always
+      // belonging to the current entity if the tag matches; only a
+      // non-subword B- begins a new entity.
+      const groups = [];
+      let cur = null;
+      for (const tok of raw) {
+        const tag = (tok.entity || '').replace(/^[BI]-/, '');
+        const word = tok.word || '';
+        const isSubword = word.startsWith('##');
+        const isBegin = (tok.entity || '').startsWith('B-');
+        if (!tag) { cur = null; continue; }
+
+        if (cur && cur.tag === tag && (isSubword || !isBegin)) {
+          cur.pieces.push(tok);
+          cur.scoreSum += tok.score;
+          continue;
+        }
+        if (cur) groups.push(cur);
+        cur = { tag, pieces: [tok], scoreSum: tok.score };
+      }
+      if (cur) groups.push(cur);
+
+      // For each group, reconstruct the surface form by joining pieces and
+      // stripping the `##` BPE prefix. Then locate the surface form in the
+      // original prompt to derive character offsets. We do a case-insensitive
+      // match starting from a running cursor so we don't re-find earlier
+      // occurrences.
+      const out = [];
+      let cursor = 0;
+      for (const g of groups) {
+        const surface = g.pieces
+          .map((p, i) => (p.word || '').replace(/^##/, ''))
+          .reduce((acc, w, i) => {
+            if (i === 0) return w;
+            const piece = g.pieces[i].word || '';
+            // Subword (## prefix) glues to previous; otherwise space-separated.
+            return piece.startsWith('##') ? acc + w : acc + ' ' + w;
+          }, '');
+        if (!surface) continue;
+        const lcPrompt = prompt.toLowerCase();
+        const idx = lcPrompt.indexOf(surface.toLowerCase(), cursor);
+        if (idx === -1) {
+          out.push({
+            entity_group: g.tag,
+            score: g.scoreSum / g.pieces.length,
+            word: surface,
+            start: null,
+            end: null,
+          });
+          continue;
+        }
+        out.push({
+          entity_group: g.tag,
+          score: g.scoreSum / g.pieces.length,
+          word: prompt.slice(idx, idx + surface.length),
+          start: idx,
+          end: idx + surface.length,
+        });
+        cursor = idx + surface.length;
+      }
+      return out;
+    }
+
+    async function runOnce() {
+      const prompt = $('prompt').value;
+      const t0 = performance.now();
+      const raw = await nerPipeline(prompt);
+      const result = aggregateEntities(prompt, raw);
+      const ms = performance.now() - t0;
+      return { result, raw, ms };
+    }
+
+    $('run').addEventListener('click', async () => {
+      $('run').disabled = true;
+      $('run10').disabled = true;
+      $('runStat').textContent = 'running…';
+      try {
+        const { result, ms } = await runOnce();
+        $('runStat').innerHTML = `<span class="stat ok">${ms.toFixed(1)} ms</span>`;
+        $('entities').textContent = JSON.stringify(result, null, 2);
+        $('annotated').innerHTML = annotate($('prompt').value, result);
+        log(`Run: ${ms.toFixed(1)} ms · ${result.length} spans`);
+      } catch (err) {
+        $('runStat').innerHTML = `<span class="stat err">run failed</span>`;
+        log(`ERROR: ${err.message || err}`);
+      } finally {
+        $('run').disabled = false;
+        $('run10').disabled = false;
+      }
+    });
+
+    $('run10').addEventListener('click', async () => {
+      $('run').disabled = true;
+      $('run10').disabled = true;
+      $('runStat').textContent = 'running x10…';
+      try {
+        const ms = [];
+        let last = null;
+        for (let i = 0; i < 10; i++) {
+          const r = await runOnce();
+          ms.push(r.ms);
+          last = r.result;
+        }
+        ms.sort((a, b) => a - b);
+        const min = ms[0].toFixed(1);
+        const max = ms[ms.length - 1].toFixed(1);
+        const mean = (ms.reduce((s, x) => s + x, 0) / ms.length).toFixed(1);
+        const p50 = ms[Math.floor(ms.length / 2)].toFixed(1);
+        const p95 = ms[Math.floor(ms.length * 0.95)].toFixed(1);
+        $('runStat').innerHTML = `<span class="stat ok">x10 — mean ${mean} ms · p50 ${p50} ms · p95 ${p95} ms · range [${min}, ${max}]</span>`;
+        $('entities').textContent = JSON.stringify(last, null, 2);
+        $('annotated').innerHTML = annotate($('prompt').value, last);
+        log(`x10: mean=${mean} p50=${p50} p95=${p95} min=${min} max=${max}`);
+      } catch (err) {
+        $('runStat').innerHTML = `<span class="stat err">run failed</span>`;
+        log(`ERROR: ${err.message || err}`);
+      } finally {
+        $('run').disabled = false;
+        $('run10').disabled = false;
+      }
+    });
+
+    log(`Ready (build v3 — subword aggregation). Pick a model and click Load. Models cache in browser IndexedDB after first download.`);
+    log(`User agent: ${navigator.userAgent}`);
+    log(`Hardware concurrency: ${navigator.hardwareConcurrency ?? 'unknown'} cores`);
+    log(`Device memory: ${navigator.deviceMemory ?? 'unknown'} GB`);
+  </script>
+</body>
+</html>

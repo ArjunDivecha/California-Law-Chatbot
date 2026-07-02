@@ -88,14 +88,9 @@ class OPFService:
             return
         logger.info("loading OPF model (cold start)")
         t0 = time.time()
-        # Imports are inside the function so the import cost (PyTorch) is
-        # paid only on first detect, not at process start. This keeps the
-        # idle process tiny.
         from opf._api import OPF  # type: ignore[import-not-found]
 
         self._model = OPF(device="cpu", output_mode="typed")
-        # Warm the runtime with a tiny call so the first user request doesn't
-        # also pay the JIT/runtime init.
         try:
             self._model.redact("warmup")
         except Exception as e:
@@ -111,8 +106,6 @@ class OPFService:
             elapsed_ms = (time.time() - t0) * 1000.0
             self._last_request_at = time.time()
 
-        # `result` is a RedactionResult dataclass; convert to a small JSON-safe
-        # dict containing just the spans the chatbot needs.
         spans = [
             {
                 "label": s.label,
@@ -130,12 +123,12 @@ class OPFService:
         }
 
     def maybe_unload(self) -> bool:
-        """Drop the model reference if the idle threshold has elapsed.
+        """Drop the pipeline reference if the idle threshold has elapsed.
 
         Returns True if a model was unloaded, False otherwise.
         """
         with self._lock:
-            if self._model is None:
+            if self._pipeline is None:
                 return False
             if self._last_request_at is None:
                 return False
