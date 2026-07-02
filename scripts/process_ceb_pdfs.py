@@ -1,27 +1,70 @@
 #!/usr/bin/env python3
 """
-CEB PDF Processing Script
-
-INPUT FILES:
-- PDF files from specified input directory (e.g., ceb_trusts_estates/pdf/*.pdf)
-
-OUTPUT FILES:
-- data/ceb_processed/{category}/chunks.jsonl - Processed text chunks with metadata
-- data/ceb_processed/{category}/processing_log.xlsx - Processing statistics
-- data/ceb_processed/{category}/failed_pdfs.txt - List of failed PDFs
-- data/ceb_processed/{category}/checkpoint_{timestamp}.json - Resume checkpoints
+=============================================================================
+SCRIPT NAME: process_ceb_pdfs.py
+=============================================================================
 
 DESCRIPTION:
-Extracts text from CEB PDFs, chunks them intelligently, and generates rich metadata
-for RAG (Retrieval Augmented Generation). Designed to be modular and reusable across
-different CEB verticals (trusts_estates, family_law, business_litigation).
+    Extracts text from CEB (California Continuing Education of the Bar) PDF
+    files, breaks the text into overlapping chunks suitable for RAG (Retrieval
+    Augmented Generation) vector embedding, and saves the chunks as JSONL with
+    rich metadata (title, section, page number, token count, chunk ID, category,
+    etc.). Designed to be modular and reusable across different CEB verticals
+    (trusts_estates, family_law, business_litigation, business_entities,
+    business_transactions). Includes periodic checkpointing for resumable
+    processing and writes processing statistics and failure logs.
+
+INPUT FILES:
+    (user-specified via --input-dir CLI argument)
+        One or more *.pdf files from a CEB (Continuing Education of the Bar)
+        publication collection. The directory path is provided at runtime via
+        the --input-dir argument and is validated before processing begins.
+        PDF filenames encode the document title and section number, which the
+        script parses to generate chunk metadata.
+
+OUTPUT FILES:
+    /Users/arjundivecha/Dropbox/AAA Backup/A Working/California-Law-Chatbot-Local/data/ceb_processed/{category}/chunks.jsonl
+        Processed text chunks with full metadata (chunk_id, source_file,
+        category, title, section, page_number, token_count, ceb_citation,
+        processed_date) in JSONL format. One JSON object per line.
+    /Users/arjundivecha/Dropbox/AAA Backup/A Working/California-Law-Chatbot-Local/data/ceb_processed/{category}/processing_log.xlsx
+        Excel workbook with a "Summary" sheet containing processing statistics
+        (total PDFs, successful/failed counts, total chunks, total pages, start
+        and end timestamps) and an optional "Failed PDFs" sheet listing filenames
+        and error messages for any PDFs that failed processing.
+    /Users/arjundivecha/Dropbox/AAA Backup/A Working/California-Law-Chatbot-Local/data/ceb_processed/{category}/failed_pdfs.txt
+        Plain-text log of failed PDF filenames and their corresponding error
+        messages, useful for debugging or retrying specific documents.
+    /Users/arjundivecha/Dropbox/AAA Backup/A Working/California-Law-Chatbot-Local/data/ceb_processed/{category}/checkpoint_*.json
+        Periodic save-state files (every --checkpoint-interval PDFs, default
+        100) containing the current processing count, timestamp, and stats
+        dictionary, enabling resumption from a specific PDF index via the
+        --resume-from argument.
+
+VERSION: 1.0
+LAST UPDATED: 2026-06-05
+AUTHOR: Arjun Divecha
+
+DEPENDENCIES:
+    - PyMuPDF (fitz)
+    - pandas
+    - tqdm
 
 USAGE:
-    python process_ceb_pdfs.py --category trusts_estates --input-dir "/path/to/pdfs"
-    python process_ceb_pdfs.py --category family_law --input-dir "/path/to/pdfs" --chunk-size 1200
+    python process_ceb_pdfs.py --category trusts_estates --input-dir "/path/to/ceb_trusts_estates/pdf"
+    python process_ceb_pdfs.py --category family_law --input-dir "/path/to/ceb_family_law/pdf" --chunk-size 1200
+    python process_ceb_pdfs.py --category trusts_estates --input-dir "/path/to/pdfs" --resume-from 500
 
-Version: 1.0
-Last Updated: November 1, 2025
+NOTES:
+    - Output directory defaults to data/ceb_processed/{category}, configurable
+      via the --output-dir argument (relative to the working directory).
+    - Input directory must exist and contain at least one *.pdf file.
+    - Chunk size and overlap are specified in tokens (~4 characters per token).
+    - The default output_dir value of "data/ceb_processed" is relative; when
+      running from the project root this resolves to:
+      /Users/arjundivecha/Dropbox/AAA Backup/A Working/California-Law-Chatbot-Local/data/ceb_processed/
+    - Uses PyMuPDF (fitz) for PDF text extraction; skips empty pages silently.
+=============================================================================
 """
 
 import os
