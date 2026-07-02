@@ -122,25 +122,47 @@ CRITICAL RULES — read carefully:
 
 6. **DO NOT call something fake just because you don't recognize it.** Your memorized knowledge is incomplete.
 
-When done researching, emit your verdict as a JSON object on a single line, preceded by the literal token "VERDICT:" — no leading whitespace, no trailing text after it. Schema:
+When you have finished researching, your final message must be ONLY the verdict as a single JSON object — no prose before or after, no markdown fence. The response format is schema-constrained to this shape:
 
-VERDICT: {"status":"real"|"fake"|"ambiguous","citation_type":"case"|"statute","case_name":"<case name or statute heading as confirmed>","match_url":"<url>","confidence":0.0-1.0,"reasoning":"<one-sentence explanation grounded in what tools returned>"}
+{"status":"real"|"fake"|"ambiguous","citation_type":"case"|"statute","case_name":"<case name or statute heading as confirmed>","match_url":"<url>","confidence":0.0-1.0,"reasoning":"<one-sentence explanation grounded in what tools returned>"}
 
-Good examples:
+Required keys: status, confidence, reasoning. Include citation_type/case_name/match_url when known. Keep reasoning under 280 characters.
 
-VERDICT: {"status":"real","citation_type":"case","case_name":"Navellier v. Sletten","match_url":"https://www.courtlistener.com/opinion/...","confidence":0.98,"reasoning":"citation_verify and courtlistener_search both returned the Cal. Supreme Court 2002 opinion at 29 Cal.4th 82; party names and reporter match exactly."}
+Good examples (the literal final message):
 
-VERDICT: {"status":"real","citation_type":"statute","case_name":"Penal Code § 187 — Murder","match_url":"https://leginfo.legislature.ca.gov/...","confidence":0.98,"reasoning":"statute_verify returned outcome=verified; § 187 exists and its text defines murder, consistent with the citation."}
+{"status":"real","citation_type":"case","case_name":"Navellier v. Sletten","match_url":"https://www.courtlistener.com/opinion/...","confidence":0.98,"reasoning":"citation_verify and courtlistener_search both returned the Cal. Supreme Court 2002 opinion at 29 Cal.4th 82; party names and reporter match exactly."}
 
-VERDICT: {"status":"fake","citation_type":"statute","confidence":0.93,"reasoning":"statute_verify returned outcome=not_found for Penal Code § 99999; no such section exists at leginfo. Likely a fabricated section number."}
+{"status":"real","citation_type":"statute","case_name":"Penal Code § 187 — Murder","match_url":"https://leginfo.legislature.ca.gov/...","confidence":0.98,"reasoning":"statute_verify returned outcome=verified; § 187 exists and its text defines murder, consistent with the citation."}
 
-VERDICT: {"status":"fake","citation_type":"statute","case_name":"Penal Code § 187","match_url":"https://leginfo.legislature.ca.gov/...","confidence":0.85,"reasoning":"§ 187 exists but defines murder; the passage cites it for burglary, a content mismatch."}
+{"status":"fake","citation_type":"statute","confidence":0.93,"reasoning":"statute_verify returned outcome=not_found for Penal Code § 99999; no such section exists at leginfo. Likely a fabricated section number."}
 
-VERDICT: {"status":"fake","confidence":0.92,"reasoning":"CourtListener returned 'John Doe v. Gary Settle' (unrelated) as the only hit for 'Hendricks v. California Probate Bureau'; courtlistener_search by case-name returned zero hits. No California Supreme Court opinion exists at 7 Cal.5th 904. Likely fabricated."}
+{"status":"fake","citation_type":"statute","case_name":"Penal Code § 187","match_url":"https://leginfo.legislature.ca.gov/...","confidence":0.85,"reasoning":"§ 187 exists but defines murder; the passage cites it for burglary, a content mismatch."}
 
-VERDICT: {"status":"ambiguous","confidence":0.45,"reasoning":"citation_verify not_found and CourtListener rate-limited; CEB returned no reference. Zero confirmatory and zero contradictory evidence. Older Cal. opinions are often missing from CL's index. Manual verification against Westlaw/Lexis required."}
+{"status":"fake","confidence":0.92,"reasoning":"CourtListener returned 'John Doe v. Gary Settle' (unrelated) as the only hit for 'Hendricks v. California Probate Bureau'; courtlistener_search by case-name returned zero hits. No California Supreme Court opinion exists at 7 Cal.5th 904. Likely fabricated."}
 
-You may emit at most ONE VERDICT line. Keep reasoning under 280 characters.`;
+{"status":"ambiguous","confidence":0.45,"reasoning":"citation_verify not_found and CourtListener rate-limited; CEB returned no reference. Zero confirmatory and zero contradictory evidence. Older Cal. opinions are often missing from CL's index. Manual verification against Westlaw/Lexis required."}`;
+
+/**
+ * JSON-schema for the verdict (output_config.format). Structured outputs
+ * guarantee the final message parses to this shape — no more VERDICT:-line
+ * regex extraction. Constraints: additionalProperties:false + required;
+ * citation_type/case_name/match_url are optional (not every verdict has a
+ * confirmed name/url). No numeric range on confidence (unsupported by the
+ * structured-output schema dialect — validated client-side instead).
+ */
+const VERDICT_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  properties: {
+    status: { type: 'string', enum: ['real', 'fake', 'ambiguous'] },
+    citation_type: { type: 'string', enum: ['case', 'statute'] },
+    case_name: { type: 'string' },
+    match_url: { type: 'string' },
+    confidence: { type: 'number' },
+    reasoning: { type: 'string' },
+  },
+  required: ['status', 'confidence', 'reasoning'],
+} as const;
 
 const VERIFIER_TOOLS = [
   CEB_SEARCH_TOOL_DEFINITION,
@@ -184,10 +206,23 @@ async function dispatchVerifierTool(use: ToolUseBlock): Promise<string> {
 }
 
 function extractVerdict(text: string): VerifierVerdict | null {
-  const m = text.match(/VERDICT:\s*(\{.*?\})\s*$/m) || text.match(/VERDICT:\s*(\{[^\n]*\})/);
-  if (!m) return null;
+  // With output_config.format the final message IS the verdict JSON object.
+  // Try that first; fall back to the legacy "VERDICT:" line + first-brace
+  // extraction so older transcripts / a schema-less path still parse.
+  let jsonStr: string | null = null;
+  const trimmed = text.trim();
+  if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+    jsonStr = trimmed;
+  } else {
+    const m =
+      text.match(/VERDICT:\s*(\{.*?\})\s*$/m) ||
+      text.match(/VERDICT:\s*(\{[^\n]*\})/) ||
+      text.match(/(\{[\s\S]*\})/);
+    if (m) jsonStr = m[1];
+  }
+  if (!jsonStr) return null;
   try {
-    const parsed = JSON.parse(m[1]) as Partial<VerifierVerdict>;
+    const parsed = JSON.parse(jsonStr) as Partial<VerifierVerdict>;
     if (
       parsed.status !== 'real' &&
       parsed.status !== 'fake' &&
@@ -239,7 +274,12 @@ export async function verifyCitationViaSubAgent(citationText: string): Promise<V
       system: VERIFIER_SYSTEM_PROMPT,
       messages,
       tools: VERIFIER_TOOLS as unknown as Anthropic.Messages.Tool[],
-    });
+      // Structured output: the final (non-tool) message is constrained to the
+      // verdict schema. Intermediate tool-use turns are unaffected (the model
+      // still emits tool_use until it's done researching). output_config may
+      // post-date the installed SDK's param types — cast at the wire.
+      output_config: { format: { type: 'json_schema', schema: VERDICT_SCHEMA } },
+    } as unknown as Anthropic.Messages.MessageCreateParamsNonStreaming);
 
     const blocks = response.content;
     const assistantText: string[] = [];

@@ -1,0 +1,49 @@
+{
+  "ran_at": "2026-06-19T05:36:44.718Z",
+  "results": [
+    {
+      "scenario": "public_research (privileged=false expected)",
+      "session_id": "smoke_1781847404718_9wb0",
+      "ok": true,
+      "privileged_expected": false,
+      "privileged_actual": false,
+      "privilege_match": true,
+      "compound_risk_buckets": 0,
+      "tool_rounds": 0,
+      "total_tokens": 2322,
+      "elapsed_ms": 34825.742833000004,
+      "stop_reason": "end_turn",
+      "exhausted_iterations": false,
+      "persisted_messages": 2,
+      "final_text_preview": "I want to flag something important before answering, and I'll verify the rule numbers rather than rely on memory.\nI need to flag a correction at the outset: **California Rules of Court, rule 3.1320 does not govern motions to seal court records.** Rule 3.1320 is the rule on **demurrers**. \nRule 3.1320 is titled \"Demurrers,\" and provides, in subdivision (a), that each ground of demurrer must be in a"
+    },
+    {
+      "scenario": "compound_risk (privileged=true expected, no direct PII)",
+      "session_id": "smoke_1781847439876_r8rx",
+      "ok": true,
+      "privileged_expected": true,
+      "privileged_actual": true,
+      "privilege_match": true,
+      "compound_risk_buckets": 5,
+      "tool_rounds": 1,
+      "total_tokens": 3268,
+      "elapsed_ms": 49009.434541999995,
+      "stop_reason": "end_turn",
+      "exhausted_iterations": false,
+      "persisted_messages": 4,
+      "final_text_preview": "Before the forms, one threshold flag worth confirming with the client, because it determines whether you file a full probate at all:\n\n**Whose estate is this, and does it actually need full probate?** The biographical details (Cantonese-speaking, Sunset District, son at UCSF) don't change which forms you use, but two of them matter procedurally:\n- \"Sunset District\" puts venue in **San Francisco Sup"
+    },
+    {
+      "scenario": "direct_pii (privileged=true expected, explicit name+phone)",
+      "ok": false,
+      "response": {
+        "ok": false,
+        "error": {
+          "code": "sanitizer_unavailable",
+          "message": "Raw PII detected in request body (1 match: phone). Browser-side tokenization should have replaced these with @@TOKEN@@ placeholders. Request blocked to prevent unprotected send."
+        },
+        "status_code": 503
+      }
+    }
+  ]
+}

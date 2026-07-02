@@ -123,6 +123,9 @@ interface SendOpts {
   system_prompt?: string;
   /** 'quick' (Sonnet, no tools) or 'research' (Opus + full tool set). */
   workflow?: 'quick' | 'research';
+  /** Structured-output schema (output_config.format). Used by the Draft
+   *  propose flow to force a valid {changes:[…]} reply. */
+  output_format?: { type: 'json_schema'; schema: Record<string, unknown> };
 }
 
 export function useV2AgentStream() {
@@ -181,6 +184,7 @@ export function useV2AgentStream() {
       model: opts.model,
       system_prompt: opts.system_prompt,
       workflow: opts.workflow,
+      output_format: opts.output_format,
     };
 
     // Plan §S browser-side CI assertion. Final deterministic-regex

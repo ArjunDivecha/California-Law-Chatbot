@@ -122,6 +122,34 @@ function parseChangesJson(text: string): Array<Omit<Proposal, 'id' | 'status'>> 
   }
 }
 
+// Structured-output schema for the propose flow (output_config.format on the
+// server). Forces the model's final message to be a valid {changes:[…]}
+// object — parseChangesJson below stays as a defensive fallback. Schema-dialect
+// limits: additionalProperties:false + required on every object; no array
+// length / string length constraints.
+const DRAFT_PROPOSALS_SCHEMA: Record<string, unknown> = {
+  type: 'object',
+  additionalProperties: false,
+  properties: {
+    changes: {
+      type: 'array',
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        properties: {
+          section: { type: 'string' },
+          description: { type: 'string' },
+          rationale: { type: 'string' },
+          find: { type: 'string' },
+          replace: { type: 'string' },
+        },
+        required: ['section', 'description', 'rationale', 'find', 'replace'],
+      },
+    },
+  },
+  required: ['changes'],
+};
+
 // Apply find→replace to the document. Tries exact match first, then a
 // whitespace-tolerant regex match. Returns the new document, or null if the
 // "find" text could not be located.
@@ -206,6 +234,8 @@ export const V2DraftPage: React.FC = () => {
       system_prompt: PROPOSAL_SYSTEM_PROMPT,
       // 'research' (no model override) → primary engine = Claude Fable 5.
       workflow: 'research',
+      // Schema-constrain the reply to {changes:[…]} (output_config.format).
+      output_format: { type: 'json_schema', schema: DRAFT_PROPOSALS_SCHEMA },
     });
   }, [instruction, documentText, state.isStreaming, send, sessionId, userId]);
 

@@ -62,6 +62,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     system_prompt?: string;
     workflow?: 'quick' | 'research';
     user_allowlist?: string[];
+    /** Structured-output schema (output_config.format) — Draft propose flow. */
+    output_format?: { type: 'json_schema'; schema: Record<string, unknown> };
   };
 
   const sessionId = (body.session_id ?? '').trim();
@@ -97,6 +99,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       model: body.model,
       system_prompt: body.system_prompt,
       workflow: body.workflow,
+      output_format: body.output_format,
     })) {
       writeEvent(event.kind, event);
       if (event.kind === 'done' || event.kind === 'error' || event.kind === 'proxy_error') {

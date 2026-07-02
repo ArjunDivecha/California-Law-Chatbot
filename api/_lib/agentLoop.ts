@@ -445,6 +445,9 @@ export interface RunTurnOptions {
   turn_id?: string;
   /** Optional Clerk user id for the audit record. */
   user_id?: string | null;
+  /** Optional structured-output schema (output_config.format). Used by the
+   *  Draft propose flow to force a valid {changes:[…]} object. */
+  output_format?: OutputFormat;
   /** Optional Anthropic SDK instance — tests inject a fake. */
   anthropic_client?: Anthropic;
 }
@@ -675,15 +678,96 @@ function simpleHash(s: string): string {
 // (mcp_servers + betas) is conditional.
 // ---------------------------------------------------------------------------
 
+/** output_config.effort levels (GA on Fable 5 / Opus 4.x / Sonnet 4.6). */
+type EffortLevel = 'low' | 'medium' | 'high' | 'xhigh' | 'max';
+
+/** Structured-output schema → output_config.format. The final assistant
+ *  message is constrained to this JSON schema (tool-use turns unaffected). */
+export interface OutputFormat {
+  type: 'json_schema';
+  schema: Record<string, unknown>;
+}
+
 interface BaseMessagesParams {
   model: string;
   max_tokens: number;
   system: string;
   messages: Anthropic.Messages.MessageParam[];
   tools: Anthropic.Messages.Tool[];
+  /** Per-workflow reasoning depth → output_config.effort. Omit to use the
+   *  model default (high). */
+  effort?: EffortLevel;
+  /** Send thinking:{type:'adaptive'} when true. Quick mode omits it so the
+   *  latency-optimized Sonnet path doesn't pay for reasoning. Never send
+   *  thinking:{type:'disabled'} or budget_tokens — both 400 on Fable 5. */
+  enableThinking?: boolean;
+  /** Optional structured-output schema → output_config.format. */
+  outputFormat?: OutputFormat;
 }
 
 type McpServerEntry = ReturnType<typeof buildMcpServers>[number];
+
+// ---------------------------------------------------------------------------
+// Prompt caching + thinking/effort wire-body builder.
+//
+// Render order is tools → system → messages. A cache_control breakpoint on
+// the last system block caches the (stable) tools array + system prompt
+// together; a second breakpoint on the last message caches the conversation
+// prefix so each tool-use round re-reads prior rounds at ~0.1× input price
+// instead of re-billing them at full price. 5-min ephemeral TTL covers the
+// within-turn loop (iterations are seconds apart) and follow-up turns in a
+// session (minutes apart). Verify with usage.cache_read_input_tokens.
+//
+// thinking:{type:'adaptive'} and output_config.effort are merged here too so
+// every Messages-API call (stable + MCP-beta) carries them uniformly.
+// ---------------------------------------------------------------------------
+
+const EPHEMERAL_CACHE = { type: 'ephemeral' as const };
+
+/** Shallow-clone the message list and mark the last content block of the last
+ *  message cacheable. Never mutates the persisted history array. */
+function markLastBlockCacheable(
+  messages: Anthropic.Messages.MessageParam[],
+): Anthropic.Messages.MessageParam[] {
+  if (messages.length === 0) return messages;
+  const out = messages.slice();
+  const last = out[out.length - 1];
+  const blocks =
+    typeof last.content === 'string'
+      ? [{ type: 'text' as const, text: last.content }]
+      : last.content.slice();
+  if (blocks.length === 0) return messages;
+  blocks[blocks.length - 1] = {
+    ...(blocks[blocks.length - 1] as unknown as Record<string, unknown>),
+    cache_control: EPHEMERAL_CACHE,
+  } as unknown as (typeof blocks)[number];
+  out[out.length - 1] = {
+    ...last,
+    content: blocks,
+  } as Anthropic.Messages.MessageParam;
+  return out;
+}
+
+/** Build the full Messages-API request body for a given model, applying cache
+ *  breakpoints and thinking/effort. Returned loosely-typed and cast at the
+ *  call site (output_config may post-date the installed SDK's param types;
+ *  Stainless sends unknown body fields through verbatim). */
+function buildWireBody(params: BaseMessagesParams, model: string): Record<string, unknown> {
+  const body: Record<string, unknown> = {
+    model,
+    max_tokens: params.max_tokens,
+    system: [{ type: 'text', text: params.system, cache_control: EPHEMERAL_CACHE }],
+    messages: markLastBlockCacheable(params.messages),
+    tools: params.tools,
+  };
+  if (params.enableThinking) body.thinking = { type: 'adaptive' };
+  // effort + format share the output_config object.
+  const outputConfig: Record<string, unknown> = {};
+  if (params.effort) outputConfig.effort = params.effort;
+  if (params.outputFormat) outputConfig.format = params.outputFormat;
+  if (Object.keys(outputConfig).length > 0) body.output_config = outputConfig;
+  return body;
+}
 
 async function callMessagesCreate(
   client: Anthropic,
@@ -692,14 +776,16 @@ async function callMessagesCreate(
 ): Promise<Anthropic.Messages.Message> {
   // One actual API call for a given model id (stable vs beta-MCP surface).
   const run = (model: string): Promise<Anthropic.Messages.Message> => {
-    const p = { ...params, model };
+    const body = buildWireBody(params, model);
     if (mcpServers.length === 0) {
-      return client.messages.create(p);
+      return client.messages.create(
+        body as unknown as Anthropic.Messages.MessageCreateParamsNonStreaming,
+      );
     }
     // Beta surface — types diverge in the SDK between stable and beta, so
     // we cast at the wire. Functionally equivalent for our parameter set.
     return client.beta.messages.create({
-      ...p,
+      ...body,
       mcp_servers: mcpServers,
       betas: [MCP_BETA_HEADER],
     } as unknown as Anthropic.Beta.Messages.MessageCreateParamsNonStreaming) as unknown as Promise<
@@ -733,13 +819,17 @@ function callMessagesStream(
   params: BaseMessagesParams,
   mcpServers: McpServerEntry[],
 ): ReturnType<typeof client.messages.stream> {
+  // Call site already resolved the model through the failover memo.
+  const body = buildWireBody(params, params.model);
   if (mcpServers.length === 0) {
-    return client.messages.stream(params);
+    return client.messages.stream(
+      body as unknown as Parameters<typeof client.messages.stream>[0],
+    );
   }
   // Beta stream — same return shape (async iterable + finalMessage()),
   // type-erased at the boundary.
   return client.beta.messages.stream({
-    ...params,
+    ...body,
     mcp_servers: mcpServers,
     betas: [MCP_BETA_HEADER],
   } as unknown as Parameters<typeof client.beta.messages.stream>[0]) as unknown as ReturnType<typeof client.messages.stream>;
@@ -840,6 +930,12 @@ export async function runTurn(opts: RunTurnOptions): Promise<RunTurnResult> {
         system: systemPrompt,
         messages,
         tools,
+        // Quick = Sonnet, latency-optimized: low effort, no thinking.
+        // Research (+ draft/magic, which ride 'research') = Fable: high
+        // effort + adaptive thinking for appellate-grade reasoning.
+        effort: workflow === 'quick' ? 'low' : 'high',
+        enableThinking: workflow !== 'quick',
+        outputFormat: opts.output_format,
       },
       mcpServers,
     );
@@ -1122,6 +1218,10 @@ export async function* runTurnStream(
           system: systemPrompt,
           messages,
           tools,
+          // See runTurn: quick→low/no-thinking (Sonnet), research→high+adaptive (Fable).
+          effort: workflow === 'quick' ? 'low' : 'high',
+          enableThinking: workflow !== 'quick',
+          outputFormat: opts.output_format,
         },
         mcpServers,
       );
