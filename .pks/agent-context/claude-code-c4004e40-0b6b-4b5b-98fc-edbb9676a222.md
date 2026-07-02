@@ -6,8 +6,8 @@ repo_name: California-Law-Chatbot
 github_repo: ArjunDivecha/California-Law-Chatbot
 session_id: c4004e40-0b6b-4b5b-98fc-edbb9676a222
 source_file: c4004e40-0b6b-4b5b-98fc-edbb9676a222.jsonl
-exported_at: 2026-07-02T08:48:39.236094+00:00
-export_base_commit_sha: e7db198b003dedf0711eea18f0e22f57837dae28
+exported_at: 2026-07-02T09:01:36.366211+00:00
+export_base_commit_sha: 294a254f7cc14e1b61fff32046fd41373f58dee7
 redacted: true
 ---
 
@@ -280,3 +280,9 @@ Want me to make `/` redirect to `/v2` (one-line route change, then redeploy + ve
 
 
 **Assistant:** Transient SSL error during upload — retrying.
+
+
+**Assistant:** While production rebuilds, running the local functional battery — starting with the streaming agent smoke and the `/api/chats` PII backstop live test.
+
+
+**Assistant:** Now writing the morning report and committing the final pieces.

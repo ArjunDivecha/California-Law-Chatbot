@@ -1,0 +1,128 @@
+{
+  "ran_at": "2026-07-02T08:51:09.383Z",
+  "results": [
+    {
+      "scenario": "public_research (privileged=false expected)",
+      "session_id": "stream_smoke_1782982269383_fctq",
+      "ok": true,
+      "privileged_expected": false,
+      "privileged_actual": false,
+      "privilege_match": true,
+      "compound_risk_buckets": 0,
+      "ttfb_ms": 1.7851249999999936,
+      "ttft_ms": 39410.134208999996,
+      "e2e_ms": 39818.603125,
+      "iteration_count": 2,
+      "tool_events": [
+        {
+          "kind": "start",
+          "name": "ceb_search",
+          "t_ms": 4592.962625
+        },
+        {
+          "kind": "input",
+          "tool_use_id": "toolu_01AV4wn7MwffBqcaPd4hrrDN",
+          "input": {
+            "query": "motion to seal court records rule 2.550",
+            "category": "business_litigation"
+          },
+          "t_ms": 6107.734958999999
+        },
+        {
+          "kind": "result",
+          "name": "ceb_search",
+          "is_error": false,
+          "elapsed_ms": 2940.350541999999,
+          "t_ms": 9048.115167,
+          "output_redactions_count": 9,
+          "output_compound_risk_buckets": 0
+        }
+      ],
+      "final_text_preview": "Here's what California Rules of Court, rule 2.550 (and its procedural companion, rule 2.551) require for a motion to seal. Note that the *substantive standard* lives in rule 2.550, while the *filing procedure* for the motion is in rule 2.551.\n\n## Origin and Scope\n\nRules 2.550 and 2.551 provide the standard and procedures courts use when a request is made to seal a record, and the standard is based",
+      "final_text_length": 5468,
+      "tool_rounds": 1,
+      "total_tokens": 2618,
+      "stop_reason": "end_turn"
+    },
+    {
+      "scenario": "compound_risk (privileged=true expected, no direct PII)",
+      "session_id": "stream_smoke_1782982309409_4g0z",
+      "ok": true,
+      "privileged_expected": true,
+      "privileged_actual": true,
+      "privilege_match": true,
+      "compound_risk_buckets": 5,
+      "ttfb_ms": 0.1968750000014552,
+      "ttft_ms": 41322.57812500001,
+      "e2e_ms": 41574.393458,
+      "iteration_count": 2,
+      "tool_events": [
+        {
+          "kind": "start",
+          "name": "ceb_search",
+          "t_ms": 5406.576042000001
+        },
+        {
+          "kind": "start",
+          "name": "ceb_search",
+          "t_ms": 6060.07
+        },
+        {
+          "kind": "input",
+          "tool_use_id": "toolu_01M1VyVhDvLo5dkLHAcQ3cQG",
+          "input": {
+            "query": "forms required to initiate probate petition California",
+            "category": "trusts_estates",
+            "top_k": 8
+          },
+          "t_ms": 7352.0947090000045
+        },
+        {
+          "kind": "input",
+          "tool_use_id": "toolu_01MJAqyChLAAK7qo9NgKajC2",
+          "input": {
+            "query": "petition for probate procedure first steps checklist",
+            "category": "trusts_estates",
+            "top_k": 8
+          },
+          "t_ms": 7352.105334
+        },
+        {
+          "kind": "result",
+          "name": "ceb_search",
+          "is_error": false,
+          "elapsed_ms": 1878.4685000000027,
+          "t_ms": 9230.644084,
+          "output_redactions_count": 42,
+          "output_compound_risk_buckets": 1
+        },
+        {
+          "kind": "result",
+          "name": "ceb_search",
+          "is_error": false,
+          "elapsed_ms": 1151.5620000000054,
+          "t_ms": 10382.370334,
+          "output_redactions_count": 45,
+          "output_compound_risk_buckets": 1
+        }
+      ],
+      "final_text_preview": "Assuming the decedent was the Sunset District widower (San Francisco County venue) and the son will petition to serve as personal representative, here's the opening package for San Francisco Superior Court's probate department.\n\n## Core initiating forms\n\n**1. The will (if any) — lodged with the court.** The will and any codicils (and copies, if required by local practice) must be filed. Prob C §82",
+      "final_text_length": 5589,
+      "tool_rounds": 1,
+      "total_tokens": 2656,
+      "stop_reason": "end_turn"
+    },
+    {
+      "scenario": "direct_pii (privileged=true expected, explicit name+phone)",
+      "ok": false,
+      "error": {
+        "kind": "proxy_error",
+        "code": "sanitizer_unavailable",
+        "message": "Raw PII detected in request body (1 match: phone). Browser-side tokenization should have replaced these with @@TOKEN@@ placeholders. Request blocked to prevent unprotected send.",
+        "status_code": 503
+      },
+      "ttfb_ms": 0.6532909999950789,
+      "ttft_ms": null
+    }
+  ]
+}
