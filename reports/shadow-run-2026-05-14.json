@@ -1,0 +1,26 @@
+{
+  "generated_at": "2026-05-14T18:06:49.367Z",
+  "date_range_days": 1,
+  "user_filter": "user_test_arjun",
+  "totals": {
+    "shadow_runs": 1,
+    "v2_errors": 0,
+    "privileged": 0,
+    "exhausted_iterations": 0
+  },
+  "latency": {
+    "count": 1,
+    "p50": 27779,
+    "p95": 27779,
+    "max": 27779
+  },
+  "response": {
+    "v2_mean_len": 5143
+  },
+  "sanitization": {
+    "total_redactions": 11,
+    "max_redactions_single_turn": 11
+  },
+  "review_queue_size": 0,
+  "review_queue_sample": []
+}

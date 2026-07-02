@@ -1,0 +1,58 @@
+{
+  "date": "2026-05-13",
+  "all_pass": true,
+  "results": [
+    {
+      "name": "memo-anti-slapp-business-dispute",
+      "pass": true,
+      "word_count": 2934,
+      "sections": [
+        "header",
+        "question_presented",
+        "brief_answer",
+        "facts",
+        "analysis",
+        "conclusion"
+      ],
+      "missing_sections": [],
+      "quality_warning": null,
+      "citations_total": 14,
+      "citations_verified": 14,
+      "citations_not_found": 0,
+      "done_summary": {
+        "tool_rounds": 3,
+        "total_tokens": 101938,
+        "stop_reason": "end_turn",
+        "exhausted_iterations": false
+      }
+    },
+    {
+      "name": "compel-rfa",
+      "pass": true,
+      "word_count": 2697,
+      "sections": [
+        "caption",
+        "notice_of_motion",
+        "mpa_introduction",
+        "mpa_facts",
+        "mpa_argument",
+        "mpa_prayer",
+        "declaration",
+        "separate_statement",
+        "pos_reference",
+        "signature"
+      ],
+      "missing_sections": [],
+      "quality_warning": null,
+      "citations_total": 6,
+      "citations_verified": 6,
+      "citations_not_found": 0,
+      "done_summary": {
+        "tool_rounds": 2,
+        "total_tokens": 36371,
+        "stop_reason": "end_turn",
+        "exhausted_iterations": false
+      }
+    }
+  ]
+}

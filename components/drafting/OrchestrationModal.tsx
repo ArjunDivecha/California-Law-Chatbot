@@ -234,7 +234,7 @@ export const OrchestrationModal: React.FC<OrchestrationModalProps> = ({
           <div style={styles.activityLog}>
             <div style={styles.logHeader}>
               <span>📡 Live Activity Feed</span>
-              {currentPhase !== 'complete' && currentPhase !== 'idle' && (
+              {currentPhase !== 'complete' && (
                 <span style={styles.liveIndicator}>
                   <span style={styles.liveDot} /> LIVE
                 </span>

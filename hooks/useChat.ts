@@ -4,7 +4,6 @@ import { ChatMessage, MessageRole, ResponseMode, SourceMode, VerificationStatus 
 import { ChatService } from '../gemini/chatService';
 import { PracticeArea } from '../components/SourceModeSelector';
 import { useAuthFetch } from '../utils/authFetch.ts';
-import { fireShadow } from '../utils/shadowRun.ts';
 
 const SAVE_DEBOUNCE_MS = 1500;
 const LOCAL_DRAFT_PREFIX = 'cal-law-chat-draft:';
@@ -372,20 +371,6 @@ export const useChat = (chatId?: string) => {
         setTimeout(() => scheduleSave(updated, title), 0);
         return updated;
       });
-
-      // Phase 4.5 shadow run — fire-and-forget POST to V2's /api/agent/
-      // shadow with the V1 prompt + response we just rendered. No-ops
-      // when VITE_V2_SHADOW_URL is unset (the default until partners
-      // sign off on V2). Must come AFTER the user-visible setMessages
-      // so any failure can't slow the V1 path.
-      if (activeChatId) {
-        fireShadow({
-          v1_session_id: activeChatId,
-          user_text: text,
-          v1_response_text: botResponseData?.text,
-          v1_source_count: botResponseData?.sources?.length,
-        });
-      }
     } catch (error: any) {
       if (abortController.signal.aborted || error.message === 'Request cancelled') {
         setMessages(prev => prev.filter(msg => msg.id !== botMessageId));

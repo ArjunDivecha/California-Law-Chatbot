@@ -1,0 +1,15 @@
+{
+  "generated_at": "2026-05-15T14:37:51.768Z",
+  "test_name": "Maria Rodriguez",
+  "device_key_prefix": "344b1518b433fe5c",
+  "round_1": {
+    "wire": "Please draft an email to my client CLIENT_001 confirming her appointment.",
+    "token": "CLIENT_001"
+  },
+  "round_2": {
+    "wire": "Send a reminder to CLIENT_001 about Tuesday's hearing.",
+    "token": "CLIENT_001"
+  },
+  "same_token": true,
+  "pass": true
+}

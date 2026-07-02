@@ -1,0 +1,12 @@
+{
+  "signed_in": true,
+  "v2_loaded": true,
+  "four_buttons_visible": true,
+  "draft_button_navigates": true,
+  "verify_button_navigates": true,
+  "verify_page_renders": true,
+  "quick_response_no_tools": true,
+  "quick_elapsed_ms": 3355,
+  "research_response_with_tools": true,
+  "errors": []
+}

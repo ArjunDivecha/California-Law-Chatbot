@@ -7,6 +7,8 @@
  * MODEL: Claude Sonnet 4.6 (anthropic/claude-sonnet-4-6)
  */
 
+import { applyResponseSecurity, headerString } from './_shared/routeSecurity.js';
+
 const CLAUDE_TIMEOUT_MS = 25000;
 
 function normalizeOpenRouterContent(content: any): string {
@@ -32,10 +34,8 @@ function normalizeOpenRouterContent(content: any): string {
 }
 
 export default async function handler(req: any, res: any) {
-  // Enable CORS
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  // Strict CORS allowlist + hardening headers (replaces wildcard CORS).
+  applyResponseSecurity(res, headerString(req.headers.origin), { methods: 'POST, OPTIONS' });
   res.setHeader('Cache-Control', 'no-store');
 
   if (req.method === 'OPTIONS') {

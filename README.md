@@ -2,6 +2,130 @@
 
 A sophisticated AI-powered legal research assistant specializing in California law, featuring real-time integration with authoritative legal databases and comprehensive citation verification.
 
+> ✅ **V4 — CONSOLIDATED LINE (2026-07-01).** `main` now carries **V4**, the single consolidated branch: the V2 agent loop (direct Anthropic Messages API, strict on-device sanitization with the daemon **and** in-browser GLiNER detectors, auto model failover, Clerk-guarded routes) **plus** the V3 COPRAC-2026 compliance layer (matter modes with a locked protected flag, server-authoritative policy engine, tool-query/exfiltration guard, provider registry, per-turn manifests, consent/attestations, review gates, conflicts, billing/bias/governance controls, hardened CORS on every route, firm-controlled sqlite-vec store + local-embeddings client for protected discovery) **plus** structured outputs, prompt caching, and adaptive thinking/effort.
+>
+> **ZDR is NOT part of the posture.** The enterprise-ZDR premise behind V3 died 2026-07-01 (Anthropic ZDR ≈ $100k/yr; declined). Operative posture: Anthropic standard commercial terms + DPA (no-train, deletion-on-request, 30-day default retention), which per the Morgan v. V2X research satisfies the protective-order standard. Model gate: `api/_lib/approvedModels.ts` (counsel allowlist, fail-closed) — primary `claude-fable-5` (restored ~2026-07), fallback `claude-opus-4-8`. Governing spec: `docs/PRD_COPRAC_ZDR_COMPLIANCE.md` (see its 2026-07-01 addendum). Old branches/worktrees were archived as tags and removed 2026-07-01 — there is only `main`.
+>
+> Sections further below describing the V1 OpenRouter architecture are historical.
+
+---
+
+## V2 Status (auto-updated 2026-05-12)
+
+This section is the canonical place to find out where the V2 migration stands. Other agents / scripts reading this file should treat the table below as ground truth; cross-reference the cited artifacts for detail.
+
+### Pre-Phase-1 critical path (per 2026-05-10 ZDR-removal addendum)
+
+| Step | What | Status | Artifact |
+|---|---|---|---|
+| 0 | SDK upgrade `@anthropic-ai/sdk` 0.68.0 → 0.95.2 | ✅ done | commit `58dec1e`, `package.json` |
+| 1 | Sanitization branch import + deep audit | ✅ done | `docs/sanitization-audit-2026-05-10.md` |
+| 1b | Test-runner unblock (auditLog port + stubs) | ✅ done | commit `3c45f2d`, `api/_shared/auditLog.ts`, `components/draftingMagic/draftSectionState.ts` (stub), `hooks/useAttestation.ts` (stub) |
+| 1c | §6 token-map retention decision (addendum #3) | ⏸ Option C drafted, **pending F&F partner sign-off** | `docs/MANAGED_AGENTS_RECONSTRUCTION_PLAN.md` 2026-05-12 third addendum |
+| 2 | Threat model + **100-trap manifest** + runner | ✅ done (synthetic v1; F&F-matter half deferred 2026-05-12) | `tests/traps/manifest-v1.json`, `tests/traps/runTraps.mjs` |
+| 3 | **Privilege smoke test, iterate to zero leaks** (HARD GATE) | ✅ **100/100 pass × 2 consecutive runs** | commit `06eb445`, `reports/traps-baseline-2026-05-12.json` |
+| 4a | Upstash KV schema design | ✅ done | `docs/upstash-kv-schema-v1.md` |
+| 4b | Anthropic-stack latency baseline | ✅ done | `reports/latency-baseline-2026-05-12.json`, `scripts/latency-baseline.mjs` |
+
+### Latency baseline summary (2026-05-12, `claude-opus-4-7`, 5 queries per endpoint)
+
+| Endpoint | success | e2e p50 (ms) | e2e p95 (ms) | TTFB p50 | TTFT p50 |
+|---|---|---|---|---|---|
+| `anthropic.messages.create` | 5/5 | 8247 | 9193 | — | — |
+| `anthropic.messages.stream` | 5/5 | 7576 | 8277 | 1522 | 1523 |
+| `anthropic.messages.stream + web_search` | 5/5 | 16904 | 18772 | 1681 | 1691 |
+| `ceb_search` (embed + 5-namespace Upstash Vector) | 5/5 | 921 | 1122 | — | — |
+| `courtlistener_search` | 5/5 | 2285 | 3299 | — | — |
+
+These numbers are the comparison floor Phase 1 measures against. The `+ web_search` row is the Gemini-grounding replacement. The pre-bump Sonnet 4.6 numbers (2026-05-12 morning run) were `messages.create` p50 11716ms, `messages.stream` p50 10559ms, `+ web_search` p50 23927ms — Opus 4.7 came in measurably faster across all three Anthropic-side endpoints, likely a function of inference-side capacity rather than the model itself.
+
+### Phase status
+
+| Phase | Status |
+|---|---|
+| Phase 1 — Spike (agent loop + KV + tools + privilege-gated web_search + streaming + V2 chat UI) | ✅ first cut shipped (commits `8401011` → `9d94d1c` → `f2a4971`) — follow-ups per 2026-05-12 fifth addendum: Opus 4.7 default, MCP toolset support, Free Law Project MCP pilot, Skill-markdown extraction |
+| Phase 2 — Drafting workflows | ❌ not started — **scope revised** per 2026-05-12 fifth addendum: pull Skill content from `anthropics/claude-for-legal/{commercial,corporate,ip}-legal/skills/*.md` (Apache-2.0) instead of authoring from scratch (~30–50% effort reduction) |
+| Phase 3 — Verifier sub-agent | ❌ not started — **branched path** per 2026-05-12 fifth addendum: evaluate Solve Intelligence MCP first; if F1 ≥ acceptable, replace hand-rolled verifier with MCP tool call |
+| Phase 4 — UI integration | ✅ first cut shipped at `/v2` (commit `f2a4971`); follow-ups: Clerk auth, session persistence, markdown / citation rendering, sidebar integration |
+| Phase 4.5 — Shadow run | ❌ not started |
+| Phase 5a — Cutover (deletes ~7,800 lines incl. `gemini/chatService.ts`, `agents/*`, `orchestrate-document.ts`) | ❌ not started |
+| Phase 5b — Legacy teardown | ❌ not started |
+
+### V2 commit timeline
+
+```
+06eb445  Step 3: iterate sanitization to zero leaks (100/100 trap pass × 2)
+2a6dc4f  Step 2: 100-trap manifest v1 + runner + 36/100 baseline
+3c45f2d  Unblock test runner: port auditLog + stub draftSectionState/useAttestation
+58dec1e  Step 0: bump @anthropic-ai/sdk 0.68.0 → 0.95.2
+fe9da1f  Plan: 3rd addendum — token-map retention (Option C, pending F&F sign-off)
+e489d67  V2 Step 1 deliverable: sanitization deep audit + test infra deps
+a720572  Sanitization audit fixes (May 11, V1 mechanical fixes for audit §8 4-7+10)
+```
+
+### Open dependencies
+
+1. **F&F partner sign-off** on `docs/MANAGED_AGENTS_RECONSTRUCTION_PLAN.md` 2026-05-12 third addendum (Option C retention). The addendum is binding only after counsel ratifies; until then, the `audit_record_envelope:*` keys in `docs/upstash-kv-schema-v1.md` remain a draft schema.
+2. **Gemini-grounding replacement acceptance criterion** for Phase 1 — tracked informally in conversation, not yet pinned in the plan. The replacement is `web_search_20250305` Anthropic tool with privilege gating (omit from `tools` array when input is privileged). `services/confidenceGating.ts` needs rewiring from Gemini grounding-metadata shape to Anthropic citations.
+3. **V2 Portability Principle work** (2026-05-12 fourth addendum) — extract `DEFAULT_SYSTEM_PROMPT` from `agentLoop.ts` into `agents/california-legal/skills/*.md`, agent config into `agents/california-legal/agent.yaml`, define `source` block schema for tool results. Phase 1 follow-up; should land before Phase 5 cutover so a future Managed-Agents-or-equivalent runtime swap stays cheap.
+4. **Anthropic 2026-05-12 legal-launch adoption** (2026-05-12 fifth addendum) — Phase 1 follow-up work landed in commits `e181faa` → `a45f728`:
+   - ✅ Default model → `claude-opus-4-7` (latency baseline shows Opus 4.7 measurably faster than Sonnet 4.6 in this run)
+   - ✅ Tool-result sanitization wrapper closes the 2026-05-10 second addendum / audit §8 #8 code-plan gap (real CEB tool outputs triggered 72 HIGH_RISK redactions in the direct-PII smoke — wrapper firing on production-shape data)
+   - ✅ System prompt extracted to `agents/california-legal/skills/california-legal-core.md` with workflow-aware loader (`api/_lib/skills.ts`); agent config in `agents/california-legal/agent.json`
+   - ✅ MCP plumbing in agent loop: `mcp_servers` parameter + `mcp-client-2025-11-20` beta header via a beta-call wrapper that routes per-request; privilege gating on MCP toolsets parity with `web_search`; `V2_MCP_ENABLED` + per-server feature flags; `mcp_tool_use` / `mcp_tool_result` content block handling in the streaming loop. 6 unit tests verify gating + auth-token + privilege omission. **Live pilot deferred** — see below.
+   - ❌ Live MCP pilot: confirmed that Free Law Project hosts an MCP server at `https://mcp.courtlistener.com/` (HTTP 200 landing page) BUT the actual transport path is not yet publicly documented as of 2026-05-12 — probed `/sse /mcp /messages /v1/sse /v1/mcp /.well-known/mcp /api/mcp`, all 404. Anthropic's canonical example server (`example-server.modelcontextprotocol.io/sse`) is up but returns 401 (OAuth required; interactive browser flow needed for token). Live pilot unblocked when (a) FLP publishes the transport path + auth header format on their wiki, or (b) we set up OAuth for the canonical example server in a separate session.
+
+5. **Open question**: F&F Thomson Reuters subscription status (gates the Westlaw / KeyCite / Practical Law MCP adoption in Phase 2).
+
+6. **Cost-impact decision** before Phase 4.5 shadow run: per the 2026-05-12 latency baseline, Opus 4.7 is actually faster than Sonnet 4.6 — but cost-per-token is materially higher. Arjun chooses among session-cap / tier-route / accept-cost.
+
+### How to verify status reproducibly
+
+```bash
+yarn install
+yarn test:sanitization        # 103 pass / 39 fail baseline (the 39 are documented Phase 1/2/4 scaffolding gaps)
+yarn test:traps               # MUST report 100/100 — Step 3 gate
+yarn latency:baseline         # writes reports/latency-baseline-{date}.json (consumes API credits)
+```
+
+---
+
+## 🚧 Architectural dead-ends — DO NOT REVISIT WITHOUT NEW EVIDENCE
+
+This section exists so that future-Arjun and future-Claude don't re-litigate paths that were investigated and rejected. Each entry: **what we tried**, **why it didn't work**, **what would need to change before reconsidering**.
+
+### Claude Pro/Max subscription billing for V2 (2026-05-14)
+
+**What we tried.** Anthropic's June 15 2026 policy created a per-user Agent SDK credit on Claude subscriptions ($20 Pro / $100 Max 5x / $200 Max 20x per month). The hope was that each F&F attorney's V2 calls could bill against their own subscription credit, with auto-failover to F&F's API key when exhausted. We explored two architectures:
+
+- **Option B — browser-direct via `dangerouslyAllowBrowser`.** Each attorney's browser would call `api.anthropic.com` directly with their OAuth bearer token; the V2 server would only proxy tools + sanitization + audit. Preferred for invisibility.
+- **Option A — local proxy on each attorney's Mac.** A small daemon spawning Claude Code, with V2 cloud talking to it via WebSocket.
+
+**Why Option B doesn't work.** Empirically verified 2026-05-14 via three smoke tests:
+
+| Test | Result |
+|---|---|
+| `POST /v1/messages` with `Authorization: Bearer <oauth>` | HTTP 429 `rate_limit_error` — Anthropic intentionally rejects OAuth tokens on the standard messages endpoint |
+| `POST /api/oauth/claude_cli/create_api_key` with the same token | HTTP 403 `OAuth token does not meet scope requirement org:create_api_key` — Claude Code's OAuth is issued only with `user:inference` scope; the scope needed to mint a derived API key is not granted |
+| `@anthropic-ai/claude-agent-sdk` `query()` | HTTP 200 in ~8s — BUT a fetch-trace proved the SDK spawns the local `claude` binary as a subprocess (`child_process.spawn`). The success path runs **inside the Claude Code binary**, not over HTTP that a browser could replicate |
+
+**Conclusion: there is no documented or working browser-to-Anthropic OAuth-inference path.** The SDK works because it shells out to a locally-installed compiled binary; a browser cannot do that. Option B is permanently impossible against today's Anthropic auth surface.
+
+**Why Option A was rejected.** Architecturally possible but requires a local daemon installed per attorney machine + reachable from V2 cloud. For 2 attorneys, the ongoing operational cost (install/upgrade/rotate-token/handle-offline) outweighs the ~$400/mo savings the subscription credit would unlock. F&F's API key path (current production) is simpler and the firm can afford it.
+
+**What would change the calculus.**
+
+1. **Anthropic publishes a documented browser-OAuth-inference endpoint** — e.g., `api.anthropic.com/v1/oauth-messages` or a CORS-friendly authenticated endpoint. If that ships, Option B becomes viable.
+2. **Anthropic issues F&F a `org:create_api_key`-scoped OAuth client_id** — would unlock the OAuth → temporary API key exchange path, which is HTTP-based and browser-callable.
+3. **F&F grows past 5 attorneys** — operational cost of Option A's local daemon amortizes better; the $400+/mo savings starts mattering.
+4. **A binary alternative to the Claude Code CLI appears that runs in WASM or as a hosted service** — unlikely but would also unlock Option B.
+
+**Evidence to re-validate before reopening.** Re-run the three smoke tests in this section. If `POST /v1/messages` with an OAuth bearer ever returns 200 (not 429), or if a new Anthropic SDK appears that doesn't spawn a subprocess, the dead-end is gone and Option B is back on the table.
+
+**Filed as:** Phase 6 abandoned 2026-05-14. Tasks #117 (research) marked done; #118–#125 deleted. Commit: see V2 commit timeline.
+
+---
+
 ## 🎯 Overview
 
 This chatbot combines Google's Gemini 3 Pro (generator, via OpenRouter) with Anthropic's Claude Sonnet 4.5 (verifier, via OpenRouter) and direct access to official California legal sources to provide accurate, well-researched answers to legal questions. It automatically detects case law queries and searches CourtListener's database of millions of court opinions, while providing verified citations to official legal codes and statutes.

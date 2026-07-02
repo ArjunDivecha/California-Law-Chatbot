@@ -1,0 +1,399 @@
+{
+  "date": "2026-05-13",
+  "verifier_name": "current",
+  "eval_set_version": 1,
+  "entry_count": 30,
+  "elapsed_ms": 42582,
+  "confusion_matrix": {
+    "TP": 19,
+    "TN": 5,
+    "FP": 5,
+    "FN": 1
+  },
+  "precision": 0.7916666666666666,
+  "recall": 0.95,
+  "f1": 0.8636363636363635,
+  "fake_caught_rate": 0.5,
+  "gate_pass_fake_caught_95": false,
+  "gate_pass_f1_90": false,
+  "results": [
+    {
+      "id": "real-1",
+      "text": "Navellier v. Sletten (2002) 29 Cal.4th 82",
+      "truth": "real",
+      "predicted": "real",
+      "correct": true,
+      "verifier_output": {
+        "status": "real",
+        "case_name": "Navellier v. Sletten",
+        "match_url": "https://www.courtlistener.com/opinion/2519770/navellier-v-sletten/"
+      },
+      "elapsed_ms": 2067
+    },
+    {
+      "id": "real-2",
+      "text": "Taus v. Loftus (2007) 40 Cal.4th 683",
+      "truth": "real",
+      "predicted": "real",
+      "correct": true,
+      "verifier_output": {
+        "status": "real",
+        "case_name": "Taus v. Loftus",
+        "match_url": "https://www.courtlistener.com/opinion/2638169/taus-v-loftus/"
+      },
+      "elapsed_ms": 579
+    },
+    {
+      "id": "real-3",
+      "text": "Geiser v. Kuhns (2022) 13 Cal.5th 1238",
+      "truth": "real",
+      "predicted": "real",
+      "correct": true,
+      "verifier_output": {
+        "status": "real",
+        "case_name": "Gazal v. Echeverry",
+        "match_url": "https://www.courtlistener.com/opinion/9489371/gazal-v-echeverry/"
+      },
+      "elapsed_ms": 2672
+    },
+    {
+      "id": "real-4",
+      "text": "Williams v. Superior Court (2017) 3 Cal.5th 531",
+      "truth": "real",
+      "predicted": "real",
+      "correct": true,
+      "verifier_output": {
+        "status": "real",
+        "case_name": "Williams v. Superior Court of L. A. Cnty.",
+        "match_url": "https://www.courtlistener.com/opinion/4408734/williams-v-superior-court-of-l-a-cnty/"
+      },
+      "elapsed_ms": 1933
+    },
+    {
+      "id": "real-5",
+      "text": "Coy v. Superior Court (1962) 58 Cal.2d 210",
+      "truth": "real",
+      "predicted": "real",
+      "correct": true,
+      "verifier_output": {
+        "status": "real",
+        "case_name": "Coy v. Superior Court",
+        "match_url": "https://www.courtlistener.com/opinion/5607266/coy-v-superior-court/"
+      },
+      "elapsed_ms": 645
+    },
+    {
+      "id": "real-6",
+      "text": "Stewart v. Colonial Western Agency, Inc. (2001) 87 Cal.App.4th 1006",
+      "truth": "real",
+      "predicted": "real",
+      "correct": true,
+      "verifier_output": {
+        "status": "real",
+        "case_name": "Stewart v. Colonial Western Agency, Inc.",
+        "match_url": "https://www.courtlistener.com/opinion/5808646/stewart-v-colonial-western-agency-inc/"
+      },
+      "elapsed_ms": 1755
+    },
+    {
+      "id": "real-7",
+      "text": "Costco Wholesale Corp. v. Superior Court (2009) 47 Cal.4th 725",
+      "truth": "real",
+      "predicted": "real",
+      "correct": true,
+      "verifier_output": {
+        "status": "real",
+        "case_name": "Costco Wholesale Corp. v. Superior Court",
+        "match_url": "https://www.courtlistener.com/opinion/5608098/costco-wholesale-corp-v-superior-court/"
+      },
+      "elapsed_ms": 1784
+    },
+    {
+      "id": "real-8",
+      "text": "Cembrook v. Superior Court (1961) 56 Cal.2d 423",
+      "truth": "real",
+      "predicted": "real",
+      "correct": true,
+      "verifier_output": {
+        "status": "real",
+        "case_name": "Cembrook v. Superior Court",
+        "match_url": "https://www.courtlistener.com/opinion/1156481/cembrook-v-superior-court/"
+      },
+      "elapsed_ms": 347
+    },
+    {
+      "id": "real-9",
+      "text": "West Pico Furniture Co. v. Superior Court (1961) 56 Cal.2d 407",
+      "truth": "real",
+      "predicted": "real",
+      "correct": true,
+      "verifier_output": {
+        "status": "real",
+        "case_name": "West Pico Furniture Co. v. Superior Court",
+        "match_url": "https://www.courtlistener.com/opinion/1156339/west-pico-furniture-co-v-superior-court/"
+      },
+      "elapsed_ms": 1877
+    },
+    {
+      "id": "real-10",
+      "text": "Bridgestone/Firestone, Inc. v. Superior Court (1992) 7 Cal.App.4th 1384",
+      "truth": "real",
+      "predicted": "fake",
+      "correct": false,
+      "verifier_output": {
+        "status": "fake"
+      },
+      "elapsed_ms": 1698
+    },
+    {
+      "id": "real-11",
+      "text": "Estate of Williams (1968) 269 Cal.App.2d 671",
+      "truth": "real",
+      "predicted": "real",
+      "correct": true,
+      "verifier_output": {
+        "status": "real",
+        "case_name": "Susan England v. Janice Kolbe, as Guardian of the Estate of Edna Moon",
+        "match_url": "https://www.courtlistener.com/opinion/4300853/susan-england-v-janice-kolbe-as-guardian-of-the-estate-of-edna-moon/"
+      },
+      "elapsed_ms": 2867
+    },
+    {
+      "id": "real-12",
+      "text": "In re Marriage of Lippel (1990) 51 Cal.3d 1160",
+      "truth": "real",
+      "predicted": "real",
+      "correct": true,
+      "verifier_output": {
+        "status": "real",
+        "case_name": "In Re Marriage of Lippel",
+        "match_url": "https://www.courtlistener.com/opinion/1442248/in-re-marriage-of-lippel/"
+      },
+      "elapsed_ms": 404
+    },
+    {
+      "id": "real-13",
+      "text": "Briggs v. Eden Council for Hope & Opportunity (1999) 19 Cal.4th 1106",
+      "truth": "real",
+      "predicted": "real",
+      "correct": true,
+      "verifier_output": {
+        "status": "real",
+        "case_name": "Briggs v. Eden Council for Hope & Opportunity",
+        "match_url": "https://www.courtlistener.com/opinion/1404828/briggs-v-eden-council-for-hope-opportunity/"
+      },
+      "elapsed_ms": 2064
+    },
+    {
+      "id": "real-14",
+      "text": "Equilon Enterprises v. Consumer Cause, Inc. (2002) 29 Cal.4th 53",
+      "truth": "real",
+      "predicted": "real",
+      "correct": true,
+      "verifier_output": {
+        "status": "real",
+        "case_name": "Equilon Enterprises v. Consumer Cause, Inc.",
+        "match_url": "https://www.courtlistener.com/opinion/2519835/equilon-enterprises-v-consumer-cause-inc/"
+      },
+      "elapsed_ms": 2204
+    },
+    {
+      "id": "real-15",
+      "text": "Wilson v. Cable News Network, Inc. (2019) 7 Cal.5th 871",
+      "truth": "real",
+      "predicted": "real",
+      "correct": true,
+      "verifier_output": {
+        "status": "real",
+        "case_name": "Wilson v. Cable News Network, Inc.",
+        "match_url": "https://www.courtlistener.com/opinion/4641588/wilson-v-cable-news-network-inc/"
+      },
+      "elapsed_ms": 1330
+    },
+    {
+      "id": "real-16",
+      "text": "Sargon Enterprises, Inc. v. University of Southern California (2012) 55 Cal.4th 747",
+      "truth": "real",
+      "predicted": "real",
+      "correct": true,
+      "verifier_output": {
+        "status": "real",
+        "case_name": "Sargon Enterprises, Inc. v. University of Southern California",
+        "match_url": "https://www.courtlistener.com/opinion/821525/sargon-enterprises-inc-v-university-of-southern-california/"
+      },
+      "elapsed_ms": 4090
+    },
+    {
+      "id": "real-17",
+      "text": "City of Cotati v. Cashman (2002) 29 Cal.4th 69",
+      "truth": "real",
+      "predicted": "real",
+      "correct": true,
+      "verifier_output": {
+        "status": "real",
+        "case_name": "City of Cotati v. Cashman",
+        "match_url": "https://www.courtlistener.com/opinion/2519876/city-of-cotati-v-cashman/"
+      },
+      "elapsed_ms": 2385
+    },
+    {
+      "id": "real-18",
+      "text": "FilmOn.com Inc. v. DoubleVerify Inc. (2019) 7 Cal.5th 133",
+      "truth": "real",
+      "predicted": "real",
+      "correct": true,
+      "verifier_output": {
+        "status": "real",
+        "case_name": "Filmon.Com. Inc. v. Doubleverify Inc.",
+        "match_url": "https://www.courtlistener.com/opinion/4616996/filmoncom-inc-v-doubleverify-inc/"
+      },
+      "elapsed_ms": 518
+    },
+    {
+      "id": "real-19",
+      "text": "Baral v. Schnitt (2016) 1 Cal.5th 376",
+      "truth": "real",
+      "predicted": "real",
+      "correct": true,
+      "verifier_output": {
+        "status": "real",
+        "case_name": "Baral v. Schnitt",
+        "match_url": "https://www.courtlistener.com/opinion/4243150/baral-v-schnitt/"
+      },
+      "elapsed_ms": 1785
+    },
+    {
+      "id": "real-20",
+      "text": "People v. Anderson (1968) 70 Cal.2d 15",
+      "truth": "real",
+      "predicted": "real",
+      "correct": true,
+      "verifier_output": {
+        "status": "real",
+        "case_name": "People v. Anderson",
+        "match_url": "https://www.courtlistener.com/opinion/2636938/people-v-anderson/"
+      },
+      "elapsed_ms": 2768
+    },
+    {
+      "id": "fake-1",
+      "text": "Hendricks v. California Probate Bureau (2019) 7 Cal.5th 904",
+      "truth": "fake",
+      "predicted": "real",
+      "correct": false,
+      "verifier_output": {
+        "status": "real",
+        "case_name": "John Doe v. Gary Settle",
+        "match_url": "https://www.courtlistener.com/opinion/6246489/john-doe-v-gary-settle/"
+      },
+      "elapsed_ms": 543
+    },
+    {
+      "id": "fake-2",
+      "text": "Foster v. State Bar (1987) 43 Cal.3d 421",
+      "truth": "fake",
+      "predicted": "real",
+      "correct": false,
+      "verifier_output": {
+        "status": "real",
+        "case_name": "State v. Foster",
+        "match_url": "https://www.courtlistener.com/opinion/10657394/state-v-foster/"
+      },
+      "elapsed_ms": 543
+    },
+    {
+      "id": "fake-3",
+      "text": "In re Estate of Markham (2014) 228 Cal.App.4th 1399",
+      "truth": "fake",
+      "predicted": "fake",
+      "correct": true,
+      "verifier_output": {
+        "status": "fake"
+      },
+      "elapsed_ms": 55
+    },
+    {
+      "id": "fake-4",
+      "text": "Reyes v. Quincy Investment Group, LLC (2021) 65 Cal.App.5th 778",
+      "truth": "fake",
+      "predicted": "fake",
+      "correct": true,
+      "verifier_output": {
+        "status": "fake"
+      },
+      "elapsed_ms": 50
+    },
+    {
+      "id": "fake-5",
+      "text": "Hernandez v. California Coastal Commission (1998) 18 Cal.4th 1107",
+      "truth": "fake",
+      "predicted": "real",
+      "correct": false,
+      "verifier_output": {
+        "status": "real",
+        "case_name": "California Building Industry Ass'n v. City of San Jose",
+        "match_url": "https://www.courtlistener.com/opinion/2808343/california-building-industry-assn-v-city-of-san-jose/"
+      },
+      "elapsed_ms": 857
+    },
+    {
+      "id": "fake-6",
+      "text": "In re Marriage of Aspen (2011) 195 Cal.App.4th 542",
+      "truth": "fake",
+      "predicted": "real",
+      "correct": false,
+      "verifier_output": {
+        "status": "real",
+        "case_name": "In re Wyly",
+        "match_url": "https://www.courtlistener.com/opinion/8527057/in-re-wyly/"
+      },
+      "elapsed_ms": 1894
+    },
+    {
+      "id": "fake-7",
+      "text": "Volk v. San Diego Trust Co. (1994) 8 Cal.4th 217",
+      "truth": "fake",
+      "predicted": "fake",
+      "correct": true,
+      "verifier_output": {
+        "status": "fake"
+      },
+      "elapsed_ms": 56
+    },
+    {
+      "id": "fake-8",
+      "text": "Goldman v. Department of Industrial Relations (2008) 159 Cal.App.4th 1281",
+      "truth": "fake",
+      "predicted": "real",
+      "correct": false,
+      "verifier_output": {
+        "status": "real",
+        "case_name": "Graphic Packaging Corporation v. Glenn Hegar, Comptroller of Public Accounts of the State of Texas And Ken Paxton, Attorney General of the State of Texas",
+        "match_url": "https://www.courtlistener.com/opinion/4262869/graphic-packaging-corporation-v-glenn-hegar-comptroller-of-public/"
+      },
+      "elapsed_ms": 2310
+    },
+    {
+      "id": "fake-9",
+      "text": "Bell v. Bayside Restaurant Group (2017) 11 Cal.5th 332",
+      "truth": "fake",
+      "predicted": "fake",
+      "correct": true,
+      "verifier_output": {
+        "status": "fake"
+      },
+      "elapsed_ms": 433
+    },
+    {
+      "id": "fake-10",
+      "text": "Patel v. Mendocino County (2005) 134 Cal.App.4th 88",
+      "truth": "fake",
+      "predicted": "fake",
+      "correct": true,
+      "verifier_output": {
+        "status": "fake"
+      },
+      "elapsed_ms": 64
+    }
+  ]
+}

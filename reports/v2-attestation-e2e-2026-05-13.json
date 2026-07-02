@@ -1,0 +1,6 @@
+{
+  "modal_visible_first_run": true,
+  "modal_dismissed_after_ack": true,
+  "modal_stays_dismissed_after_reload": true,
+  "errors": []
+}

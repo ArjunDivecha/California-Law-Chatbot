@@ -6,7 +6,7 @@
  * without needing a Web API Request.
  */
 
-import { createClerkClient } from '@clerk/backend';
+import { verifyToken } from '@clerk/backend';
 import type { VercelRequest } from '@vercel/node';
 
 export class AuthError extends Error {
@@ -45,8 +45,9 @@ export async function getUserId(req: VercelRequest): Promise<string> {
   }
 
   try {
-    const clerk = createClerkClient({ secretKey });
-    const payload = await clerk.verifyToken(token);
+    // Clerk SDK >= 2.x moved verifyToken from a ClerkClient method to a
+    // top-level export.
+    const payload = await verifyToken(token, { secretKey });
     const userId = payload.sub;
     if (!userId) {
       throw new AuthError('Invalid session token', 401);

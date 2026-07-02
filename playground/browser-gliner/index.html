@@ -1,0 +1,86 @@
+<!doctype html>
+<!--
+  =============================================================================
+  browser-gliner prototype — index.html
+  Isolated test harness: run urchade/gliner_multi_pii-v1 as ONNX in-browser
+  and score it against the 120-trap manifest. LIGHT MODE ONLY.
+  Touches no production code. Delete playground/browser-gliner to fully remove.
+  =============================================================================
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Browser-GLiNER Prototype · trap gate + latency</title>
+  <style>
+    :root { color-scheme: light; }
+    body { margin: 0; background: #f8fafc; color: #111827;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; }
+    main { max-width: 980px; margin: 0 auto; padding: 28px 20px 80px; }
+    h1 { font-size: 22px; margin: 0 0 4px; }
+    .sub { color: #6b7280; margin: 0 0 22px; font-size: 14px; line-height: 1.5; }
+    .panel { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px;
+      padding: 18px; margin-bottom: 18px; box-shadow: 0 1px 2px rgba(0,0,0,.04); }
+    label { font-size: 13px; color: #374151; font-weight: 600; margin-right: 6px; }
+    select, button { font-size: 14px; padding: 8px 12px; border-radius: 8px;
+      border: 1px solid #d1d5db; background: #fff; color: #111827; }
+    button { cursor: pointer; font-weight: 600; }
+    button.primary { background: #2563eb; color: #fff; border-color: #2563eb; }
+    button:disabled { opacity: .5; cursor: not-allowed; }
+    .controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+    #status { margin: 14px 0 0; font-size: 14px; }
+    #progress { font-size: 13px; color: #6b7280; margin-top: 6px; font-variant-numeric: tabular-nums; }
+    .verdict { font-size: 18px; font-weight: 800; padding: 12px 14px; border-radius: 10px; margin-bottom: 14px; }
+    .verdict.ok { background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; }
+    .verdict.fail { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+    table.kv td { padding: 5px 10px; font-size: 14px; vertical-align: top; }
+    table.kv td:first-child { color: #6b7280; white-space: nowrap; }
+    table.grid { border-collapse: collapse; width: 100%; font-size: 13px; margin-top: 8px; }
+    table.grid th, table.grid td { border: 1px solid #e5e7eb; padding: 6px 8px; text-align: left; vertical-align: top; }
+    table.grid th { background: #f3f4f6; }
+    .bad { color: #b91c1c; font-weight: 700; }
+    .ok { color: #047857; font-weight: 700; }
+    .overflow { overflow-x: auto; }
+    code { background: #f3f4f6; padding: 1px 5px; border-radius: 4px; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Browser-GLiNER Prototype</h1>
+    <p class="sub">
+      Runs <code>urchade/gliner_multi_pii-v1</code> as ONNX in-browser (GLiNER.js + ONNX Runtime Web),
+      with the <b>verbatim</b> production post-processing + the real regex / allowlist / compound-risk modules,
+      then scores all 120 traps the same way as <code>runTrapsWire.mjs --gliner-only</code>.
+      Answers two questions: <b>(1)</b> does the quantized in-browser model hold the production gate
+      (target 120/120, 0 wire leaks)? <b>(2)</b> is the latency acceptable in this browser — especially Safari?
+    </p>
+
+    <div class="panel">
+      <div class="controls">
+        <span><label for="variant">Variant</label>
+          <select id="variant">
+            <option value="int8">int8 (~349 MB)</option>
+            <option value="fp16">fp16 (~580 MB)</option>
+            <option value="q4f16">q4f16 (~472 MB)</option>
+            <option value="fp32">fp32 (~1.16 GB)</option>
+          </select></span>
+        <span><label for="provider">Provider</label>
+          <select id="provider">
+            <option value="webgpu">webgpu</option>
+            <option value="wasm">wasm (single-thread floor)</option>
+          </select></span>
+        <button id="loadBtn" class="primary">Load model</button>
+        <button id="runBtn" disabled>Run 120 traps</button>
+        <button id="downloadBtn" disabled>Download JSON</button>
+        <button id="clearBtn">Clear model cache</button>
+      </div>
+      <p id="status"></p>
+      <p id="progress"></p>
+    </div>
+
+    <div class="panel" id="summary"></div>
+    <div class="panel overflow" id="table"></div>
+  </main>
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>

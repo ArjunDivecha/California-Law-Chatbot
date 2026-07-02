@@ -1,14 +1,477 @@
 # Chatbot Reconstruction Plan — Anthropic Agent SDK on Messages API
 
 **Plan file destination:** `/Users/arjundivecha/Dropbox/AAA Backup/A Working/California-Law-Chatbot/docs/MANAGED_AGENTS_RECONSTRUCTION_PLAN.md` *(filename kept for git continuity; contents now describe the Agent SDK path)*
-**Date:** 2026-05-03 (original), **2026-05-10 architecture pivot**
-**Status:** Final, post Opus + Codex (3 rounds, approved) + Ultraplan + Council review + ZDR scope verification.
+**Date:** 2026-05-03 (original), **2026-05-10 architecture pivot**, **2026-05-10 ZDR-removal addendum**, **2026-05-12 token-map retention addendum (tentative)**, **2026-05-12 Managed-Agents revisit (scope clarification)**, **2026-05-12 Anthropic legal-industry launch addendum**, **2026-05-13 F&F partner ratifications (sixth addendum)**, **2026-05-13 web_search privilege-gate drop (seventh addendum)**, **2026-05-14 confidence-hold-back drop (eighth addendum)**, **2026-05-15 GLiNER replaces OPF as primary detector (ninth addendum)**, **2026-06-02 Morgan v. V2X compliance — contractual second net + protected-discovery mode §Z (tenth addendum)**
+**Status:** Final. The 2026-05-15 ninth addendum below records the empirical Phase C decision to swap stock OPF for GLiNER (urchade/gliner_multi_pii-v1) as the primary PII detector after the §0.c trap-gate experiments, plus the related extension of HIGH_RISK_CATEGORIES with `date` and `zip`.
 
 ---
 
-## 2026-05-10 Architecture Pivot — Managed Agents removed from the plan
+## 2026-06-02 (tenth addendum) — Morgan v. V2X: a contractual second net exists; ZDR not required; protected-discovery mode (§Z)
 
-**Finding:** Anthropic's official platform docs explicitly state Managed Agents is NOT covered by ZDR: *"Claude Managed Agents is a stateful resource. You can delete session transcripts, but there is no automatic deletion."* This is incompatible with F&F's ZDR requirement for privileged content. Managed Agents is therefore **permanently off the table** for this project — not a fallback, not a future option.
+**Decided 2026-06-02 by Arjun, from a verified deep-research sweep of provider terms (research task `wam1v300o`) read against *Morgan v. V2X, Inc.*, 2026 WL 864223 (D. Colo., Mar. 30 2026). Full attorney memo: `docs/morgan-memo-to-rachel-lyla-2026-06-02.md`.**
+
+**Finding.** *Morgan* is the first court order conditioning AI use on protected discovery, and it sets a **contractual** standard, not a Zero-Data-Retention one: before CONFIDENTIAL material may be input to an AI tool, the provider must be contractually (1) barred from training on inputs, (2) barred from third-party disclosure except as essential to deliver the service, and (3) required to delete on request — and the party must **retain written documentation** of those protections.
+
+This forces a correction to the **2026-05-10 second addendum**, which concluded "**sanitization is the only line of defense**" and "**there is no second net**," on the premise that without enterprise ZDR anything reaching `api.anthropic.com` has no contractual protection. **That premise is wrong.** Anthropic's standard **Commercial Terms of Service** — which the Team plan operates under — already prohibit training on Inputs/Outputs for *all* commercial customers (Section B), and an auto-incorporated **DPA** supplies the confidentiality, sub-processor flow-down, and deletion-on-request that *Morgan* prongs 2–3 require. **No enterprise plan, no minimum spend, no ZDR.** The contractual second net already exists; F&F only has to *capture and retain* the (free) documents to satisfy *Morgan*'s written-documentation prong.
+
+**What this changes:**
+
+| Item | Second addendum (2026-05-10) | This tenth addendum (2026-06-02) |
+|---|---|---|
+| Lines of defense | Sanitization is the **only** line of defense | Sanitization stays the **primary** control and the privilege/waiver **minimizer**; the **Commercial Terms + DPA are a contractual second net** that satisfies *Morgan* for whatever reaches Anthropic |
+| Phase 0.a paperwork | "Removed. No DPA, no BAA." | **Restored as a free, ~1-hour documentation-capture step** (not enterprise, not a gate that can stall): download + date-stamp Anthropic Commercial Terms + DPA, OpenAI DPA, storage DPA → `compliance/providers.json` (§Z.2). This *is* *Morgan*'s "written documentation." |
+| "No second net → migration stops if sanitization can't hit zero" | Binding | **Softened.** The §0.c trap gate still targets zero leaks and remains the privilege/waiver control, but a single sanitization miss is **no longer an unprotected breach in the *Morgan* sense** — the contract bars training/disclosure and compels deletion. The project no longer rests on one point of failure. |
+| ZDR | "Permanently off the table" | Still not pursued and **still not required.** ZDR remains *optional hardening* (by application; not gated by a dollar floor). Team plan + DPA is the *Morgan* baseline. |
+| §Q memo framing | "Team plan; sanitization is the contractual boundary" | Corrected: Team plan **+ Commercial Terms + DPA** are the contractual boundary that meets *Morgan*; sanitization is defense-in-depth. Draft: `docs/morgan-memo-to-rachel-lyla-2026-06-02.md`. |
+
+**New capability — protected-discovery mode (new §Z).** *Morgan* governs **opposing-party discovery designated CONFIDENTIAL under a protective order** — a category distinct from the F&F **client** privilege the sanitizer targets (the sanitizer does attorney-client/PII redaction, not an adversary's CONFIDENTIAL designations). §Z adds a `protected_discovery` matter mode: approved-provider pre-flight (Z.2), court-order-driven tool/egress lockdown (Z.3), a firm-controlled store + local/DPA embeddings so confidential discovery never reaches a third-party datastore (Z.4), a per-turn provider/tool manifest (Z.5), and a Morgan Compliance Pack extending §Y (Z.6).
+
+**What does NOT change:**
+- The sanitization-first wedge, strict-mode fail-closed sanitizer, tool-output sanitization, and the §0.c 100-trap hard gate. Sanitization is still mandatory and still aims for zero.
+- The 6th-addendum **Option C** retention model (token map in attorney-side IndexedDB; Upstash holds only the metadata audit envelope). §Z.4's concern is *matter content* in `messages`/embeddings, not the token map.
+- The 7th addendum (web_search always available for ordinary matters; attorney decides) and 8th addendum (no confidence gate). §Z.3's omission of web_search/MCP applies **only** to `protected_discovery` and is **court-order-driven, not a heuristic substituting for attorney judgment** — a deliberately different basis from the retired gates.
+- Messages API runtime, Opus 4.7 default, the deletion math, every other section.
+
+**Why this is safe.** It only *adds* a contractual protection that was always available and *captures free documents*. It removes no sanitization control. It corrects an over-pessimistic premise that both overstated project risk and — ironically — left F&F **non-compliant with *Morgan*'s documentation prong** by declining the free DPA. For attorney-client privilege/waiver, sanitization-minimization still matters and is unchanged; the contract governs what happens to whatever transits, and *Morgan*'s work-product holding (AI tools are not adversaries; use does not waive) supports the posture.
+
+**Plan supersession order.** This 2026-06-02 tenth addendum supersedes:
+- The 2026-05-10 second addendum's "sanitization is the only line of defense / no second net" framing and its "Phase 0.a removed; no DPA" row → sanitization primary; DPA is the contractual second net; Phase 0.a restored as free documentation capture.
+- The first-addendum / Context wording "ZDR-eligible under enterprise terms (Phase 0 paperwork)" → ZDR optional; Commercial Terms + DPA are the *Morgan* baseline.
+- The body §0.a, §0.c, Phase 4.5 gate, and §Q text still naming "enterprise ZDR DPA / BAA / SOC 2" as a requirement → those become optional hardening; the binding gate is "Commercial Terms + DPA captured in `compliance/providers.json`," plus the unchanged trap gate, plus (for protected-discovery matters) §Z.2–Z.4.
+- Adds **§Z (Protected Discovery Mode)** as a new architecture-details section.
+
+The 2nd addendum's other content (Team-plan retention facts, training opt-out, tool-output sanitization, trap-gate promotion) stands.
+
+---
+
+## 2026-05-15 (ninth addendum) — GLiNER replaces OPF as primary detector
+
+**Decided 2026-05-15 by Arjun.** During Phase C of the V1→V2 audit (see `docs/v1-v2-audit-2026-05-14.md`, `docs/phase-c-decision-2026-05-15.md`), the 120-trap zero-leak gate revealed that the stock OPF detector — even hybridized with the AI4Privacy-fine-tuned `run_b_weighted` checkpoint — could not reach zero wire-leaks on F&F's distribution: 16 wire-leaks with stock OPF, 9 with the hybrid, persistent gaps on single-word/foreign names and on multi-word non-Western names that fragment under BIO-tag detection.
+
+GLiNER (`urchade/gliner_multi_pii-v1`), a span-based PII detector trained on a different corpus than the AI4Privacy family, hit **zero wire-leaks** end-to-end and **120/120 trap pass** over two consecutive runs after a small stoplist + threshold tune. The architectural correctness comes from the diversity-of-error principle: GLiNER fails differently from OPF/AI4Privacy because it's span-based and trained on uncorrelated data, so ensembling buys real precision/recall rather than amplifying correlated errors.
+
+### What changes
+
+- **Primary PII detector**: `urchade/gliner_multi_pii-v1` via a local HTTPS daemon at `https://localhost:47842` (HTTP fallback `:47841`). Wrapper at `~/.gliner-daemon/gliner_daemon.py`, installer at `tools/gliner-daemon/install.sh`, launchd agent at `~/Library/LaunchAgents/com.fflp.gliner-daemon.plist`.
+- **Stock OPF**: relegated to fallback. `services/sanitization/opfClient.ts::OPF_DAEMON_URLS` lists GLiNER endpoints first; the stock daemon at `:47821/:47822` remains as a graceful-degradation path while users transition.
+- **OPF fine-tune `run_b_weighted`**: **REJECTED** for production (`docs/phase-a-6-5-fine-tune-decision-2026-05-15.md`). Fragmented CA addresses, private_address F1 → 0.000. Keep the checkpoint as research artifact on `codex/privacy-filter-prd-run`.
+- **Production parameters**: GLiNER threshold 0.7, stoplist of ~150 entries (salutations, professions, day/month names, ethnic adjectives, CA neighborhood names, generic role words like "user"/"the client"), prefix-trim for title/role prefixes ("Mr. Smith" → name=Smith). Configurable via `GLINER_THRESHOLD` env, model swappable via `GLINER_MODEL` env.
+
+### Related: HIGH_RISK_CATEGORIES extended with `date` and `zip`
+
+The same Phase C runs surfaced 6 wire-leaks on ISO/long-form dates and ZIP codes that were detected but not tokenized because `date` and `zip` weren't in `HIGH_RISK_CATEGORIES`. They are now (`api/_shared/sanitization/index.ts`). The plan §6 compound-risk model still applies — date alone wouldn't trigger privileged via the original §E rule — but combined with the wire-form tokenization that Option C now mandates, leaving dates raw on the wire is no longer acceptable. Utility tradeoff (the agent can't read raw dates in client text) accepted under F&F's privacy-first stance.
+
+### What does NOT change
+
+- The 6th-addendum Option C retention model (token map on device, never on server) — unchanged.
+- The 7th-addendum web_search gating drop — unchanged.
+- The 8th-addendum confidence-hold-back retirement — unchanged.
+- The 5th-addendum MCP-tool privilege gating — verified 2026-05-15 still in effect (`buildMcpServerSpec(privileged)` filters via per-MCP `privilege_gate` flag).
+- The trap manifest, audit log shape, attestation chain, KV schema — all unchanged.
+
+### Why this is safe
+
+- **Empirically verified**: 120/120 trap pass, 0 wire-leaks, two consecutive runs. Reports at `reports/traps-wire-gliner-final-v8-run{1,2}.json`.
+- **Wire-form proof**: `scripts/probe-wire-no-raw.mjs` shows zero raw PII in outbound bodies on `/v2` chat and `/v2/verify` against the live GLiNER daemon.
+- **Token-map persistence**: `scripts/probe-token-map-persists.mjs` shows the IndexedDB token map carries the same `CLIENT_001` token across page reload, confirming the on-device retention is intact through the detector swap.
+- **Latency improvement**: GLiNER median 45ms steady-state vs OPF's 1.6s — 35× faster, reducing chat-turn latency materially.
+- **Architectural diversity**: combined with regex patterns (deterministic SSN/email/phone/...) and the existing compound-risk detector (W1 patterns), V2 now has three uncorrelated detection signals.
+
+### Supersedes
+
+- §E references to "OPF" as the primary detector → "GLiNER (with regex + compound-risk + allowlist)".
+- The fifth-addendum-era discussion of a Solve Intelligence MCP for PII detection → not pursued; GLiNER + regex covers the field.
+- `services/sanitization/opfClient.ts` (now misnamed but kept for API stability — the file talks to either OPF or GLiNER via the same JSON shape).
+- The audit scorecard's D6/D7/D9/D10/D11/D21 entries — all now ✅ as of this addendum's implementation.
+
+---
+
+## 2026-05-14 (eighth addendum) — Drop the confidence-hold-back gate (D19)
+
+**Decided 2026-05-14 by Arjun.** The §E rule "queries with `confidence < 0.98` queue for mandatory human review (default-deny)" is **formally dropped**. The sanitization-audit §4 marked it as "not implemented"; it has never shipped. This addendum closes the loop by removing it from binding policy rather than leaving it as an open implementation item.
+
+### Why now
+
+Triggered during the 2026-05-14 V1→V2 audit (`docs/v1-v2-audit-2026-05-14.md`). The audit identified D19 as "undecided" — plan §E specifies the gate, but the 7th addendum's directional move (detector is informational, attorney is decision authority) implied this gate also no longer fits. Rather than leave an ambiguous item in the plan, F&F principal decision-maker explicitly retires it.
+
+### What changes
+
+- §E "confidence < 0.98 hold-back" rule → **removed**. No code in `agentProxy.ts`, `agentLoop.ts`, or any UI surface will gate on a confidence threshold.
+- The `confidence: 0..1` field still emitted by `analyze()` and the detection pipeline — it remains in the audit record and the V2 UI as an informational confidence chip (analogous to the 7th-addendum privilege chip).
+- The attestation generator (§Y) carries the same wording it does for the privilege flag: confidence is an informational signal, not a gate.
+- D19 in the v1-v2 audit scorecard moves from ❓ undecided to ✅ formally dropped.
+
+### What does NOT change
+
+- `analyze()` still computes and returns `confidence`. The signal is preserved; only the gate is retired.
+- The sanitization layer's primary fail-closed property (OPF unavailable → block inference) is **unchanged** and remains the load-bearing safety property.
+- Every other §E rule (sanitization runs before Anthropic, tool-output sanitization, audit records) is unchanged.
+- The Option C client-side IndexedDB token-map architecture (6th addendum) is unchanged.
+
+### Why this is safe
+
+The 6th addendum already established that the attorney is the legal decision authority. A confidence-threshold gate would substitute a numerical heuristic for that judgment. Since the 7th addendum explicitly retired the parallel substitution (web_search gating), retiring D19 keeps the policy consistent: detection layer informs, attorney decides. The trap manifest (Phase 0.c hard gate) and tool-output sanitization remain the actual safety mechanisms.
+
+### Supersedes
+
+- §E "confidence-based hold-back gate (`confidence < 0.98`)" → removed as a policy item.
+- Anywhere in this plan that mentions confidence-based default-deny → corrected to "confidence is informational; attorney decides."
+- The audit scorecard's D19 ❓ status → ✅ formally dropped.
+
+---
+
+## 2026-05-13 (seventh addendum) — Drop the web_search privilege gate
+
+**Decided 2026-05-13 by Arjun.** The §E rule that omits `web_search` from the tools array when input is detected as privileged is **dropped**. The attorney decides; the detection layer is now informational, not gating.
+
+### What changes
+
+- `api/_lib/tools/index.ts::buildToolsArray()` now **always** includes `web_search`. The `privileged` parameter is retained for telemetry / audit only.
+- V2 chat + draft UIs change the privilege chip from "🔒 Privileged — web search disabled" (pink, claims-disabling) to "⚠️ Privileged content detected" (amber, informational) — no claim about what was disabled, because nothing was.
+- Audit records still capture the detection result. The sanitization gate is **still strict-mode fail-closed** (sanitizer-unavailable still blocks inference), but the *output* of detection no longer narrows the tool set.
+
+### What does NOT change
+
+- Sanitization detection still runs on every input (`detectPii` in strict mode).
+- Tool-output sanitization still runs on every tool result (audit §8 #8).
+- Audit records still note `privileged=true|false` per turn.
+- Trap manifest still gates that the detector itself is sound.
+- Compound-risk dictionary still applies.
+- The 6th-addendum Option C retention model is unchanged.
+
+### Why
+
+User's stated reason: the heuristic-based decision to block web_search was overreach by code. The detection layer was built to *inform* an attorney's judgment, not *substitute* for it. Dropping the gate restores attorney agency over which tools are available per query while preserving the visible/audited record of what the detector found.
+
+### Supersedes
+
+- §E "privilege gating" claim about web_search → removed as a tool-restriction rule.
+- Anywhere in this plan that says "privileged → web_search disabled" → corrected to "privileged → informational chip; web_search remains available."
+
+---
+
+## 2026-05-13 (sixth addendum) — F&F partner ratifications: §6 Option C, no TR, accept Opus 4.7 cost
+
+**Decided 2026-05-13 by F&F (Arjun + co-partner). These ratifications retire three open dependencies that were blocking Phase 4.5 shadow run.**
+
+### Decision 1 — §6 retention model: **Option C ratified**
+
+The third addendum's tentative Option C (hybrid: client-side IndexedDB token-map + metadata-only server audit record) is now **binding policy**.
+
+Consequences:
+- The `audit_record_envelope:*` Upstash KV schema in `docs/upstash-kv-schema-v1.md` is no longer draft. Fields lock at: timestamp, redaction category counts, HMAC of the sanitized prompt, sanitization-attestation hash, schema version. **The raw token-map never leaves the client.**
+- The third addendum's open implementation items #1–3 (token-map storage, retention bound, audit-record schema lock) are unblocked. Phase 1 follow-up actually closes — no longer waiting on partner review.
+- Audit doc `docs/sanitization-audit-2026-05-10.md` §8 item #9 ("Architectural reconciliation of §6 retention model") flips ⚠️ → ✅.
+- Deposition answer to "what does Anthropic see and retain about a privileged input?" is now precise: *"Anthropic sees the sanitized form (privileged spans redacted to `[REDACTED:<category>]` tokens), retained ~30 days under Team-plan trust-and-safety. The rehydration map exists only in the attorney's browser IndexedDB; F&F's servers hold only a hash of the sanitized form plus a per-category redaction count, so we can prove a redaction happened without rehydrating the privileged content."*
+
+### Decision 2 — Thomson Reuters CoCounsel MCP: **rejected**
+
+F&F does not have a Westlaw / Practical Law / KeyCite subscription and will not be acquiring one for this project.
+
+Consequences:
+- Phase 2 fifth-addendum row "Thomson Reuters CoCounsel MCP — Adopt later" is now **REJECTED**. Remove from the tool-inventory roadmap.
+- V2 stays on the in-house CEB + CourtListener stack for case-law research. The plan's "single biggest research-quality upgrade" is permanently off the table for V2's scope.
+- The Phase 3 verifier sub-agent (now wired) covers the gap in citation-accuracy from CourtListener-only verification. F1=0.919 / fake-caught=1.000 on the 30-cite eval set is the empirical ceiling we ship with.
+- Future revisit only if F&F changes its TR posture. No engineering work pending.
+
+### Decision 3 — Opus 4.7 cost: **Option C ratified (accept full Opus price)**
+
+F&F accepts paying Opus 4.7 per-token pricing for every turn. No session cap, no tier-route.
+
+Consequences:
+- Plan §Cost-impact (fifth addendum) Options A (session cap) and B (tier-route) are now **NOT IMPLEMENTED**. No `agentProxy.ts` routing logic needed.
+- Default model stays `claude-opus-4-7` for both chat and drafting (agent.json `model` field). Sonnet 4.6 still used for the verifier sub-agent (cheaper + adequate for structured-output verification — keep this carve-out).
+- Phase 4.5 shadow run starts billing real attorney usage at Opus 4.7 rates from day one. No additional gates.
+- Rationale: legal-reasoning quality is the value driver; the latency win (Opus 4.7 8.2s p50 vs Sonnet 4.6 11.7s p50 per Phase 1 baseline) means Opus is also the better UX. Cost is accepted as the price of quality.
+
+### What this unblocks
+
+All three of the previously-open people-dependencies that gated Phase 4.5 are now ratified. **Phase 4.5 shadow run can proceed without further partner sign-off.**
+
+The remaining gating items for cutover (Phase 5) are engineering, not policy:
+- V2 session history in sidebar (Phase 4.x — not yet built)
+- Phase 4.5 shadow-run wrapper (mirrors prod queries through V2 in parallel; only legacy answer shown to user)
+- Phase 5 cutover script + V1 deletion plan
+
+### Plan supersession order
+
+This 2026-05-13 sixth addendum supersedes:
+- The third addendum's "TENTATIVE — pending F&F partner review" qualifier on §6 Option C → now binding.
+- The fifth addendum's "Thomson Reuters CoCounsel MCP — Adopt later" row → now permanently rejected.
+- The fifth addendum's Cost-impact Options A/B → not implemented; Option C accepted.
+
+---
+
+## 2026-05-12 (fifth addendum) — Anthropic legal-industry launch: tool inventory + Phase deliverable revisions
+
+**Trigger:** Anthropic's 2026-05-12 release of:
+- 12 practice-area plugins (Apache-2.0 at [`anthropics/claude-for-legal`](https://github.com/anthropics/claude-for-legal))
+- 20+ MCP connectors (Free Law Project for CourtListener, Thomson Reuters CoCounsel for Westlaw + Practical Law + KeyCite, Solve Intelligence for citation verification, iManage / NetDocuments for DMS, Definely / Ironclad / DocuSign for contracts, Harvey, Everlaw, Relativity, etc.)
+- Claude Skills as an open standard (`agentskills.io`, Apache-2.0, Pro+/Team/Enterprise availability)
+- `mcp-client-2025-11-20` beta on the Messages API — first-class `mcp_servers` parameter on `messages.create()` ([docs](https://platform.claude.com/docs/en/agents-and-tools/mcp-connector))
+- Claude for Microsoft 365 (Word / Outlook plug-ins)
+- Claude Cowork (hosted workspace product)
+
+The 2026-05-12 fourth addendum (immediately below) handled the Managed-Agents implications. This fifth addendum covers the rest — what's adoptable into V2's Messages-API runtime, and which Phase deliverables it changes.
+
+**Finding:** The available tooling landscape changed materially. Several things V2 was building from scratch (citation verifier in Phase 3, drafting workflow patterns in Phase 2) now have higher-quality Anthropic-blessed equivalents reachable via the `mcp_servers` parameter or as Apache-2.0 Skill markdown. **The V2 wedge (sanitization-first privilege gating) does not change.** What changes is the tools and the system-prompt content behind that wedge.
+
+### Adoption decision matrix
+
+| Item | Verdict | Phase | Notes |
+|---|---|---|---|
+| Default model → `claude-opus-4-7` | **Adopt** | Phase 1 | Anthropic positions Opus 4.7 as legal-reasoning flagship (90.9% on Harvey's BigLaw Bench). Current default is `claude-sonnet-4-6`. Cost increase is real — see cost-impact note below. |
+| MCP toolset support in `agentLoop.ts` | **Adopt** | Phase 1 | Add `mcp_servers` parameter + `mcp-client-2025-11-20` beta header to `messages.create()`; handle `mcp_tool_use` / `mcp_tool_result` content block types. Privilege gating extends to MCP toolsets (omit when `privileged=true`). |
+| Free Law Project CourtListener MCP | **Adopt (additive)** | Phase 1 | Keep in-process `courtlistener_search` for audit-fidelity. Add MCP as alternative path for cases where PACER / judge profiles / oral arguments are useful and audit-trail-at-our-wire is not required. |
+| Inlined Skill content from `anthropics/claude-for-legal` (Apache-2.0) | **Adopt** | Phase 1 | Specifically: `litigation-legal/skills/{matter-intake,claim-chart,legal-hold,privilege-log-review}/SKILL.md` as system-prompt augmentation. This is the V2 portability principle (fourth addendum) cashing in. |
+| Thomson Reuters CoCounsel MCP (Westlaw + Practical Law + KeyCite) | **Adopt later** | Phase 2 | Single biggest research-quality upgrade. Depends on F&F having a TR subscription (open question). Privilege-gated like `web_search`. |
+| Solve Intelligence MCP for citation verification | **Evaluate before Phase 3** | Phase 3 | Could replace the hand-rolled verifier sub-agent. Decision criterion: F1 against ground-truth citations on a 30-question evaluation set. If acceptable, replace Phase 3's verifier scope with an MCP tool call. If insufficient, build the hand-rolled verifier as originally planned. |
+| iManage / NetDocuments MCP | **Adopt later, strict gating** | Phase 4+ | Only if F&F adopts one of those DMS products. **Privileged-input disabled by design** — a DMS contains client-confidential documents; MCP tool inputs flow through Anthropic per standard retention. Include in tools array ONLY when `privileged=false`, which means an attorney can never use V2 to fetch a privileged matter document — that lookup happens in the attorney's iManage UI directly, not through V2. |
+| Definely / Ironclad / DocuSign MCP | **Watch** | TBD | Contract-lifecycle integrations. Out of F&F's current scope (probate / family law primary focus). |
+| Harvey MCP | **Skip** | — | Separate Harvey subscription required (different price point + commercial relationship). |
+| Claude for M365 Word / Outlook | **Skip from V2's product surface** | — | Useful for F&F attorneys directly, but doesn't gate input. F&F licenses these at the Anthropic plan level, not the V2 product level. |
+| Claude Cowork as the V2 chat surface | **Skip** | — | No sanitization-first input gate. V2's `/v2` route keeps that role. |
+| Managed Agents deployment of the plugins | **Sandbox-only** | — | See fourth addendum. Synthetic-data evaluation track for pattern study; never in production. |
+
+### Phase-by-phase plan revisions
+
+**Phase 1 (Spike) — REVISED deliverables.** Adds to the existing Phase 1 deliverable list (per §A and the plan ground truth):
+
+- **(0) Tool-result sanitization wrapper** — *prerequisite to MCP and to any expansion of the tool surface.* The 2026-05-10 second addendum and `docs/sanitization-audit-2026-05-10.md` §8 item #8 both require: "every `tool_result` block runs through the same sanitizer before being appended to `messages`." Current `api/_lib/agentLoop.ts` `dispatchWithCache` returns raw tool content directly into the next `tool_result` block — the 100-trap gate didn't catch this because the runner tests `analyze(simulated_tool_result)` directly, not the agent loop's integration. **Fix before any tool-surface expansion** (the audit explicitly bound MCP/W5 wrapper as Step 3 of the V2 build plan). Implementation: run `analyze()` on each tool's content before constructing the `tool_result` block, tokenize any HIGH_RISK spans, attach a `tool_output_sanitization` attestation to the audit record. Smoke: re-author W5 traps in `tests/traps/manifest-v1.json` to exercise the AGENT LOOP path end-to-end (not just `analyze()`); verify all redactions fire at the loop's wire, not just the sanitizer's.
+- Default model → `claude-opus-4-7` in `api/_lib/agentLoop.ts` (`DEFAULT_MODEL`). Re-run latency baseline + smoke after the bump.
+- Extract `DEFAULT_SYSTEM_PROMPT` from `agentLoop.ts` into `agents/california-legal/skills/*.md` matching the `anthropics/claude-for-legal` Skill frontmatter shape (per fourth addendum portability principle, open item #12). **Load by workflow / intent, not concatenation.** A workflow-aware loader picks Skills relevant to the current turn (matter-intake when starting a matter, claim-chart when building one) rather than concatenating every Skill into every system prompt — which would bloat context, dilute the model's task focus, and waste Opus 4.7 tokens.
+- Define `source` block schema for tool results — per fourth addendum portability principle (open item #14).
+- **MCP toolset support** in `agentLoop.ts` and `agentProxy.ts`. **Implementation detail:** MCP is on Anthropic's beta surface (`client.beta.messages.create` / `client.beta.messages.stream` with `betas: ["mcp-client-2025-11-20"]`), not on the stable `client.messages.create` we currently call. Build a thin beta-call wrapper that the agent loop dispatches to ONLY when at least one MCP toolset is in the tools array; stable inference-only calls keep the current code path unchanged. Handle `mcp_tool_use` / `mcp_tool_result` content block types alongside the existing `tool_use` / `tool_result` types in the streaming loop. Privilege gating in `buildToolsArray(privileged)` extends to MCP toolsets (omit when `privileged=true`, per the §E gating extension below). Add a feature flag (env var `V2_MCP_ENABLED=true`) so the new code path can be rolled out independently of model bump and prompt extraction.
+- **MCP pilot — deterministic public server first.** Before wiring the Free Law Project endpoint (auth/URL shape not yet cleanly documented in their public-facing materials as of 2026-05-12), pilot with a deterministic, publicly-documented MCP server (e.g., one of Anthropic's reference servers) so the beta-call wrapper, privilege gating, and `mcp_tool_use` handling can be validated against a known-shape integration. Only then point at Free Law Project's official endpoint.
+
+### Phase 1 follow-up sequencing (corrected by Codex review 2026-05-12)
+
+The deliverables above must land in this order — each gates the next:
+
+1. **Tool-result sanitization wrapper** (closes the existing audit/code gap; required by the 2026-05-10 second addendum's "inputs AND tool outputs" scope; required by `docs/sanitization-audit-2026-05-10.md` §8 item #8). Adding MCP before this is done would expand the tool-output leak surface before the current in-process path is compliant with the addendum it claims to implement.
+2. **Default model bump → `claude-opus-4-7`** and re-run latency baseline + smoke. Quick win; validates the model the 2026-05-12 announcement cites; baseline numbers feed the cost-impact decision (below).
+3. **System prompt → Skill markdown + workflow-aware loader.** Per fourth addendum portability principle. Workflow-intent dispatch, not concatenation.
+4. **MCP plumbing behind a feature flag + privilege gating + beta-call wrapper.** Implement against a deterministic public MCP server first.
+5. **Free Law Project CourtListener MCP pilot** once the official endpoint + auth shape are confirmed. Keep in-process `courtlistener_search` running as the audit-fidelity path.
+
+Anything beyond #1 that expands the tool surface (including switching CourtListener to MCP-only) is blocked until #1 lands.
+
+**Phase 2 (Drafting workflows) — REVISED scope.** Instead of authoring drafting-workflow patterns from scratch:
+- Pull Skill content from `anthropics/claude-for-legal/{commercial-legal,corporate-legal,ip-legal}/skills/*.md` (Apache-2.0).
+- Adapt for California probate / family law where F&F practices.
+- Build the drafting UI on top of V2's existing agent loop with these skills as `system_prompt` overrides (loaded per-route or per-flow).
+
+Net delta: less hand-authoring of attorney workflow patterns; more curation of which Anthropic Skills are relevant to F&F's practice. Reduces Phase 2 effort by an estimated 30–50%.
+
+**Phase 3 (Verifier sub-agent) — POSSIBLY REPLACED.** Branched path:
+1. Build a 30-question citation-verification evaluation set drawn from V2's existing trap-manifest sources (or new authored cases).
+2. Run Solve Intelligence MCP against the eval set; measure F1 against ground-truth citations.
+3. If F1 is acceptable (threshold TBD with Arjun, suggested ≥ 0.90), replace Phase 3's hand-rolled verifier with the MCP tool call. Phase 3 collapses to "wire Solve Intelligence MCP into the agent loop with same privilege gating as other MCP toolsets."
+4. If F1 is insufficient, proceed with the hand-rolled verifier as originally planned.
+
+**Phase 4 (UI integration) — NO CHANGE.** V2 chat at `/v2` is built (commit `f2a4971`). Phase 4 follow-ups (Clerk auth, session persistence, markdown rendering, citation rendering, sidebar integration) unchanged.
+
+**Phase 4.5 (Shadow run) — NO CHANGE.**
+
+**Phase 5 (Cutover + teardown) — NO CHANGE** (still deletes ~7,800 lines of orchestration).
+
+### Tool inventory (replaces the implied "two custom tools + web_search" list)
+
+```
+V2 tools, post-2026-05-12 fifth addendum:
+
+  in-process (audit-fidelity-critical — full input/output observability at V2's wire):
+    - ceb_search                    (Upstash Vector + OpenAI embedding, 5 namespaces)
+    - courtlistener_search          (CourtListener REST v4)
+
+  mcp_servers via Messages API (Anthropic dispatches server-side, retention per Team-plan policy):
+    - free_law_project_mcp          (Phase 1 — additive alternative to in-process courtlistener_search)
+    - tr_cocounsel_mcp              (Phase 2 — if F&F subscription confirmed)
+    - solve_intelligence_mcp        (Phase 3 candidate — replaces verifier sub-agent if eval passes)
+    - imanage_mcp / netdocuments_mcp (Phase 4+ — DMS adoption + privileged-off-only inclusion)
+
+  anthropic server-side tools (built into messages.create, retention per Team-plan policy):
+    - web_search_20250305           (Phase 1 — privilege-gated, omit when privileged)
+
+  system prompt content (Apache-2.0 Skills inlined per portability principle):
+    - litigation: matter-intake, claim-chart, legal-hold, privilege-log-review
+    - drafting:   selected from commercial-legal/, corporate-legal/, ip-legal/
+    (loaded from agents/california-legal/skills/*.md once portability extraction lands)
+```
+
+### Privilege-gating extends to MCP toolsets (clarifying §E)
+
+`buildToolsArray(privileged)` in `api/_lib/tools/index.ts` already omits `web_search_20250305` when `privileged=true`. This addendum extends that contract:
+
+- **`free_law_project_mcp`, `tr_cocounsel_mcp`, `solve_intelligence_mcp`**: omit when `privileged=true`. These are public-research tools. A privileged input shouldn't generate a search query into them.
+- **`imanage_mcp` / `netdocuments_mcp`** (if adopted): omit when `privileged=true`. The DMS contains the privileged material; sending a privileged input as a search query to it would leak the input via MCP-side telemetry / Anthropic-side retention. The privileged-input case is "use iManage directly, not through V2."
+- **`ceb_search` and `courtlistener_search` (in-process)**: ALWAYS available, including when `privileged=true`. These tool inputs and outputs are entirely within V2's wire — no Anthropic retention exposure for the search query itself (only the resulting `tool_result` block reaches Anthropic, which the §6 Option C audit-record-envelope already accounts for).
+
+### Cost impact (§U-adjacent — Arjun decision before Phase 5 cutover)
+
+Opus 4.7 is materially more expensive than Sonnet 4.6 per million input/output tokens (current pricing at [`claude.com/pricing`](https://claude.com/pricing) — verify before committing). At V2's measured ~26k tokens per turn (latency baseline 2026-05-12), an Opus 4.7 turn costs roughly N× a Sonnet 4.6 turn. Three options Arjun chooses among before Phase 5:
+
+1. **Cap session length** to bound monthly spend (e.g., 100 turns/attorney/month).
+2. **Tier-route**: Sonnet 4.6 for routine queries, Opus 4.7 for explicitly-flagged "deep research" or compound-risk-bucket-rich turns. Decision logic in `agentProxy.ts`.
+3. **Accept the increase** — quality gain on legal reasoning is the primary value driver for F&F.
+
+Not blocking Phase 1; needs an answer before billing real attorney usage in Phase 4.5 shadow run.
+
+### Plan supersession order
+
+This 2026-05-12 fifth addendum:
+- Updates the tool inventory (supersedes the implied "two custom tools + web_search" list in §B).
+- Updates Phase 1 deliverables (adds Opus 4.7 default, MCP toolset support, Free Law Project pilot, portability extraction).
+- Updates Phase 2 scope (skill content reuse over from-scratch authoring; estimated 30–50% effort reduction).
+- Adds a branched Phase 3 path (Solve Intelligence MCP eval before hand-rolling verifier).
+- Adds the cost-impact decision point.
+- Does NOT change Phase 4, Phase 4.5, or Phase 5 plans.
+- Does NOT change the V2 wedge (sanitization-first privilege gating) — see fourth addendum portability principle.
+
+---
+
+## 2026-05-12 (fourth addendum) — Managed Agents revisit: scope clarification, not reversal
+
+**Finding:** The 2026-05-10 first addendum rejected Managed Agents on the grounds that "Managed Agents is NOT covered by ZDR ... incompatible with F&F's ZDR requirement for privileged content." The 2026-05-10 second addendum then removed ZDR from the project's compliance posture entirely (F&F stays on Team plan; ZDR/BAA/SOC 2 paperwork permanently off the table). This left the first addendum's rejection logically dependent on a premise that no longer holds. The original conclusion is correct, but the original reasoning isn't — the issue is broader than ZDR.
+
+Triggered by Anthropic's 2026-05-12 legal-industry launch ([`claude.com/blog/claude-for-the-legal-industry`](https://claude.com/blog/claude-for-the-legal-industry)) and the open-source [`anthropics/claude-for-legal`](https://github.com/anthropics/claude-for-legal) repository, which together position Managed Agents as the preferred deployment surface for the 12 practice-area plugins. Reconsidered the decision; concluded the rejection stands but the reasoning needs correction and the absolutist wording needs softening.
+
+**Actual current reasoning for staying on Messages API (replaces the obsolete ZDR-implies-everything reasoning of the first addendum):**
+
+1. **ZDR-eligibility asymmetry across Anthropic surfaces** — per `platform.claude.com/docs/en/agents-and-tools/mcp-connector` and `docs/api-and-data-retention` as of 2026-05-12:
+   - **Messages API: ZDR-eligible** under enterprise paperwork. Presently moot for F&F (Team plan, no ZDR) but preserves optionality if F&F's posture or Anthropic's pricing ever shifts.
+   - **Managed Agents: not ZDR-eligible**, ever. MA is a stateful resource with manual-delete semantics — structurally outside the ZDR shape.
+   - **MCP connector: not ZDR-eligible** under any tier. The moment a `mcp_servers` parameter is included on `messages.create()`, that specific call falls outside ZDR. Privilege-gated tool inclusion (omit MCP toolsets when input is privileged) protects this.
+   - **Claude Skills (runtime): not ZDR-eligible**. Skills delivered as system-prompt text content via `messages.create()` remain ZDR-eligible because they're indistinguishable from any other system prompt.
+
+2. **Auto-delete vs manual-delete retention shape** — under current Team-plan posture (no ZDR for any surface), Messages API auto-deletes after the trust-and-safety retention window (~30 days). Managed Agents persist on Anthropic infrastructure until manually deleted. Even without ZDR, the auto-delete window is shorter and more deterministic than the manual-delete obligation V2 would take on with MA. A forgotten cleanup process on MA = unbounded retention = a discovery target.
+
+3. **Audit-trail control** — `api/_lib/agentLoop.ts` writes audit records at every step (every tool dispatch, every model invocation, every span detection) to `api/_shared/auditLog.ts` and ultimately to `audit:YYYY-MM-DD` lists in Upstash KV. Managed Agents dispatches tools server-side; we'd consume audit via an API callback rather than logging at the dispatch site. Defensibility under a litigation hold is meaningfully easier when V2 logs at its own wire, with HMAC-stable references back to the sanitized prompt of record.
+
+4. **Switching cost** — V2's Phase 1 spike (commits `8401011` through `f2a4971`) is ~1,600 lines of working, gated, audited code. Switching runtime to MA would rewrite ~1,200 of those lines (`agentLoop.ts`, `sessionStore.ts`, parts of `agentProxy.ts`). Bad ROI when ~90% of MA's value (Skills content, MCP connectors, sub-agent patterns) is reachable from Messages API today via `mcp_servers` parameter and inlined-Skill-content system prompts.
+
+**What this changes:**
+
+| Item | 2026-05-10 first addendum (original) | 2026-05-12 fourth addendum (corrected) |
+|---|---|---|
+| Wording | "Permanently off the table — not a fallback, not a future option" | **Off the table for privileged / client-confidential workflows under Anthropic's current ZDR scope.** Revisit if (a) Anthropic ships ZDR-eligible Managed Agents, (b) F&F adopts a separate non-confidential product surface (internal marketing review, public-FAQ generation) where Team-plan retention is acceptable, or (c) F&F's roadmap grows to include the scheduled-agent workflows the 2026-05-12 announcement positions on MA (`docket-watcher`, `renewal-tracker`, `regulatory-monitor`). |
+| Reasoning | "Not ZDR-eligible, incompatible with F&F's ZDR posture" (premise invalidated by 2026-05-10 second addendum) | (a) ZDR-eligibility asymmetry preserves future optionality; (b) auto-delete vs manual-delete is a real Team-plan retention difference; (c) audit-trail control favors self-hosted; (d) switching cost is real. |
+| Sandbox track | Not mentioned | **Allowed:** synthetic-data evaluation of the Apache-2.0 `anthropics/claude-for-legal` plugins on MA. Pattern study only — borrow agent structure, reviewer-note conventions, source-tag schema, handoff patterns, worker isolation. **No real F&F matters, no privileged drafts, no production attorney prompts.** |
+
+**V2 portability principle (newly explicit):**
+
+To keep the cost of a future runtime swap manageable, V2's agent definitions should adopt a shape close enough to Anthropic's plugin format that migration would be a runtime swap, not a product rewrite. Phase 1 follow-up work (not blocking, but should land before Phase 5 cutover):
+
+- **Extract the hardcoded system prompt** in `agentLoop.ts` (`DEFAULT_SYSTEM_PROMPT`) into one or more `agents/california-legal/skills/<name>.md` files with the same frontmatter shape as Anthropic's Skill files (`name`, `description`, `user-invocable`, `argument-hint` per the `claude-for-legal` repo).
+- **Extract agent config** (model, max_tokens, tool list, max-iterations cap, default system prompt id) into `agents/california-legal/agent.yaml` with field names matching Anthropic's plugin schema.
+- **Define a `source` block schema** for tool results so retrieval provenance is structured the same way Anthropic's plugins surface it (e.g. `{ source_type: 'ceb' | 'courtlistener' | 'web', title, citation, url, retrieved_at }`). Tools return structured `source` arrays alongside content; the model is prompted to cite via `source_id`.
+- **Keep the privilege-gated tool-array construction** (`buildToolsArray(privileged)`) and the sanitization-first proxy regardless of runtime. Those are the V2 wedge and don't change.
+
+If MA later becomes ZDR-eligible (or if F&F adopts a non-confidential product surface), the migration is then a runtime swap that consumes the same `agent.yaml`, `skills/*.md`, and `source` schema we've been using — not a rewrite of attorney-facing product behavior.
+
+**Plan supersession order:** this 2026-05-12 fourth addendum supersedes the **wording** of the 2026-05-10 first addendum (specifically the "permanently off the table — not a fallback, not a future option" line). The original **conclusion** (Messages API is V2's runtime) stands; the **reasoning** is replaced as above. The 2026-05-10 first addendum's other content (Managed Agents' specific incompatibilities — `beta.agents.*` / `beta.sessions.*` / Environments) remains accurate as a historical description of the alternative we declined.
+
+---
+
+## 2026-05-12 (third addendum, TENTATIVE — pending F&F partner review) — Token-map retention model: hybrid (Option C)
+
+> ⚠️ **Status: NOT YET BINDING.** This addendum is Arjun's working decision based on the sanitization audit (`docs/sanitization-audit-2026-05-10.md` §6). It must be reviewed and signed off by F&F partners before it supersedes the §E retention table. The key open question for counsel is restated in **Required F&F counsel input** below. Do not merge to `main` and do not treat as the binding plan until that sign-off is recorded here.
+
+**Finding:** The 2026-05-10 sanitization audit (§6) surfaced an unresolved conflict between two parts of the codebase:
+
+- Plan §E specifies a **server-side envelope-encrypted token map**: AES-256-GCM, DEK in Upstash KV, KEK in 1Password vault, 7-year retention for litigation reconstruction.
+- The imported sanitization layer (`codex/drafting-magic-sanitized` → V2) implements a **client-side per-attorney passphrase-encrypted IndexedDB token store**: privileged content never leaves the device.
+
+These two models are mutually exclusive. The audit drafted three options (A client-only, B server envelope-encrypted, C hybrid metadata-only audit record). Audit recommendation: **Option C**.
+
+**Decision (tentative):** **Option C — hybrid.** Client-side IndexedDB carries the live token map for the duration of an attorney's active session; the server stores only an envelope-encrypted, metadata-only audit record per redaction event. Privileged ciphertext does not leave the attorney's device.
+
+**Why C and not B (the original §E choice):** The original §E argument for full server-side ciphertext rested on "we may be subpoenaed to prove the sanitized prompt corresponds to the user's actual privileged input" (§E line 483 in pre-2026-05-12 form). The 2026-05-10 no-ZDR pivot changes this argument's weight in two ways:
+1. Anthropic itself retains the sanitized form for ~30 days under Team-plan trust-and-safety policy. For *recent* matters, the "what did Anthropic see?" question is independently answerable from Anthropic's own records — F&F does not need to be the sole custodian.
+2. The 7-year window is only load-bearing for malpractice or discovery actions referring to a specific *historical* query. Option B answering that need means F&F's own infrastructure carries privileged ciphertext for 7 years, which is itself a discovery target and a new attack surface (compromised Upstash + compromised 1Password = full historical privileged content disclosure).
+
+Option C trades the ability to rehydrate the verbatim privileged input years later for an attestable record that the redaction happened, with hashed evidence of the input and the sanitized form, plus categorical and counted metadata. This covers most realistic deposition lines ("did you redact client names in matter X?" → yes, with timestamp, count, category, and hash matching the sanitized prompt of record) without storing privileged ciphertext on F&F infrastructure.
+
+**Required F&F counsel input (this is what must be answered before this addendum is binding):**
+
+> *In a plausible malpractice or discovery scenario 5+ years out, will F&F's defense ever need to rehydrate the exact privileged input verbatim, or is "we can prove the redaction happened, when, by category, and that the sanitized prompt of record matches a specific hash of the original input" sufficient?*
+
+- If **sufficient** → ratify Option C; this addendum lands as binding.
+- If **insufficient** → revert to Option B (server envelope-encrypted full ciphertext); F&F accepts Upstash as a sub-processor of privileged ciphertext and a 7-year retention obligation on F&F-controlled infrastructure.
+- If **counsel asks for a middle ground** (e.g., shorter retention, different cipher boundary, named-custodian access logging) → record their preference here and draft addendum #4.
+
+**What this changes (if ratified):**
+
+| Item | Before (plan §E as-written) | After (Option C ratified) |
+|---|---|---|
+| Token-map storage (live session) | Server-side Upstash KV, envelope-encrypted | **Client-side IndexedDB on attorney device, passphrase-encrypted** (per imported sanitization layer) |
+| Token-map retention | 7 years on Upstash, AES-256-GCM, KEK in 1Password | **Not retained server-side at all.** Lives on attorney device for the active session; cleared per attorney workflow |
+| Server-side audit record per redaction event | (not specified separately) | **New artifact:** envelope-encrypted record per redaction event containing `{session_id, attorney_id, input_sha256, sanitized_sha256, redaction_decisions_count, by_category_counts, confidence, privileged_bool, timestamp}`. No plaintext, no ciphertext of privileged content. 7-year retention, AES-256-GCM, KEK in 1Password, DEK in Upstash KV. Break-glass access logged per §U. |
+| Litigation reconstruction capability | Verbatim rehydration via break-glass | **Attestable redaction events** (proof a redaction occurred, by category, with hash binding to sanitized prompt of record). No verbatim rehydration after attorney session ends. |
+| Privileged ciphertext on Upstash? | Yes (encrypted) | **No.** Only metadata/hashes. |
+| Single-point-of-failure scope | Full Upstash + 1Password compromise = all-history privileged content | One attorney's laptop + their passphrase = one attorney's *active session* matters only |
+| Attorney workflow burden | Transparent (server holds it) | Must safeguard passphrase + device; passphrase recovery story must be defined (see Open implementation items below) |
+
+**Plan supersession order:** if and only if ratified by F&F partner sign-off, this 2026-05-12 third addendum supersedes the retention rows of the §E table and the supporting reasoning paragraph in §E. The rest of §E (sanitization runs in the Vercel proxy *before* any input reaches the Messages API; agent receives `privileged: false` content; envelope-encryption semantics for the surviving server-side audit record) is unchanged. The §G audit log + §Y attestation generator gain a new artifact type (the per-redaction audit record) and must be updated correspondingly when Phase 1 design begins.
+
+**Open implementation items (must be resolved during Phase 1 if Option C ratifies):**
+1. **Passphrase recovery story.** If an attorney forgets the IndexedDB passphrase, the active-session token map is lost — they cannot rehydrate any in-flight sanitized prompts. Define: who issues recovery passphrases, how device migration works, what happens on attorney offboarding.
+2. **IndexedDB durability story.** Browser-cleared IndexedDB = lost live token map. Define: backup cadence (encrypted export to attorney-controlled storage?), browser-clear warning UX.
+3. **Audit-record schema lock.** The per-redaction record schema above is a draft. Finalize fields, hash algorithm version field, schema version field before Phase 1.
+4. **§Y attestation update.** The per-session attestation generator must reference the new audit-record artifact and confirm its integrity. Spec update required.
+5. **CI assertion (§S) update.** The "final sanitization check" still scans outbound `messages.create()` payloads against the live (now client-side) token map. Mechanism is unchanged because that check runs inside the same browser/proxy session where the live map exists. Document the call site for clarity.
+
+**Implications for in-flight work:**
+- The committed mechanical fixes from audit §8 (commit `a720572`) are unaffected by this choice — they sit at the detection layer, not retention.
+- Audit §8 item #9 ("Architectural reconciliation of §6 retention model") becomes ✅ pending F&F sign-off — `docs/sanitization-audit-2026-05-10.md` §10 status table updated correspondingly.
+- The 100-trap authoring work (Step 2) does not depend on the retention choice and can proceed in parallel.
+
+---
+
+## 2026-05-10 (second addendum) — No ZDR. Sanitization is the only line of defense.
+
+**Finding:** F&F remains on Anthropic's **Team plan**, not the enterprise plan that confers ZDR. ZDR/BAA/SOC 2 paperwork (Phase 0.a) is **permanently off the table** for this project — not a fallback, not a future option, not paperwork-in-flight.
+
+**What this changes:**
+
+| Item | Before (assumed ZDR) | After (no ZDR) |
+|---|---|---|
+| Defense posture | Sanitization redacts privileged content; ZDR ensures Anthropic does not retain whatever leaks through | **Sanitization is the only line of defense.** Anything that reaches `api.anthropic.com` is retained under Team-plan policy (~30-day trust-and-safety retention, longer if flagged, accessible by Anthropic staff for trust-and-safety review). A sanitization miss is a privilege breach. |
+| Phase 0.a paperwork | Required gate for Phase 4.5 + Phase 5 | **Removed from plan.** No DPA, no BAA, no SOC 2 dependency. |
+| Phase 0.b (engineering smoke test) | Pre-flight bug-catcher | Folded into the formal gate below; stops being a separate item. |
+| Phase 0.c (formal privilege review) | Pre-cutover gate, 100 traps, zero leaks | **Promoted to the single hardest gate in the project.** 100 traps remain (per Arjun decision 2026-05-10); criterion is zero leaks across two consecutive full-suite runs. **If the sanitization layer cannot reach zero on the trap set, the migration stops here** — there is no second net. |
+| Sanitization scope (§E) | Inputs only | **Inputs AND tool outputs.** Per Arjun decision 2026-05-10. Every `tool_result` block is run through the same sanitizer before being appended to `messages`, in case a public-record tool surfaces a term that, in context, re-identifies a client. Trade-off (possible false-positive redactions degrading answer quality) accepted. |
+| §Q F&F communication memo | "Direct enterprise subscription, signed ZDR DPA + BAA + SOC 2" | **Rewrite required before Phase 5.** Honest framing: Team plan, sanitization layer is the contractual privilege boundary, Anthropic privacy controls (training opt-out, abuse-monitoring posture) documented, trust-and-safety retention disclosed. Draft owned by Arjun + F&F partners. |
+| §Y attestation generator | Attests "ZDR + BAA + SOC 2 on file" alongside sanitization + audit chain | Attests **only** sanitization decisions, audit-chain integrity, agent-config SHA, tool-call traces, verification report. The attestation cannot claim non-retention by Anthropic. The §Y JSON schema gains an explicit `inference_provider_retention_policy` field stating Team-plan terms verbatim. |
+| §W evidentiary discovery hardening | "ZDR" claim defensible in deposition | Deposition answer to "what does Anthropic see and retain?" is now "the sanitized form, retained ~30 days under Team-plan trust-and-safety policy, accessible to Anthropic staff." F&F partners must be briefed on this before Phase 5. |
+| §X UPL exposure controls | Unchanged structurally | Unchanged. |
+| §M rollback triggers | Unchanged | Unchanged, but **a single confirmed sanitization failure in production triggers immediate rollback** (already in §M as "any privacy/sanitization failure, immediate, no threshold" — re-emphasized here). |
+| §U key management | 6 keys including OpenRouter | OpenRouter dropped per 2026-05-10 first addendum; no change here. |
+
+**Defense-in-depth still available on Team plan (must be configured before Phase 1 sends real-format traffic):**
+- Console → Workspace → Privacy: opt out of training-data use.
+- Per-API-key tagging so a leak can be scoped + revoked quickly.
+- Egress allowlist (§U) keeps blast radius small if a key is exfiltrated.
+- The `tools`-array privilege gating for `web_search` (§E) still works exactly as designed and remains in scope.
+
+**Pre-flight critical path is now sanitization-first.** The four open-items at the bottom of this doc are re-ordered:
+
+1. **Sanitization branch import + deep audit** (was item 1): pull `codex/drafting-magic-sanitized` into V2, document every redaction rule, NER pass, n-gram entity-correlation pass, confidence scorer. Deliverable: `docs/sanitization-audit-2026-05-XX.md` including a "known weaknesses" section.
+2. **Threat model + 100-trap authoring** (new): formalize the threat classes (direct PII, compound identifiers, adversarial prompts, indirect leakage via tool inputs, verifier-loop cross-contamination). Half the traps drawn from sanitized F&F matter patterns; the other half synthetic.
+3. **Privilege smoke test + iterate sanitization to zero** (was §0.b + §0.c): run all 100 traps, patch every failure, re-run the whole suite, repeat until two consecutive full-suite zero-leak runs. **Hard gate. No Anthropic traffic until this passes.**
+4. KV schema + tool-call latency baseline (was items 3 + 4): unchanged, can run in parallel with sanitization iteration.
+
+**CI assertion added (§S):** every `messages.create()` call in dev/CI runs through a "final sanitization check" that scans the outbound payload for any string in the privileged token map. Belt-and-suspenders for what is now a single point of failure.
+
+**Plan supersession order:** this 2026-05-10 second addendum supersedes any prior wording in §0.a, §0.b, §0.c, §Q, §Y, and §W that assumed ZDR. Other sections unaffected except where called out in the table above.
+
+---
+
+## 2026-05-10 (first addendum) — Architecture Pivot — Managed Agents removed from the plan
+
+> ℹ️ **Wording revised 2026-05-12** — see the fourth addendum at the top of this document. The "permanently off the table" framing below was based on F&F having a ZDR requirement; the 2026-05-10 second addendum subsequently removed ZDR from the project's posture, invalidating the original premise. The conclusion (MA stays out of V2's runtime) is unchanged; the reasoning has been corrected and the absolutist language has been softened to "off the table for privileged / client-confidential workflows under current ZDR scope."
+
+**Finding (original 2026-05-10 wording — preserved for historical record):** Anthropic's official platform docs explicitly state Managed Agents is NOT covered by ZDR: *"Claude Managed Agents is a stateful resource. You can delete session transcripts, but there is no automatic deletion."* This is incompatible with F&F's ZDR requirement for privileged content. Managed Agents is therefore **permanently off the table** for this project — not a fallback, not a future option.
 
 **Pivot:** The agent runtime is now **Anthropic Agent SDK self-hosted on the Messages API**. The Messages API is GA and ZDR-eligible under enterprise terms (Phase 0 paperwork). We own the agent loop, session state, tool dispatch, and event mirror — Anthropic only handles inference.
 
@@ -701,6 +1164,73 @@ The boundary is intentional and documented in the artifact. F&F's competence rul
 
 ---
 
+### Z. Protected Discovery Mode (Morgan compliance)
+
+Added by the 2026-06-02 tenth addendum. §Z is the design for using V2 in matters where **opposing-party discovery is designated CONFIDENTIAL under a protective order** — see *Morgan v. V2X, Inc.*, 2026 WL 864223 (D. Colo.) and `docs/morgan-memo-to-rachel-lyla-2026-06-02.md`.
+
+#### Z.0 Why this is its own mode
+The sanitizer (§E) is built to redact **F&F client** privilege/PII. A protective order protects a **different** category — the *opposing party's* CONFIDENTIAL discovery, which the sanitizer is not designed to detect. *Morgan* conditions putting that material into an AI tool on the provider being contractually bound (no-train + no-disclose + delete + documentation). Per the tenth addendum, Anthropic's Commercial Terms + DPA meet that bar with no enterprise plan; §Z operationalizes it per matter.
+
+#### Z.1 Two compliance tiers
+`matter_mode`, set at matter creation:
+
+| Tier | When | Controls |
+|---|---|---|
+| `standard` (default) | Research/drafting; no protective order | §E sanitization (client-privilege), 7th-addendum tool behavior (web_search available, attorney decides), Option C retention, Upstash + OpenAI-under-DPA fine |
+| `protected_discovery` | Matter under a protective order with CONFIDENTIAL opposing-party discovery | Superset: Z.2 provider pre-flight, Z.3 court-order tool lockdown, Z.4 firm-controlled storage, Z.5 manifest, Z.6 pack. Sanitization still runs as defense-in-depth. |
+
+#### Z.2 Approved-provider register + per-matter pre-flight
+`compliance/providers.json` (committed, hash-anchored to the audit log) records, per provider in the data path (Anthropic inference, OpenAI embeddings, the firm-controlled store of Z.4, Vercel transport): the captured contract artifact (Commercial Terms / DPA), retrieval date, SHA-256, and which *Morgan* prong each clause satisfies. This file *is* *Morgan*'s retained "written documentation." Before any `messages.create()` or tool call on a `protected_discovery` matter, `agentLoop.ts` verifies every provider it will touch has a green, in-date record; a missing/expired record **blocks the turn** (fail-closed, consistent with the sanitizer's strict mode). `standard` matters log the register state but do not block.
+
+#### Z.3 Court-order tool & egress lockdown — a deliberate exception to the 7th addendum
+The 7th addendum dropped heuristic `web_search` gating because *the attorney* decides, not a confidence heuristic. `protected_discovery` is different: *the court* has decided, via the protective order, that CONFIDENTIAL material may not reach tools that aren't contractually bound. So in this mode `buildToolsArray()` builds a **deny-by-default** set:
+- `web_search` (arbitrary egress) **omitted** — unconditional, court-order-driven (not the retired heuristic).
+- `mcp_servers` / connectors **omitted** (the 4th/5th addenda note MCP calls fall outside ZDR; for these matters, omit entirely).
+- Allowed: only the in-process legal-data tools whose backends are on the §U egress allowlist.
+- CI (§S): a `protected_discovery` request never yields a `messages.create` whose `tools` array contains `web_search` or an `mcp_*` block.
+
+This restores a tool restriction for these matters **without** reopening the heuristic-gating debate the 7th addendum closed — the basis is the court order, applied per matter at attorney direction, not a detector output.
+
+#### Z.4 Storage-chain remediation
+Under Option C (6th addendum) the token map already lives in attorney-side IndexedDB and Upstash holds only the metadata audit envelope — so privileged *client* content is already off Upstash. The remaining gap is **matter content**: the sanitized `session:{id}:messages` and the embedding queries can still carry opposing-party CONFIDENTIAL discovery (which the client-privilege sanitizer is not built to catch), and Upstash's own ToS prohibits "restricted/sensitive" data. For `protected_discovery` only:
+
+| Hop | `standard` | `protected_discovery` |
+|---|---|---|
+| Conversation `messages` + audit mirror (§D) | Upstash KV (DPA, encryption-at-rest on) | **Firm-controlled store** — local SQLite/sqlite-vec or the firm's own Postgres/pgvector. No third-party datastore in the chain. |
+| CEB vector search (`ceb_search`) | Upstash Vector + OpenAI `text-embedding-3-small` (under DPA) | **Local embeddings (BGE-M3 / Qwen3-Embedding) over a firm-controlled index**, or OpenAI-under-DPA if accepted. Local path needs a one-time re-embed of the 77,406-vector CEB corpus (OpenAI 1536-dim vectors are not interchangeable). |
+
+#### Z.5 Per-turn provider/tool manifest — extends §Y
+Each `protected_discovery` turn records: every provider/tool touched, the `providers.json` SHA each was checked against, the §F data-classification verdict per hop, and the Z.2 pre-flight pass/fail. Appended to the audit log (§G) and inlined into the §Y attestation — so the firm can show a court, per turn, exactly which contractually-bound providers saw what.
+
+#### Z.6 Morgan Compliance Pack — extends §Y
+A matter/session-scoped superset of the §Y attestation, bundling what *Morgan* asks a party to retain: the signed §Y attestation; the Z.2 provider records (Terms/DPA PDFs + SHAs + dates) for this matter's path; the Z.5 manifests; a **plain-English residual-retention statement** (Anthropic's ~30-day T&S retention + flagged-content carve-outs — disclosed, not concealed); deletion/hold evidence; and the §Y attorney review-attestation slot. Generated by extending §Y's `POST /api/attestations` with `?scope=matter&pack=morgan`; verified by the same `verify-attestation` CLI.
+
+#### Z.7 Disclosure update — extends §X
+The disclosure surface gains a protected-discovery line: the **name** of the AI platform may be discoverable (per *Morgan*), while prompts, strategy, and outputs remain attorney work product.
+
+#### Z.8 What it proves (and doesn't)
+
+| Provable | Not provable |
+|---|---|
+| Every provider that touched CONFIDENTIAL discovery was contractually bound (no-train/no-disclose/delete) at the time | That the legal analysis was correct |
+| Which tools/providers each turn used; that web/MCP egress was blocked | That the attorney reviewed the output (the §Y review companion covers this) |
+| That confidential discovery never reached a third-party datastore in this tier | That no leak occurred outside the modeled data path |
+| Retained, date-stamped written documentation of the contractual protections | That a court won't impose a stricter bar than *Morgan* on a given matter |
+
+#### Z.9 Deliverables & phase placement
+- **Phase 0.a (now, free):** capture + date-stamp Anthropic Commercial Terms + DPA, OpenAI DPA, storage DPA → seed `compliance/providers.json` (per the tenth addendum; replaces the obsolete "enterprise ZDR DPA" bullet).
+- **Phase 4 (UI):** `matter_mode` setting + matter-creation UI; `agentLoop.ts` Z.2 pre-flight + Z.3 lockdown; firm-controlled store adapter (Z.4) behind a storage interface so `standard` keeps using Upstash unchanged; Z.7 disclosure copy.
+- **Before Phase 4.5:** `providers.json` green for standard-tier providers; **protected-discovery matters excluded from the shadow run until their tier's register is green and the §Z.3 CI passes.**
+- **Phase 6 (with §Y):** Morgan Compliance Pack generator + `verify-attestation` coverage.
+- **CI (§S/§T):** Z.3 tool-lockdown test; a test that no `protected_discovery` write targets Upstash; provider-register freshness check.
+
+#### Z.10 Open decisions for Arjun / F&F counsel
+- Scope: will F&F run protected-discovery matters? If no, §Z stays dormant and `standard` + captured DPAs (tenth addendum) suffices.
+- Embedding path for protected matters: OpenAI-under-DPA (no re-index, one more provider) vs local embeddings (one-time CEB re-index, zero third parties). Default recommendation: local.
+- Firm-controlled store: embedded SQLite/sqlite-vec (simplest) vs firm Postgres/pgvector (if multi-device access needed).
+
+---
+
 ## Files that change at implementation time
 
 | Action | Files |
@@ -750,21 +1280,35 @@ Three remote branches contain work that is needed later but should **not** merge
 
 ## Open Items
 
-**Pre-Phase-1 engineering (each ~0.5 day, all owned by Arjun):**
+**Pre-Phase-1 critical path — STATUS as of 2026-05-12 (closed sequence):**
 
-1. **Sanitization branch audit** — pull `codex/drafting-magic-sanitized`, inventory `services/sanitization/`, confirm contents before relying on them in §E and §F
-2. **Self-administered privilege smoke test** (§0.b) — author 30 traps, run against sanitization, fix obvious leaks
-3. **Upstash KV conversation schema** — schema for §D `session:{id}:messages`, write-pattern load test
-4. **Tool-call latency baseline** — measure current `chatService.ts` round-trips for Phase 1 comparison
+1. ✅ **Sanitization branch audit** — pulled `codex/drafting-magic-sanitized`, full audit completed in `docs/sanitization-audit-2026-05-10.md`. Mechanical fixes from §8 items 4–7 + 10 committed in `a720572`; design-heavy §8 items 1, 2, 3 resolved through Step 3 iteration (commit `06eb445`).
+2. ✅ **Self-administered privilege smoke test (Step 3 in 2026-05-10 addendum re-sequencing)** — formalized as 100-trap manifest, NOT the original 30. Two consecutive zero-leak runs achieved 2026-05-12 — HARD GATE met. Artifacts: `tests/traps/manifest-v1.json`, `tests/traps/runTraps.mjs`, `reports/traps-baseline-2026-05-12.json`.
+3. ✅ **Upstash KV conversation schema** — design doc `docs/upstash-kv-schema-v1.md`. Phase 1 implements against this.
+4. ✅ **Tool-call latency baseline** — Anthropic-stack baseline (Gemini path intentionally excluded — being deleted in Phase 5). `reports/latency-baseline-2026-05-12.json`, `scripts/latency-baseline.mjs`. Numbers in README's V2 Status section.
 
-(The original Managed Agents SDK capability audit was completed 2026-05-03 and then superseded 2026-05-10 by the ZDR-scope finding — see corrigendum in `docs/phase-1-sdk-audit.md`. The replacement gate is the Messages API smoke test described under "Phase 1 first gate" above.)
+**Additional pre-Phase-1 items introduced by the 2026-05-10 ZDR-removal addendum:**
+
+5. ✅ **Step 0 — SDK upgrade** `@anthropic-ai/sdk` 0.68.0 → 0.95.2 (commit `58dec1e`). Done.
+6. ✅ **Step 1c — §6 token-map retention reconciliation** — addendum #3 (this doc, 2026-05-12 third addendum) proposes Option C. ⏸ Tentative, **pending F&F partner sign-off** — only social-process dependency on the critical path.
+
+(The original Managed Agents SDK capability audit was completed 2026-05-03 and then superseded 2026-05-10 by the ZDR-scope finding — see corrigendum in `docs/phase-1-sdk-audit.md`. The replacement gate is the 100-trap zero-leak gate described above.)
 
 **User decisions (Arjun):**
 
-5. **ZDR / BAA / SOC 2 status** — closing separately; gates Phase 5
-6. **Malpractice carrier UPL review** — written confirmation required before Phase 5
-7. **Gold question set source** — sanitized F&F query logs vs newly constructed; affects Phase 1 timeline
+7. ~~ZDR / BAA / SOC 2 status~~ — **resolved 2026-05-10**: F&F remains on Anthropic Team plan; ZDR/BAA/SOC 2 paperwork is permanently off the plan. See 2026-05-10 (second addendum) above. Sanitization is the only line of defense.
+8. **Malpractice carrier UPL review** — written confirmation still required before Phase 5
+9. **Gold question set source** — sanitized F&F query logs vs newly constructed: **decided 2026-05-12** — newly constructed (synthetic), all 100. F&F-matter half deferred to v2 of the trap manifest if attorney input becomes available.
+10. **F&F partner sign-off on Option C retention** (2026-05-12 third addendum) — open. Required before Phase 1's audit-record-writer is finalized.
+11. **Gemini-grounding replacement acceptance criterion for Phase 1** — tracked informally, not pinned. Replacement is Anthropic `web_search_20250305` with privilege gating (omit tool when input is privileged). `services/confidenceGating.ts` to be rewired from Gemini grounding-metadata shape to Anthropic citations.
+
+**Phase 1 follow-ups (forward-compat with 2026-05-12 fourth addendum's V2 Portability Principle):**
+
+12. **Extract system prompt to `agents/california-legal/skills/*.md`** — currently a hardcoded string constant in `api/_lib/agentLoop.ts` (`DEFAULT_SYSTEM_PROMPT`). Move to one or more Skill markdown files matching `anthropics/claude-for-legal` frontmatter (`name`, `description`, `user-invocable`, `argument-hint`). Should land before Phase 5 cutover so the runtime swap path remains cheap.
+13. **Extract agent config to `agents/california-legal/agent.yaml`** — model, max_tokens, tool list, max-iterations cap as data, not code. Field names should mirror Anthropic's plugin schema.
+14. **Define `source` block schema for tool results** — `{ source_type, title, citation, url, retrieved_at }`. Tools return `sources[]` alongside content; system prompt directs the model to cite by `source_id`. Matches Anthropic's plugin source-provenance contract.
+15. **Synthetic-data sandbox track on Managed Agents** — Apache-2.0 `anthropics/claude-for-legal` plugins evaluated with fake matters only. No real F&F data, no production prompts. Purpose: pattern study (agent structure, reviewer-note conventions, handoff shapes) so V2 stays aligned with Anthropic's design choices without taking on MA's retention shape in production.
 
 **Deferred to post-Phase-5:**
 
-8. **Embeddings re-evaluation (Voyage vs OpenAI)** — separate project after migration is stable
+16. **Embeddings re-evaluation (Voyage vs OpenAI)** — separate project after migration is stable

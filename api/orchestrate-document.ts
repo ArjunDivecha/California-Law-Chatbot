@@ -16,6 +16,7 @@
  */
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { applyResponseSecurity, headerString } from './_shared/routeSecurity.js';
 
 // Vercel function config
 export const config = {
@@ -1044,12 +1045,10 @@ function createBasicVerificationReport(sections: GeneratedSection[]): DocumentVe
 // =============================================================================
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // Handle CORS preflight
+  // Strict CORS allowlist + hardening headers (replaces wildcard CORS).
+  applyResponseSecurity(res, headerString(req.headers.origin), { methods: 'POST, OPTIONS' });
   if (req.method === 'OPTIONS') {
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-    return res.status(200).end();
+    return res.status(204).end();
   }
 
   if (req.method !== 'POST') {
@@ -1060,7 +1059,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');
-  res.setHeader('Access-Control-Allow-Origin', '*');
 
   // Generate correlation ID for request tracking
   const correlationId = crypto.randomUUID();

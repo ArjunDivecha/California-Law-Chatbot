@@ -36,3 +36,14 @@ scripts/data/
 __pycache__/
 *.pyc
 *.pyo
+.local-secrets/
+.envrc
+.env*
+
+# Installer build artifacts (multi-GB: venv, GLiNER weights, hf-cache, .pkg)
+installer-pkg/build/
+installer-pkg/payload/
+
+# Editor / tooling local state
+.cursor/
+.yarn/install-state.gz

@@ -1,0 +1,226 @@
+{
+  "ran_at": "2026-05-12T23:23:05.424Z",
+  "results": [
+    {
+      "scenario": "public_research (privileged=false expected)",
+      "session_id": "stream_smoke_1778628185424_em4s",
+      "ok": true,
+      "privileged_expected": false,
+      "privileged_actual": false,
+      "privilege_match": true,
+      "compound_risk_buckets": 0,
+      "ttfb_ms": 2261.386334,
+      "ttft_ms": 3734.8792919999996,
+      "e2e_ms": 33920.491708,
+      "iteration_count": 2,
+      "tool_events": [
+        {
+          "kind": "start",
+          "name": "ceb_search",
+          "t_ms": 4518.619375
+        },
+        {
+          "kind": "input",
+          "tool_use_id": "toolu_012uu8gEQUD3jt9PUmNWpYxp",
+          "input": {
+            "query": "motion to seal court records Rule 2.550 findings",
+            "category": "business_litigation"
+          },
+          "t_ms": 5215.089292000001
+        },
+        {
+          "kind": "result",
+          "name": "ceb_search",
+          "is_error": false,
+          "elapsed_ms": 1133.665,
+          "t_ms": 6348.807625,
+          "output_redactions_count": 32,
+          "output_compound_risk_buckets": 0
+        }
+      ],
+      "final_text_preview": "I'll look up the specific text of California Rule of Court 2.550, which governs sealing of court records.# California Rule of Court 2.550 — Requirements for Sealing Court Records\n\n## Background and Presumption of Openness\n\nRule 2.550, together with Rule 2.551, codifies the standard the California Supreme Court articulated in *NBC Subsidiary (KNBC-TV), Inc. v. Superior Court* (1999) 20 Cal.4th 1178",
+      "final_text_length": 6990,
+      "tool_rounds": 1,
+      "total_tokens": 35554,
+      "stop_reason": "end_turn"
+    },
+    {
+      "scenario": "compound_risk (privileged=true expected, no direct PII)",
+      "session_id": "stream_smoke_1778628221646_p2g6",
+      "ok": true,
+      "privileged_expected": true,
+      "privileged_actual": true,
+      "privilege_match": true,
+      "compound_risk_buckets": 5,
+      "ttfb_ms": 2148.942916,
+      "ttft_ms": 3863.6922080000004,
+      "e2e_ms": 43843.87562499999,
+      "iteration_count": 3,
+      "tool_events": [
+        {
+          "kind": "start",
+          "name": "ceb_search",
+          "t_ms": 4633.359375
+        },
+        {
+          "kind": "start",
+          "name": "ceb_search",
+          "t_ms": 5065.348833000004
+        },
+        {
+          "kind": "input",
+          "tool_use_id": "toolu_01CcjxSHeMDAnEzy6MHF6Kjp",
+          "input": {
+            "query": "forms to commence probate petition decedent's estate",
+            "category": "trusts_estates"
+          },
+          "t_ms": 6598.375790999999
+        },
+        {
+          "kind": "input",
+          "tool_use_id": "toolu_01W3dDyW8PEhnY6Uj9DtW1cU",
+          "input": {
+            "query": "Judicial Council probate forms checklist opening estate administration",
+            "category": "trusts_estates"
+          },
+          "t_ms": 6598.380375000001
+        },
+        {
+          "kind": "result",
+          "name": "ceb_search",
+          "is_error": false,
+          "elapsed_ms": 1466.6271669999987,
+          "t_ms": 8065.059458000003,
+          "output_redactions_count": 63,
+          "output_compound_risk_buckets": 2
+        },
+        {
+          "kind": "result",
+          "name": "ceb_search",
+          "is_error": false,
+          "elapsed_ms": 834.3791249999995,
+          "t_ms": 8899.563708000001,
+          "output_redactions_count": 65,
+          "output_compound_risk_buckets": 1
+        },
+        {
+          "kind": "start",
+          "name": "ceb_search",
+          "t_ms": 11603.329916000002
+        },
+        {
+          "kind": "start",
+          "name": "ceb_search",
+          "t_ms": 12380.421957999999
+        },
+        {
+          "kind": "input",
+          "tool_use_id": "toolu_01J2RVVXtumC8KGBzPUPQd1P",
+          "input": {
+            "query": "Duties and Liabilities of Personal Representative DE-147 letters bond",
+            "category": "trusts_estates"
+          },
+          "t_ms": 13128.658374999999
+        },
+        {
+          "kind": "input",
+          "tool_use_id": "toolu_01Uo3ZAoDuedtCSLQgzCq3gv",
+          "input": {
+            "query": "small estate affidavit spousal property petition surviving spouse alternatives to probate",
+            "category": "trusts_estates"
+          },
+          "t_ms": 13128.662416
+        },
+        {
+          "kind": "result",
+          "name": "ceb_search",
+          "is_error": false,
+          "elapsed_ms": 1049.434874999999,
+          "t_ms": 14178.105958,
+          "output_redactions_count": 72,
+          "output_compound_risk_buckets": 0
+        },
+        {
+          "kind": "result",
+          "name": "ceb_search",
+          "is_error": false,
+          "elapsed_ms": 1006.8572500000009,
+          "t_ms": 15185.023333000005,
+          "output_redactions_count": 110,
+          "output_compound_risk_buckets": 1
+        }
+      ],
+      "final_text_preview": "I'll search CEB for the California probate forms required to commence a probate proceeding.Let me also check on the Duties & Liabilities form and any small-estate alternatives that might apply, since this client's situation may permit a streamlined approach.# Probate Forms to Open the Estate — San Francisco Superior Court\n\nBefore pulling forms, one important threshold question: **whose estate are ",
+      "final_text_length": 6298,
+      "tool_rounds": 2,
+      "total_tokens": 41113,
+      "stop_reason": "end_turn"
+    },
+    {
+      "scenario": "direct_pii (privileged=true expected, explicit name+phone)",
+      "session_id": "stream_smoke_1778628267675_bo48",
+      "ok": true,
+      "privileged_expected": true,
+      "privileged_actual": true,
+      "privilege_match": true,
+      "compound_risk_buckets": 0,
+      "ttfb_ms": 1951.8367919999873,
+      "ttft_ms": 3398.4997079999885,
+      "e2e_ms": 26079.342542,
+      "iteration_count": 3,
+      "tool_events": [
+        {
+          "kind": "start",
+          "name": "ceb_search",
+          "t_ms": 3808.2079169999924
+        },
+        {
+          "kind": "input",
+          "tool_use_id": "toolu_01Ah5GFe9Tr2ugEw8KAiBkbk",
+          "input": {
+            "query": "motion to compel further responses standard requirements",
+            "category": "business_litigation"
+          },
+          "t_ms": 4415.456082999997
+        },
+        {
+          "kind": "result",
+          "name": "ceb_search",
+          "is_error": false,
+          "elapsed_ms": 3246.6126249999943,
+          "t_ms": 7662.08245799999,
+          "output_redactions_count": 27,
+          "output_compound_risk_buckets": 0
+        },
+        {
+          "kind": "start",
+          "name": "ceb_search",
+          "t_ms": 9287.302791999988
+        },
+        {
+          "kind": "input",
+          "tool_use_id": "toolu_01Xu7fNHjZD55cPURRZSy9W2",
+          "input": {
+            "query": "meet and confer requirement motion to compel further deadline 45 days",
+            "category": "business_litigation"
+          },
+          "t_ms": 9724.30183299999
+        },
+        {
+          "kind": "result",
+          "name": "ceb_search",
+          "is_error": false,
+          "elapsed_ms": 1190.4554579999967,
+          "t_ms": 10914.775541999988,
+          "output_redactions_count": 31,
+          "output_compound_risk_buckets": 0
+        }
+      ],
+      "final_text_preview": "I'll look up the standard for a motion to compel further responses to discovery in California state court.Here's a summary of the standard for a noticed motion to compel further responses in California state court, drawn from the CEB practice guide.\n\n## When a Motion to Compel Further Responses Is Proper\n\nA motion to compel **further** responses (as distinguished from a motion to compel an initial",
+      "final_text_length": 4260,
+      "tool_rounds": 2,
+      "total_tokens": 28118,
+      "stop_reason": "end_turn"
+    }
+  ]
+}

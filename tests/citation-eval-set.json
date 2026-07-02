@@ -1,0 +1,227 @@
+{
+  "version": 1,
+  "date": "2026-05-13",
+  "description": "Phase 3 citation-verification eval set per plan §Phase 3. 30 entries: 20 REAL California / federal citations (well-known, model-produced in Phase 2 gate drafts, or drawn from canonical California-practice case law) + 10 FABRICATED citations that look plausible (real-looking case names, valid reporter formats, plausible-but-wrong page numbers, made-up case-name+real-cite combinations). The truth field is the ground truth a verifier must produce: 'real' or 'fake'.\n\nA correct verifier:\n  - returns status=verified (or equivalent) for real → counts as TP\n  - returns status=not_found (or equivalent) for fake → counts as TN\n  - flagging a real as not_found = FN (false negative)\n  - flagging a fake as verified = FP (false positive — the most damaging failure mode)\n\nF1 = harmonic mean of precision and recall over the 'real' class:\n  precision = TP / (TP + FP)\n  recall    = TP / (TP + FN)\n\nThe go/no-go threshold from plan §Phase 3: ≥95% of fabricated citations flagged (= TN rate ≥ 0.95). Plus the suggested F1 ≥ 0.90 for the broader MCP-replacement decision.",
+  "entries": [
+    {
+      "id": "real-1",
+      "text": "Navellier v. Sletten (2002) 29 Cal.4th 82",
+      "truth": "real",
+      "expected_case_name": "Navellier v. Sletten",
+      "expected_reporter": "29 Cal.4th 82",
+      "topic": "anti-SLAPP two-prong test"
+    },
+    {
+      "id": "real-2",
+      "text": "Taus v. Loftus (2007) 40 Cal.4th 683",
+      "truth": "real",
+      "expected_case_name": "Taus v. Loftus",
+      "expected_reporter": "40 Cal.4th 683",
+      "topic": "anti-SLAPP / privacy"
+    },
+    {
+      "id": "real-3",
+      "text": "Geiser v. Kuhns (2022) 13 Cal.5th 1238",
+      "truth": "real",
+      "expected_case_name": "Geiser v. Kuhns",
+      "expected_reporter": "13 Cal.5th 1238",
+      "topic": "anti-SLAPP / public-issue requirement"
+    },
+    {
+      "id": "real-4",
+      "text": "Williams v. Superior Court (2017) 3 Cal.5th 531",
+      "truth": "real",
+      "expected_case_name": "Williams v. Superior Court",
+      "expected_reporter": "3 Cal.5th 531",
+      "topic": "discovery / privacy balancing"
+    },
+    {
+      "id": "real-5",
+      "text": "Coy v. Superior Court (1962) 58 Cal.2d 210",
+      "truth": "real",
+      "expected_case_name": "Coy v. Superior Court",
+      "expected_reporter": "58 Cal.2d 210",
+      "topic": "purpose of discovery"
+    },
+    {
+      "id": "real-6",
+      "text": "Stewart v. Colonial Western Agency, Inc. (2001) 87 Cal.App.4th 1006",
+      "truth": "real",
+      "expected_case_name": "Stewart v. Colonial Western Agency, Inc.",
+      "expected_reporter": "87 Cal.App.4th 1006",
+      "topic": "discovery objections / specificity"
+    },
+    {
+      "id": "real-7",
+      "text": "Costco Wholesale Corp. v. Superior Court (2009) 47 Cal.4th 725",
+      "truth": "real",
+      "expected_case_name": "Costco Wholesale Corp. v. Superior Court",
+      "expected_reporter": "47 Cal.4th 725",
+      "topic": "attorney-client privilege"
+    },
+    {
+      "id": "real-8",
+      "text": "Cembrook v. Superior Court (1961) 56 Cal.2d 423",
+      "truth": "real",
+      "expected_case_name": "Cembrook v. Superior Court",
+      "expected_reporter": "56 Cal.2d 423",
+      "topic": "vague-and-ambiguous objection"
+    },
+    {
+      "id": "real-9",
+      "text": "West Pico Furniture Co. v. Superior Court (1961) 56 Cal.2d 407",
+      "truth": "real",
+      "expected_case_name": "West Pico Furniture Co. v. Superior Court",
+      "expected_reporter": "56 Cal.2d 407",
+      "topic": "overbreadth / burden objection"
+    },
+    {
+      "id": "real-10",
+      "text": "Bridgestone/Firestone, Inc. v. Superior Court (1992) 7 Cal.App.4th 1384",
+      "truth": "real",
+      "expected_case_name": "Bridgestone/Firestone, Inc. v. Superior Court",
+      "expected_reporter": "7 Cal.App.4th 1384",
+      "topic": "trade-secret designation"
+    },
+    {
+      "id": "real-11",
+      "text": "Estate of Williams (1968) 269 Cal.App.2d 671",
+      "truth": "real",
+      "expected_case_name": "Estate of Williams",
+      "expected_reporter": "269 Cal.App.2d 671",
+      "topic": "holographic codicil"
+    },
+    {
+      "id": "real-12",
+      "text": "In re Marriage of Lippel (1990) 51 Cal.3d 1160",
+      "truth": "real",
+      "expected_case_name": "Marriage of Lippel",
+      "expected_reporter": "51 Cal.3d 1160",
+      "topic": "spousal support modification"
+    },
+    {
+      "id": "real-13",
+      "text": "Briggs v. Eden Council for Hope & Opportunity (1999) 19 Cal.4th 1106",
+      "truth": "real",
+      "expected_case_name": "Briggs v. Eden Council for Hope & Opportunity",
+      "expected_reporter": "19 Cal.4th 1106",
+      "topic": "anti-SLAPP / protected activity"
+    },
+    {
+      "id": "real-14",
+      "text": "Equilon Enterprises v. Consumer Cause, Inc. (2002) 29 Cal.4th 53",
+      "truth": "real",
+      "expected_case_name": "Equilon Enterprises v. Consumer Cause, Inc.",
+      "expected_reporter": "29 Cal.4th 53",
+      "topic": "anti-SLAPP / public-interest standard"
+    },
+    {
+      "id": "real-15",
+      "text": "Wilson v. Cable News Network, Inc. (2019) 7 Cal.5th 871",
+      "truth": "real",
+      "expected_case_name": "Wilson v. Cable News Network, Inc.",
+      "expected_reporter": "7 Cal.5th 871",
+      "topic": "anti-SLAPP / employment context"
+    },
+    {
+      "id": "real-16",
+      "text": "Sargon Enterprises, Inc. v. University of Southern California (2012) 55 Cal.4th 747",
+      "truth": "real",
+      "expected_case_name": "Sargon Enterprises, Inc. v. University of Southern California",
+      "expected_reporter": "55 Cal.4th 747",
+      "topic": "expert testimony / lost profits"
+    },
+    {
+      "id": "real-17",
+      "text": "City of Cotati v. Cashman (2002) 29 Cal.4th 69",
+      "truth": "real",
+      "expected_case_name": "City of Cotati v. Cashman",
+      "expected_reporter": "29 Cal.4th 69",
+      "topic": "anti-SLAPP / declaratory judgment"
+    },
+    {
+      "id": "real-18",
+      "text": "FilmOn.com Inc. v. DoubleVerify Inc. (2019) 7 Cal.5th 133",
+      "truth": "real",
+      "expected_case_name": "FilmOn.com Inc. v. DoubleVerify Inc.",
+      "expected_reporter": "7 Cal.5th 133",
+      "topic": "anti-SLAPP / commercial speech"
+    },
+    {
+      "id": "real-19",
+      "text": "Baral v. Schnitt (2016) 1 Cal.5th 376",
+      "truth": "real",
+      "expected_case_name": "Baral v. Schnitt",
+      "expected_reporter": "1 Cal.5th 376",
+      "topic": "anti-SLAPP / mixed claims"
+    },
+    {
+      "id": "real-20",
+      "text": "People v. Anderson (1968) 70 Cal.2d 15",
+      "truth": "real",
+      "expected_case_name": "People v. Anderson",
+      "expected_reporter": "70 Cal.2d 15",
+      "topic": "criminal / death penalty"
+    },
+    {
+      "id": "fake-1",
+      "text": "Hendricks v. California Probate Bureau (2019) 7 Cal.5th 904",
+      "truth": "fake",
+      "topic": "fabricated probate case — no such Cal.5th opinion at this volume/page"
+    },
+    {
+      "id": "fake-2",
+      "text": "Foster v. State Bar (1987) 43 Cal.3d 421",
+      "truth": "fake",
+      "topic": "fabricated — real volume/page exists but no case by this name"
+    },
+    {
+      "id": "fake-3",
+      "text": "In re Estate of Markham (2014) 228 Cal.App.4th 1399",
+      "truth": "fake",
+      "topic": "fabricated probate caption"
+    },
+    {
+      "id": "fake-4",
+      "text": "Reyes v. Quincy Investment Group, LLC (2021) 65 Cal.App.5th 778",
+      "truth": "fake",
+      "topic": "fabricated business-litigation case"
+    },
+    {
+      "id": "fake-5",
+      "text": "Hernandez v. California Coastal Commission (1998) 18 Cal.4th 1107",
+      "truth": "fake",
+      "topic": "fabricated administrative-law case"
+    },
+    {
+      "id": "fake-6",
+      "text": "In re Marriage of Aspen (2011) 195 Cal.App.4th 542",
+      "truth": "fake",
+      "topic": "fabricated family-law case"
+    },
+    {
+      "id": "fake-7",
+      "text": "Volk v. San Diego Trust Co. (1994) 8 Cal.4th 217",
+      "truth": "fake",
+      "topic": "fabricated trust-administration case"
+    },
+    {
+      "id": "fake-8",
+      "text": "Goldman v. Department of Industrial Relations (2008) 159 Cal.App.4th 1281",
+      "truth": "fake",
+      "topic": "fabricated employment / DIR case"
+    },
+    {
+      "id": "fake-9",
+      "text": "Bell v. Bayside Restaurant Group (2017) 11 Cal.5th 332",
+      "truth": "fake",
+      "topic": "fabricated wage-and-hour case"
+    },
+    {
+      "id": "fake-10",
+      "text": "Patel v. Mendocino County (2005) 134 Cal.App.4th 88",
+      "truth": "fake",
+      "topic": "fabricated public-entity case"
+    }
+  ]
+}

@@ -1,0 +1,53 @@
+{
+  "ran_at": "2026-05-12T21:23:21.650Z",
+  "results": [
+    {
+      "scenario": "public_research (privileged=false expected)",
+      "session_id": "smoke_1778621001650_j3l1",
+      "ok": true,
+      "privileged_expected": false,
+      "privileged_actual": false,
+      "privilege_match": true,
+      "compound_risk_buckets": 0,
+      "tool_rounds": 1,
+      "total_tokens": 26421,
+      "elapsed_ms": 42138.103083,
+      "stop_reason": "end_turn",
+      "exhausted_iterations": false,
+      "persisted_messages": null,
+      "final_text_preview": "> **Important Clarification Before Answering**\n\nThere is a critical numbering point that must be addressed: **CRC 3.1320 governs demurrers** (notice of hearing, timing, form requirements), **not motions to seal court records**. The rules governing motions to seal in California state court are **CRC 2.550** (substantive standards) and **CRC 2.551** (procedure). These are the rules you will want to "
+    },
+    {
+      "scenario": "compound_risk (privileged=true expected, no direct PII)",
+      "session_id": "smoke_1778621045932_6ish",
+      "ok": true,
+      "privileged_expected": true,
+      "privileged_actual": true,
+      "privilege_match": true,
+      "compound_risk_buckets": 5,
+      "tool_rounds": 2,
+      "total_tokens": 37212,
+      "elapsed_ms": 55201.74175000001,
+      "stop_reason": "max_tokens",
+      "exhausted_iterations": false,
+      "persisted_messages": null,
+      "final_text_preview": "Excellent — I now have comprehensive, authoritative guidance. Here is a complete, organized answer tailored to this client's specific situation.\n\n---\n\n## Opening Probate for Your Client: Forms Checklist & Practice Notes\n\n*Jurisdiction: San Francisco Superior Court (Sunset District → SF County). Governing authority: Probate Code, Judicial Council Rules, Cal. Rules of Court 7.1 et seq., and SF local"
+    },
+    {
+      "scenario": "direct_pii (privileged=true expected, explicit name+phone)",
+      "session_id": "smoke_1778621103607_bu00",
+      "ok": true,
+      "privileged_expected": true,
+      "privileged_actual": true,
+      "privilege_match": true,
+      "compound_risk_buckets": 0,
+      "tool_rounds": 1,
+      "total_tokens": 11388,
+      "elapsed_ms": 27213.083916999996,
+      "stop_reason": "end_turn",
+      "exhausted_iterations": false,
+      "persisted_messages": null,
+      "final_text_preview": "> ⚠️ **Privacy Notice:** Before proceeding — the phone number you mentioned (415-555-0148) appears to be client contact information. Please avoid including client PII (names, phone numbers, addresses, etc.) in research queries, as those inputs may be logged. The legal research below does not reference or use that information.\n\n---\n\n## Standard for a Noticed Motion to Compel Further Responses — Cal"
+    }
+  ]
+}

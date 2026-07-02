@@ -1,0 +1,28 @@
+<!doctype html>
+<!-- DEV-ONLY integration verification harness. Served by `vite` in dev at
+     /traps-verify.html. Runs the REAL detectPii() over 120 traps with the
+     in-browser GLiNER engine (VITE_DETECTOR=web). LIGHT MODE. Not shipped. -->
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>V2 integrated detectPii — trap verification</title>
+  <style>
+    :root { color-scheme: light; }
+    body { margin: 0; background: #f8fafc; color: #111827; font-family: -apple-system, system-ui, sans-serif; }
+    main { max-width: 900px; margin: 0 auto; padding: 28px 20px; }
+    h1 { font-size: 20px; } button { font-size: 14px; padding: 8px 14px; border-radius: 8px; border: 1px solid #2563eb; background: #2563eb; color: #fff; font-weight: 600; cursor: pointer; }
+    #status { margin: 16px 0; font-size: 15px; font-weight: 600; }
+    #out div { font-size: 12px; border-bottom: 1px solid #eee; padding: 3px 0; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>V2 integrated <code>detectPii</code> — trap verification (in-browser GLiNER)</h1>
+    <p>Runs the real production pipeline. <button onclick="runVerify()">Run 120 traps</button></p>
+    <p id="status"></p>
+    <div id="out"></div>
+  </main>
+  <script type="module" src="/traps-verify.ts"></script>
+</body>
+</html>

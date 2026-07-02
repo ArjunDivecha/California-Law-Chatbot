@@ -12,6 +12,18 @@ export default defineConfig(({ mode }) => {
           '/api': {
             target: 'http://localhost:3000', // vercel dev default
             changeOrigin: true,
+            // Don't proxy import requests for shared TypeScript modules
+            // under api/_shared/ or api/_lib/. Those are source code,
+            // not API endpoints — Vite should serve them directly so
+            // client code can import services/sanitization/previewSession,
+            // which transitively imports api/_shared/sanitization/index.
+            bypass(req) {
+              const url = req.url ?? '';
+              if (url.startsWith('/api/_shared/') || url.startsWith('/api/_lib/')) {
+                return url;
+              }
+              return undefined;
+            },
           }
         }
       },

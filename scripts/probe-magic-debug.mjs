@@ -1,0 +1,23 @@
+import { createRequire } from 'node:module';
+import { readFileSync } from 'node:fs';
+const require = createRequire('/Users/arjundivecha/.nvm/versions/node/v24.12.0/lib/node_modules/playwright/');
+const { chromium } = require('playwright');
+const { clerkSetup, clerk } = await import('@clerk/testing/playwright');
+const lines = readFileSync('/Users/arjundivecha/Dropbox/AAA Backup/.env.txt','utf8').split('\n');
+for (const l of lines) { const m = l.match(/^CLERK_SECRET_KEY=(\S+)/); if (m && /califrnia law chatbot/i.test(l)) { process.env.CLERK_SECRET_KEY = m[1]; break; } }
+process.env.CLERK_PUBLISHABLE_KEY = 'pk_test_ZW1lcmdpbmctdHJlZWZyb2ctNDkuY2xlcmsuYWNjb3VudHMuZGV2JA';
+await clerkSetup();
+const browser = await chromium.launch({ headless: true });
+const ctx = await browser.newContext({ ignoreHTTPSErrors: true });
+const page = await ctx.newPage();
+await page.goto('http://localhost:5173/', { waitUntil: 'networkidle' });
+await clerk.signIn({ page, emailAddress: 'v2-playwright-e2e+clerk_test@v2.example.com' });
+await page.goto('http://localhost:5173/v2/magic', { waitUntil: 'networkidle' });
+await page.waitForTimeout(2000);
+const buttonText = await page.evaluate(() => Array.from(document.querySelectorAll('button')).filter(b => /generate/i.test(b.innerText || '')).map(b => ({ text: b.innerText.slice(0, 80), disabled: b.disabled })));
+console.log('Generate buttons:', JSON.stringify(buttonText, null, 2));
+const textareas = await page.locator('textarea').count();
+console.log('textareas:', textareas);
+await page.screenshot({ path: '/tmp/v2-magic-state.png', fullPage: false });
+console.log('SCREENSHOT: /tmp/v2-magic-state.png');
+await browser.close();

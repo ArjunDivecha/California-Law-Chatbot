@@ -1,0 +1,226 @@
+{
+  "ran_at": "2026-05-13T17:16:15.917Z",
+  "results": [
+    {
+      "scenario": "public_research (privileged=false expected)",
+      "session_id": "stream_smoke_1778692575917_idu5",
+      "ok": true,
+      "privileged_expected": false,
+      "privileged_actual": false,
+      "privilege_match": true,
+      "compound_risk_buckets": 0,
+      "ttfb_ms": 10466.8505,
+      "ttft_ms": 12417.578583,
+      "e2e_ms": 38443.530125,
+      "iteration_count": 2,
+      "tool_events": [
+        {
+          "kind": "start",
+          "name": "ceb_search",
+          "t_ms": 12817.628542
+        },
+        {
+          "kind": "input",
+          "tool_use_id": "toolu_015LTrHgtgYhjGU1P3mFyWr5",
+          "input": {
+            "query": "California Rule of Court 2.550 motion to seal records requirements",
+            "category": "business_litigation"
+          },
+          "t_ms": 13827.597625
+        },
+        {
+          "kind": "result",
+          "name": "ceb_search",
+          "is_error": false,
+          "elapsed_ms": 2280.0838330000006,
+          "t_ms": 16107.716583,
+          "output_redactions_count": 32,
+          "output_compound_risk_buckets": 0
+        }
+      ],
+      "final_text_preview": "I'll search for the current text and requirements of California Rule of Court 2.550.# California Rule of Court 2.550 — Sealed Records\n\nRule 2.550 (together with its companion Rule 2.551) codifies the constitutional standard from *NBC Subsidiary (KNBC-TV), Inc. v. Superior Court* (1999) 20 Cal.4th 1178 for sealing court records. This rule and rule 2.551 provide a standard and procedures for courts ",
+      "final_text_length": 8244,
+      "tool_rounds": 1,
+      "total_tokens": 34736,
+      "stop_reason": "end_turn"
+    },
+    {
+      "scenario": "compound_risk (privileged=true expected, no direct PII)",
+      "session_id": "stream_smoke_1778692624869_pe2e",
+      "ok": true,
+      "privileged_expected": true,
+      "privileged_actual": true,
+      "privilege_match": true,
+      "compound_risk_buckets": 5,
+      "ttfb_ms": 1977.497583000004,
+      "ttft_ms": 3693.3036250000005,
+      "e2e_ms": 41006.221042000005,
+      "iteration_count": 3,
+      "tool_events": [
+        {
+          "kind": "start",
+          "name": "ceb_search",
+          "t_ms": 4458.000666
+        },
+        {
+          "kind": "start",
+          "name": "ceb_search",
+          "t_ms": 4883.347207999999
+        },
+        {
+          "kind": "input",
+          "tool_use_id": "toolu_01Gzox5KY6uKpNMhZxECatb4",
+          "input": {
+            "query": "forms to commence probate proceeding decedent's estate",
+            "category": "trusts_estates"
+          },
+          "t_ms": 5489.422000000006
+        },
+        {
+          "kind": "input",
+          "tool_use_id": "toolu_017DvQZZu3V3epxRAzPNGobd",
+          "input": {
+            "query": "Petition for Probate DE-111 required attachments",
+            "category": "trusts_estates"
+          },
+          "t_ms": 5489.434041
+        },
+        {
+          "kind": "result",
+          "name": "ceb_search",
+          "is_error": false,
+          "elapsed_ms": 1473.013334000003,
+          "t_ms": 6962.494750000005,
+          "output_redactions_count": 38,
+          "output_compound_risk_buckets": 1
+        },
+        {
+          "kind": "result",
+          "name": "ceb_search",
+          "is_error": false,
+          "elapsed_ms": 2068.094250000002,
+          "t_ms": 9030.671916,
+          "output_redactions_count": 40,
+          "output_compound_risk_buckets": 0
+        },
+        {
+          "kind": "start",
+          "name": "ceb_search",
+          "t_ms": 11335.780708000006
+        },
+        {
+          "kind": "start",
+          "name": "ceb_search",
+          "t_ms": 12582.039458
+        },
+        {
+          "kind": "input",
+          "tool_use_id": "toolu_016yVedVZ3EF45sx29y4wf1S",
+          "input": {
+            "query": "Duties and Liabilities of Personal Representative DE-147 Letters DE-150 Order for Probate DE-140",
+            "category": "trusts_estates"
+          },
+          "t_ms": 12940.299291000003
+        },
+        {
+          "kind": "input",
+          "tool_use_id": "toolu_01Qc8Ea6NDxcCfSM2V4fkkfh",
+          "input": {
+            "query": "spousal property petition surviving spouse community property Probate Code 13500",
+            "category": "trusts_estates"
+          },
+          "t_ms": 12940.304541000005
+        },
+        {
+          "kind": "result",
+          "name": "ceb_search",
+          "is_error": false,
+          "elapsed_ms": 3112.697874999998,
+          "t_ms": 16053.011958000003,
+          "output_redactions_count": 73,
+          "output_compound_risk_buckets": 1
+        },
+        {
+          "kind": "result",
+          "name": "ceb_search",
+          "is_error": false,
+          "elapsed_ms": 1326.4679999999935,
+          "t_ms": 17379.529333,
+          "output_redactions_count": 49,
+          "output_compound_risk_buckets": 1
+        }
+      ],
+      "final_text_preview": "I'll search CEB's California probate practice guides for the forms needed to commence a probate proceeding.Let me also confirm the supporting/post-appointment forms and any small-estate alternatives that may matter given the surviving-spouse posture.# Probate-Opening Forms — Sunset District (San Francisco County) Matter\n\nA quick threshold note before the form list: it is not clear from the intake ",
+      "final_text_length": 5179,
+      "tool_rounds": 2,
+      "total_tokens": 43081,
+      "stop_reason": "end_turn"
+    },
+    {
+      "scenario": "direct_pii (privileged=true expected, explicit name+phone)",
+      "session_id": "stream_smoke_1778692667891_2jnk",
+      "ok": true,
+      "privileged_expected": true,
+      "privileged_actual": true,
+      "privilege_match": true,
+      "compound_risk_buckets": 0,
+      "ttfb_ms": 1656.5275839999958,
+      "ttft_ms": 3144.5673749999987,
+      "e2e_ms": 27931.792125000007,
+      "iteration_count": 2,
+      "tool_events": [
+        {
+          "kind": "start",
+          "name": "ceb_search",
+          "t_ms": 5862.941624999992
+        },
+        {
+          "kind": "start",
+          "name": "ceb_search",
+          "t_ms": 6276.7626249999885
+        },
+        {
+          "kind": "input",
+          "tool_use_id": "toolu_016tVxytqtK51RtvwrwhpSwC",
+          "input": {
+            "query": "motion to compel further responses standard requirements",
+            "category": "business_litigation"
+          },
+          "t_ms": 6840.319749999995
+        },
+        {
+          "kind": "input",
+          "tool_use_id": "toolu_01CXfU4fgQRP29ASD4Kje6aL",
+          "input": {
+            "query": "meet and confer separate statement motion compel further",
+            "category": "business_litigation"
+          },
+          "t_ms": 6840.325041999997
+        },
+        {
+          "kind": "result",
+          "name": "ceb_search",
+          "is_error": false,
+          "elapsed_ms": 1322.972959000006,
+          "t_ms": 8163.309792,
+          "output_redactions_count": 27,
+          "output_compound_risk_buckets": 0
+        },
+        {
+          "kind": "result",
+          "name": "ceb_search",
+          "is_error": false,
+          "elapsed_ms": 733.8072910000046,
+          "t_ms": 8897.169167,
+          "output_redactions_count": 35,
+          "output_compound_risk_buckets": 0
+        }
+      ],
+      "final_text_preview": "# Motion to Compel Further Responses — California State Court Standard\n\n## Statutory Framework\n\nThe standard depends on the discovery method, but the core requirements are largely parallel across the Discovery Act:\n\n| Discovery Device | Governing Statute |\n|---|---|\n| Interrogatories | CCP § 2030.300 |\n| Requests for Production | CCP § 2031.310 |\n| Requests for Admission | CCP § 2033.290 |\n| Depos",
+      "final_text_length": 5371,
+      "tool_rounds": 1,
+      "total_tokens": 18266,
+      "stop_reason": "end_turn"
+    }
+  ]
+}

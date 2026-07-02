@@ -1,0 +1,30 @@
+{
+  "generated_at": "2026-05-15T14:37:21.707Z",
+  "total_outbound": 2,
+  "results": [
+    {
+      "label": "chat",
+      "url": "http://localhost:5173/v2",
+      "status": "pass",
+      "captured": 1,
+      "hits": []
+    },
+    {
+      "label": "drafting-magic",
+      "url": "http://localhost:5173/v2/magic",
+      "status": "no_outbound",
+      "captured": 0
+    },
+    {
+      "label": "verify",
+      "url": "http://localhost:5173/v2/verify",
+      "status": "pass",
+      "captured": 1,
+      "hits": []
+    }
+  ],
+  "pass": false,
+  "console_errors": [
+    " Note that 'script-src' was not explicitly set, so 'default-src' is used as a fallback."
+  ]
+}

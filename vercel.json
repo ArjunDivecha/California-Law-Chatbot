@@ -1,5 +1,11 @@
 {
   "framework": "vite",
+  "rewrites": [
+    {
+      "source": "/((?!api/).*)",
+      "destination": "/index.html"
+    }
+  ],
   "functions": {
     "api/orchestrate-document.ts": {
       "memory": 2048,
@@ -12,6 +18,41 @@
     "api/anthropic-chat.ts": {
       "memory": 1024,
       "maxDuration": 120
+    },
+    "api/agent/turn.ts": {
+      "memory": 1024,
+      "maxDuration": 300,
+      "includeFiles": "agents/**"
+    },
+    "api/agent/turn-stream.ts": {
+      "memory": 1024,
+      "maxDuration": 300,
+      "includeFiles": "agents/**"
+    },
+    "api/agent/draft-stream.ts": {
+      "memory": 1024,
+      "maxDuration": 300,
+      "includeFiles": "agents/**"
+    },
+    "api/agent/revise-section.ts": {
+      "memory": 1024,
+      "maxDuration": 300,
+      "includeFiles": "agents/**"
+    },
+    "api/agent/drafting-magic.ts": {
+      "memory": 1024,
+      "maxDuration": 300,
+      "includeFiles": "agents/**"
+    },
+    "api/agent/verify-stream.ts": {
+      "memory": 1024,
+      "maxDuration": 300,
+      "includeFiles": "agents/**"
+    },
+    "api/agent/shadow.ts": {
+      "memory": 1024,
+      "maxDuration": 300,
+      "includeFiles": "agents/**"
     },
     "api/**/*.ts": {
       "memory": 1024,
@@ -33,6 +74,27 @@
         {
           "key": "Access-Control-Allow-Headers",
           "value": "Content-Type, Authorization"
+        }
+      ]
+    },
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        },
+        {
+          "key": "Permissions-Policy",
+          "value": "geolocation=(), microphone=(), camera=(), payment=()"
         }
       ]
     }

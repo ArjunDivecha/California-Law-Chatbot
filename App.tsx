@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Routes, Route, Navigate, useParams, useNavigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useParams, useNavigate, useLocation } from 'react-router-dom';
 import { SignedIn, SignedOut, RedirectToSignIn } from '@clerk/clerk-react';
 import { useAuthFetch } from './utils/authFetch.ts';
 
@@ -12,6 +12,12 @@ import { ModeSelector } from './components/ModeSelector';
 import { ResponseModeToggle } from './components/ResponseModeToggle';
 import { DraftingMode } from './components/drafting/DraftingMode';
 import SignInPage from './components/SignInPage';
+import { V2ChatPage } from './components/v2/V2ChatPage';
+import { V2DraftPage } from './components/v2/V2DraftPage';
+import { V2Sidebar } from './components/v2/V2Sidebar';
+import { V2VerifyPage } from './components/v2/V2VerifyPage';
+import { V2DraftingMagicPage } from './components/v2/V2DraftingMagicPage';
+import { SanitizerProvider } from './hooks/useSanitizer';
 import type { AppMode } from './types';
 
 // ---------------------------------------------------------------------------
@@ -126,36 +132,85 @@ const NewChatRedirect: React.FC = () => {
 // ---------------------------------------------------------------------------
 // Root App
 // ---------------------------------------------------------------------------
+// V1's Sidebar fetches /api/chats on mount. On /v2* routes V2 owns its
+// own chrome — render the V1 sidebar only on V1 routes to avoid the
+// pre-signin 401 noise and the visual mismatch.
+const SignedInShell: React.FC<{ sidebarOpen: boolean; onToggle: () => void }> = ({
+  sidebarOpen,
+  onToggle,
+}) => {
+  const location = useLocation();
+  const isV2Route = location.pathname.startsWith('/v2');
+  return (
+    <div className={isV2Route ? 'flex' : ''}>
+      {!isV2Route && <Sidebar isOpen={sidebarOpen} onToggle={onToggle} />}
+      {isV2Route && <V2Sidebar />}
+      <div className={isV2Route ? 'flex-1 min-w-0' : ''}>
+        <Routes>
+          <Route path="/" element={<NewChatRedirect />} />
+          <Route path="/c/:chatId" element={<ChatPage sidebarOpen={sidebarOpen} />} />
+          <Route path="/v2" element={<V2ChatPage />} />
+          <Route path="/v2/draft" element={<V2DraftPage />} />
+          <Route path="/v2/verify" element={<V2VerifyPage />} />
+          <Route path="/v2/magic" element={<V2DraftingMagicPage />} />
+          {/* /v2/:sessionId loads a past session — keep AFTER literal
+              routes so /v2/draft, /v2/verify, /v2/magic win over the param. */}
+          <Route path="/v2/:sessionId" element={<V2ChatPage />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </div>
+    </div>
+  );
+};
+
 const App: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
   return (
     <ErrorBoundary>
-      <Routes>
-        {/* Sign-in (public) */}
-        <Route path="/sign-in/*" element={<SignInPage />} />
-        <Route path="/sign-up/*" element={<SignInPage />} />
+      {/* SanitizerProvider opens the device-scoped IndexedDB token store
+          and installs RealChatSanitizer as the active ChatSanitizer.
+          Per 6th addendum (Option C): token map lives only on the
+          attorney's device; never sent to the server. The provider
+          renders children immediately with ready=false until init
+          completes, so the rest of the app mounts without delay. */}
+      <SanitizerProvider>
+        <Routes>
+          {/* Sign-in (public) */}
+          <Route path="/sign-in/*" element={<SignInPage />} />
+          <Route path="/sign-up/*" element={<SignInPage />} />
 
-        {/* Protected routes */}
-        <Route
-          path="/*"
-          element={
-            <>
-              <SignedIn>
-                <Sidebar isOpen={sidebarOpen} onToggle={() => setSidebarOpen(o => !o)} />
-                <Routes>
-                  <Route path="/" element={<NewChatRedirect />} />
-                  <Route path="/c/:chatId" element={<ChatPage sidebarOpen={sidebarOpen} />} />
-                  <Route path="*" element={<Navigate to="/" replace />} />
-                </Routes>
-              </SignedIn>
-              <SignedOut>
-                <RedirectToSignIn />
-              </SignedOut>
-            </>
-          }
-        />
-      </Routes>
+          {/* Protected routes */}
+          <Route
+            path="/*"
+            element={
+              // DEV-ONLY auth bypass: on a local Vite dev server
+              // (import.meta.env.DEV) we skip Clerk sign-in entirely so the
+              // app loads for UI iteration without a passkey/OAuth dance.
+              // This branch is dead code in any production build (DEV is
+              // false), so it can never weaken prod auth.
+              import.meta.env.DEV ? (
+                <SignedInShell
+                  sidebarOpen={sidebarOpen}
+                  onToggle={() => setSidebarOpen((o) => !o)}
+                />
+              ) : (
+                <>
+                  <SignedIn>
+                    <SignedInShell
+                      sidebarOpen={sidebarOpen}
+                      onToggle={() => setSidebarOpen((o) => !o)}
+                    />
+                  </SignedIn>
+                  <SignedOut>
+                    <RedirectToSignIn />
+                  </SignedOut>
+                </>
+              )
+            }
+          />
+        </Routes>
+      </SanitizerProvider>
     </ErrorBoundary>
   );
 };

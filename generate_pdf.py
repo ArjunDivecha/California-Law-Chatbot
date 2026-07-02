@@ -1,19 +1,42 @@
 #!/usr/bin/env python3
 """
-Convert COMPREHENSIVE_GUIDE.md to a beautiful PDF using WeasyPrint
+=============================================================================
+SCRIPT NAME: generate_pdf.py
+=============================================================================
+
+DESCRIPTION:
+    Converts the COMPREHENSIVE_GUIDE.md markdown file into a beautifully
+    formatted PDF using WeasyPrint. Reads the markdown source, converts it
+    to HTML with the Python markdown library, applies custom CSS with
+    pagination and section page breaks, and generates a print-ready PDF.
 
 INPUT FILES:
-- COMPREHENSIVE_GUIDE.md (markdown source)
+    /Users/arjundivecha/Dropbox/AAA Backup/A Working/California-Law-Chatbot-V2/COMPREHENSIVE_GUIDE.md
+        Source markdown document to be converted to PDF.
 
 OUTPUT FILES:
-- COMPREHENSIVE_GUIDE.pdf (beautiful formatted PDF)
+    /Users/arjundivecha/Dropbox/AAA Backup/A Working/California-Law-Chatbot-V2/COMPREHENSIVE_GUIDE.pdf
+        Generated PDF document.
 
-Dependencies:
-- markdown (python library)
-- weasyprint (for PDF generation)
+VERSION: 1.0
+LAST UPDATED: 2026-06-05
+AUTHOR: Arjun Divecha
 
-Version: 1.0
-Last Updated: October 30, 2025
+DEPENDENCIES:
+    - markdown (python library)
+    - weasyprint (for PDF generation)
+    - pathlib (standard library)
+    - re (standard library)
+
+USAGE:
+    python generate_pdf.py
+
+NOTES:
+    - The code uses relative paths resolved from the working directory.
+    - Expects COMPREHENSIVE_GUIDE.md in the current working directory.
+    - PDF output is written to the same directory.
+    - Uses WeasyPrint CSS @page rules for headers and footers.
+=============================================================================
 """
 
 import markdown

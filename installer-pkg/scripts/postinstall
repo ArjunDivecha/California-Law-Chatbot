@@ -1,0 +1,110 @@
+#!/bin/bash
+#
+# FFLP-Sanitizer postinstall — runs as root after pkg payload is copied.
+# Generates a per-laptop localhost cert, writes the launchd plist for
+# the user who triggered the install, and loads the launchd job.
+#
+# Idempotent. Safe to re-run (used by reinstall + upgrade).
+#
+set -euo pipefail
+
+INSTALL_DIR="/Library/Application Support/FFLP/gliner-daemon"
+TARGET_USER="${USER:-$(stat -f '%Su' /dev/console)}"
+USER_HOME="$(dscl . -read /Users/$TARGET_USER NFSHomeDirectory | awk '{print $2}')"
+LAUNCH_AGENTS="$USER_HOME/Library/LaunchAgents"
+PLIST="$LAUNCH_AGENTS/com.fflp.gliner-daemon.plist"
+LOG_DIR="$INSTALL_DIR/logs"
+CERT_DIR="$INSTALL_DIR/certs"
+CHAIN="$CERT_DIR/localhost-chain.crt.pem"
+KEY="$CERT_DIR/localhost.key.pem"
+
+echo "[postinstall] target user: $TARGET_USER ($USER_HOME)"
+
+# 1. Generate per-laptop localhost cert if absent
+if [[ ! -f "$CHAIN" || ! -f "$KEY" ]]; then
+  echo "[postinstall] generating localhost cert..."
+  mkdir -p "$CERT_DIR"
+  /usr/bin/openssl req -newkey rsa:2048 -nodes \
+    -keyout "$KEY" \
+    -x509 -days 3650 \
+    -out "$CHAIN" \
+    -subj "/CN=localhost" \
+    -addext "subjectAltName=DNS:localhost,IP:127.0.0.1,IP:::1" \
+    -addext "basicConstraints=CA:FALSE" \
+    -addext "keyUsage=digitalSignature,keyEncipherment" \
+    -addext "extendedKeyUsage=serverAuth" \
+    2>/dev/null
+  # Add the cert to the user's login keychain as trusted-for-SSL so
+  # Safari accepts the daemon's HTTPS without warning.
+  /usr/bin/security add-trusted-cert -d -r trustAsRoot \
+    -k "$USER_HOME/Library/Keychains/login.keychain-db" \
+    "$CHAIN" 2>/dev/null || true
+  chown "$TARGET_USER" "$KEY" "$CHAIN"
+  chmod 600 "$KEY"
+fi
+
+# 2. Logs dir
+mkdir -p "$LOG_DIR"
+chown -R "$TARGET_USER" "$LOG_DIR"
+
+# 3. Write launchd plist for the target user
+mkdir -p "$LAUNCH_AGENTS"
+chown "$TARGET_USER" "$LAUNCH_AGENTS"
+
+cat > "$PLIST" <<EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.fflp.gliner-daemon</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>$INSTALL_DIR/bin/fflp-gliner-daemon</string>
+    <string>--cert-file</string>
+    <string>$CHAIN</string>
+    <string>--key-file</string>
+    <string>$KEY</string>
+  </array>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>GLINER_MODEL</key>
+    <string>urchade/gliner_multi_pii-v1</string>
+    <key>HF_HOME</key>
+    <string>$INSTALL_DIR/hf-cache</string>
+    <key>HF_HUB_OFFLINE</key>
+    <string>1</string>
+    <key>TRANSFORMERS_OFFLINE</key>
+    <string>1</string>
+  </dict>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <key>StandardOutPath</key>
+  <string>$LOG_DIR/daemon.out.log</string>
+  <key>StandardErrorPath</key>
+  <string>$LOG_DIR/daemon.err.log</string>
+  <key>ThrottleInterval</key>
+  <integer>10</integer>
+</dict>
+</plist>
+EOF
+chown "$TARGET_USER" "$PLIST"
+
+# 4. Load the launchd job as the user
+sudo -u "$TARGET_USER" launchctl unload "$PLIST" 2>/dev/null || true
+sudo -u "$TARGET_USER" launchctl load "$PLIST"
+
+# 5. Health probe — wait up to 30s for daemon to come up
+for i in $(seq 1 30); do
+  if curl -sS --max-time 1 http://127.0.0.1:47841/v1/health >/dev/null 2>&1; then
+    echo "[postinstall] ✓ daemon responding on http://localhost:47841"
+    exit 0
+  fi
+  sleep 1
+done
+
+echo "[postinstall] WARNING: daemon did not respond within 30s. Check $LOG_DIR/daemon.err.log"
+# Non-fatal — pkg install still completes; user can troubleshoot.
+exit 0

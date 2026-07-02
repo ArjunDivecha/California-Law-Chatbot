@@ -1,0 +1,91 @@
+{
+  "label": "shadow-flip-verify-2026-05-16",
+  "generated_at": "2026-05-16T08:00:00Z",
+  "summary": "Phase 4.5 dual-fire wire verified end-to-end. V1 main now ships fireShadow() and Vercel prod has VITE_V2_SHADOW_URL set. V2 lives at its own Vercel project (california-law-chatbot-v2). Shadow handler was patched with waitUntil() — without it, Vercel serverless killed the async agent loop before it could write the KV record. After the patch, smoke probe wrote the full shadow:* record plus an audit_record_envelope:* envelope-encrypted entry plus an audit:YYYY-MM-DD daily list entry.",
+  "topology_change": {
+    "before": "V1 and V2 shared one Vercel project (prj_1RE4M9EIZDM4XibdnQtxku78j8dB). V2 only deployed to previews.",
+    "after": "V1 stays on the original project. V2 lives on new project prj_1T0oQriIdbO2BlX81wSg2L1i1AzL aliased to https://california-law-chatbot-v2.vercel.app",
+    "decision_recorded_via": "AskUserQuestion 2026-05-16 — option 'New Vercel project for V2' selected"
+  },
+  "env_vars_set": {
+    "V2_production": [
+      "ANTHROPIC_API_KEY",
+      "BLOB_READ_WRITE_TOKEN",
+      "CLERK_SECRET_KEY",
+      "COURTLISTENER_API_KEY",
+      "GEMINI_API_KEY",
+      "LEGISCAN_API_KEY",
+      "OPENAI_API_KEY",
+      "OPENROUTER_API_KEY",
+      "OPENSTATES_API_KEY",
+      "SERPER_API_KEY",
+      "UPSTASH_REDIS_REST_TOKEN",
+      "UPSTASH_REDIS_REST_URL",
+      "UPSTASH_VECTOR_REST_TOKEN",
+      "UPSTASH_VECTOR_REST_URL",
+      "VITE_CLERK_PUBLISHABLE_KEY",
+      "AUDIT_ENVELOPE_DEK",
+      "AUDIT_HMAC_KEY"
+    ],
+    "V1_production_added": ["VITE_V2_SHADOW_URL=https://california-law-chatbot-v2.vercel.app"]
+  },
+  "deploys": {
+    "V1_prod": {
+      "commit": "faf54d4",
+      "build": "california-law-chatbot-ggqpfyvly.vercel.app",
+      "duration_s": 36,
+      "status": "Ready",
+      "files_changed": [
+        "hooks/useChat.ts",
+        "utils/shadowRun.ts",
+        "vite-env.d.ts",
+        ".env.example"
+      ]
+    },
+    "V2_prod_initial": {
+      "build": "california-law-chatbot-v2-hmfm1oufp.vercel.app",
+      "duration_s": 60,
+      "status": "Ready",
+      "issue": "shadow handler used `void runShadow(body)` — fired-and-forgotten — Vercel reclaimed the instance before agent loop could complete; zero KV writes."
+    },
+    "V2_prod_fixed": {
+      "commit": "48451fd",
+      "build": "california-law-chatbot-v2-93m4cadd8.vercel.app",
+      "status": "Ready",
+      "patch": "Wrapped runShadow in waitUntil() from @vercel/functions; added @vercel/functions dep."
+    }
+  },
+  "smoke_probe": {
+    "ts": "2026-05-16T07:57:24.245Z",
+    "endpoint": "https://california-law-chatbot-v2.vercel.app/api/agent/shadow",
+    "request": {
+      "v1_session_id": "smoke-test-2026-05-16-c",
+      "v1_turn_id": "t3",
+      "user_text": "What is California Code of Civil Procedure section 425.16?",
+      "v1_response_text": "test",
+      "v1_source_count": 0
+    },
+    "response": {
+      "http_status": 202,
+      "body": {"ok": true, "message": "shadow run accepted"},
+      "elapsed_s": 0.484
+    },
+    "kv_record_observed": {
+      "key": "shadow:smoke-test-2026-05-16-c:t3",
+      "v2_response_len": 4940,
+      "v2_elapsed_ms": 33718,
+      "v2_total_tokens": 22472,
+      "v2_tool_rounds": 1,
+      "v2_stop_reason": "end_turn",
+      "v2_sanitization": {"privileged": false, "compound_risk_buckets": 0, "redactions_count": 0},
+      "v2_tool_output_redactions": 23
+    },
+    "audit_envelope_count_observed": 2,
+    "audit_daily_list_observed": true
+  },
+  "remaining_gates_before_phase5": [
+    "Malpractice carrier UPL written confirmation (Arjun, external)",
+    "GLiNER daemon install on each attorney laptop (one-time, scripts/install-daemon.sh)",
+    "7 consecutive clean days of shadow-run-report.mjs (≤20% material divergence, zero V2 critical hallucinations)"
+  ]
+}
