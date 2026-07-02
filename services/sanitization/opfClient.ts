@@ -23,6 +23,9 @@
 
 import type { SpanCategory, Span } from '../../api/_shared/sanitization/index.js';
 import * as webDetector from './glinerWebClient.js';
+import { DETECTOR_UNSUPPORTED_ON_DEVICE } from './deviceCapability.js';
+
+export { DETECTOR_UNSUPPORTED_ON_DEVICE } from './deviceCapability.js';
 
 // Detector selection (V2 2026-06-30). VITE_DETECTOR=web routes detection to
 // the in-browser GLiNER engine (glinerWebClient); anything else (default
@@ -130,7 +133,8 @@ export interface DaemonHealth {
 export type DaemonStatus =
   | { state: 'unknown' }                  // before first probe
   | { state: 'healthy'; health: DaemonHealth }
-  | { state: 'unreachable'; error: string };
+  | { state: 'unreachable'; error: string }
+  | { state: 'unsupported' };             // phone/tablet — detector can't run here
 
 function daemonUrlCandidates(): string[] {
   const candidates = preferredDaemonUrl
@@ -311,6 +315,9 @@ async function fetchFromDaemon(
  * Lightweight health probe. Returns within ~1.5s or rejects.
  */
 export async function getHealth(): Promise<DaemonHealth> {
+  if (DETECTOR_UNSUPPORTED_ON_DEVICE) {
+    throw new Error('detector_unsupported_device: the on-device privacy filter cannot run on this device');
+  }
   if (USE_WEB_DETECTOR) return webDetector.getHealth();
   const res = await fetchFromDaemon('/v1/health', { method: 'GET' }, HEALTH_TIMEOUT_MS);
   const data = (await res.json()) as {
@@ -346,6 +353,9 @@ export async function getHealth(): Promise<DaemonHealth> {
  * succeeding.
  */
 export async function warmup(): Promise<void> {
+  // Never trigger the daemon spawn or the ~1.15 GB web-model download on a
+  // device that cannot run the detector (prevents the iOS infinite-load loop).
+  if (DETECTOR_UNSUPPORTED_ON_DEVICE) return;
   await detectSpans('warmup', { warmupOnly: true });
 }
 
@@ -390,6 +400,11 @@ export async function detectSpans(
 ): Promise<DetectResult> {
   if (detectSpansOverride) {
     return detectSpansOverride(text, opts);
+  }
+  if (DETECTOR_UNSUPPORTED_ON_DEVICE) {
+    // Callers already treat detector failure as "fall back to the heuristic
+    // detector" (preview) or "flag usedOpf=false" (wire tokenization).
+    throw new Error('detector_unsupported_device: the on-device privacy filter cannot run on this device');
   }
   if (USE_WEB_DETECTOR) {
     return webDetector.detectSpans(text, opts);

@@ -42,6 +42,7 @@ import { RealChatSanitizer } from '../services/sanitization/realSanitizer.ts';
 import {
   getHealth,
   warmup as opfWarmup,
+  DETECTOR_UNSUPPORTED_ON_DEVICE,
   type DaemonStatus,
 } from '../services/sanitization/opfClient';
 
@@ -270,6 +271,15 @@ export const SanitizerProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   useEffect(() => {
     let cancelled = false;
 
+    // Phones/tablets can't run either detector path (no local daemon; the
+    // ~1.15 GB web model exceeds mobile-Safari tab memory). Don't probe or
+    // warm anything — mark the state and let the UI degrade explicitly:
+    // public research stays usable, confidential work is gated to desktop.
+    if (DETECTOR_UNSUPPORTED_ON_DEVICE) {
+      setDaemonStatus({ state: 'unsupported' });
+      return () => { cancelled = true; };
+    }
+
     const probe = async () => {
       try {
         const health = await getHealth();
@@ -312,7 +322,7 @@ export const SanitizerProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   // getHealth() is a cheap in-page state read in web mode, so ~700ms polling is
   // fine; it stops once the model is loaded (or errors).
   useEffect(() => {
-    if (!IS_WEB_DETECTOR) return;
+    if (!IS_WEB_DETECTOR || DETECTOR_UNSUPPORTED_ON_DEVICE) return;
     let stopped = false;
     const tick = async () => {
       try {
@@ -388,7 +398,27 @@ export const SanitizerProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   return (
     <SanitizerContext.Provider value={value}>
-      {IS_WEB_DETECTOR && <ModelLoadingBanner progress={modelProgress} />}
+      {DETECTOR_UNSUPPORTED_ON_DEVICE && (
+        <div
+          style={{
+            position: 'sticky',
+            top: 0,
+            zIndex: 60,
+            background: '#fffbeb',
+            borderBottom: '1px solid #fde68a',
+            color: '#92400e',
+            fontSize: 13,
+            padding: '8px 16px',
+            textAlign: 'center',
+          }}
+        >
+          ⚠️ The on-device privacy filter isn&apos;t available on this device. Public legal
+          research works normally; client-matter (confidential) work requires the desktop app.
+        </div>
+      )}
+      {IS_WEB_DETECTOR && !DETECTOR_UNSUPPORTED_ON_DEVICE && (
+        <ModelLoadingBanner progress={modelProgress} />
+      )}
       {children}
     </SanitizerContext.Provider>
   );

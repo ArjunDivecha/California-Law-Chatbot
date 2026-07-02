@@ -40,6 +40,7 @@ import { checkAnswer } from '../../services/guardrailsServiceV2.ts';
 import { prune as pruneSources } from '../../services/retrievalPrunerV2.ts';
 import { fetchSessionWithCache, invalidateSession } from '../../utils/chatStoreV2.ts';
 import { getChatSanitizer, findInventedTokensInText } from '../../services/sanitization/chatAdapter';
+import { DETECTOR_UNSUPPORTED_ON_DEVICE } from '../../services/sanitization/opfClient';
 import { useSanitizer } from '../../hooks/useSanitizer';
 
 // Warn when a model response references sanitization tokens that do NOT
@@ -182,6 +183,12 @@ export const V2ChatPage: React.FC = () => {
 
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
+  // Matter mode as reported by the MatterModeSelector — used to fail closed
+  // on devices without the on-device privacy filter (mobile): confidential /
+  // protected sends are refused there.
+  const [matterMode, setMatterMode] = useState<string>('public_research');
+  const [mobileGateNotice, setMobileGateNotice] = useState<string | null>(null);
+
   // Auto-scroll on new tokens / new messages.
   useEffect(() => {
     scrollRef.current?.scrollTo({
@@ -262,6 +269,17 @@ export const V2ChatPage: React.FC = () => {
       e.preventDefault();
       const text = draft.trim();
       if (!text || state.isStreaming) return;
+      // Fail-closed on devices without the on-device privacy filter (PRD
+      // §5.6a — detection recall is safety-critical for client matters):
+      // public research is fine (server regex backstop still guards), but
+      // confidential/protected sends require the desktop app.
+      if (DETECTOR_UNSUPPORTED_ON_DEVICE && matterMode !== 'public_research') {
+        setMobileGateNotice(
+          'Client-matter (confidential/protected) messages can’t be sent from this device — the on-device privacy filter that tokenizes client identities isn’t available here. Switch the matter mode to "Public research", or use the desktop app for this matter.',
+        );
+        return;
+      }
+      setMobileGateNotice(null);
       // Add the user message to the visible list immediately.
       setMessages((prev) => [
         ...prev,
@@ -280,7 +298,7 @@ export const V2ChatPage: React.FC = () => {
         workflow,
       });
     },
-    [draft, state.isStreaming, send, sessionId, userId],
+    [draft, state.isStreaming, send, sessionId, userId, matterMode],
   );
 
   // When `done` fires, fold the streamed tokens into a permanent assistant
@@ -362,7 +380,7 @@ export const V2ChatPage: React.FC = () => {
             </div>
           </div>
           <div className="flex items-center gap-3 text-xs">
-            <MatterModeSelector sessionId={sessionId} getToken={getToken} />
+            <MatterModeSelector sessionId={sessionId} getToken={getToken} onModeChange={setMatterMode} />
             <Link
               to="/v2/draft"
               className="rounded-full bg-pink-50 px-3 py-1.5 text-pink-700 font-semibold hover:bg-pink-100"
@@ -486,6 +504,12 @@ export const V2ChatPage: React.FC = () => {
           </div>
 
           <form onSubmit={onSubmit} className="border-t border-gray-100 bg-white px-6 py-4">
+            {mobileGateNotice && (
+              <div className="mb-3 rounded border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                <span className="font-semibold">⚠️ Not sent. </span>
+                {mobileGateNotice}
+              </div>
+            )}
             <div className="flex items-end gap-3">
               <textarea
                 value={draft}

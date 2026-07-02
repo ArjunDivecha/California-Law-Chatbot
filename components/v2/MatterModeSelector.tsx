@@ -36,9 +36,12 @@ const CONSENT_LABELS: Record<ConsentStatus, string> = {
 interface Props {
   sessionId: string;
   getToken: () => Promise<string | null>;
+  /** Notifies the parent whenever the effective matter mode loads/changes
+   *  (used e.g. to gate sends on devices without the on-device filter). */
+  onModeChange?: (mode: MatterMode) => void;
 }
 
-export function MatterModeSelector({ sessionId, getToken }: Props) {
+export function MatterModeSelector({ sessionId, getToken, onModeChange }: Props) {
   const [mode, setMode] = useState<MatterMode>('public_research');
   const [locked, setLocked] = useState(false);
   const [consent, setConsent] = useState<ConsentStatus>('not_obtained');
@@ -63,6 +66,7 @@ export function MatterModeSelector({ sessionId, getToken }: Props) {
         setMode((data.matter_mode as MatterMode) ?? 'public_research');
         setLocked(Boolean(data.protected_locked));
         setConsent((data.consent as ConsentStatus) ?? 'not_obtained');
+        onModeChange?.((data.matter_mode as MatterMode) ?? 'public_research');
       } catch {
         /* non-fatal — keep default */
       }
@@ -97,6 +101,7 @@ export function MatterModeSelector({ sessionId, getToken }: Props) {
         setMode((data.matter_mode as MatterMode) ?? requested);
         setLocked(Boolean(data.protected_locked));
         setConsent((data.consent as ConsentStatus) ?? 'not_obtained');
+        onModeChange?.((data.matter_mode as MatterMode) ?? requested);
       } catch {
         setError('Could not update matter mode');
       } finally {
