@@ -22,11 +22,17 @@ export interface MinimalRes {
   setHeader(name: string, value: string): void;
 }
 
-/** Allowed browser origins. APP_ORIGIN (prod) + localhost dev origins. */
+/** Allowed browser origins. Prod origins + localhost dev + APP_ORIGIN env. */
 export function defaultAllowedOrigins(): string[] {
-  const list = ['http://localhost:5173', 'http://127.0.0.1:5173'];
+  const list = [
+    'http://localhost:5173',
+    'http://127.0.0.1:5173',
+    'https://california-law-chatbot-v2.vercel.app',
+    'https://chat.femmeandfemmelaw.com',
+  ];
+  // APP_ORIGIN supports a single origin or a comma-separated list.
   const env = process.env.APP_ORIGIN;
-  if (env) list.push(env);
+  if (env) list.push(...env.split(',').map((s) => s.trim()).filter(Boolean));
   return list;
 }
 

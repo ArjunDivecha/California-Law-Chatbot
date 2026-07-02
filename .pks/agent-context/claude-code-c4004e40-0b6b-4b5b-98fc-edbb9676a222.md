@@ -6,8 +6,8 @@ repo_name: California-Law-Chatbot
 github_repo: ArjunDivecha/California-Law-Chatbot
 session_id: c4004e40-0b6b-4b5b-98fc-edbb9676a222
 source_file: c4004e40-0b6b-4b5b-98fc-edbb9676a222.jsonl
-exported_at: 2026-07-02T15:20:03.060080+00:00
-export_base_commit_sha: ad143a16bc52130162fddf7749b6d21d2cd0ef46
+exported_at: 2026-07-02T15:49:43.674775+00:00
+export_base_commit_sha: f5b223fca0e7639fd54cdb7c65d0443513eaee9a
 redacted: true
 ---
 
@@ -323,3 +323,36 @@ Starting with the consent flow — reading the attestation machinery and the UI.
 
 
 **Assistant:** No custom domains or aliases anywhere in the team — the V1 project only serves default `*.vercel.app` URLs. Removing it.
+
+
+**Assistant:** All three machine-closable items are done and live in production:
+
+**1. Consent flow — wired and verified.** The gap was real but smaller than feared: the server could already record consent (my earlier test had used the wrong field name), but the UI had no control for it. The matter-mode selector now shows a consent dropdown whenever you're in a client matter, with an attorney-attestation confirmation before recording, and an amber "research tools off until consent recorded" hint while unset. Verified live end-to-end: recording consent `allowed` on a confidential matter unblocks exactly the policy-correct tools (CourtListener, LegiScan, OpenStates, citation verify, CA code lookup) while web search and MCP stay blocked — and `ceb_search` stays blocked until the OpenAI DPA is signed, which
+
+
+**User:** is the old external link now connected to the current version
+
+
+**Assistant:** Let me check what the old link actually returns now.
+
+
+**Assistant:** **Now it is.** The old link `https://california-law-chatbot.vercel.app` redirects to the current app — path-preserving, so `/`, `/v2`, and any old bookmark all land in the right place (verified live: 307 → the v2 URL → 200).
+
+I did it with a tiny redirect-only project occupying the old name, so the live app wasn't touched. I used a temporary (307) rather than permanent redirect deliberately: if you ever decide you'd prefer the *shorter* name (`california-law-chatbot.vercel.app`) as the canonical one link, we can rename the real project into it without browsers having cached a permanent redirect the wrong way. That rename is doable later but touches the CORS allowlist and Clerk origins, so it's a small deliberate project — say the word if you want it.
+
+So the link situation is now: **one ca
+
+
+**User:** is there a way to use a shorter url without the verdel in it
+
+
+**Assistant:** Yes — that's just a custom domain, and you have two good options:
+
+
+**Assistant:** On it — setting up `chat.femmeandfemmelaw.com`. First, where the firm domain's DNS lives:
+
+
+**Assistant:** Domain attached (the 403 is just the CLI trying to inspect a not-yet-verified domain — expected until the DNS record exists). Now the CORS allowlists:
+
+
+**Assistant:** The app will be same-origin on the new domain (so CORS barely matters), but belt-and-braces: adding it to both allowlists.
