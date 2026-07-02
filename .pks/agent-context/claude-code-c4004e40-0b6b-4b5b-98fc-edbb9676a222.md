@@ -6,8 +6,8 @@ repo_name: California-Law-Chatbot
 github_repo: ArjunDivecha/California-Law-Chatbot
 session_id: c4004e40-0b6b-4b5b-98fc-edbb9676a222
 source_file: c4004e40-0b6b-4b5b-98fc-edbb9676a222.jsonl
-exported_at: 2026-07-02T15:49:43.674775+00:00
-export_base_commit_sha: f5b223fca0e7639fd54cdb7c65d0443513eaee9a
+exported_at: 2026-07-02T16:07:26.227385+00:00
+export_base_commit_sha: aea4e573d80b7e516a4cbd7d4c7b2fea13dbe28f
 redacted: true
 ---
 
@@ -356,3 +356,40 @@ So the link situation is now: **one ca
 
 
 **Assistant:** The app will be same-origin on the new domain (so CORS barely matters), but belt-and-braces: adding it to both allowlists.
+
+
+**Assistant:** Yes, and it's mostly done already. Everything on my side is complete — tests green (routeSecurity 8/8, sanitization 153/153), deployed to production. Here's the state:
+
+**The new URL will be `https://chat.femmeandfemmelaw.com`** — free, on the firm's existing domain.
+
+**Done by me:**
+- Domain attached to the `california-law-chatbot-v2` Vercel project (it's waiting for DNS verification)
+- Both CORS allowlists updated to accept the new origin, committed and deployed
+
+**Your one step — add a DNS record.** `femmeandfemmelaw.com`'s DNS runs on Google Cloud DNS nameservers, which almost certainly means it's managed in your **Squarespace Domains** account (where Google Domains moved to; your firm site is Squarespace). Log in → Domains → femmeandfemmelaw.com → DNS settings → add:
+
+| Type | Host /
+
+
+**User:** I don't currently have access to this. So let's go with the vercel version
+
+
+**Assistant:** Understood — staying on `https://california-law-chatbot-v2.vercel.app`. Cleaning up the pending domain so it doesn't sit unverified on the project:
+
+
+**Assistant:** Done. Final state:
+
+- **The one link is `https://california-law-chatbot-v2.vercel.app`** — the only domain on the project.
+- The old `california-law-chatbot.vercel.app` URL still forwards there, so legacy bookmarks work.
+- The pending `chat.femmeandfemmelaw.com` attachment is removed from Vercel.
+
+I left the `chat.femmeandfemmelaw.com` entries in the CORS allowlists — they're completely inert (an origin that doesn't exist can't send requests) and it means if you ever get access to the firm's DNS (it's in the Squarespace Domains account that manages femmeandfemmelaw.com), turning on the custom URL becomes a two-minute job: re-attach the domain and add one CNAME record. No code changes needed at that point.
+
+
+**User:** no i mean the one without v2 - the v1 version
+
+
+**Assistant:** Ah — you want the **short** one, `california-law-chatbot.vercel.app`, as the real app URL. Done — that name is currently just holding my redirect shim, so the plan is: delete the shim, rename the real project to `california-law-chatbot` (keeps all deployments/env/settings — only the name changes), then put a reverse redirect on `-v2` so the current link keeps working. Executing:
+
+
+**Assistant:** The production domain is an explicit record, not auto-derived from the name — adding the short `.vercel.app` domain to the project directly:

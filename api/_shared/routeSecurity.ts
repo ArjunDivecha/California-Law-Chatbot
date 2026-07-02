@@ -27,6 +27,7 @@ export function defaultAllowedOrigins(): string[] {
   const list = [
     'http://localhost:5173',
     'http://127.0.0.1:5173',
+    'https://california-law-chatbot.vercel.app',
     'https://california-law-chatbot-v2.vercel.app',
     'https://chat.femmeandfemmelaw.com',
   ];

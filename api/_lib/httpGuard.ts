@@ -41,6 +41,7 @@ import { readMeta, rateLimitHit } from './sessionStore.js';
 // ---------------------------------------------------------------------------
 
 const DEFAULT_ALLOWED_ORIGINS = [
+  'https://california-law-chatbot.vercel.app',
   'https://california-law-chatbot-v2.vercel.app',
   'https://chat.femmeandfemmelaw.com',
   'http://localhost:5173',
