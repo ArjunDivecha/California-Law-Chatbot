@@ -70,8 +70,8 @@ const FALLBACK_CONFIG: AgentConfig = {
   description: 'fallback config',
   // Inert for model selection (agentLoop uses DEFAULT_MODEL); kept in sync
   // to avoid stale references. Real switch is V2_PRIMARY_MODEL env var.
-  // Must remain a ZDR-eligible model (NOT claude-fable-5/mythos-5).
-  model: 'claude-opus-4-8',
+  // Must remain on the approved-model allowlist (api/_lib/approvedModels.ts).
+  model: 'claude-fable-5',
   max_tokens: 4096,
   max_iterations: 8,
   core_skill: 'california-legal-core',

@@ -27,7 +27,7 @@ export interface TurnManifestInput {
   turnId: string;
   sessionId: string;
   matterId?: string;
-  /** Resolved (ZDR-eligible) model id used this turn. */
+  /** Resolved model id used this turn (approved-model allowlist enforced in agentLoop). */
   model: string;
   decision: PolicyDecision;
   /** Tool names actually dispatched this turn. */

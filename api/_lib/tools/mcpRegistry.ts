@@ -9,9 +9,9 @@
  * gates the whole subsystem.
  *
  * IMPORTANT — privacy posture (fifth addendum):
- *   The MCP connector is NOT ZDR-eligible. Tool inputs and outputs
- *   that flow through `mcp_servers` are retained on Anthropic's side
- *   per Team-plan trust-and-safety policy (~30 days). For privileged
+ *   The MCP connector routes tool inputs and outputs through third-party
+ *   MCP servers outside the firm's DPA boundary, and they are retained on
+ *   Anthropic's side per trust-and-safety policy (~30 days). For privileged
  *   input, MCP toolsets are OMITTED from the tools array entirely
  *   (privilege_gate = true on each entry below), same posture as
  *   web_search. A privileged input never generates an MCP tool call.

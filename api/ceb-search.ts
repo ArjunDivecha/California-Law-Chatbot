@@ -512,7 +512,8 @@ function deduplicateResults(results: any[], topK: number): any[] {
 
 /**
  * Generate embedding for query using native OpenAI API (text-embedding-3-small)
- * Using direct OpenAI API for better reliability and ZDR compliance
+ * Using direct OpenAI API for better reliability and contractual data
+ * protection (no-train since 2023-03-01; DPA)
  */
 async function generateEmbedding(text: string): Promise<number[]> {
   const openaiKey = process.env.OPENAI_API_KEY;

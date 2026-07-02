@@ -10,19 +10,24 @@
  *   query this; nothing should send client data to a provider that isn't
  *   approved here for that data class + mode.
  *
- *   Encodes the mid-2026 VERIFIED facts:
- *     - Anthropic Messages API: ZDR-eligible (per-org; enablement must be
- *       verified), no training on commercial data, DPA auto-incorporated.
- *     - OpenAI embeddings: no training since 2023-03-01; /v1/embeddings is
- *       ZDR-eligible (approval-gated → 'eligible_pending' until confirmed) + DPA.
+ *   Encodes the mid-2026 VERIFIED facts (de-ZDR'd 2026-07-01 — F&F declined
+ *   Anthropic ZDR at its ~$100k/yr commitment; the operative posture is
+ *   standard commercial terms + DPA, which per the Morgan v. V2X research
+ *   memo of 2026-06-02 is what the protective-order standard actually
+ *   requires):
+ *     - Anthropic Messages API: standard commercial terms — no training on
+ *       API content, DPA auto-incorporated, deletion-on-request, default
+ *       30-day retention (flagged content up to 2y; T&S scores up to 7y).
+ *     - OpenAI embeddings: no training since 2023-03-01; 30-day abuse-
+ *       monitoring retention; DPA available (sign for the org).
  *     - Upstash Vector/Redis: DPA §12.4 PROHIBITS "Restricted Data"
  *       (sensitive_personal_data); SOC 2 / HIPAA cover REDIS, not Vector;
  *       encryption is opt-in (must be verified on).
  *     - CourtListener / LegiScan / OpenStates: public-law APIs; query logs.
  *
- * NOTE: 'eligible_pending' entries and the *_VERIFY items in PRD §13 must be
- * confirmed by counsel/ops before relying on them for confidential/protected
- * data; the registry intentionally restricts those entries until then.
+ * NOTE: the *_VERIFY items in PRD §13 must be confirmed by counsel/ops before
+ * relying on them for confidential/protected data; the registry intentionally
+ * restricts those entries until then.
  *
  * INPUT FILES:  none (data is inline — the registry IS the source of truth).
  * OUTPUT FILES: none.
@@ -30,7 +35,6 @@
  */
 import type { DataClass, MatterMode } from './policyEngine.js';
 
-export type ZdrStatus = 'eligible_enabled' | 'eligible_pending' | 'not_eligible' | 'n/a';
 /** Privilege/work-product classification (PRD §7). */
 export type PrivilegeClass = 'vendor_no_waiver' | 'review_required' | 'unassessed';
 
@@ -50,7 +54,6 @@ export interface ProviderEntry {
   mattersAllowed: MatterMode[];
   trainsOnData: boolean;
   retention: string;
-  zdrStatus: ZdrStatus;
   /** True if the provider's own terms forbid "Restricted Data" (Upstash §12.4). */
   restrictedDataProhibited?: boolean;
   subprocessors: string[];
@@ -70,7 +73,7 @@ const RESTRICTED_DATA_CLASSES: ReadonlySet<DataClass> = new Set<DataClass>([
 
 const REGISTRY: ProviderEntry[] = [
   {
-    providerId: 'anthropic_messages_zdr',
+    providerId: 'anthropic_messages',
     service: 'Anthropic Claude Messages API (direct)',
     dataClassesAllowed: [
       'public_law',
@@ -83,15 +86,15 @@ const REGISTRY: ProviderEntry[] = [
     ],
     mattersAllowed: ['public_research', 'client_confidential', 'protected_discovery'],
     trainsOnData: false,
-    retention: 'Zero at rest after response (ZDR); flagged-content exception up to 2y; T&S scores up to 7y',
-    zdrStatus: 'eligible_pending', // confirm the production org has ZDR enabled (PRD §13 item 1)
+    retention: '30 days default (standard commercial terms); flagged-content exception up to 2y; T&S scores up to 7y; deletion-on-request per DPA',
     subprocessors: ['AWS', 'GCP'],
     region: 'US',
-    deletionRights: 'ZDR — not stored at rest; see T&S retention exception',
+    deletionRights: 'DPA deletion-on-request; no training on API content (Commercial Terms §B)',
     privilegeClass: 'vendor_no_waiver', // DPA auto-incorporated; no training
     evidence: [
       { source: 'Anthropic API & data retention docs', url: 'https://platform.claude.com/docs/en/manage-claude/api-and-data-retention', retrievedAt: '2026-06-23' },
       { source: 'Anthropic DPA (auto-incorporated in Commercial Terms)', url: 'https://www.anthropic.com/legal/commercial-terms', retrievedAt: '2026-06-23' },
+      { source: 'Morgan v. V2X, Inc., 2026 WL 864223 (D. Colo.) deep-research memo 2026-06-02: standard Commercial Terms + DPA satisfy the protective-order standard (no-train, no third-party disclosure, deletion-on-request, retained documentation); ZDR NOT required. ZDR declined 2026-07-01 (~$100k/yr).', retrievedAt: '2026-07-01' },
     ],
     reviewExpiry: '2026-12-31',
     owner: 'F&F / project',
@@ -102,14 +105,13 @@ const REGISTRY: ProviderEntry[] = [
     dataClassesAllowed: ['public_law', 'client_confidential', 'personal_data'],
     mattersAllowed: ['public_research', 'client_confidential'],
     trainsOnData: false,
-    retention: '30 days default (abuse monitoring); zero under approved ZDR',
-    zdrStatus: 'eligible_pending', // request ZDR + sign DPA (PRD §13 item 3)
+    retention: '30 days (abuse monitoring); no training on API data since 2023-03-01',
     subprocessors: ['Microsoft Azure'],
     region: 'US',
-    deletionRights: 'DPA deletion; ZDR removes 30-day retention once enabled',
-    privilegeClass: 'review_required', // until ZDR+DPA confirmed for the org
+    deletionRights: 'DPA deletion',
+    privilegeClass: 'review_required', // until the DPA is signed for the org (PRD §13 item 3)
     evidence: [
-      { source: 'OpenAI data controls (no training on API since 2023-03-01; /v1/embeddings ZDR-eligible)', url: 'https://developers.openai.com/api/docs/guides/your-data', retrievedAt: '2026-06-23' },
+      { source: 'OpenAI data controls (no training on API since 2023-03-01)', url: 'https://developers.openai.com/api/docs/guides/your-data', retrievedAt: '2026-06-23' },
     ],
     reviewExpiry: '2026-12-31',
     owner: 'F&F / project',
@@ -124,7 +126,6 @@ const REGISTRY: ProviderEntry[] = [
     mattersAllowed: ['public_research', 'client_confidential'],
     trainsOnData: false,
     retention: 'Per DPA; backups up to 4 weeks post-termination',
-    zdrStatus: 'n/a',
     restrictedDataProhibited: true, // DPA §12.4
     subprocessors: ['AWS', 'GCP'],
     region: 'US (verify region pin)',
@@ -143,7 +144,6 @@ const REGISTRY: ProviderEntry[] = [
     mattersAllowed: ['public_research', 'client_confidential'],
     trainsOnData: false,
     retention: 'Per DPA; matter-scoped retention enforced by app (P5)',
-    zdrStatus: 'n/a',
     restrictedDataProhibited: true, // DPA §12.4
     subprocessors: ['AWS', 'GCP'],
     region: 'US (verify region pin)',
@@ -162,7 +162,6 @@ const REGISTRY: ProviderEntry[] = [
     mattersAllowed: ['public_research', 'client_confidential'],
     trainsOnData: false,
     retention: '~90-day usage logs',
-    zdrStatus: 'n/a',
     subprocessors: [],
     region: 'US',
     deletionRights: 'n/a (public-law queries; use POST-embedding path for client-fact-bearing queries)',
@@ -180,7 +179,6 @@ const REGISTRY: ProviderEntry[] = [
     mattersAllowed: ['public_research', 'client_confidential'],
     trainsOnData: false,
     retention: 'Unspecified; query by identifier only',
-    zdrStatus: 'n/a',
     subprocessors: [],
     region: 'US',
     deletionRights: 'n/a',
@@ -196,7 +194,6 @@ const REGISTRY: ProviderEntry[] = [
     mattersAllowed: ['public_research', 'client_confidential'],
     trainsOnData: false,
     retention: 'Account/usage data deletable on request',
-    zdrStatus: 'n/a',
     subprocessors: [],
     region: 'US',
     deletionRights: 'Deletion on request (~14 days)',
@@ -256,10 +253,10 @@ export function staleProviders(asOf: string): string[] {
 }
 
 /** Compact snapshot for the per-turn manifest (no evidence bodies). */
-export function providerSnapshot(): { providerId: string; zdrStatus: ZdrStatus; restrictedDataProhibited: boolean }[] {
+export function providerSnapshot(): { providerId: string; retention: string; restrictedDataProhibited: boolean }[] {
   return REGISTRY.map((p) => ({
     providerId: p.providerId,
-    zdrStatus: p.zdrStatus,
+    retention: p.retention,
     restrictedDataProhibited: Boolean(p.restrictedDataProhibited),
   }));
 }

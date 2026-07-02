@@ -38,19 +38,19 @@ ok('OpenAI embeddings approved for client_confidential, NOT protected, NOT sensi
   assert.equal(isProviderApprovedFor('openai_embeddings', 'client_confidential', 'sensitive_personal_data', NOW).approved, false);
 });
 ok('Anthropic direct approved for protected_discovery + sensitive data', () => {
-  assert.equal(isProviderApprovedFor('anthropic_messages_zdr', 'protected_discovery', 'sensitive_personal_data', NOW).approved, true);
+  assert.equal(isProviderApprovedFor('anthropic_messages', 'protected_discovery', 'sensitive_personal_data', NOW).approved, true);
 });
 ok('unknown provider ⇒ not approved (fail closed)', () => {
   assert.equal(isProviderApprovedFor('mystery_db', 'public_research', 'public_law', NOW).approved, false);
 });
 ok('stale registry entry ⇒ not approved + flagged by staleProviders', () => {
   const future = '2027-06-01'; // past every reviewExpiry (2026-12-31)
-  assert.equal(isProviderApprovedFor('anthropic_messages_zdr', 'public_research', 'public_law', future).approved, false);
-  assert.ok(staleProviders(future).includes('anthropic_messages_zdr'));
+  assert.equal(isProviderApprovedFor('anthropic_messages', 'public_research', 'public_law', future).approved, false);
+  assert.ok(staleProviders(future).includes('anthropic_messages'));
   assert.equal(staleProviders(NOW).length, 0);
 });
 ok('Anthropic entry carries DPA evidence + vendor_no_waiver privilege class', () => {
-  const p = getProvider('anthropic_messages_zdr');
+  const p = getProvider('anthropic_messages');
   assert.equal(p.privilegeClass, 'vendor_no_waiver');
   assert.ok(p.evidence.length >= 1);
 });

@@ -11,9 +11,9 @@
  *     - client_confidential with sensitive_personal_data ⇒ firm-controlled too.
  *     - client_confidential (non-sensitive) ⇒ cloud (Upstash) is permissible
  *       ONLY if approved, and — finding F3 — client content must be TOKENIZED
- *       before it lands in the firm's own (non-ZDR) cloud store, because
- *       relaxing OPF on the Anthropic ZDR leg otherwise pushes raw facts into
- *       Upstash/Vercel.
+ *       before it lands in the firm's own cloud store: the cloud store
+ *       retains at rest whatever it is given, so raw client facts must never
+ *       reach Upstash/Vercel untokenized.
  *     - public_research ⇒ cloud, no tokenization needed.
  *   Plus retention windows (litigation-hold aware) and matter-scoped key
  *   namespacing for cross-matter isolation.
@@ -71,7 +71,7 @@ export function selectStore(mode: MatterMode, dataClass: DataClass, asOf: string
   }
   return {
     target: 'cloud_upstash',
-    // Finding F3: the firm's own cloud store is NOT ZDR — tokenize before storing.
+    // Finding F3: the cloud store retains what it is given — tokenize before storing.
     reason: 'client_confidential non-sensitive — cloud store permitted, but tokenize before storing (F3)',
     tokenizeBeforeStore: true,
   };

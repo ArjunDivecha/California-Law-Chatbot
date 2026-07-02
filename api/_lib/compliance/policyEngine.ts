@@ -17,8 +17,9 @@
  *   - Fail closed: if client consent is missing/forbidden for confidential or
  *     protected work, external calls are blocked. Staff cannot use protected
  *     mode without a supervising attorney.
- *   - ZDR-only model policy always (the model allowlist is enforced separately
- *     by api/_lib/zdrModels.ts at the Anthropic call site).
+ *   - Anthropic-direct model policy always (the counsel-approved model
+ *     allowlist is enforced separately by api/_lib/approvedModels.ts at the
+ *     Anthropic call site).
  *
  * SCOPE NOTE: This is the decision logic. Enforcement consumes the returned
  *   PolicyDecision: P3 builds the tools array from `allowedTools` and gates
@@ -91,7 +92,7 @@ export interface PolicyInput {
   hasProtectiveOrder?: boolean;
   /**
    * Whether the OpenAI embeddings provider (used by ceb_search) has an
-   * approved ZDR+DPA registry entry for the effective data class. Default
+   * approved DPA-backed registry entry for the effective data class. Default
    * false → ceb_search is treated as an un-approved external disclosure
    * surface for confidential/protected work. (Provider registry = P4.)
    */
@@ -110,8 +111,9 @@ export interface PolicyDecision {
   escalated: boolean;
   /** False ⇒ no external model/tool call may be made for this action. */
   externalCallsAllowed: boolean;
-  /** Always 'zdr_only' in V3 (enforced at the call site by zdrModels.ts). */
-  modelPolicy: 'zdr_only';
+  /** Always 'anthropic_direct' (approved-model allowlist enforced at the call
+   *  site by approvedModels.ts; no OpenRouter / cross-provider fallback). */
+  modelPolicy: 'anthropic_direct';
   tokenization: TokenizationLevel;
   allowedTools: ToolId[];
   blockedTools: BlockedTool[];
@@ -211,9 +213,9 @@ export function decidePolicy(input: PolicyInput): PolicyDecision {
     // All tools allowed (no client facts present by definition).
   } else if (effectiveMode === 'client_confidential') {
     block('web_search', 'web_search disabled in client_confidential (external query leakage); use a lawyer-approved sanitized public-law query');
-    block('mcp', 'MCP connector is not ZDR-eligible; blocked for confidential work');
+    block('mcp', 'MCP connector sends tool I/O to third-party servers outside the DPA boundary; blocked for confidential work');
     if (!input.openAiEmbeddingsApproved) {
-      block('ceb_search', 'ceb_search embeds the query via OpenAI; requires an approved ZDR+DPA registry entry for confidential data');
+      block('ceb_search', 'ceb_search embeds the query via OpenAI; requires an approved DPA-backed registry entry for confidential data');
     }
   } else {
     // protected_discovery — most restrictive.
@@ -264,7 +266,7 @@ export function decidePolicy(input: PolicyInput): PolicyDecision {
     effectiveMode,
     escalated,
     externalCallsAllowed,
-    modelPolicy: 'zdr_only',
+    modelPolicy: 'anthropic_direct',
     tokenization,
     allowedTools,
     blockedTools,
