@@ -1,25 +1,61 @@
 #!/usr/bin/env python3
 """
-CEB Embedding Generation Script
-
-INPUT FILES:
-- data/ceb_processed/{category}/chunks.jsonl - Processed text chunks
-
-OUTPUT FILES:
-- data/ceb_processed/{category}/embeddings.jsonl - Chunks with embeddings
-- data/ceb_processed/{category}/embedding_log.xlsx - Generation statistics
+=============================================================================
+SCRIPT NAME: generate_embeddings.py
+=============================================================================
 
 DESCRIPTION:
-Generates OpenAI embeddings for processed CEB chunks. Uses batch processing
-and includes retry logic for robustness. Designed to be resumable in case of
-failures or rate limiting.
+    Generates OpenAI embeddings for pre-processed CEB (California Education of
+    the Bar) text chunks organized by legal category. Uses text-embedding-3-small
+    (or -large) for vector conversion with batch processing, exponential-backoff
+    retry logic, and resumption support. Reads chunked text from a JSONL file,
+    produces an augmented JSONL with embedding vectors, and writes an Excel
+    statistics log.
+
+INPUT FILES:
+    /Users/arjundivecha/Dropbox/AAA Backup/A Working/California-Law-Chatbot-prd-run/data/ceb_processed/{category}/chunks.jsonl
+        JSONL file containing processed text chunks for a given legal category
+        (e.g., trusts_estates, family_law). Produced by process_ceb_pdfs.py.
+    /Users/arjundivecha/Dropbox/AAA Backup/A Working/California-Law-Chatbot-prd-run/.env
+        Environment file (loaded via python-dotenv load_dotenv()) containing
+        OPENAI_API_KEY. Searched relative to the current working directory at
+        runtime, by default the project root.
+
+OUTPUT FILES:
+    /Users/arjundivecha/Dropbox/AAA Backup/A Working/California-Law-Chatbot-prd-run/data/ceb_processed/{category}/embeddings.jsonl
+        Same chunks from the input file, each augmented with an "embedding"
+        vector, "embedding_model", and "embedding_dimensions" fields.
+    /Users/arjundivecha/Dropbox/AAA Backup/A Working/California-Law-Chatbot-prd-run/data/ceb_processed/{category}/embedding_log.xlsx
+        Single-row Excel spreadsheet with run statistics: total/successful/failed
+        chunk counts, total tokens consumed, estimated cost, model name, and
+        start/end timestamps.
+    (existing embeddings.jsonl is also read on resumption to count entries;
+     the file is appended to, not overwritten)
+
+VERSION: 1.0
+LAST UPDATED: 2026-06-05
+AUTHOR: Arjun Divecha
+
+DEPENDENCIES:
+    - openai
+    - pandas
+    - python-dotenv
+    - tqdm
 
 USAGE:
     python generate_embeddings.py --category trusts_estates
     python generate_embeddings.py --category family_law --batch-size 50
 
-Version: 1.0
-Last Updated: November 1, 2025
+NOTES:
+    - The --data-dir argument (default: data/ceb_processed) and --category
+      argument determine all file paths; the absolute paths above assume
+      execution from the project root.
+    - Uses text-embedding-3-small by default (overridable with --model).
+    - The script is resumable: if embeddings.jsonl already exists, it counts
+      existing entries and appends new ones.
+    - Rate-limit handling: 0.1 s delay between batches, exponential backoff
+      (2^retry) on API errors, fallback to per-item embedding on batch failure.
+=============================================================================
 """
 
 import os

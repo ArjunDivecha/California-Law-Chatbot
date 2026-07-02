@@ -1,9 +1,36 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Sanity-check Google Search grounding with Gemini.
-Requires:
-  export GEMINI_API_KEY=...   (Gemini Developer API key)
+=============================================================================
+SCRIPT NAME: test grounding.py
+=============================================================================
+
+DESCRIPTION:
+Sanity-check Google Search grounding with Gemini. Queries the Gemini API with
+Google Search grounding enabled to verify citation quality for California
+legal research on SB 243 chatbot disclosure requirements.
+
+INPUT FILES:
+- None (reads GEMINI_API_KEY from environment variable)
+
+OUTPUT FILES:
+- None (prints results to stdout)
+
+VERSION: 1.0
+LAST UPDATED: 2025-10-30
+AUTHOR: [Not provided]
+
+DEPENDENCIES:
+- google.genai (Gemini API client)
+
+USAGE:
+  export GEMINI_API_KEY=...
+  python "test grounding.py"
+
+NOTES:
+- Requires a valid Gemini Developer API key set in the GEMINI_API_KEY environment variable.
+- Uses the Gemini 2.5 Pro model with Google Search grounding enabled.
+=============================================================================
 """
 
 import os

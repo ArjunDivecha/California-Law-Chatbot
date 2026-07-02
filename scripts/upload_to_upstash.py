@@ -1,29 +1,64 @@
 #!/usr/bin/env python3
 """
-CEB Upstash Vector Upload Script
-
-INPUT FILES:
-- data/ceb_processed/{category}/embeddings.jsonl - Chunks with embeddings
-
-OUTPUT FILES:
-- data/ceb_processed/{category}/upload_log.xlsx - Upload statistics
-- data/ceb_processed/{category}/upload_report.txt - Detailed upload report
+=============================================================================
+SCRIPT NAME: upload_to_upstash.py
+=============================================================================
 
 DESCRIPTION:
-Uploads CEB embeddings to Upstash Vector database. Uses batch uploading
-for efficiency and includes verification to ensure all vectors were uploaded
-successfully.
+    Uploads CEB (Continuing Education of the Bar) text embeddings to Upstash
+    Vector, a cloud-based vector database. The script reads pre-computed
+    embeddings from a JSONL file (one JSON object per line, each containing
+    a chunk_id, embedding vector, and metadata), formats them for Upstash's
+    REST API, and uploads them in configurable batches. It includes retry
+    logic with exponential backoff for failed batches, and produces both an
+    Excel statistics file and a plain-text report summarizing results.
+
+INPUT FILES:
+    /Users/arjundivecha/Dropbox/AAA Backup/A Working/California-Law-Chatbot-prd-run/data/ceb_processed/{category}/embeddings.jsonl
+        One JSON object per line. Each object must contain: chunk_id (str),
+        embedding (list[float]), source_file, category, title, text. May
+        optionally include: section, page_number, chunk_index, ceb_citation,
+        token_count. The {category} is one of: trusts_estates, family_law,
+        business_litigation, business_entities, business_transactions.
+
+    .env (via python-dotenv, loaded from current working directory)
+        Environment variables: UPSTASH_VECTOR_REST_URL and
+        UPSTASH_VECTOR_REST_TOKEN for Upstash authentication.
+
+OUTPUT FILES:
+    /Users/arjundivecha/Dropbox/AAA Backup/A Working/California-Law-Chatbot-prd-run/data/ceb_processed/{category}/upload_log.xlsx
+        Single-row DataFrame with columns: total_vectors, successful_uploads,
+        failed_uploads, start_time, end_time, namespace.
+
+    /Users/arjundivecha/Dropbox/AAA Backup/A Working/California-Law-Chatbot-prd-run/data/ceb_processed/{category}/upload_report.txt
+        Human-readable report with upload date, namespace, vector counts, and
+        success/failure summary.
+
+VERSION: 1.0
+LAST UPDATED: 2026-06-05
+AUTHOR: Arjun Divecha
+
+DEPENDENCIES:
+    - pandas (DataFrame creation and Excel export)
+    - tqdm (progress bar during batch upload)
+    - requests (HTTP POST to Upstash REST API)
+    - python-dotenv (load .env file for credentials)
+    - Standard library: os, sys, json, argparse, time, pathlib.Path, datetime
 
 USAGE:
     python upload_to_upstash.py --category trusts_estates
     python upload_to_upstash.py --category family_law --batch-size 50
 
-PREREQUISITES:
-- Upstash Vector database created
-- Environment variables set: UPSTASH_VECTOR_REST_URL, UPSTASH_VECTOR_REST_TOKEN
-
-Version: 1.0
-Last Updated: November 1, 2025
+NOTES:
+    - Requires UPSTASH_VECTOR_REST_URL and UPSTASH_VECTOR_REST_TOKEN to be
+      set in .env or as environment variables.
+    - The Upstash Vector index must be created beforehand via dashboard or
+      CLI (dimension=1536 for text-embedding-3-small, metric=cosine).
+    - The --data-dir arg (default: data/ceb_processed) is resolved relative
+      to the working directory at runtime (typically the project root).
+    - The {category} placeholder is one of: trusts_estates, family_law,
+      business_litigation, business_entities, business_transactions.
+=============================================================================
 """
 
 import os

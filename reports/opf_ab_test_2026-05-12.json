@@ -1,0 +1,2000 @@
+{
+  "sample_size": 2000,
+  "seed": 42,
+  "device": "mps",
+  "section1_baseline": {
+    "args": {
+      "attn_low_precision": false,
+      "checkpoint": "/Users/arjundivecha/.opf/privacy_filter",
+      "dataset": "/Users/arjundivecha/Dropbox/AAA Backup/A Working/California-Law-Chatbot-prd-run/remote_artifacts/data/privacy_filter_full/test.jsonl",
+      "dataset_variant": "full",
+      "debug_decode": false,
+      "decode_mode": "viterbi",
+      "device": "mps",
+      "discard_overlapping_ground_truth_spans": false,
+      "discard_overlapping_predicted_spans": false,
+      "eval_mode": "typed",
+      "experts_per_token": null,
+      "label_counts": false,
+      "max_examples": 2000,
+      "metrics_out": "/var/folders/4_/nvdcvr_s5md10xy3bqc8mqnc0000gn/T/tmpypfosims/sec1_baseline.json",
+      "moe_triton": false,
+      "n_ctx": null,
+      "per_class": true,
+      "prediction_write_workers": 0,
+      "predictions_out": null,
+      "predictions_token_logprobs_example_id": null,
+      "predictions_token_logprobs_max_tokens": null,
+      "predictions_token_logprobs_topk": 0,
+      "preprocess_chunksize": 16,
+      "preprocess_workers": 0,
+      "preview": false,
+      "preview_example_id": null,
+      "preview_max_chars": 4000,
+      "preview_max_tokens": 256,
+      "progress_every": null,
+      "skip_non_ascii_examples": false,
+      "span_metrics_space": "char",
+      "timings_out": null,
+      "trim_span_whitespace": true,
+      "viterbi_calibration_path": null,
+      "window_batch_size": 1
+    },
+    "config": {
+      "attention_impl": "banded",
+      "category_version": "v2",
+      "checkpoint": "/Users/arjundivecha/.opf/privacy_filter",
+      "dataset": "/Users/arjundivecha/Dropbox/AAA Backup/A Working/California-Law-Chatbot-prd-run/remote_artifacts/data/privacy_filter_full/test.jsonl",
+      "dataset_variant": "full",
+      "decode_mode": "viterbi",
+      "device": "mps",
+      "encoding": "o200k_base",
+      "resolved_n_ctx": 128000,
+      "viterbi_calibration_path": null
+    },
+    "metrics": {
+      "by_class.B-private_address.f1": 0.5316681534344335,
+      "by_class.B-private_address.f2": 0.44437816880405606,
+      "by_class.B-private_address.loss": 5.944503874429207,
+      "by_class.B-private_address.precision": 0.7904509283819628,
+      "by_class.B-private_address.recall": 0.40053763440860213,
+      "by_class.B-private_person.f1": 0.6113350723262984,
+      "by_class.B-private_person.f2": 0.5379350638510976,
+      "by_class.B-private_person.loss": 4.494550856671874,
+      "by_class.B-private_person.precision": 0.7912829957028852,
+      "by_class.B-private_person.recall": 0.49806800618238023,
+      "by_class.E-private_address.f1": 0.4103479036574487,
+      "by_class.E-private_address.f2": 0.3429764390098419,
+      "by_class.E-private_address.loss": 7.260676585916738,
+      "by_class.E-private_address.precision": 0.610079575596817,
+      "by_class.E-private_address.recall": 0.30913978494623656,
+      "by_class.E-private_person.f1": 0.6502252786341001,
+      "by_class.E-private_person.f2": 0.5721559135297555,
+      "by_class.E-private_person.loss": 4.069584292866055,
+      "by_class.E-private_person.precision": 0.8416206261510129,
+      "by_class.E-private_person.recall": 0.5297527047913446,
+      "by_class.I-private_address.f1": 0.5441892832289492,
+      "by_class.I-private_address.f2": 0.5462419670298966,
+      "by_class.I-private_address.loss": 3.7838876541017745,
+      "by_class.I-private_address.precision": 0.5408022130013831,
+      "by_class.I-private_address.recall": 0.5476190476190477,
+      "by_class.I-private_person.f1": 0.6769038701622971,
+      "by_class.I-private_person.f2": 0.7122215216477512,
+      "by_class.I-private_person.loss": 1.749905037411314,
+      "by_class.I-private_person.precision": 0.6252306273062731,
+      "by_class.I-private_person.recall": 0.7378878606423517,
+      "by_class.S-private_address.f1": 0.05555555555555555,
+      "by_class.S-private_address.f2": 0.047619047619047616,
+      "by_class.S-private_address.loss": 13.939244967662608,
+      "by_class.S-private_address.precision": 0.07692307692307693,
+      "by_class.S-private_address.recall": 0.043478260869565216,
+      "by_class.S-private_person.f1": 0.2608695652173913,
+      "by_class.S-private_person.f2": 0.19788918205804748,
+      "by_class.S-private_person.loss": 8.847215167687061,
+      "by_class.S-private_person.precision": 0.5555555555555556,
+      "by_class.S-private_person.recall": 0.17045454545454544,
+      "by_class.account_number.span.precision": 0.0,
+      "by_class.private_address.span.f1": 0.48405017488010443,
+      "by_class.private_address.span.f2": 0.48069722596342424,
+      "by_class.private_address.span.precision": 0.4897435897435897,
+      "by_class.private_address.span.recall": 0.4784876140808344,
+      "by_class.private_date.span.precision": 0.0,
+      "by_class.private_email.span.precision": 0.0,
+      "by_class.private_person.span.f1": 0.6280076369881162,
+      "by_class.private_person.span.f2": 0.6510725710939179,
+      "by_class.private_person.span.precision": 0.5929951690821256,
+      "by_class.private_person.span.recall": 0.6674140508221226,
+      "by_class.private_phone.span.precision": 0.0,
+      "by_class.private_url.span.precision": 0.0,
+      "by_class.secret.span.precision": 0.0,
+      "detection.f1": 0.6070782009868304,
+      "detection.f2": 0.6701200589323218,
+      "detection.precision": 0.524794402847674,
+      "detection.recall": 0.7199629536078134,
+      "detection.span.f1": 0.4743400127099515,
+      "detection.span.f2": 0.5547002921157221,
+      "detection.span.precision": 0.38208469055374594,
+      "detection.span.recall": 0.6253267499273889,
+      "loss": 2.2839182330265864,
+      "n_examples": 2000.0,
+      "n_tokens": 63488.0,
+      "token_accuracy": 0.7964497227822581
+    },
+    "summary": {
+      "elapsed_s": 229.50612675002776,
+      "eval_mode": "typed",
+      "examples": 2000,
+      "loss": 2.2839182330265864,
+      "padded_window_tokens": 63488,
+      "padded_window_tokens_per_s": 276.62878067368337,
+      "token_accuracy": 0.7964497227822581,
+      "tokens": 63488,
+      "tokens_per_s": 276.62878067368337,
+      "window_tokens": 63488,
+      "window_tokens_per_s": 276.62878067368337,
+      "windows": 2000
+    }
+  },
+  "section1_finetuned": {
+    "args": {
+      "attn_low_precision": false,
+      "checkpoint": "/Users/arjundivecha/Dropbox/AAA Backup/A Working/California-Law-Chatbot-prd-run/remote_artifacts/runs/privacy_filter_full/run_b_weighted",
+      "dataset": "/Users/arjundivecha/Dropbox/AAA Backup/A Working/California-Law-Chatbot-prd-run/remote_artifacts/data/privacy_filter_full/test.jsonl",
+      "dataset_variant": "full",
+      "debug_decode": false,
+      "decode_mode": "viterbi",
+      "device": "mps",
+      "discard_overlapping_ground_truth_spans": false,
+      "discard_overlapping_predicted_spans": false,
+      "eval_mode": "typed",
+      "experts_per_token": null,
+      "label_counts": false,
+      "max_examples": 2000,
+      "metrics_out": "/var/folders/4_/nvdcvr_s5md10xy3bqc8mqnc0000gn/T/tmpypfosims/sec1_finetuned.json",
+      "moe_triton": false,
+      "n_ctx": null,
+      "per_class": true,
+      "prediction_write_workers": 0,
+      "predictions_out": null,
+      "predictions_token_logprobs_example_id": null,
+      "predictions_token_logprobs_max_tokens": null,
+      "predictions_token_logprobs_topk": 0,
+      "preprocess_chunksize": 16,
+      "preprocess_workers": 0,
+      "preview": false,
+      "preview_example_id": null,
+      "preview_max_chars": 4000,
+      "preview_max_tokens": 256,
+      "progress_every": null,
+      "skip_non_ascii_examples": false,
+      "span_metrics_space": "char",
+      "timings_out": null,
+      "trim_span_whitespace": true,
+      "viterbi_calibration_path": null,
+      "window_batch_size": 1
+    },
+    "config": {
+      "attention_impl": "banded",
+      "category_version": "v2",
+      "checkpoint": "/Users/arjundivecha/Dropbox/AAA Backup/A Working/California-Law-Chatbot-prd-run/remote_artifacts/runs/privacy_filter_full/run_b_weighted",
+      "dataset": "/Users/arjundivecha/Dropbox/AAA Backup/A Working/California-Law-Chatbot-prd-run/remote_artifacts/data/privacy_filter_full/test.jsonl",
+      "dataset_variant": "full",
+      "decode_mode": "viterbi",
+      "device": "mps",
+      "encoding": "o200k_base",
+      "resolved_n_ctx": 128000,
+      "viterbi_calibration_path": null
+    },
+    "metrics": {
+      "by_class.B-private_address.f1": 0.9093464511595222,
+      "by_class.B-private_address.f2": 0.8850889192886456,
+      "by_class.B-private_address.loss": 0.40304761321643917,
+      "by_class.B-private_address.precision": 0.9528718703976435,
+      "by_class.B-private_address.recall": 0.8696236559139785,
+      "by_class.B-private_person.f1": 0.8855232100708104,
+      "by_class.B-private_person.f2": 0.8760118306351183,
+      "by_class.B-private_person.loss": 0.25684942653316273,
+      "by_class.B-private_person.precision": 0.9018429487179487,
+      "by_class.B-private_person.recall": 0.8697836166924265,
+      "by_class.E-private_address.f1": 0.9051300070274069,
+      "by_class.E-private_address.f2": 0.8809849521203831,
+      "by_class.E-private_address.loss": 0.4311868299487238,
+      "by_class.E-private_address.precision": 0.9484536082474226,
+      "by_class.E-private_address.recall": 0.8655913978494624,
+      "by_class.E-private_person.f1": 0.9000786782061369,
+      "by_class.E-private_person.f2": 0.8904109589041096,
+      "by_class.E-private_person.loss": 0.26313745875095446,
+      "by_class.E-private_person.precision": 0.9166666666666666,
+      "by_class.E-private_person.recall": 0.884080370942813,
+      "by_class.I-private_address.f1": 0.9304347826086956,
+      "by_class.I-private_address.f2": 0.9114139693356048,
+      "by_class.I-private_address.loss": 0.31930331127839234,
+      "by_class.I-private_address.precision": 0.963963963963964,
+      "by_class.I-private_address.recall": 0.8991596638655462,
+      "by_class.I-private_person.f1": 0.8817092235539343,
+      "by_class.I-private_person.f2": 0.9049096160017114,
+      "by_class.I-private_person.loss": 0.20255311985013497,
+      "by_class.I-private_person.precision": 0.8455772113943029,
+      "by_class.I-private_person.recall": 0.9210669569951007,
+      "by_class.S-private_address.f1": 0.7317073170731707,
+      "by_class.S-private_address.f2": 0.6818181818181818,
+      "by_class.S-private_address.loss": 1.4551480074663667,
+      "by_class.S-private_address.precision": 0.8333333333333334,
+      "by_class.S-private_address.recall": 0.6521739130434783,
+      "by_class.S-private_person.f1": 0.6758620689655173,
+      "by_class.S-private_person.f2": 0.5990220048899756,
+      "by_class.S-private_person.loss": 1.5477134659390273,
+      "by_class.S-private_person.precision": 0.8596491228070176,
+      "by_class.S-private_person.recall": 0.5568181818181818,
+      "by_class.private_address.span.f1": 0.9042327103459377,
+      "by_class.private_address.span.f2": 0.8774725970017285,
+      "by_class.private_address.span.precision": 0.9526542324246772,
+      "by_class.private_address.span.recall": 0.8604954367666232,
+      "by_class.private_person.span.f1": 0.8900513277289286,
+      "by_class.private_person.span.f2": 0.9108483906647301,
+      "by_class.private_person.span.precision": 0.8574226400313357,
+      "by_class.private_person.span.recall": 0.9252615844544095,
+      "detection.f1": 0.982484345913014,
+      "detection.f2": 0.9795501712588793,
+      "detection.precision": 0.9874138957394336,
+      "detection.recall": 0.9776037719962953,
+      "detection.span.f1": 0.8940356821542613,
+      "detection.span.f2": 0.9040392360154845,
+      "detection.span.precision": 0.8778461538461538,
+      "detection.span.recall": 0.9108335753703166,
+      "loss": 0.06079232991674824,
+      "n_examples": 2000.0,
+      "n_tokens": 63488.0,
+      "token_accuracy": 0.9769562752016129
+    },
+    "summary": {
+      "elapsed_s": 241.21672883303836,
+      "eval_mode": "typed",
+      "examples": 2000,
+      "loss": 0.06079232991674824,
+      "padded_window_tokens": 63488,
+      "padded_window_tokens_per_s": 263.19899248755723,
+      "token_accuracy": 0.9769562752016129,
+      "tokens": 63488,
+      "tokens_per_s": 263.19899248755723,
+      "window_tokens": 63488,
+      "window_tokens_per_s": 263.19899248755723,
+      "windows": 2000
+    }
+  },
+  "section2_baseline": {
+    "label": "baseline",
+    "n_prompts": 24,
+    "aggregate": {
+      "precision": 0.96,
+      "recall": 0.96,
+      "f1": 0.96,
+      "tp": 24,
+      "fp": 1,
+      "fn": 1
+    },
+    "per_prompt": [
+      {
+        "lang": "es",
+        "scenario": "spanish_name_in_english_query",
+        "text_preview": "My client Mar\u00eda Gonz\u00e1lez would like to dispute the property boundary a",
+        "f1": 0.6667,
+        "precision": 0.5,
+        "recall": 1.0,
+        "categories": {
+          "private_address": {
+            "tp": 0,
+            "fp": 1,
+            "fn": 0,
+            "f1": 0.0
+          },
+          "private_person": {
+            "tp": 1,
+            "fp": 0,
+            "fn": 0,
+            "f1": 1.0
+          }
+        },
+        "predicted_spans": [
+          {
+            "label": "private_person",
+            "start": 10,
+            "end": 24,
+            "text": "Mar\u00eda Gonz\u00e1lez",
+            "placeholder": "<PRIVATE_PERSON>"
+          },
+          {
+            "label": "private_address",
+            "start": 72,
+            "end": 84,
+            "text": "123 Main St.",
+            "placeholder": "<PRIVATE_ADDRESS>"
+          }
+        ]
+      },
+      {
+        "lang": "es",
+        "scenario": "spanish_compound_surname",
+        "text_preview": "Please review the custody agreement for Jos\u00e9 Luis Hern\u00e1ndez-Morales, D",
+        "f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "categories": {
+          "private_date": {
+            "tp": 1,
+            "fp": 0,
+            "fn": 0,
+            "f1": 1.0
+          },
+          "private_person": {
+            "tp": 1,
+            "fp": 0,
+            "fn": 0,
+            "f1": 1.0
+          }
+        },
+        "predicted_spans": [
+          {
+            "label": "private_person",
+            "start": 40,
+            "end": 67,
+            "text": "Jos\u00e9 Luis Hern\u00e1ndez-Morales",
+            "placeholder": "<PRIVATE_PERSON>"
+          },
+          {
+            "label": "private_date",
+            "start": 73,
+            "end": 83,
+            "text": "1985-03-14",
+            "placeholder": "<PRIVATE_DATE>"
+          }
+        ]
+      },
+      {
+        "lang": "es",
+        "scenario": "spanish_de_la_surname",
+        "text_preview": "The respondent, Alejandra Fuentes de la Cruz, contests the dissolution",
+        "f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "categories": {
+          "private_person": {
+            "tp": 1,
+            "fp": 0,
+            "fn": 0,
+            "f1": 1.0
+          }
+        },
+        "predicted_spans": [
+          {
+            "label": "private_person",
+            "start": 16,
+            "end": 44,
+            "text": "Alejandra Fuentes de la Cruz",
+            "placeholder": "<PRIVATE_PERSON>"
+          }
+        ]
+      },
+      {
+        "lang": "zh",
+        "scenario": "chinese_name_western_order",
+        "text_preview": "Client Wei Zhang requests review of the commercial lease at 400 Sacram",
+        "f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "categories": {
+          "private_person": {
+            "tp": 1,
+            "fp": 0,
+            "fn": 0,
+            "f1": 1.0
+          }
+        },
+        "predicted_spans": [
+          {
+            "label": "private_person",
+            "start": 7,
+            "end": 16,
+            "text": "Wei Zhang",
+            "placeholder": "<PRIVATE_PERSON>"
+          }
+        ]
+      },
+      {
+        "lang": "zh",
+        "scenario": "chinese_name_with_hanzi",
+        "text_preview": "Opposing party Zhang Wei (\u5f20\u4f1f) disputes the contract terms.",
+        "f1": 0.0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "categories": {
+          "private_person": {
+            "tp": 0,
+            "fp": 0,
+            "fn": 1,
+            "f1": 0.0
+          }
+        },
+        "predicted_spans": []
+      },
+      {
+        "lang": "zh",
+        "scenario": "chinese_three_character_name",
+        "text_preview": "Please prepare the estate plan for Li Meizhen, currently residing in C",
+        "f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "categories": {
+          "private_person": {
+            "tp": 1,
+            "fp": 0,
+            "fn": 0,
+            "f1": 1.0
+          }
+        },
+        "predicted_spans": [
+          {
+            "label": "private_person",
+            "start": 35,
+            "end": 45,
+            "text": "Li Meizhen",
+            "placeholder": "<PRIVATE_PERSON>"
+          }
+        ]
+      },
+      {
+        "lang": "vi",
+        "scenario": "vietnamese_three_part_name",
+        "text_preview": "My client Nguyen Thi Lan needs advice on the small business licensing ",
+        "f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "categories": {
+          "private_person": {
+            "tp": 1,
+            "fp": 0,
+            "fn": 0,
+            "f1": 1.0
+          }
+        },
+        "predicted_spans": [
+          {
+            "label": "private_person",
+            "start": 10,
+            "end": 24,
+            "text": "Nguyen Thi Lan",
+            "placeholder": "<PRIVATE_PERSON>"
+          }
+        ]
+      },
+      {
+        "lang": "vi",
+        "scenario": "vietnamese_middle_honorific",
+        "text_preview": "The petitioner, Pham Van An, seeks modification of the support order.",
+        "f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "categories": {
+          "private_person": {
+            "tp": 1,
+            "fp": 0,
+            "fn": 0,
+            "f1": 1.0
+          }
+        },
+        "predicted_spans": [
+          {
+            "label": "private_person",
+            "start": 16,
+            "end": 27,
+            "text": "Pham Van An",
+            "placeholder": "<PRIVATE_PERSON>"
+          }
+        ]
+      },
+      {
+        "lang": "ko",
+        "scenario": "korean_hyphenated_given_name",
+        "text_preview": "Attorney Kim Ji-won represents the plaintiff in the trademark dispute.",
+        "f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "categories": {
+          "private_person": {
+            "tp": 1,
+            "fp": 0,
+            "fn": 0,
+            "f1": 1.0
+          }
+        },
+        "predicted_spans": [
+          {
+            "label": "private_person",
+            "start": 9,
+            "end": 19,
+            "text": "Kim Ji-won",
+            "placeholder": "<PRIVATE_PERSON>"
+          }
+        ]
+      },
+      {
+        "lang": "ko",
+        "scenario": "korean_name_romanized",
+        "text_preview": "My client Park Seo-yeon would like to contest the eviction notice.",
+        "f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "categories": {
+          "private_person": {
+            "tp": 1,
+            "fp": 0,
+            "fn": 0,
+            "f1": 1.0
+          }
+        },
+        "predicted_spans": [
+          {
+            "label": "private_person",
+            "start": 10,
+            "end": 23,
+            "text": "Park Seo-yeon",
+            "placeholder": "<PRIVATE_PERSON>"
+          }
+        ]
+      },
+      {
+        "lang": "ar",
+        "scenario": "arabic_al_surname",
+        "text_preview": "Client Fatima Al-Hassan disputes the employment termination at Acme Co",
+        "f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "categories": {
+          "private_person": {
+            "tp": 1,
+            "fp": 0,
+            "fn": 0,
+            "f1": 1.0
+          }
+        },
+        "predicted_spans": [
+          {
+            "label": "private_person",
+            "start": 7,
+            "end": 23,
+            "text": "Fatima Al-Hassan",
+            "placeholder": "<PRIVATE_PERSON>"
+          }
+        ]
+      },
+      {
+        "lang": "ar",
+        "scenario": "arabic_patronymic_ibn",
+        "text_preview": "Please advise Mohammed Ibn Khalid regarding the immigration petition.",
+        "f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "categories": {
+          "private_person": {
+            "tp": 1,
+            "fp": 0,
+            "fn": 0,
+            "f1": 1.0
+          }
+        },
+        "predicted_spans": [
+          {
+            "label": "private_person",
+            "start": 14,
+            "end": 33,
+            "text": "Mohammed Ibn Khalid",
+            "placeholder": "<PRIVATE_PERSON>"
+          }
+        ]
+      },
+      {
+        "lang": "hi",
+        "scenario": "indian_three_part_name",
+        "text_preview": "My client Rajesh Kumar Patel is seeking advice on the employment contr",
+        "f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "categories": {
+          "private_person": {
+            "tp": 1,
+            "fp": 0,
+            "fn": 0,
+            "f1": 1.0
+          }
+        },
+        "predicted_spans": [
+          {
+            "label": "private_person",
+            "start": 10,
+            "end": 28,
+            "text": "Rajesh Kumar Patel",
+            "placeholder": "<PRIVATE_PERSON>"
+          }
+        ]
+      },
+      {
+        "lang": "hi",
+        "scenario": "south_indian_surname",
+        "text_preview": "The respondent, Priya Subramaniam, has filed a counter-petition.",
+        "f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "categories": {
+          "private_person": {
+            "tp": 1,
+            "fp": 0,
+            "fn": 0,
+            "f1": 1.0
+          }
+        },
+        "predicted_spans": [
+          {
+            "label": "private_person",
+            "start": 16,
+            "end": 33,
+            "text": "Priya Subramaniam",
+            "placeholder": "<PRIVATE_PERSON>"
+          }
+        ]
+      },
+      {
+        "lang": "fr",
+        "scenario": "french_hyphenated_given_name",
+        "text_preview": "Client Pierre-Jean Dubois requests review of the real estate contract.",
+        "f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "categories": {
+          "private_person": {
+            "tp": 1,
+            "fp": 0,
+            "fn": 0,
+            "f1": 1.0
+          }
+        },
+        "predicted_spans": [
+          {
+            "label": "private_person",
+            "start": 7,
+            "end": 25,
+            "text": "Pierre-Jean Dubois",
+            "placeholder": "<PRIVATE_PERSON>"
+          }
+        ]
+      },
+      {
+        "lang": "fr",
+        "scenario": "french_de_particle",
+        "text_preview": "Please prepare the trust documents for Marie-Claire de Villeneuve.",
+        "f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "categories": {
+          "private_person": {
+            "tp": 1,
+            "fp": 0,
+            "fn": 0,
+            "f1": 1.0
+          }
+        },
+        "predicted_spans": [
+          {
+            "label": "private_person",
+            "start": 39,
+            "end": 65,
+            "text": "Marie-Claire de Villeneuve",
+            "placeholder": "<PRIVATE_PERSON>"
+          }
+        ]
+      },
+      {
+        "lang": "ru",
+        "scenario": "russian_name_romanized",
+        "text_preview": "My client Ivan Petrov would like to dispute the business partnership a",
+        "f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "categories": {
+          "private_person": {
+            "tp": 1,
+            "fp": 0,
+            "fn": 0,
+            "f1": 1.0
+          }
+        },
+        "predicted_spans": [
+          {
+            "label": "private_person",
+            "start": 10,
+            "end": 21,
+            "text": "Ivan Petrov",
+            "placeholder": "<PRIVATE_PERSON>"
+          }
+        ]
+      },
+      {
+        "lang": "ru",
+        "scenario": "russian_patronymic_full_name",
+        "text_preview": "The claimant Olga Nikolaevna Sorokina contests the inheritance distrib",
+        "f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "categories": {
+          "private_person": {
+            "tp": 1,
+            "fp": 0,
+            "fn": 0,
+            "f1": 1.0
+          }
+        },
+        "predicted_spans": [
+          {
+            "label": "private_person",
+            "start": 13,
+            "end": 37,
+            "text": "Olga Nikolaevna Sorokina",
+            "placeholder": "<PRIVATE_PERSON>"
+          }
+        ]
+      },
+      {
+        "lang": "ja",
+        "scenario": "japanese_name_surname_first",
+        "text_preview": "Client Tanaka Hiroshi requests legal advice on the employment dispute.",
+        "f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "categories": {
+          "private_person": {
+            "tp": 1,
+            "fp": 0,
+            "fn": 0,
+            "f1": 1.0
+          }
+        },
+        "predicted_spans": [
+          {
+            "label": "private_person",
+            "start": 7,
+            "end": 21,
+            "text": "Tanaka Hiroshi",
+            "placeholder": "<PRIVATE_PERSON>"
+          }
+        ]
+      },
+      {
+        "lang": "ja",
+        "scenario": "japanese_female_given_name",
+        "text_preview": "My client Yamamoto Keiko is seeking dissolution of the business partne",
+        "f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "categories": {
+          "private_person": {
+            "tp": 1,
+            "fp": 0,
+            "fn": 0,
+            "f1": 1.0
+          }
+        },
+        "predicted_spans": [
+          {
+            "label": "private_person",
+            "start": 10,
+            "end": 24,
+            "text": "Yamamoto Keiko",
+            "placeholder": "<PRIVATE_PERSON>"
+          }
+        ]
+      },
+      {
+        "lang": "de",
+        "scenario": "german_hyphenated_umlaut",
+        "text_preview": "Please advise Hans-Wilhelm M\u00fcller on the corporate restructuring.",
+        "f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "categories": {
+          "private_person": {
+            "tp": 1,
+            "fp": 0,
+            "fn": 0,
+            "f1": 1.0
+          }
+        },
+        "predicted_spans": [
+          {
+            "label": "private_person",
+            "start": 14,
+            "end": 33,
+            "text": "Hans-Wilhelm M\u00fcller",
+            "placeholder": "<PRIVATE_PERSON>"
+          }
+        ]
+      },
+      {
+        "lang": "de",
+        "scenario": "german_von_particle",
+        "text_preview": "Client Sophie von Bernstein disputes the commercial lease terms.",
+        "f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "categories": {
+          "private_person": {
+            "tp": 1,
+            "fp": 0,
+            "fn": 0,
+            "f1": 1.0
+          }
+        },
+        "predicted_spans": [
+          {
+            "label": "private_person",
+            "start": 7,
+            "end": 27,
+            "text": "Sophie von Bernstein",
+            "placeholder": "<PRIVATE_PERSON>"
+          }
+        ]
+      },
+      {
+        "lang": "pt",
+        "scenario": "portuguese_compound_name_da",
+        "text_preview": "My client Ana Carolina Ferreira da Silva needs probate advice.",
+        "f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "categories": {
+          "private_person": {
+            "tp": 1,
+            "fp": 0,
+            "fn": 0,
+            "f1": 1.0
+          }
+        },
+        "predicted_spans": [
+          {
+            "label": "private_person",
+            "start": 10,
+            "end": 40,
+            "text": "Ana Carolina Ferreira da Silva",
+            "placeholder": "<PRIVATE_PERSON>"
+          }
+        ]
+      },
+      {
+        "lang": "pt",
+        "scenario": "portuguese_accented_name",
+        "text_preview": "The petitioner Jo\u00e3o Paulo Rodrigues requests modification of child sup",
+        "f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "categories": {
+          "private_person": {
+            "tp": 1,
+            "fp": 0,
+            "fn": 0,
+            "f1": 1.0
+          }
+        },
+        "predicted_spans": [
+          {
+            "label": "private_person",
+            "start": 15,
+            "end": 35,
+            "text": "Jo\u00e3o Paulo Rodrigues",
+            "placeholder": "<PRIVATE_PERSON>"
+          }
+        ]
+      }
+    ]
+  },
+  "section2_finetuned": {
+    "label": "finetuned",
+    "n_prompts": 24,
+    "aggregate": {
+      "precision": 0.7059,
+      "recall": 0.96,
+      "f1": 0.8136,
+      "tp": 24,
+      "fp": 10,
+      "fn": 1
+    },
+    "per_prompt": [
+      {
+        "lang": "es",
+        "scenario": "spanish_name_in_english_query",
+        "text_preview": "My client Mar\u00eda Gonz\u00e1lez would like to dispute the property boundary a",
+        "f1": 0.6667,
+        "precision": 0.5,
+        "recall": 1.0,
+        "categories": {
+          "private_address": {
+            "tp": 0,
+            "fp": 1,
+            "fn": 0,
+            "f1": 0.0
+          },
+          "private_person": {
+            "tp": 1,
+            "fp": 0,
+            "fn": 0,
+            "f1": 1.0
+          }
+        },
+        "predicted_spans": [
+          {
+            "label": "private_person",
+            "start": 10,
+            "end": 24,
+            "text": "Mar\u00eda Gonz\u00e1lez",
+            "placeholder": "<PRIVATE_PERSON>"
+          },
+          {
+            "label": "private_address",
+            "start": 72,
+            "end": 83,
+            "text": "123 Main St",
+            "placeholder": "<PRIVATE_ADDRESS>"
+          }
+        ]
+      },
+      {
+        "lang": "es",
+        "scenario": "spanish_compound_surname",
+        "text_preview": "Please review the custody agreement for Jos\u00e9 Luis Hern\u00e1ndez-Morales, D",
+        "f1": 0.5,
+        "precision": 0.5,
+        "recall": 0.5,
+        "categories": {
+          "private_date": {
+            "tp": 0,
+            "fp": 0,
+            "fn": 1,
+            "f1": 0.0
+          },
+          "private_person": {
+            "tp": 1,
+            "fp": 1,
+            "fn": 0,
+            "f1": 0.6667
+          }
+        },
+        "predicted_spans": [
+          {
+            "label": "private_person",
+            "start": 40,
+            "end": 44,
+            "text": "Jos\u00e9",
+            "placeholder": "<PRIVATE_PERSON>"
+          },
+          {
+            "label": "private_person",
+            "start": 45,
+            "end": 67,
+            "text": "Luis Hern\u00e1ndez-Morales",
+            "placeholder": "<PRIVATE_PERSON>"
+          }
+        ]
+      },
+      {
+        "lang": "es",
+        "scenario": "spanish_de_la_surname",
+        "text_preview": "The respondent, Alejandra Fuentes de la Cruz, contests the dissolution",
+        "f1": 0.6667,
+        "precision": 0.5,
+        "recall": 1.0,
+        "categories": {
+          "private_person": {
+            "tp": 1,
+            "fp": 1,
+            "fn": 0,
+            "f1": 0.6667
+          }
+        },
+        "predicted_spans": [
+          {
+            "label": "private_person",
+            "start": 16,
+            "end": 25,
+            "text": "Alejandra",
+            "placeholder": "<PRIVATE_PERSON>"
+          },
+          {
+            "label": "private_person",
+            "start": 26,
+            "end": 44,
+            "text": "Fuentes de la Cruz",
+            "placeholder": "<PRIVATE_PERSON>"
+          }
+        ]
+      },
+      {
+        "lang": "zh",
+        "scenario": "chinese_name_western_order",
+        "text_preview": "Client Wei Zhang requests review of the commercial lease at 400 Sacram",
+        "f1": 0.6667,
+        "precision": 0.5,
+        "recall": 1.0,
+        "categories": {
+          "private_address": {
+            "tp": 0,
+            "fp": 1,
+            "fn": 0,
+            "f1": 0.0
+          },
+          "private_person": {
+            "tp": 1,
+            "fp": 0,
+            "fn": 0,
+            "f1": 1.0
+          }
+        },
+        "predicted_spans": [
+          {
+            "label": "private_person",
+            "start": 7,
+            "end": 16,
+            "text": "Wei Zhang",
+            "placeholder": "<PRIVATE_PERSON>"
+          },
+          {
+            "label": "private_address",
+            "start": 60,
+            "end": 79,
+            "text": "400 Sacramento Blvd",
+            "placeholder": "<PRIVATE_ADDRESS>"
+          }
+        ]
+      },
+      {
+        "lang": "zh",
+        "scenario": "chinese_name_with_hanzi",
+        "text_preview": "Opposing party Zhang Wei (\u5f20\u4f1f) disputes the contract terms.",
+        "f1": 0.6667,
+        "precision": 0.5,
+        "recall": 1.0,
+        "categories": {
+          "private_person": {
+            "tp": 1,
+            "fp": 1,
+            "fn": 0,
+            "f1": 0.6667
+          }
+        },
+        "predicted_spans": [
+          {
+            "label": "private_person",
+            "start": 15,
+            "end": 24,
+            "text": "Zhang Wei",
+            "placeholder": "<PRIVATE_PERSON>"
+          },
+          {
+            "label": "private_person",
+            "start": 26,
+            "end": 28,
+            "text": "\u5f20\u4f1f",
+            "placeholder": "<PRIVATE_PERSON>"
+          }
+        ]
+      },
+      {
+        "lang": "zh",
+        "scenario": "chinese_three_character_name",
+        "text_preview": "Please prepare the estate plan for Li Meizhen, currently residing in C",
+        "f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "categories": {
+          "private_person": {
+            "tp": 1,
+            "fp": 0,
+            "fn": 0,
+            "f1": 1.0
+          }
+        },
+        "predicted_spans": [
+          {
+            "label": "private_person",
+            "start": 35,
+            "end": 45,
+            "text": "Li Meizhen",
+            "placeholder": "<PRIVATE_PERSON>"
+          }
+        ]
+      },
+      {
+        "lang": "vi",
+        "scenario": "vietnamese_three_part_name",
+        "text_preview": "My client Nguyen Thi Lan needs advice on the small business licensing ",
+        "f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "categories": {
+          "private_person": {
+            "tp": 1,
+            "fp": 0,
+            "fn": 0,
+            "f1": 1.0
+          }
+        },
+        "predicted_spans": [
+          {
+            "label": "private_person",
+            "start": 10,
+            "end": 24,
+            "text": "Nguyen Thi Lan",
+            "placeholder": "<PRIVATE_PERSON>"
+          }
+        ]
+      },
+      {
+        "lang": "vi",
+        "scenario": "vietnamese_middle_honorific",
+        "text_preview": "The petitioner, Pham Van An, seeks modification of the support order.",
+        "f1": 0.6667,
+        "precision": 0.5,
+        "recall": 1.0,
+        "categories": {
+          "private_person": {
+            "tp": 1,
+            "fp": 1,
+            "fn": 0,
+            "f1": 0.6667
+          }
+        },
+        "predicted_spans": [
+          {
+            "label": "private_person",
+            "start": 16,
+            "end": 20,
+            "text": "Pham",
+            "placeholder": "<PRIVATE_PERSON>"
+          },
+          {
+            "label": "private_person",
+            "start": 21,
+            "end": 27,
+            "text": "Van An",
+            "placeholder": "<PRIVATE_PERSON>"
+          }
+        ]
+      },
+      {
+        "lang": "ko",
+        "scenario": "korean_hyphenated_given_name",
+        "text_preview": "Attorney Kim Ji-won represents the plaintiff in the trademark dispute.",
+        "f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "categories": {
+          "private_person": {
+            "tp": 1,
+            "fp": 0,
+            "fn": 0,
+            "f1": 1.0
+          }
+        },
+        "predicted_spans": [
+          {
+            "label": "private_person",
+            "start": 9,
+            "end": 19,
+            "text": "Kim Ji-won",
+            "placeholder": "<PRIVATE_PERSON>"
+          }
+        ]
+      },
+      {
+        "lang": "ko",
+        "scenario": "korean_name_romanized",
+        "text_preview": "My client Park Seo-yeon would like to contest the eviction notice.",
+        "f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "categories": {
+          "private_person": {
+            "tp": 1,
+            "fp": 0,
+            "fn": 0,
+            "f1": 1.0
+          }
+        },
+        "predicted_spans": [
+          {
+            "label": "private_person",
+            "start": 10,
+            "end": 23,
+            "text": "Park Seo-yeon",
+            "placeholder": "<PRIVATE_PERSON>"
+          }
+        ]
+      },
+      {
+        "lang": "ar",
+        "scenario": "arabic_al_surname",
+        "text_preview": "Client Fatima Al-Hassan disputes the employment termination at Acme Co",
+        "f1": 0.6667,
+        "precision": 0.5,
+        "recall": 1.0,
+        "categories": {
+          "private_address": {
+            "tp": 0,
+            "fp": 1,
+            "fn": 0,
+            "f1": 0.0
+          },
+          "private_person": {
+            "tp": 1,
+            "fp": 0,
+            "fn": 0,
+            "f1": 1.0
+          }
+        },
+        "predicted_spans": [
+          {
+            "label": "private_person",
+            "start": 7,
+            "end": 23,
+            "text": "Fatima Al-Hassan",
+            "placeholder": "<PRIVATE_PERSON>"
+          },
+          {
+            "label": "private_address",
+            "start": 63,
+            "end": 72,
+            "text": "Acme Corp",
+            "placeholder": "<PRIVATE_ADDRESS>"
+          }
+        ]
+      },
+      {
+        "lang": "ar",
+        "scenario": "arabic_patronymic_ibn",
+        "text_preview": "Please advise Mohammed Ibn Khalid regarding the immigration petition.",
+        "f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "categories": {
+          "private_person": {
+            "tp": 1,
+            "fp": 0,
+            "fn": 0,
+            "f1": 1.0
+          }
+        },
+        "predicted_spans": [
+          {
+            "label": "private_person",
+            "start": 14,
+            "end": 33,
+            "text": "Mohammed Ibn Khalid",
+            "placeholder": "<PRIVATE_PERSON>"
+          }
+        ]
+      },
+      {
+        "lang": "hi",
+        "scenario": "indian_three_part_name",
+        "text_preview": "My client Rajesh Kumar Patel is seeking advice on the employment contr",
+        "f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "categories": {
+          "private_person": {
+            "tp": 1,
+            "fp": 0,
+            "fn": 0,
+            "f1": 1.0
+          }
+        },
+        "predicted_spans": [
+          {
+            "label": "private_person",
+            "start": 10,
+            "end": 28,
+            "text": "Rajesh Kumar Patel",
+            "placeholder": "<PRIVATE_PERSON>"
+          }
+        ]
+      },
+      {
+        "lang": "hi",
+        "scenario": "south_indian_surname",
+        "text_preview": "The respondent, Priya Subramaniam, has filed a counter-petition.",
+        "f1": 0.6667,
+        "precision": 0.5,
+        "recall": 1.0,
+        "categories": {
+          "private_person": {
+            "tp": 1,
+            "fp": 1,
+            "fn": 0,
+            "f1": 0.6667
+          }
+        },
+        "predicted_spans": [
+          {
+            "label": "private_person",
+            "start": 16,
+            "end": 21,
+            "text": "Priya",
+            "placeholder": "<PRIVATE_PERSON>"
+          },
+          {
+            "label": "private_person",
+            "start": 22,
+            "end": 33,
+            "text": "Subramaniam",
+            "placeholder": "<PRIVATE_PERSON>"
+          }
+        ]
+      },
+      {
+        "lang": "fr",
+        "scenario": "french_hyphenated_given_name",
+        "text_preview": "Client Pierre-Jean Dubois requests review of the real estate contract.",
+        "f1": 0.6667,
+        "precision": 0.5,
+        "recall": 1.0,
+        "categories": {
+          "private_person": {
+            "tp": 1,
+            "fp": 1,
+            "fn": 0,
+            "f1": 0.6667
+          }
+        },
+        "predicted_spans": [
+          {
+            "label": "private_person",
+            "start": 7,
+            "end": 18,
+            "text": "Pierre-Jean",
+            "placeholder": "<PRIVATE_PERSON>"
+          },
+          {
+            "label": "private_person",
+            "start": 19,
+            "end": 25,
+            "text": "Dubois",
+            "placeholder": "<PRIVATE_PERSON>"
+          }
+        ]
+      },
+      {
+        "lang": "fr",
+        "scenario": "french_de_particle",
+        "text_preview": "Please prepare the trust documents for Marie-Claire de Villeneuve.",
+        "f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "categories": {
+          "private_person": {
+            "tp": 1,
+            "fp": 0,
+            "fn": 0,
+            "f1": 1.0
+          }
+        },
+        "predicted_spans": [
+          {
+            "label": "private_person",
+            "start": 39,
+            "end": 65,
+            "text": "Marie-Claire de Villeneuve",
+            "placeholder": "<PRIVATE_PERSON>"
+          }
+        ]
+      },
+      {
+        "lang": "ru",
+        "scenario": "russian_name_romanized",
+        "text_preview": "My client Ivan Petrov would like to dispute the business partnership a",
+        "f1": 0.6667,
+        "precision": 0.5,
+        "recall": 1.0,
+        "categories": {
+          "private_person": {
+            "tp": 1,
+            "fp": 1,
+            "fn": 0,
+            "f1": 0.6667
+          }
+        },
+        "predicted_spans": [
+          {
+            "label": "private_person",
+            "start": 10,
+            "end": 14,
+            "text": "Ivan",
+            "placeholder": "<PRIVATE_PERSON>"
+          },
+          {
+            "label": "private_person",
+            "start": 15,
+            "end": 21,
+            "text": "Petrov",
+            "placeholder": "<PRIVATE_PERSON>"
+          }
+        ]
+      },
+      {
+        "lang": "ru",
+        "scenario": "russian_patronymic_full_name",
+        "text_preview": "The claimant Olga Nikolaevna Sorokina contests the inheritance distrib",
+        "f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "categories": {
+          "private_person": {
+            "tp": 1,
+            "fp": 0,
+            "fn": 0,
+            "f1": 1.0
+          }
+        },
+        "predicted_spans": [
+          {
+            "label": "private_person",
+            "start": 13,
+            "end": 37,
+            "text": "Olga Nikolaevna Sorokina",
+            "placeholder": "<PRIVATE_PERSON>"
+          }
+        ]
+      },
+      {
+        "lang": "ja",
+        "scenario": "japanese_name_surname_first",
+        "text_preview": "Client Tanaka Hiroshi requests legal advice on the employment dispute.",
+        "f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "categories": {
+          "private_person": {
+            "tp": 1,
+            "fp": 0,
+            "fn": 0,
+            "f1": 1.0
+          }
+        },
+        "predicted_spans": [
+          {
+            "label": "private_person",
+            "start": 7,
+            "end": 21,
+            "text": "Tanaka Hiroshi",
+            "placeholder": "<PRIVATE_PERSON>"
+          }
+        ]
+      },
+      {
+        "lang": "ja",
+        "scenario": "japanese_female_given_name",
+        "text_preview": "My client Yamamoto Keiko is seeking dissolution of the business partne",
+        "f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "categories": {
+          "private_person": {
+            "tp": 1,
+            "fp": 0,
+            "fn": 0,
+            "f1": 1.0
+          }
+        },
+        "predicted_spans": [
+          {
+            "label": "private_person",
+            "start": 10,
+            "end": 24,
+            "text": "Yamamoto Keiko",
+            "placeholder": "<PRIVATE_PERSON>"
+          }
+        ]
+      },
+      {
+        "lang": "de",
+        "scenario": "german_hyphenated_umlaut",
+        "text_preview": "Please advise Hans-Wilhelm M\u00fcller on the corporate restructuring.",
+        "f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "categories": {
+          "private_person": {
+            "tp": 1,
+            "fp": 0,
+            "fn": 0,
+            "f1": 1.0
+          }
+        },
+        "predicted_spans": [
+          {
+            "label": "private_person",
+            "start": 14,
+            "end": 33,
+            "text": "Hans-Wilhelm M\u00fcller",
+            "placeholder": "<PRIVATE_PERSON>"
+          }
+        ]
+      },
+      {
+        "lang": "de",
+        "scenario": "german_von_particle",
+        "text_preview": "Client Sophie von Bernstein disputes the commercial lease terms.",
+        "f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "categories": {
+          "private_person": {
+            "tp": 1,
+            "fp": 0,
+            "fn": 0,
+            "f1": 1.0
+          }
+        },
+        "predicted_spans": [
+          {
+            "label": "private_person",
+            "start": 14,
+            "end": 27,
+            "text": "von Bernstein",
+            "placeholder": "<PRIVATE_PERSON>"
+          }
+        ]
+      },
+      {
+        "lang": "pt",
+        "scenario": "portuguese_compound_name_da",
+        "text_preview": "My client Ana Carolina Ferreira da Silva needs probate advice.",
+        "f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "categories": {
+          "private_person": {
+            "tp": 1,
+            "fp": 0,
+            "fn": 0,
+            "f1": 1.0
+          }
+        },
+        "predicted_spans": [
+          {
+            "label": "private_person",
+            "start": 10,
+            "end": 40,
+            "text": "Ana Carolina Ferreira da Silva",
+            "placeholder": "<PRIVATE_PERSON>"
+          }
+        ]
+      },
+      {
+        "lang": "pt",
+        "scenario": "portuguese_accented_name",
+        "text_preview": "The petitioner Jo\u00e3o Paulo Rodrigues requests modification of child sup",
+        "f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "categories": {
+          "private_person": {
+            "tp": 1,
+            "fp": 0,
+            "fn": 0,
+            "f1": 1.0
+          }
+        },
+        "predicted_spans": [
+          {
+            "label": "private_person",
+            "start": 20,
+            "end": 35,
+            "text": "Paulo Rodrigues",
+            "placeholder": "<PRIVATE_PERSON>"
+          }
+        ]
+      }
+    ]
+  },
+  "section3_baseline": {
+    "label": "baseline",
+    "n_prompts": 5,
+    "aggregate": {
+      "precision": 0.8889,
+      "recall": 0.8889,
+      "f1": 0.8889,
+      "tp": 8,
+      "fp": 1,
+      "fn": 1
+    },
+    "per_prompt": [
+      {
+        "lang": "en",
+        "scenario": "english_basic_full_name",
+        "text_preview": "My client John Smith would like to review the contract.",
+        "f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "categories": {
+          "private_person": {
+            "tp": 1,
+            "fp": 0,
+            "fn": 0,
+            "f1": 1.0
+          }
+        },
+        "predicted_spans": [
+          {
+            "label": "private_person",
+            "start": 10,
+            "end": 20,
+            "text": "John Smith",
+            "placeholder": "<PRIVATE_PERSON>"
+          }
+        ]
+      },
+      {
+        "lang": "en",
+        "scenario": "english_name_and_email",
+        "text_preview": "Please contact Jane Doe at jane.doe@example.com regarding the lease.",
+        "f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "categories": {
+          "private_email": {
+            "tp": 1,
+            "fp": 0,
+            "fn": 0,
+            "f1": 1.0
+          },
+          "private_person": {
+            "tp": 1,
+            "fp": 0,
+            "fn": 0,
+            "f1": 1.0
+          }
+        },
+        "predicted_spans": [
+          {
+            "label": "private_person",
+            "start": 15,
+            "end": 23,
+            "text": "Jane Doe",
+            "placeholder": "<PRIVATE_PERSON>"
+          },
+          {
+            "label": "private_email",
+            "start": 27,
+            "end": 47,
+            "text": "jane.doe@example.com",
+            "placeholder": "<PRIVATE_EMAIL>"
+          }
+        ]
+      },
+      {
+        "lang": "en",
+        "scenario": "english_name_and_ssn",
+        "text_preview": "Client Robert J. Williams, SSN 123-45-6789, filed for bankruptcy.",
+        "f1": 0.5,
+        "precision": 0.5,
+        "recall": 0.5,
+        "categories": {
+          "account_number": {
+            "tp": 0,
+            "fp": 1,
+            "fn": 0,
+            "f1": 0.0
+          },
+          "private_person": {
+            "tp": 1,
+            "fp": 0,
+            "fn": 0,
+            "f1": 1.0
+          },
+          "secret": {
+            "tp": 0,
+            "fp": 0,
+            "fn": 1,
+            "f1": 0.0
+          }
+        },
+        "predicted_spans": [
+          {
+            "label": "private_person",
+            "start": 7,
+            "end": 25,
+            "text": "Robert J. Williams",
+            "placeholder": "<PRIVATE_PERSON>"
+          },
+          {
+            "label": "account_number",
+            "start": 27,
+            "end": 42,
+            "text": "SSN 123-45-6789",
+            "placeholder": "<ACCOUNT_NUMBER>"
+          }
+        ]
+      },
+      {
+        "lang": "en",
+        "scenario": "english_hyphenated_name_and_address",
+        "text_preview": "The defendant Mary O'Brien-Johnson lives at 500 Oak Street, San Franci",
+        "f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "categories": {
+          "private_address": {
+            "tp": 1,
+            "fp": 0,
+            "fn": 0,
+            "f1": 1.0
+          },
+          "private_person": {
+            "tp": 1,
+            "fp": 0,
+            "fn": 0,
+            "f1": 1.0
+          }
+        },
+        "predicted_spans": [
+          {
+            "label": "private_person",
+            "start": 14,
+            "end": 34,
+            "text": "Mary O'Brien-Johnson",
+            "placeholder": "<PRIVATE_PERSON>"
+          },
+          {
+            "label": "private_address",
+            "start": 44,
+            "end": 83,
+            "text": "500 Oak Street, San Francisco, CA 94102",
+            "placeholder": "<PRIVATE_ADDRESS>"
+          }
+        ]
+      },
+      {
+        "lang": "en",
+        "scenario": "english_title_name_phone",
+        "text_preview": "Please call Dr. Elizabeth Thompson at (415) 555-0123 to schedule.",
+        "f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "categories": {
+          "private_person": {
+            "tp": 1,
+            "fp": 0,
+            "fn": 0,
+            "f1": 1.0
+          },
+          "private_phone": {
+            "tp": 1,
+            "fp": 0,
+            "fn": 0,
+            "f1": 1.0
+          }
+        },
+        "predicted_spans": [
+          {
+            "label": "private_person",
+            "start": 12,
+            "end": 34,
+            "text": "Dr. Elizabeth Thompson",
+            "placeholder": "<PRIVATE_PERSON>"
+          },
+          {
+            "label": "private_phone",
+            "start": 38,
+            "end": 52,
+            "text": "(415) 555-0123",
+            "placeholder": "<PRIVATE_PHONE>"
+          }
+        ]
+      }
+    ]
+  },
+  "section3_finetuned": {
+    "label": "finetuned",
+    "n_prompts": 5,
+    "aggregate": {
+      "precision": 0.5,
+      "recall": 0.5556,
+      "f1": 0.5263,
+      "tp": 5,
+      "fp": 5,
+      "fn": 4
+    },
+    "per_prompt": [
+      {
+        "lang": "en",
+        "scenario": "english_basic_full_name",
+        "text_preview": "My client John Smith would like to review the contract.",
+        "f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "categories": {
+          "private_person": {
+            "tp": 1,
+            "fp": 0,
+            "fn": 0,
+            "f1": 1.0
+          }
+        },
+        "predicted_spans": [
+          {
+            "label": "private_person",
+            "start": 10,
+            "end": 20,
+            "text": "John Smith",
+            "placeholder": "<PRIVATE_PERSON>"
+          }
+        ]
+      },
+      {
+        "lang": "en",
+        "scenario": "english_name_and_email",
+        "text_preview": "Please contact Jane Doe at jane.doe@example.com regarding the lease.",
+        "f1": 0.6667,
+        "precision": 1.0,
+        "recall": 0.5,
+        "categories": {
+          "private_email": {
+            "tp": 0,
+            "fp": 0,
+            "fn": 1,
+            "f1": 0.0
+          },
+          "private_person": {
+            "tp": 1,
+            "fp": 0,
+            "fn": 0,
+            "f1": 1.0
+          }
+        },
+        "predicted_spans": [
+          {
+            "label": "private_person",
+            "start": 15,
+            "end": 23,
+            "text": "Jane Doe",
+            "placeholder": "<PRIVATE_PERSON>"
+          }
+        ]
+      },
+      {
+        "lang": "en",
+        "scenario": "english_name_and_ssn",
+        "text_preview": "Client Robert J. Williams, SSN 123-45-6789, filed for bankruptcy.",
+        "f1": 0.5,
+        "precision": 0.5,
+        "recall": 0.5,
+        "categories": {
+          "private_person": {
+            "tp": 1,
+            "fp": 1,
+            "fn": 0,
+            "f1": 0.6667
+          },
+          "secret": {
+            "tp": 0,
+            "fp": 0,
+            "fn": 1,
+            "f1": 0.0
+          }
+        },
+        "predicted_spans": [
+          {
+            "label": "private_person",
+            "start": 7,
+            "end": 13,
+            "text": "Robert",
+            "placeholder": "<PRIVATE_PERSON>"
+          },
+          {
+            "label": "private_person",
+            "start": 14,
+            "end": 25,
+            "text": "J. Williams",
+            "placeholder": "<PRIVATE_PERSON>"
+          }
+        ]
+      },
+      {
+        "lang": "en",
+        "scenario": "english_hyphenated_name_and_address",
+        "text_preview": "The defendant Mary O'Brien-Johnson lives at 500 Oak Street, San Franci",
+        "f1": 0.2857,
+        "precision": 0.2,
+        "recall": 0.5,
+        "categories": {
+          "private_address": {
+            "tp": 0,
+            "fp": 3,
+            "fn": 1,
+            "f1": 0.0
+          },
+          "private_person": {
+            "tp": 1,
+            "fp": 1,
+            "fn": 0,
+            "f1": 0.6667
+          }
+        },
+        "predicted_spans": [
+          {
+            "label": "private_person",
+            "start": 14,
+            "end": 18,
+            "text": "Mary",
+            "placeholder": "<PRIVATE_PERSON>"
+          },
+          {
+            "label": "private_person",
+            "start": 19,
+            "end": 34,
+            "text": "O'Brien-Johnson",
+            "placeholder": "<PRIVATE_PERSON>"
+          },
+          {
+            "label": "private_address",
+            "start": 48,
+            "end": 58,
+            "text": "Oak Street",
+            "placeholder": "<PRIVATE_ADDRESS>"
+          },
+          {
+            "label": "private_address",
+            "start": 60,
+            "end": 73,
+            "text": "San Francisco",
+            "placeholder": "<PRIVATE_ADDRESS>"
+          },
+          {
+            "label": "private_address",
+            "start": 78,
+            "end": 83,
+            "text": "94102",
+            "placeholder": "<PRIVATE_ADDRESS>"
+          }
+        ]
+      },
+      {
+        "lang": "en",
+        "scenario": "english_title_name_phone",
+        "text_preview": "Please call Dr. Elizabeth Thompson at (415) 555-0123 to schedule.",
+        "f1": 0.6667,
+        "precision": 1.0,
+        "recall": 0.5,
+        "categories": {
+          "private_person": {
+            "tp": 1,
+            "fp": 0,
+            "fn": 0,
+            "f1": 1.0
+          },
+          "private_phone": {
+            "tp": 0,
+            "fp": 0,
+            "fn": 1,
+            "f1": 0.0
+          }
+        },
+        "predicted_spans": [
+          {
+            "label": "private_person",
+            "start": 16,
+            "end": 34,
+            "text": "Elizabeth Thompson",
+            "placeholder": "<PRIVATE_PERSON>"
+          }
+        ]
+      }
+    ]
+  }
+}

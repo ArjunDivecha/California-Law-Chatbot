@@ -1,19 +1,35 @@
 #!/usr/bin/env python3
 """
-Convert COMPREHENSIVE_GUIDE.md to a beautiful PDF using WeasyPrint
+=============================================================================
+SCRIPT NAME: generate_pdf.py
+=============================================================================
+
+DESCRIPTION:
+Convert COMPREHENSIVE_GUIDE.md to a formatted PDF using WeasyPrint with custom
+CSS styling, page breaks, and table of contents support.
 
 INPUT FILES:
-- COMPREHENSIVE_GUIDE.md (markdown source)
+- /Users/arjundivecha/Dropbox/AAA Backup/A Working/California-Law-Chatbot-prd-run/COMPREHENSIVE_GUIDE.md: Markdown source file for the comprehensive guide
 
 OUTPUT FILES:
-- COMPREHENSIVE_GUIDE.pdf (beautiful formatted PDF)
+- /Users/arjundivecha/Dropbox/AAA Backup/A Working/California-Law-Chatbot-prd-run/COMPREHENSIVE_GUIDE.pdf: Formatted PDF output with custom styling
 
-Dependencies:
-- markdown (python library)
-- weasyprint (for PDF generation)
+VERSION: 1.0
+LAST UPDATED: 2025-10-30
+AUTHOR: [Not provided]
 
-Version: 1.0
-Last Updated: October 30, 2025
+DEPENDENCIES:
+- markdown (Markdown to HTML conversion)
+- weasyprint (PDF generation)
+
+USAGE:
+  python generate_pdf.py
+
+NOTES:
+- Requires COMPREHENSIVE_GUIDE.md to be present in the working directory.
+- Uses letter-size pages with serif fonts (Georgia/Times New Roman).
+- Custom CSS handles page breaks, code blocks, tables, and callout boxes.
+=============================================================================
 """
 
 import markdown
