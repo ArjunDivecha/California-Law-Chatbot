@@ -1,0 +1,21 @@
+Synthetic New Law and Attorney Instruction
+
+Assume the fictional 2026 California Estate Planning Packet Consistency Act
+requires attorney review before an integrated estate packet is finalized.
+
+Required checks:
+1. Normalize the trust identity across the trust, pour-over will, signing
+memo, and funding instructions.
+2. Flag any mismatch between trustee, executor, health care agent, and
+financial agent order.
+3. Preserve separate property and community property classifications created
+by a prenup before drafting trust funding language.
+4. State whether incapacity is triggered by two physicians, court order,
+inability to make health care decisions, or immediate effectiveness.
+5. Modernize HIPAA and digital health portal language where an AHCD uses
+older privacy wording.
+
+Client instruction: prepare a packet reconciliation draft that keeps the
+trust as the base document, revises the pour-over trust name/date, adds an
+attorney review flag for the agent-order mismatch, and prevents the funding
+language from accidentally transmuting separate property.

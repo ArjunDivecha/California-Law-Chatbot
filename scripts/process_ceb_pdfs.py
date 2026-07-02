@@ -1,28 +1,78 @@
 #!/usr/bin/env python3
 """
-CEB PDF Processing Script
-
-INPUT FILES:
-- PDF files from specified input directory (e.g., ceb_trusts_estates/pdf/*.pdf)
-
-OUTPUT FILES:
-- data/ceb_processed/{category}/chunks.jsonl - Processed text chunks with metadata
-- data/ceb_processed/{category}/processing_log.xlsx - Processing statistics
-- data/ceb_processed/{category}/failed_pdfs.txt - List of failed PDFs
-- data/ceb_processed/{category}/checkpoint_{timestamp}.json - Resume checkpoints
+=============================================================================
+SCRIPT NAME: process_ceb_pdfs.py
+=============================================================================
 
 DESCRIPTION:
-Extracts text from CEB PDFs, chunks them intelligently, and generates rich metadata
-for RAG (Retrieval Augmented Generation). Designed to be modular and reusable across
-different CEB verticals (trusts_estates, family_law, business_litigation).
+    Extracts text from CEB (California Continuing Education of the Bar) PDF
+    publications, splits the text into overlapping chunks suitable for vector
+    embedding, and generates rich metadata (title, section, page number, chunk
+    identifier) for use in a RAG (Retrieval Augmented Generation) system.
+    Designed to be modular and reusable across different CEB verticals such as
+    trusts_estates, family_law, business_litigation, business_entities, and
+    business_transactions. Supports checkpoint-based resumption so processing
+    can be restarted from the last saved position after interruption. A summary
+    Excel workbook and a plain-text failure log are produced alongside the chunk
+    output.
+
+INPUT FILES:
+    (user-specified --input-dir)
+        A directory containing CEB PDF files (.pdf). The path is provided at
+        runtime via the --input-dir argument. Each PDF's filename encodes the
+        publication title and section number (e.g.,
+        administering_a_single_person_trust_..._0011_iii_conducting_first_meeting_with_client.pdf).
+
+OUTPUT FILES:
+    /Users/arjundivecha/Dropbox/AAA%20Backup/A%20Working/California-Law-Chatbot-drafting-magic-sanitized/scripts/data/ceb_processed/{category}/chunks.jsonl
+        One JSON object per line, each containing extracted text, page number,
+        chunk index, token count, source file name, title, section, category,
+        and a unique chunk_id. This is the primary output for downstream
+        embedding and retrieval.
+    /Users/arjundivecha/Dropbox/AAA%20Backup/A%20Working/California-Law-Chatbot-drafting-magic-sanitized/scripts/data/ceb_processed/{category}/processing_log.xlsx
+        Excel workbook with two sheets: "Summary" (overall processing stats
+        including count of PDFs, chunks, failures, start/end time) and (if any
+        failures occurred) "Failed PDFs" (filename and error message per failure).
+    /Users/arjundivecha/Dropbox/AAA%20Backup/A%20Working/California-Law-Chatbot-drafting-magic-sanitized/scripts/data/ceb_processed/{category}/failed_pdfs.txt
+        Plain-text list of every PDF that failed during processing, with the
+        error message and a timestamp.
+    /Users/arjundivecha/Dropbox/AAA%20Backup/A%20Working/California-Law-Chatbot-drafting-magic-sanitized/scripts/data/ceb_processed/{category}/checkpoint_YYYYMMDD_HHMMSS.json
+        Periodic checkpoint file (saved every N PDFs, default 100) containing
+        the category, processed count, timestamp, and stats. Enables resume via
+        the --resume-from flag.
+
+    Note: The default --output-dir is "data/ceb_processed", which is resolved
+    here against the script's own directory. The path is configurable at runtime
+    via the --output-dir argument.
+
+VERSION: 1.0
+LAST UPDATED: 2026-06-05
+AUTHOR: Arjun Divecha
+
+DEPENDENCIES:
+    - fitz (PyMuPDF) — PDF text extraction
+    - pandas — Excel workbook generation and data handling
+    - tqdm — progress bar during batch processing
+    - Standard library: os, sys, json, re, argparse, pathlib, datetime, typing,
+      multiprocessing, functools
 
 USAGE:
     python process_ceb_pdfs.py --category trusts_estates --input-dir "/path/to/pdfs"
     python process_ceb_pdfs.py --category family_law --input-dir "/path/to/pdfs" --chunk-size 1200
+    python process_ceb_pdfs.py --category trusts_estates --input-dir "/path/to/pdfs" --resume-from 500
 
-Version: 1.0
-Last Updated: November 1, 2025
-"""
+NOTES:
+    - Output paths shown above use the default --output-dir value of
+      "data/ceb_processed" resolved against the script's directory. In practice
+      the user sets --output-dir and --input-dir at runtime.
+    - The --input-dir is validated at startup; the script exits with an error
+      if the directory does not exist.
+    - Chunks use overlapping boundaries with a target of breaking at sentence
+      boundaries (~70% through the chunk window) to preserve semantic coherence.
+    - PDF filenames are expected to follow a specific CEB convention:
+      {title}_{4-digit-separator}_{section_name}.pdf; the parser extracts human-
+      readable title and section from this pattern.
+============================================================================="""
 
 import os
 import sys

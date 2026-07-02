@@ -1,25 +1,68 @@
 #!/usr/bin/env python3
 """
-CEB Embedding Generation Script
-
-INPUT FILES:
-- data/ceb_processed/{category}/chunks.jsonl - Processed text chunks
-
-OUTPUT FILES:
-- data/ceb_processed/{category}/embeddings.jsonl - Chunks with embeddings
-- data/ceb_processed/{category}/embedding_log.xlsx - Generation statistics
+=============================================================================
+SCRIPT NAME: generate_embeddings.py
+=============================================================================
 
 DESCRIPTION:
-Generates OpenAI embeddings for processed CEB chunks. Uses batch processing
-and includes retry logic for robustness. Designed to be resumable in case of
-failures or rate limiting.
+    Generates OpenAI text embeddings for pre-processed CEB (California
+    Continuing Education of the Bar) text chunks. Reads chunked text from a
+    JSONL file, sends each chunk (in configurable batches) to the OpenAI
+    embedding API, and writes the resulting embedding vectors back to a new
+    JSONL file alongside the original chunk data. Designed to be resumable:
+    if interrupted, it detects existing output and continues from where it
+    left off. Includes exponential-backoff retry logic for transient API
+    failures and batch-fall-back-to-individual processing. A final Excel log
+    records generation statistics (chunks processed, tokens consumed,
+    estimated cost). One category (e.g. trusts_estates, family_law) is
+    processed per run; specify it with --category.
+
+INPUT FILES:
+    {data_dir}/{category}/chunks.jsonl
+        Path resolved at runtime: data_dir defaults to "data/ceb_processed"
+        (interpreted relative to the working directory) and category is set
+        via --category. Contains one JSON object per line with at least a
+        "text" key holding the chunk content to embed.
+    .env (loaded by python-dotenv)
+        Environment file (in the working directory) containing
+        OPENAI_API_KEY for the OpenAI client.
+
+OUTPUT FILES:
+    {data_dir}/{category}/embeddings.jsonl
+        Path resolved at runtime from data_dir and category. Each line is the
+        original JSON chunk enriched with "embedding" (list of floats),
+        "embedding_model" (str), and "embedding_dimensions" (int).
+    {data_dir}/{category}/embedding_log.xlsx
+        Single-row Excel file containing generation statistics: total_chunks,
+        successful_embeddings, failed_embeddings, total_tokens,
+        estimated_cost, start_time, end_time, model name.
+
+VERSION: 1.0
+LAST UPDATED: 2026-06-05
+AUTHOR: Arjun Divecha
+
+DEPENDENCIES:
+    - openai
+    - pandas
+    - python-dotenv
+    - tqdm
 
 USAGE:
     python generate_embeddings.py --category trusts_estates
     python generate_embeddings.py --category family_law --batch-size 50
+    python generate_embeddings.py --category business_litigation --model text-embedding-3-large
 
-Version: 1.0
-Last Updated: November 1, 2025
+NOTES:
+    - Data directory is configurable via --data-dir (default: data/ceb_processed).
+      All input/output paths are resolved relative to the working directory at
+      runtime, NOT relative to this script's location.
+    - The .env file must be present in the working directory with OPENAI_API_KEY set.
+    - Run process_ceb_pdfs.py first to generate the input chunks.jsonl file
+      for a given category.
+    - Supports five categories: trusts_estates, family_law, business_litigation,
+      business_entities, business_transactions.
+    - Cost estimate uses $0.02 per 1M tokens (text-embedding-3-small pricing).
+=============================================================================
 """
 
 import os

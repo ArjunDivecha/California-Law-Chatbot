@@ -1,0 +1,6 @@
+SYNTHETIC LEGACY .DOC FORMAT TEST
+
+This file is plain text saved with a .doc extension. Drafting Magic currently
+accepts .doc in the file picker but does not extract legacy Word binary
+content. Uploading this file should produce a Needs review warning rather
+than silently treating it as usable extracted text.

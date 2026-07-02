@@ -1,0 +1,58 @@
+{
+  "generated_by": "scripts/generate_drafting_magic_synthetic_docs.py",
+  "synthetic": true,
+  "fixture_folder": "fixtures/drafting-magic-synthetic-packet",
+  "files": [
+    {
+      "file": "01_REVOCABLE_LIVING_TRUST__Chen_Family_2016.docx",
+      "purpose": "Base trust with trustee order, funding schedule, property-character ambiguity, and incapacity trigger."
+    },
+    {
+      "file": "02_POUR_OVER_WILL__Maya_Chen_Trust_Date_Mismatch.pdf",
+      "purpose": "Selectable PDF with pour-over trust identity mismatch."
+    },
+    {
+      "file": "03_ADVANCE_HEALTH_CARE_DIRECTIVE__Priya_First_Agent.docx",
+      "purpose": "AHCD with Priya Shah first, HIPAA modernization issue, and health care decision trigger."
+    },
+    {
+      "file": "04_DURABLE_FINANCIAL_POA__Daniel_First_Agent.docx",
+      "purpose": "Financial POA with Daniel first, immediate effectiveness, gifting and transfer limits."
+    },
+    {
+      "file": "05_PRENUPTIAL_AGREEMENT__Separate_Property_Constraints.pdf",
+      "purpose": "Prenup with separate/community property, spousal waivers, reimbursement, and trust-funding limits."
+    },
+    {
+      "file": "06_NEW_LAW_AND_ATTORNEY_INSTRUCTION__Packet_Reconciliation.txt",
+      "purpose": "Paste into the new law/instruction field."
+    },
+    {
+      "file": "07_SIGNING_MEMO__Conflicting_Execution_Checklist.md",
+      "purpose": "Paste/upload as an edge source to force stale analysis and review flags."
+    },
+    {
+      "file": "08_LEGACY_DOC_FORMAT__Unsupported_Extraction.doc",
+      "purpose": "Unsupported legacy extension warning test."
+    },
+    {
+      "file": "09_SCANNED_PDF_WARNING__Image_Only_Addendum.pdf",
+      "purpose": "Image-only scanned PDF warning test."
+    }
+  ],
+  "expected_feature_coverage": [
+    "browser DOCX extraction",
+    "browser selectable-PDF extraction",
+    "TXT/MD paste or upload",
+    "unsupported .doc warning",
+    "image-only PDF warning",
+    "privacy filter tokenization of fake names and addresses",
+    "comparison matrix stale/regenerate flow",
+    "trust identity mismatch",
+    "fiduciary and agent order mismatch",
+    "separate property/community property constraints",
+    "incapacity trigger mismatch",
+    "AHCD/HIPAA modernization issue",
+    "draft/review/export path"
+  ]
+}
