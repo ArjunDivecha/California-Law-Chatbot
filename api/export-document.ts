@@ -26,6 +26,7 @@ import {
 } from 'docx';
 import { jsPDF } from 'jspdf';
 import { applyResponseSecurity, headerString } from './_shared/routeSecurity.js';
+import { requireUser } from './_lib/httpGuard.js';
 
 interface GeneratedSection {
   sectionId: string;
@@ -91,6 +92,11 @@ export default async function handler(
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
+
+  // Clerk auth (PRD §8 / F8): exports carry rehydrated client text — never
+  // serve them to unauthenticated callers. requireUser writes the 401 itself.
+  const userId = await requireUser(req, res);
+  if (!userId) return;
 
   try {
     const request: ExportDocumentRequest = req.body;

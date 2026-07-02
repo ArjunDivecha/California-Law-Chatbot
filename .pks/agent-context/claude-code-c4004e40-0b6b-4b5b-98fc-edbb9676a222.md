@@ -6,8 +6,8 @@ repo_name: California-Law-Chatbot
 github_repo: ArjunDivecha/California-Law-Chatbot
 session_id: c4004e40-0b6b-4b5b-98fc-edbb9676a222
 source_file: c4004e40-0b6b-4b5b-98fc-edbb9676a222.jsonl
-exported_at: 2026-07-02T08:38:37.698027+00:00
-export_base_commit_sha: 648dd2ca675db86f4456555af288f7aeacef697f
+exported_at: 2026-07-02T08:48:39.236094+00:00
+export_base_commit_sha: e7db198b003dedf0711eea18f0e22f57837dae28
 redacted: true
 ---
 
@@ -274,3 +274,9 @@ Want me to make `/` redirect to `/v2` (one-line route change, then redeploy + ve
 
 
 **Assistant:** The daemon-poll loop keeps the network busy so `networkidle` never fires — switching to `load` + fixed wait.
+
+
+**Assistant:** Root and legacy paths both land on `/v2` with the full V2 UI and zero errors. Committing the purge and shipping.
+
+
+**Assistant:** Transient SSL error during upload — retrying.
