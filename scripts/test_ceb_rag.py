@@ -1,16 +1,51 @@
 #!/usr/bin/env python3
 """
-CEB RAG Testing Suite
+=============================================================================
+SCRIPT NAME: test_ceb_rag.py
+=============================================================================
 
-Tests the CEB RAG system for retrieval accuracy, category detection, and performance.
-Run this after uploading embeddings to Upstash to verify the system works correctly.
+DESCRIPTION:
+    Test suite for the CEB (California Education of the Bar) RAG system.
+    Sends predefined test queries via HTTP POST to a local CEB search API
+    endpoint, then evaluates retrieval accuracy, category detection, and
+    response performance. Tests cover three categories: Trusts & Estates,
+    Family Law, and Business Litigation. Results are printed to stdout and
+    also written to an Excel report with summary statistics and per-query
+    results including category match, confidence scores, source count, and
+    response times.
+
+INPUT FILES:
+    (none -- this script generates all test queries programmatically)
+
+OUTPUT FILES:
+    /Users/arjundivecha/Dropbox/AAA Backup/A Working/Drafting Magic/scripts/data/ceb_processed/test_report.xlsx
+        Excel report containing a Summary sheet (total tests, passed, failed,
+        pass rate, average confidence, average response time) and a Detailed
+        Results sheet (per-query breakdown including category, confidence,
+        sources, and pass/fail status). The output path can be overridden by
+        passing an output_file argument to generate_report().
+
+VERSION: 1.0
+LAST UPDATED: 2026-06-05
+AUTHOR: Arjun Divecha
+
+DEPENDENCIES:
+    - requests (HTTP client for API calls)
+    - pandas (DataFrame manipulation and Excel export)
+    - python-dotenv (load environment variables from .env file)
 
 USAGE:
     python test_ceb_rag.py --category trusts_estates
     python test_ceb_rag.py --all-categories
+    python test_ceb_rag.py --api-url http://localhost:3000/api/ceb-search --all-categories
 
-Version: 1.0
-Last Updated: November 1, 2025
+NOTES:
+    - Requires a running CEB search API server at the configured URL
+      (default: http://localhost:5173/api/ceb-search).
+    - Environment variables (e.g. API keys) should be in a .env file in the
+      working directory, loaded via python-dotenv.
+    - At least one of --category or --all-categories must be specified.
+=============================================================================
 """
 
 import os

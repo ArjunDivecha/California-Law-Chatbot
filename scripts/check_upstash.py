@@ -1,4 +1,42 @@
-"""Check Upstash Vector database status"""
+"""
+=============================================================================
+SCRIPT NAME: check_upstash.py
+=============================================================================
+
+DESCRIPTION:
+    Checks the status of an Upstash Vector database by making HTTP GET
+    requests to its REST API. Loads connection credentials (URL and API
+    token) from a .env file in the project root, then queries the /info
+    and /list-namespaces endpoints, printing both the HTTP status codes
+    and the raw JSON response bodies to stdout. Useful for verifying that
+    the Upstash Vector instance is reachable and operational before running
+    dependent operations.
+
+INPUT FILES:
+    /Users/arjundivecha/Dropbox/AAA Backup/A Working/Drafting Magic/.env
+        Environment variables loaded via python-dotenv. Must define:
+        UPSTASH_VECTOR_REST_URL and UPSTASH_VECTOR_REST_TOKEN.
+
+OUTPUT FILES:
+    (none — this script only prints status info to stdout)
+
+VERSION: 1.0
+LAST UPDATED: 2026-06-05
+AUTHOR: Arjun Divecha
+
+DEPENDENCIES:
+    - os
+    - requests
+    - python-dotenv
+
+USAGE:
+    python check_upstash.py
+
+NOTES:
+    - The .env file must exist with valid Upstash Vector credentials.
+    - No changes are made to the database — read-only query.
+=============================================================================
+"""
 import os
 import requests
 from dotenv import load_dotenv
