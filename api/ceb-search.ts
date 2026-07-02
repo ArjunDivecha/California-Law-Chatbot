@@ -280,6 +280,11 @@ interface CEBSearchResponse {
   isCEB: true;
   category?: string;
   confidence: number;
+  statutoryCitations?: Array<{
+    code: string;
+    section: string;
+    url: string;
+  }>;
 }
 
 export default async function handler(req: any, res: any) {
@@ -334,11 +339,17 @@ export default async function handler(req: any, res: any) {
 
     // Statutory pre-filter: Boost query with exact statutory terms
     let queryBoost = '';
+    let detectedStatutoryCitations: Array<{ code: string; section: string; url: string }> = [];
     try {
       if (containsCodeCitation(query)) {
         const citations = parseCodeCitation(query);
         if (citations.length > 0) {
           console.log(`📜 Statutory pre-filter: Found ${citations.length} citation(s)`);
+          detectedStatutoryCitations = citations.map((c) => ({
+            code: c.fullName,
+            section: c.section,
+            url: c.url,
+          }));
           const searchTerms = citationToSearchTerms(citations);
           queryBoost = searchTerms.join('; ');
           console.log(`📜 Query boost terms: "${queryBoost}"`);
@@ -460,6 +471,7 @@ export default async function handler(req: any, res: any) {
       isCEB: true,
       category: primaryCategory,
       confidence: avgConfidence,
+      statutoryCitations: detectedStatutoryCitations,
       _version: '1.2-dedup', // Version marker for debugging
     };
 
@@ -579,4 +591,3 @@ function formatCEBContext(sources: CEBSearchResponse['sources']): string {
 
   return formatted;
 }
-

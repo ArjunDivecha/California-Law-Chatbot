@@ -10,7 +10,9 @@
     "build": "vite build",
     "preview": "vite preview",
     "test:verification": "node test-verification-system.js",
-    "test:openrouter": "node test-comprehensive.js"
+    "test:openrouter": "node test-comprehensive.js",
+    "test:lab-adapter": "node test-lab-adapter.js",
+    "benchmark:baseline": "node benchmarks/run-baseline.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.68.0",
@@ -38,6 +40,8 @@
     "@vitejs/plugin-react": "^5.0.0",
     "cors": "^2.8.6",
     "express": "^5.2.1",
+    "fake-indexeddb": "^6.2.5",
+    "tsx": "^4.21.0",
     "typescript": "~5.8.2",
     "vite": "^6.2.0"
   },
