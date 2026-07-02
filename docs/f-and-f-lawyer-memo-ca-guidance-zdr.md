@@ -1,5 +1,23 @@
 # Memo: Practical Changes to the Chatbot After California AI Guidance and ZDR
 
+> **ADDENDUM — July 1, 2026.** The ZDR premise of this memo did not survive
+> contact with Anthropic's pricing: Zero Data Retention requires roughly a
+> $100,000/year commitment, not the ~$6,000/year enterprise account F&F was
+> quoted, and F&F has declined it. What that changes: paragraphs 4–6 below
+> (tokenization relaxation on the Claude path) are withdrawn — the chatbot
+> keeps strict on-device tokenization for client-confidential prompts on every
+> external path, as it does today. What it does NOT change: everything the
+> California guidance requires (paragraphs 2–3 and 7) still applies and has
+> now been implemented — matter modes, provider registry, per-turn manifests,
+> tool gating, review gates, consent records, and protected-discovery
+> controls. Importantly, our June 2 research on Morgan v. V2X found the
+> protective-order standard is contractual (no training, no third-party
+> disclosure, deletion-on-request, retained documentation) — Anthropic's
+> standard commercial terms plus its Data Processing Agreement already satisfy
+> it. ZDR would have been an enhancement, not a requirement. The firm should
+> retain date-stamped copies of the Anthropic Commercial Terms, DPA, and
+> retention policy, and keep the feedback/thumbs feature disabled.
+
 Date: June 23, 2026
 
 To: F&F Lawyers

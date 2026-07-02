@@ -1,5 +1,23 @@
 # ZDR Enterprise Implications For California Law Chatbot V2
 
+> ## ⚠️ OVERTAKEN BY EVENTS — 2026-07-01
+>
+> **The core assumption of this document is dead.** F&F was told an enterprise
+> account (~$6k/yr) would include Zero Data Retention; in fact Anthropic ZDR
+> requires a ~**$100k/yr** commitment, which F&F declined on 2026-07-01.
+>
+> This document is retained for the record (its "what ZDR does NOT cover"
+> analysis remains a correct map of the non-LLM disclosure surfaces). Do NOT
+> implement its tokenization-relaxation recommendations. The operative posture
+> is Anthropic standard commercial terms + DPA (no-train, deletion-on-request,
+> 30-day default retention), which per the Morgan v. V2X research memo
+> (2026-06-02) satisfies the protective-order standard without ZDR. Strict
+> on-device tokenization/sanitization remains load-bearing on every leg. The
+> Fable-5 model decision below is also superseded: Fable 5 was restored from
+> suspension and re-approved as primary 2026-07-01 (see
+> `api/_lib/approvedModels.ts`). See the 2026-07-01 addendum in
+> `docs/PRD_COPRAC_ZDR_COMPLIANCE.md`, which governs.
+
 Date: 2026-06-23
 Target repo: `California-Law-Chatbot-V2`
 Assumption: F&F will obtain an Anthropic Enterprise / Claude Platform arrangement with Zero Data Retention enabled for the organization that supplies the chatbot's Anthropic API key.

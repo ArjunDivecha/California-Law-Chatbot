@@ -52,6 +52,49 @@ counsel approves the exact representation and the underlying controls are live.
 
 ---
 
+> ## ⚠️ ADDENDUM 2026-07-01 — ZDR PREMISE WITHDRAWN (governs over the body below)
+>
+> **F&F will NOT have Anthropic ZDR.** The information that an enterprise
+> account (~$6k/yr) included ZDR was wrong; Anthropic ZDR requires a
+> ~**$100k/yr** commitment. All ZDR-premised statements below are overtaken.
+> Read the document with these substitutions:
+>
+> 1. **Operative Anthropic posture = standard commercial terms + DPA**: no
+>    training on API content, deletion-on-request, default 30-day retention
+>    (flagged content up to 2y, T&S scores up to 7y). Per the **Morgan v. V2X**
+>    deep-research memo (2026-06-02; 2026 WL 864223, D. Colo.), this — not ZDR
+>    — is what the protective-order standard actually requires: no-train, no
+>    third-party disclosure except essential-to-service, deletion-on-request,
+>    retained written documentation. ZDR was always an enhancement, never the
+>    requirement.
+> 2. **No tokenization relaxation.** §5.6/§5.7's "ZDR-driven OPF relaxation on
+>    the Anthropic leg" does not happen. Strict detection/OPF stays load-bearing
+>    on ALL legs, exactly as V2 already implements (browser GLiNER/daemon
+>    detector + server backstop + wire guard).
+> 3. **§5.8 model gate** is now a **counsel-approved allowlist**
+>    (`api/_lib/approvedModels.ts`), not a ZDR-eligibility gate. Fable 5 was
+>    restored from suspension (~2026-07) and re-approved as primary
+>    (2026-07-01); Opus 4.8 is the unavailability fallback. Same fail-closed
+>    guard at the same chokepoint.
+> 4. **Protected discovery** launches with the **local-only storage posture**
+>    (§5.7a firm-controlled sqlite-vec + local embeddings) + direct Anthropic
+>    under standard terms + DPA with counsel sign-off per the Morgan memo
+>    (§10 decision 1 is thereby resolved).
+> 5. **§13 checklist**: item 1 becomes "date-stamp and retain Anthropic
+>    Commercial Terms + DPA + retention page; disable the feedback/thumbs
+>    feature (the only opt-in training path)". Item 3 becomes "sign the OpenAI
+>    DPA for the embeddings org" (no ZDR request). Item 6 becomes "confirm
+>    prompt-cache retention posture under standard terms" (caching is now in
+>    use via agentLoop's buildWireBody).
+> 6. Everything **guidance-driven** in this PRD — matter model, policy engine,
+>    tool gating + exfiltration defense, provider registry, manifests/audit,
+>    consent/attestations, review gates, agentic boundary, device threat model,
+>    conflicts, billing, bias, legacy-route lockdown — is **unchanged** and was
+>    implemented on the V3 branch, ported to V4 (2026-07-01) with the ZDR
+>    touchpoints reworked as above.
+
+---
+
 ## 1. Executive Summary
 
 Two June-2026 developments require a coordinated change to V2:
@@ -177,7 +220,7 @@ Every leg that can carry client text, with target posture:
 
 ### 5.10 Disclosure, consent & attestation
 - **FR-5.10.** Replace localStorage attestation with **server-side, versioned, matter-level** records: split (a) attorney AI-policy acknowledgment, (b) client AI-use consent (`not_obtained|allowed|restricted|prohibited|revoked`), (c) matter restrictions, (d) provider/tool disclosure. Client restrictions override defaults; re-prompt on material provider/tool/model change; protected mode inaccessible until required attestations present.
-- **FR-5.10a.** Disclosure copy (counsel-approved): "uses F&F's Anthropic ZDR-enabled org for inference; eligible prompts/responses not stored by Anthropic after response except legal/misuse exceptions; other providers used for search/embeddings/auth/hosting/storage are governed separately; public web search and third-party retrieval are disabled/restricted when client-confidential/protected material is present." **Never** say "nothing is ever stored," "ZDR means no sanitization needed," "protected discovery is automatically safe," or "all Enterprise use is ZDR."
+- **FR-5.10a.** Disclosure copy (counsel-approved; REVISED 2026-07-01 — no ZDR): "uses Anthropic's commercial Claude API under F&F's account; Anthropic does not train on prompts or responses and deletes on request under its Data Processing Agreement; API content is retained by Anthropic for up to 30 days (longer for content flagged for safety review); client-identifying details are tokenized on-device before transmission; other providers used for search/embeddings/auth/hosting/storage are governed separately; public web search and third-party retrieval are disabled/restricted when client-confidential/protected material is present." **Never** say "nothing is ever stored," "zero data retention," "protected discovery is automatically safe," or that sanitization is unnecessary.
 
 ### 5.11 Review gates & agentic boundary
 - **FR-5.11.** Review gates for copy/print/export/client-send/filing-export; capture reviewer, role, timestamp, checklist version, unresolved issues. Filing export requires citation + quote/pincite verification + **local-court AI-disclosure checklist** (judge-by-judge — V3) and **blocks on unresolved/fake citations**.
@@ -275,10 +318,10 @@ Legacy routes still present in V2 — `api/gemini-chat.ts`, `api/claude-chat.ts`
 - Network audit: **zero** client-text egress to OpenRouter or any non-allowlisted endpoint.
 - A Restricted-Data matter completes with **no client text** leaving firm infra (verified by manifest).
 - An injected "exfiltrate via search" attack is **blocked** in tests.
-- No default/fallback can select a non-ZDR model; protected/confidential calls fail closed otherwise.
+- No default/fallback can select a model outside the counsel-approved allowlist (`approvedModels.ts`); protected/confidential calls fail closed otherwise.
 - No code path can autonomously send/file/transmit.
 - Every court-bound output has verified citations or a prominent unverifiable-citation block.
-- Firm holds date-stamped ZDR/DPA/registry evidence (§13) and a counsel privilege memo (§7).
+- Firm holds date-stamped Commercial-Terms/DPA/registry evidence (§13, as revised by the 2026-07-01 addendum) and a counsel privilege memo (§7).
 - Audit manifests contain hashes/metadata only, with a counsel-approved discoverability posture.
 
 ## 13. P0 Verification Checklist (confirm before relying — [P] items)

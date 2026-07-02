@@ -2,7 +2,11 @@
 
 A sophisticated AI-powered legal research assistant specializing in California law, featuring real-time integration with authoritative legal databases and comprehensive citation verification.
 
-> ⚠️ **V2 MIGRATION IN PROGRESS.** The sections below describe the **V1 production architecture** (OpenRouter-routed Gemini + Claude via the legacy orchestrator). V2 lives on branch `V2` and rewires inference to the **direct Anthropic Messages API** with an in-process agent loop, deleting roughly 7,800 lines of orchestration. The full V2 plan and status are tracked in `docs/MANAGED_AGENTS_RECONSTRUCTION_PLAN.md`. See **V2 Status** below for current state.
+> ✅ **V4 — CONSOLIDATED LINE (2026-07-01).** `main` now carries **V4**, the single consolidated branch: the V2 agent loop (direct Anthropic Messages API, strict on-device sanitization with the daemon **and** in-browser GLiNER detectors, auto model failover, Clerk-guarded routes) **plus** the V3 COPRAC-2026 compliance layer (matter modes with a locked protected flag, server-authoritative policy engine, tool-query/exfiltration guard, provider registry, per-turn manifests, consent/attestations, review gates, conflicts, billing/bias/governance controls, hardened CORS on every route, firm-controlled sqlite-vec store + local-embeddings client for protected discovery) **plus** structured outputs, prompt caching, and adaptive thinking/effort.
+>
+> **ZDR is NOT part of the posture.** The enterprise-ZDR premise behind V3 died 2026-07-01 (Anthropic ZDR ≈ $100k/yr; declined). Operative posture: Anthropic standard commercial terms + DPA (no-train, deletion-on-request, 30-day default retention), which per the Morgan v. V2X research satisfies the protective-order standard. Model gate: `api/_lib/approvedModels.ts` (counsel allowlist, fail-closed) — primary `claude-fable-5` (restored ~2026-07), fallback `claude-opus-4-8`. Governing spec: `docs/PRD_COPRAC_ZDR_COMPLIANCE.md` (see its 2026-07-01 addendum). Old branches/worktrees were archived as tags and removed 2026-07-01 — there is only `main`.
+>
+> Sections further below describing the V1 OpenRouter architecture are historical.
 
 ---
 
