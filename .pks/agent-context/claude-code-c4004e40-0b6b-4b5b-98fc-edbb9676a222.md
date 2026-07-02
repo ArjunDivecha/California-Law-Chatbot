@@ -6,8 +6,8 @@ repo_name: California-Law-Chatbot
 github_repo: ArjunDivecha/California-Law-Chatbot
 session_id: c4004e40-0b6b-4b5b-98fc-edbb9676a222
 source_file: c4004e40-0b6b-4b5b-98fc-edbb9676a222.jsonl
-exported_at: 2026-07-02T09:01:36.366211+00:00
-export_base_commit_sha: 294a254f7cc14e1b61fff32046fd41373f58dee7
+exported_at: 2026-07-02T15:20:03.060080+00:00
+export_base_commit_sha: ad143a16bc52130162fddf7749b6d21d2cd0ef46
 redacted: true
 ---
 
@@ -286,3 +286,40 @@ Want me to make `/` redirect to `/v2` (one-line route change, then redeploy + ve
 
 
 **Assistant:** Now writing the morning report and committing the final pieces.
+
+
+**Assistant:** Good morning! Everything you asked for is done and live. The full story is in the report above; here's the short version:
+
+## One link, one front end — shipped
+
+**https://california-law-chatbot-v2.vercel.app** is the only link. The root, old `/c/:chatId` paths, and anything unknown all redirect into the V2 app. All V1 code is deleted and deployed: the entire V1 UI and Gemini/OpenRouter pipeline, 14 legacy API routes (all probed on production — every one returns 404), 24 root test scripts, and the stale tech notes. Everything remains recoverable from git history and archive tags.
+
+## Three real problems found and fixed overnight
+
+1. **`vercel.json` was injecting wildcard CORS on every API route at the edge**, silently overriding all the per-route CORS hardening. Removed and verified live.
+2
+
+
+**User:** would you say that its production reasy?
+
+
+**Assistant:** Honest answer: **yes for careful daily use by you and the other attorney — but I wouldn't call it fully production-grade until four specific things are closed.** Here's my calibrated read:
+
+**What genuinely is production-quality today:** the code line is clean and verified (every suite green, zero PII trap leaks, typecheck/build clean), the security surface held up under direct probing of production (auth 401s, dead routes 404, strict CORS, hardened headers), the privacy architecture is proven working — raw client PII demonstrably never leaves the browser — and the compliance machinery (matter modes, fail-closed tool gating, per-turn manifests, audit records) is live and emitting evidence. The app also fails **closed** everywhere I poked it, which for a law-firm tool is the property that m
+
+
+**User:** lets clise the things tou are reaponsible fir that dobt need ahuman
+
+
+**Assistant:** On it. The items I can close without you: (A) the consent-recording flow (verify/wire/test), (B) the compliance evidence pack (date-stamped vendor terms + what our code does/doesn't send), and (C) retiring the old V1 Vercel project. Clerk production keys and the OpenAI DPA signature genuinely need you, so I'll leave those with clear instructions.
+
+Starting with the consent flow — reading the attestation machinery and the UI.
+
+
+**Assistant:** API works — but the **UI has no consent control**, so attorneys can't record consent from the app. That's the real gap. Reading the selector component to add it properly.
+
+
+**Assistant:** DPA is substantive (173KB of text, 43 subprocessor mentions). Now the hash manifest, the no-feedback-path code verification, and the Upstash observations.
+
+
+**Assistant:** No custom domains or aliases anywhere in the team — the V1 project only serves default `*.vercel.app` URLs. Removing it.
