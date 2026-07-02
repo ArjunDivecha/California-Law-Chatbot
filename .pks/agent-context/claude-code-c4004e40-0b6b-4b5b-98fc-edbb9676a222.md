@@ -6,8 +6,8 @@ repo_name: California-Law-Chatbot
 github_repo: ArjunDivecha/California-Law-Chatbot
 session_id: c4004e40-0b6b-4b5b-98fc-edbb9676a222
 source_file: c4004e40-0b6b-4b5b-98fc-edbb9676a222.jsonl
-exported_at: 2026-07-02T16:14:54.476129+00:00
-export_base_commit_sha: e77867cfb7992ea62f9f9fd5a6857aaeb08ff1a7
+exported_at: 2026-07-02T16:44:13.092358+00:00
+export_base_commit_sha: a55eb06658e84de00408e7e4b5640cc3fe7fbc77
 redacted: true
 ---
 
@@ -393,3 +393,17 @@ I left the `chat.femmeandfemmelaw.com` entries in the CORS allowlists — they'r
 
 
 **Assistant:** The production domain is an explicit record, not auto-derived from the name — adding the short `.vercel.app` domain to the project directly:
+
+
+**Assistant:** Done — the app now lives at the short V1-style URL:
+
+**Canonical link: https://california-law-chatbot.vercel.app**
+
+What I did to get there safely:
+- Deleted the redirect shim that was holding the name, then **renamed the real project** to `california-law-chatbot` (same project ID — all deployments, env vars, and settings untouched) and attached the short domain.
+- Set the old `california-law-chatbot-v2.vercel.app` domain as a **307 redirect** to the short URL — so your currently open tab and any bookmarks keep working, path-preserving (`…-v2.vercel.app/v2` → `…chatbot.vercel.app/v2`, verified).
+- Added the short origin to both CORS allowlists, tests green, deployed.
+- **Verified live on the new origin**: HTTP 200, and the Clerk sign-in flow works there (it hands off to Clerk's hosted sign
+
+
+**User:** lets make sure everything is xonutted and puahed and there is only main - no braches mo worktress

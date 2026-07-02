@@ -47,3 +47,9 @@ installer-pkg/payload/
 # Editor / tooling local state
 .cursor/
 .yarn/install-state.gz
+
+# Local-only preserved artifacts (secrets / personal files — never commit)
+archive-env-2026-07-01/
+Etf pair trading -*
+Finrobot-*
+Proposal Move the Femme & Femme Research Assistant to Anthropic's Managed Platform.pdf
