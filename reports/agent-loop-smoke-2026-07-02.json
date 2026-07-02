@@ -1,0 +1,49 @@
+{
+  "ran_at": "2026-07-02T04:26:19.482Z",
+  "results": [
+    {
+      "scenario": "public_research (privileged=false expected)",
+      "session_id": "smoke_1782966379482_hqbu",
+      "ok": true,
+      "privileged_expected": false,
+      "privileged_actual": false,
+      "privilege_match": true,
+      "compound_risk_buckets": 0,
+      "tool_rounds": 1,
+      "total_tokens": 2144,
+      "elapsed_ms": 31286.6465,
+      "stop_reason": "end_turn",
+      "exhausted_iterations": false,
+      "persisted_messages": 4,
+      "final_text_preview": "Quick but important correction before answering: **CRC 3.1320 is not the sealing rule — it governs demurrers.** For example, \nCalifornia Rules of Court 3.1320(e) requires that the caption of the demurrer include the name of the party filing the demurrer and the name of the party whose pleading is the subject of the demurrer\n. If you cite 3.1320 in a motion to seal, you'll be citing the wrong rule."
+    },
+    {
+      "scenario": "compound_risk (privileged=true expected, no direct PII)",
+      "session_id": "smoke_1782966411090_qoat",
+      "ok": true,
+      "privileged_expected": true,
+      "privileged_actual": true,
+      "privilege_match": true,
+      "compound_risk_buckets": 5,
+      "tool_rounds": 1,
+      "total_tokens": 2969,
+      "elapsed_ms": 44035.50050000001,
+      "stop_reason": "end_turn",
+      "exhausted_iterations": false,
+      "persisted_messages": 4,
+      "final_text_preview": "Based on the CEB probate guides, here's the opening package. (I'm assuming the widower is the decedent and the son will petition to administer his father's estate in San Francisco Superior Court — let me know if the facts are different, e.g., if the widower is still living and this is planning for him.)\n\n## Who may file and where\n\n\nAny interested person may begin proceedings by filing a petition f"
+    },
+    {
+      "scenario": "direct_pii (privileged=true expected, explicit name+phone)",
+      "ok": false,
+      "response": {
+        "ok": false,
+        "error": {
+          "code": "sanitizer_unavailable",
+          "message": "Raw PII detected in request body (1 match: phone). Browser-side tokenization should have replaced these with @@TOKEN@@ placeholders. Request blocked to prevent unprotected send."
+        },
+        "status_code": 503
+      }
+    }
+  ]
+}

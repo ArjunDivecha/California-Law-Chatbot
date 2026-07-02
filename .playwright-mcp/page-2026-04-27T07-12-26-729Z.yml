@@ -1,0 +1,300 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e6]:
+        - img "Logo" [ref=e8]
+        - generic [ref=e9]:
+          - heading "California Law Chatbot" [level=1] [ref=e10]
+          - link "femme & femme LLP" [ref=e11] [cursor=pointer]:
+            - /url: https://www.femmeandfemmelaw.com/
+      - generic [ref=e12]:
+        - generic [ref=e13]:
+          - generic "OPF detector ready (v0.1.0). Model loaded; idle unload after 600s." [ref=e14]:
+            - generic "OPF ready" [ref=e15]
+          - button "Sanitization · 7" [ref=e16] [cursor=pointer]:
+            - img [ref=e17]
+            - text: Sanitization · 7
+            - img [ref=e20]
+          - button "Reset the local token map (wipes IndexedDB on this device)." [ref=e23] [cursor=pointer]:
+            - img [ref=e24]
+        - generic [ref=e27]:
+          - button "Research" [ref=e28] [cursor=pointer]:
+            - img [ref=e30]
+            - generic [ref=e33]: Research
+          - button "Drafting" [ref=e34] [cursor=pointer]:
+            - img [ref=e36]
+            - generic [ref=e39]: Drafting
+          - button "Drafting Magic" [ref=e40] [cursor=pointer]:
+            - img [ref=e42]
+            - generic [ref=e45]: Drafting Magic
+  - main [ref=e46]:
+    - generic [ref=e48]:
+      - generic [ref=e49]:
+        - generic [ref=e50]:
+          - generic [ref=e51]:
+            - generic [ref=e52]:
+              - heading "Drafting Magic" [level=1] [ref=e53]
+              - generic [ref=e54]: Workbench prototype
+              - generic [ref=e55]: 5 document estate packet
+            - paragraph [ref=e56]: Compare trusts, pour-over wills, directives, financial powers of attorney, and prenups before generating a traceable new draft.
+          - generic [ref=e57]:
+            - generic [ref=e58]:
+              - generic [ref=e59]: Packet docs
+              - generic [ref=e60]: 1/5
+            - generic [ref=e61]:
+              - generic [ref=e62]: Extracted units
+              - generic [ref=e63]: "3"
+            - generic [ref=e64]:
+              - generic [ref=e65]: Matrix rows
+              - generic [ref=e66]: "6"
+            - generic [ref=e67]:
+              - generic [ref=e68]: Approved
+              - generic [ref=e69]: "3"
+            - generic [ref=e70]:
+              - generic [ref=e71]: Open flags
+              - generic [ref=e72]: "3"
+        - generic [ref=e73]:
+          - generic [ref=e74]:
+            - generic [ref=e75]:
+              - img [ref=e76]
+              - text: Browser workspace
+            - generic [ref=e79]: Saved locally 12:12 AM
+            - generic [ref=e80]: Cloud drafting receives tokenized packet text; rehydration stays in this browser.
+            - generic [ref=e526]: DOCX exported 12:12 AM
+          - generic [ref=e81]:
+            - button "Export workspace" [ref=e82] [cursor=pointer]:
+              - img [ref=e83]
+              - text: Export workspace
+            - button "Reset" [ref=e86] [cursor=pointer]:
+              - img [ref=e87]
+              - text: Reset
+        - generic [ref=e90]:
+          - button "Inputs" [ref=e91] [cursor=pointer]
+          - button "Compare" [ref=e92] [cursor=pointer]
+          - button "Strategy" [ref=e93] [cursor=pointer]
+          - button "Draft" [ref=e94] [cursor=pointer]
+          - button "Review" [ref=e95] [cursor=pointer]
+      - generic [ref=e96]:
+        - complementary [ref=e97]:
+          - generic [ref=e98]:
+            - generic [ref=e99]:
+              - img [ref=e101]
+              - heading "Source Library" [level=2] [ref=e104]
+            - generic [ref=e105]: 5 items
+          - generic [ref=e106]:
+            - button "Manage packet" [ref=e107] [cursor=pointer]:
+              - img [ref=e108]
+              - text: Manage packet
+            - generic [ref=e111]:
+              - generic [ref=e112]:
+                - generic [ref=e113]:
+                  - generic [ref=e114]: Revocable living trust
+                  - generic [ref=e116]: Trust
+                - button "Include Revocable living trust" [ref=e117] [cursor=pointer]
+              - generic [ref=e119]:
+                - generic [ref=e120]:
+                  - generic [ref=e121]: Format
+                  - generic [ref=e122]: DOCX
+                - generic [ref=e123]:
+                  - generic [ref=e124]: Sections
+                  - generic [ref=e125]: "18"
+                - generic [ref=e126]:
+                  - generic [ref=e127]: Words
+                  - generic [ref=e128]: 11,840
+              - generic [ref=e129]:
+                - generic [ref=e130]: Ready
+                - button "Set base" [ref=e131] [cursor=pointer]
+            - generic [ref=e132]:
+              - generic [ref=e133]:
+                - generic [ref=e134]:
+                  - generic [ref=e135]: Pour-over will
+                  - generic [ref=e137]: Pour-over will
+                - button "Include Pour-over will" [ref=e138] [cursor=pointer]
+              - generic [ref=e140]:
+                - generic [ref=e141]:
+                  - generic [ref=e142]: Format
+                  - generic [ref=e143]: PDF
+                - generic [ref=e144]:
+                  - generic [ref=e145]: Sections
+                  - generic [ref=e146]: "8"
+                - generic [ref=e147]:
+                  - generic [ref=e148]: Words
+                  - generic [ref=e149]: 3,260
+              - generic [ref=e150]:
+                - generic [ref=e151]: Ready
+                - button "Set base" [ref=e152] [cursor=pointer]
+            - generic [ref=e153]:
+              - generic [ref=e154]:
+                - generic [ref=e155]:
+                  - generic [ref=e156]: Advance health care directive
+                  - generic [ref=e158]: Advance directive
+                - button "Include Advance health care directive" [ref=e159] [cursor=pointer]
+              - generic [ref=e161]:
+                - generic [ref=e162]:
+                  - generic [ref=e163]: Format
+                  - generic [ref=e164]: DOCX
+                - generic [ref=e165]:
+                  - generic [ref=e166]: Sections
+                  - generic [ref=e167]: "10"
+                - generic [ref=e168]:
+                  - generic [ref=e169]: Words
+                  - generic [ref=e170]: 4,120
+              - generic [ref=e171]:
+                - generic [ref=e172]: Needs review
+                - button "Set base" [ref=e173] [cursor=pointer]
+              - generic [ref=e174]:
+                - img [ref=e175]
+                - generic [ref=e177]: Agent order differs from financial POA
+            - generic [ref=e178]:
+              - generic [ref=e179]:
+                - generic [ref=e180]:
+                  - generic [ref=e181]: Durable financial power of attorney
+                  - generic [ref=e183]: Financial POA
+                - button "Exclude Durable financial power of attorney" [ref=e184] [cursor=pointer]
+              - generic [ref=e186]:
+                - generic [ref=e187]:
+                  - generic [ref=e188]: Format
+                  - generic [ref=e189]: DOCX
+                - generic [ref=e190]:
+                  - generic [ref=e191]: Sections
+                  - generic [ref=e192]: "12"
+                - generic [ref=e193]:
+                  - generic [ref=e194]: Words
+                  - generic [ref=e195]: 5,780
+              - generic [ref=e196]:
+                - generic [ref=e197]: Ready
+                - button "Set base" [ref=e198] [cursor=pointer]
+            - generic [ref=e199]:
+              - generic [ref=e200]:
+                - generic [ref=e201]:
+                  - generic [ref=e202]: Prenuptial agreement
+                  - generic [ref=e204]: Prenup
+                - button "Include Prenuptial agreement" [ref=e205] [cursor=pointer]
+              - generic [ref=e207]:
+                - generic [ref=e208]:
+                  - generic [ref=e209]: Format
+                  - generic [ref=e210]: PDF
+                - generic [ref=e211]:
+                  - generic [ref=e212]: Sections
+                  - generic [ref=e213]: "15"
+                - generic [ref=e214]:
+                  - generic [ref=e215]: Words
+                  - generic [ref=e216]: 9,430
+              - generic [ref=e217]:
+                - generic [ref=e218]: Ready
+                - button "Set base" [ref=e219] [cursor=pointer]
+              - generic [ref=e220]:
+                - img [ref=e221]
+                - generic [ref=e223]: Separate-property terms should constrain trust funding language
+        - main [ref=e224]:
+          - generic [ref=e456]:
+            - generic [ref=e457]:
+              - generic [ref=e458]:
+                - heading "Draft preview" [level=2] [ref=e459]
+                - paragraph [ref=e460]: Each section carries lineage, requirement mapping, and review status.
+              - generic [ref=e461]:
+                - generic [ref=e462]: Needs regeneration
+                - button "Regenerate cloud draft" [ref=e463] [cursor=pointer]:
+                  - img [ref=e464]
+                  - text: Regenerate cloud draft
+                - button "Export draft DOCX" [ref=e469] [cursor=pointer]:
+                  - img [ref=e527]
+                  - text: Export draft DOCX
+                - button "Review checklist" [ref=e473] [cursor=pointer]:
+                  - text: Review checklist
+                  - img [ref=e474]
+            - generic [ref=e476]:
+              - img [ref=e477]
+              - generic [ref=e479]: The comparison matrix or drafting strategy changed. Regenerate before treating this preview as current.
+            - generic [ref=e480]:
+              - button "Estate Plan Packet Summary Reviewed This draft reconciles the trust, pour-over will, health care directive, financial power of attorney, and prenuptial agreement as one estate-planning packet. It preserves the trust as the base document while flagging fiduciary mismatches, property-character issues, and agent-authority differences for attorney review. Trust, Pour-over will, Financial POA, AHCD, Prenup Cross-document consistency, attorney review flags" [ref=e481] [cursor=pointer]:
+                - generic [ref=e482]:
+                  - heading "Estate Plan Packet Summary" [level=3] [ref=e483]
+                  - generic [ref=e484]: Reviewed
+                - paragraph [ref=e485]: This draft reconciles the trust, pour-over will, health care directive, financial power of attorney, and prenuptial agreement as one estate-planning packet. It preserves the trust as the base document while flagging fiduciary mismatches, property-character issues, and agent-authority differences for attorney review.
+                - generic [ref=e486]:
+                  - generic [ref=e487]:
+                    - img [ref=e488]
+                    - text: Trust, Pour-over will, Financial POA, AHCD, Prenup
+                  - generic [ref=e491]:
+                    - img [ref=e492]
+                    - text: Cross-document consistency, attorney review flags
+              - button "Funding and Property Characterization Generated The trust funding language should carry forward the prenup classifications instead of treating all scheduled property the same way. The pour-over will can remain structurally intact, but the signing packet should use one trust identity and call out any separate-property carveouts before execution. Revocable living trust, Prenuptial agreement, Pour-over will Separate-property guardrails, pour-over alignment" [ref=e496] [cursor=pointer]:
+                - generic [ref=e497]:
+                  - heading "Funding and Property Characterization" [level=3] [ref=e498]
+                  - generic [ref=e499]: Generated
+                - paragraph [ref=e500]: The trust funding language should carry forward the prenup classifications instead of treating all scheduled property the same way. The pour-over will can remain structurally intact, but the signing packet should use one trust identity and call out any separate-property carveouts before execution.
+                - generic [ref=e501]:
+                  - generic [ref=e502]:
+                    - img [ref=e503]
+                    - text: Revocable living trust, Prenuptial agreement, Pour-over will
+                  - generic [ref=e506]:
+                    - img [ref=e507]
+                    - text: Separate-property guardrails, pour-over alignment
+              - button "Fiduciary and Agent Authority Needs review The fiduciary chart should show trustee, financial agent, and health care agent roles separately. The documents can intentionally use different triggers, but the client summary should explain those differences and flag the AHCD privacy-release update before export. Trust, Financial POA, AHCD Incapacity standard, privacy release, agent ordering" [ref=e511] [cursor=pointer]:
+                - generic [ref=e512]:
+                  - heading "Fiduciary and Agent Authority" [level=3] [ref=e513]
+                  - generic [ref=e514]: Needs review
+                - paragraph [ref=e515]: The fiduciary chart should show trustee, financial agent, and health care agent roles separately. The documents can intentionally use different triggers, but the client summary should explain those differences and flag the AHCD privacy-release update before export.
+                - generic [ref=e516]:
+                  - generic [ref=e517]:
+                    - img [ref=e518]
+                    - text: Trust, Financial POA, AHCD
+                  - generic [ref=e521]:
+                    - img [ref=e522]
+                    - text: Incapacity standard, privacy release, agent ordering
+        - complementary [ref=e387]:
+          - generic [ref=e388]:
+            - generic [ref=e389]:
+              - img [ref=e391]
+              - heading "Decision Detail" [level=2] [ref=e393]
+            - generic [ref=e394]: draft
+          - generic [ref=e395]:
+            - generic [ref=e396]:
+              - generic [ref=e397]:
+                - img [ref=e398]
+                - text: Successor fiduciary alignment
+              - generic [ref=e405]:
+                - generic [ref=e406]:
+                  - generic [ref=e407]: Trust
+                  - text: Trust names Maya Chen as first successor trustee and Daniel Chen as backup.
+                - generic [ref=e408]:
+                  - generic [ref=e409]: Financial POA / AHCD
+                  - text: Financial POA names Daniel as first agent; AHCD names Maya as first health care agent.
+                - generic [ref=e410]:
+                  - generic [ref=e411]: Prenup
+                  - text: Prenup has no fiduciary appointments, but requires separate-property tracking before transfers.
+              - generic [ref=e412]:
+                - generic [ref=e413]: Recommendation rationale
+                - paragraph [ref=e414]: Keep the named people, but expose the mismatch so the attorney can confirm whether financial and health care authority should intentionally diverge.
+              - generic [ref=e415]:
+                - button "Keep" [ref=e416] [cursor=pointer]
+                - button "Revise" [ref=e417] [cursor=pointer]
+                - button "Discard" [ref=e418] [cursor=pointer]
+                - button "Add" [ref=e419] [cursor=pointer]
+                - button "Review" [ref=e420] [cursor=pointer]
+              - button "Mark as open" [ref=e421] [cursor=pointer]:
+                - img [ref=e422]
+                - text: Mark as open
+            - generic [ref=e425]:
+              - generic [ref=e426]:
+                - img [ref=e427]
+                - text: Draft lineage
+              - generic [ref=e430]:
+                - generic [ref=e431]: Estate Plan Packet Summary
+                - paragraph [ref=e432]: This draft reconciles the trust, pour-over will, health care directive, financial power of attorney, and prenuptial agreement as one estate-planning packet. It preserves the trust as the base document while flagging fiduciary mismatches, property-character issues, and agent-authority differences for attorney review.
+              - generic [ref=e433]:
+                - generic [ref=e434]:
+                  - img [ref=e435]
+                  - generic [ref=e438]: Trust, Pour-over will, Financial POA, AHCD, Prenup
+                - generic [ref=e439]:
+                  - img [ref=e440]
+                  - generic [ref=e443]: Cross-document consistency, attorney review flags
+                - generic [ref=e444]:
+                  - img [ref=e445]
+                  - generic [ref=e448]: Attorney edits are preserved during section regeneration.
+            - generic [ref=e449]:
+              - generic [ref=e450]:
+                - img [ref=e451]
+                - text: Product posture
+              - paragraph [ref=e455]: "This surface is a drafting workbench: compare first, approve the plan, draft second, review before export."

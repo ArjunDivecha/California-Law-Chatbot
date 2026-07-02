@@ -1,0 +1,618 @@
+{
+  "runId": "2026-05-07T02-23-18-050Z",
+  "startedAt": "2026-05-07T02:23:18.050Z",
+  "baseUrl": "http://localhost:5173",
+  "suite": "lab-adapter-20",
+  "summary": {
+    "accuracy": {
+      "allPassTasks": 20,
+      "totalTasks": 20,
+      "allPassRate": 1
+    },
+    "speed": {
+      "avgLatencyMs": 1128,
+      "p95LatencyMs": 1731,
+      "minLatencyMs": 747,
+      "maxLatencyMs": 1731
+    },
+    "tokens": {
+      "metric": "estimated_tokens",
+      "avgPerTask": 4403,
+      "totalAcrossRun": 88062
+    },
+    "byArea": {
+      "Family Law": {
+        "tasks": 4,
+        "allPass": 4,
+        "latencyTotal": 4315,
+        "tokenTotal": 17589
+      },
+      "Trusts & Estates": {
+        "tasks": 4,
+        "allPass": 4,
+        "latencyTotal": 5144,
+        "tokenTotal": 17215
+      },
+      "Litigation Intake": {
+        "tasks": 4,
+        "allPass": 4,
+        "latencyTotal": 4412,
+        "tokenTotal": 18099
+      },
+      "Business Litigation": {
+        "tasks": 4,
+        "allPass": 4,
+        "latencyTotal": 4581,
+        "tokenTotal": 18509
+      },
+      "Drafting": {
+        "tasks": 4,
+        "allPass": 4,
+        "latencyTotal": 4098,
+        "tokenTotal": 16650
+      }
+    }
+  },
+  "tasks": [
+    {
+      "id": "lab-cal-001",
+      "area": "Family Law",
+      "allPass": true,
+      "passed": 6,
+      "total": 6,
+      "latencyMs": {
+        "search": 970,
+        "verify": 760,
+        "total": 1730
+      },
+      "counts": {
+        "sources": 6,
+        "statutoryCitations": 1,
+        "verified": 2,
+        "found": 2
+      },
+      "tokenEstimate": {
+        "input": 51,
+        "retrievedContext": 4112,
+        "verificationPayload": 188,
+        "total": 4351
+      },
+      "usage": {
+        "modelUsageAvailable": false,
+        "note": "True model usage tokens are not exposed by current endpoints; estimates used for trend comparison."
+      }
+    },
+    {
+      "id": "lab-cal-002",
+      "area": "Family Law",
+      "allPass": true,
+      "passed": 6,
+      "total": 6,
+      "latencyMs": {
+        "search": 247,
+        "verify": 500,
+        "total": 747
+      },
+      "counts": {
+        "sources": 6,
+        "statutoryCitations": 1,
+        "verified": 2,
+        "found": 2
+      },
+      "tokenEstimate": {
+        "input": 45,
+        "retrievedContext": 3943,
+        "verificationPayload": 188,
+        "total": 4176
+      },
+      "usage": {
+        "modelUsageAvailable": false,
+        "note": "True model usage tokens are not exposed by current endpoints; estimates used for trend comparison."
+      }
+    },
+    {
+      "id": "lab-cal-003",
+      "area": "Family Law",
+      "allPass": true,
+      "passed": 5,
+      "total": 5,
+      "latencyMs": {
+        "search": 285,
+        "verify": 469,
+        "total": 754
+      },
+      "counts": {
+        "sources": 6,
+        "statutoryCitations": 0,
+        "verified": 2,
+        "found": 2
+      },
+      "tokenEstimate": {
+        "input": 43,
+        "retrievedContext": 4337,
+        "verificationPayload": 188,
+        "total": 4568
+      },
+      "usage": {
+        "modelUsageAvailable": false,
+        "note": "True model usage tokens are not exposed by current endpoints; estimates used for trend comparison."
+      }
+    },
+    {
+      "id": "lab-cal-004",
+      "area": "Family Law",
+      "allPass": true,
+      "passed": 5,
+      "total": 5,
+      "latencyMs": {
+        "search": 583,
+        "verify": 501,
+        "total": 1084
+      },
+      "counts": {
+        "sources": 6,
+        "statutoryCitations": 0,
+        "verified": 2,
+        "found": 2
+      },
+      "tokenEstimate": {
+        "input": 43,
+        "retrievedContext": 4263,
+        "verificationPayload": 188,
+        "total": 4494
+      },
+      "usage": {
+        "modelUsageAvailable": false,
+        "note": "True model usage tokens are not exposed by current endpoints; estimates used for trend comparison."
+      }
+    },
+    {
+      "id": "lab-cal-005",
+      "area": "Trusts & Estates",
+      "allPass": true,
+      "passed": 6,
+      "total": 6,
+      "latencyMs": {
+        "search": 863,
+        "verify": 797,
+        "total": 1660
+      },
+      "counts": {
+        "sources": 6,
+        "statutoryCitations": 1,
+        "verified": 2,
+        "found": 2
+      },
+      "tokenEstimate": {
+        "input": 46,
+        "retrievedContext": 4475,
+        "verificationPayload": 188,
+        "total": 4709
+      },
+      "usage": {
+        "modelUsageAvailable": false,
+        "note": "True model usage tokens are not exposed by current endpoints; estimates used for trend comparison."
+      }
+    },
+    {
+      "id": "lab-cal-006",
+      "area": "Trusts & Estates",
+      "allPass": true,
+      "passed": 5,
+      "total": 5,
+      "latencyMs": {
+        "search": 806,
+        "verify": 293,
+        "total": 1099
+      },
+      "counts": {
+        "sources": 6,
+        "statutoryCitations": 0,
+        "verified": 2,
+        "found": 2
+      },
+      "tokenEstimate": {
+        "input": 46,
+        "retrievedContext": 3696,
+        "verificationPayload": 188,
+        "total": 3930
+      },
+      "usage": {
+        "modelUsageAvailable": false,
+        "note": "True model usage tokens are not exposed by current endpoints; estimates used for trend comparison."
+      }
+    },
+    {
+      "id": "lab-cal-007",
+      "area": "Trusts & Estates",
+      "allPass": true,
+      "passed": 5,
+      "total": 5,
+      "latencyMs": {
+        "search": 675,
+        "verify": 705,
+        "total": 1380
+      },
+      "counts": {
+        "sources": 5,
+        "statutoryCitations": 0,
+        "verified": 2,
+        "found": 2
+      },
+      "tokenEstimate": {
+        "input": 46,
+        "retrievedContext": 3729,
+        "verificationPayload": 188,
+        "total": 3963
+      },
+      "usage": {
+        "modelUsageAvailable": false,
+        "note": "True model usage tokens are not exposed by current endpoints; estimates used for trend comparison."
+      }
+    },
+    {
+      "id": "lab-cal-008",
+      "area": "Trusts & Estates",
+      "allPass": true,
+      "passed": 5,
+      "total": 5,
+      "latencyMs": {
+        "search": 747,
+        "verify": 258,
+        "total": 1005
+      },
+      "counts": {
+        "sources": 6,
+        "statutoryCitations": 0,
+        "verified": 2,
+        "found": 2
+      },
+      "tokenEstimate": {
+        "input": 42,
+        "retrievedContext": 4383,
+        "verificationPayload": 188,
+        "total": 4613
+      },
+      "usage": {
+        "modelUsageAvailable": false,
+        "note": "True model usage tokens are not exposed by current endpoints; estimates used for trend comparison."
+      }
+    },
+    {
+      "id": "lab-cal-009",
+      "area": "Litigation Intake",
+      "allPass": true,
+      "passed": 5,
+      "total": 5,
+      "latencyMs": {
+        "search": 519,
+        "verify": 314,
+        "total": 833
+      },
+      "counts": {
+        "sources": 6,
+        "statutoryCitations": 0,
+        "verified": 2,
+        "found": 2
+      },
+      "tokenEstimate": {
+        "input": 44,
+        "retrievedContext": 4104,
+        "verificationPayload": 188,
+        "total": 4336
+      },
+      "usage": {
+        "modelUsageAvailable": false,
+        "note": "True model usage tokens are not exposed by current endpoints; estimates used for trend comparison."
+      }
+    },
+    {
+      "id": "lab-cal-010",
+      "area": "Litigation Intake",
+      "allPass": true,
+      "passed": 5,
+      "total": 5,
+      "latencyMs": {
+        "search": 658,
+        "verify": 968,
+        "total": 1626
+      },
+      "counts": {
+        "sources": 6,
+        "statutoryCitations": 0,
+        "verified": 2,
+        "found": 2
+      },
+      "tokenEstimate": {
+        "input": 41,
+        "retrievedContext": 5028,
+        "verificationPayload": 188,
+        "total": 5257
+      },
+      "usage": {
+        "modelUsageAvailable": false,
+        "note": "True model usage tokens are not exposed by current endpoints; estimates used for trend comparison."
+      }
+    },
+    {
+      "id": "lab-cal-011",
+      "area": "Litigation Intake",
+      "allPass": true,
+      "passed": 5,
+      "total": 5,
+      "latencyMs": {
+        "search": 487,
+        "verify": 494,
+        "total": 981
+      },
+      "counts": {
+        "sources": 6,
+        "statutoryCitations": 0,
+        "verified": 2,
+        "found": 2
+      },
+      "tokenEstimate": {
+        "input": 46,
+        "retrievedContext": 3909,
+        "verificationPayload": 188,
+        "total": 4143
+      },
+      "usage": {
+        "modelUsageAvailable": false,
+        "note": "True model usage tokens are not exposed by current endpoints; estimates used for trend comparison."
+      }
+    },
+    {
+      "id": "lab-cal-012",
+      "area": "Litigation Intake",
+      "allPass": true,
+      "passed": 5,
+      "total": 5,
+      "latencyMs": {
+        "search": 480,
+        "verify": 492,
+        "total": 972
+      },
+      "counts": {
+        "sources": 6,
+        "statutoryCitations": 0,
+        "verified": 2,
+        "found": 2
+      },
+      "tokenEstimate": {
+        "input": 41,
+        "retrievedContext": 4134,
+        "verificationPayload": 188,
+        "total": 4363
+      },
+      "usage": {
+        "modelUsageAvailable": false,
+        "note": "True model usage tokens are not exposed by current endpoints; estimates used for trend comparison."
+      }
+    },
+    {
+      "id": "lab-cal-013",
+      "area": "Business Litigation",
+      "allPass": true,
+      "passed": 5,
+      "total": 5,
+      "latencyMs": {
+        "search": 551,
+        "verify": 531,
+        "total": 1082
+      },
+      "counts": {
+        "sources": 6,
+        "statutoryCitations": 0,
+        "verified": 2,
+        "found": 2
+      },
+      "tokenEstimate": {
+        "input": 43,
+        "retrievedContext": 4719,
+        "verificationPayload": 188,
+        "total": 4950
+      },
+      "usage": {
+        "modelUsageAvailable": false,
+        "note": "True model usage tokens are not exposed by current endpoints; estimates used for trend comparison."
+      }
+    },
+    {
+      "id": "lab-cal-014",
+      "area": "Business Litigation",
+      "allPass": true,
+      "passed": 5,
+      "total": 5,
+      "latencyMs": {
+        "search": 693,
+        "verify": 493,
+        "total": 1186
+      },
+      "counts": {
+        "sources": 6,
+        "statutoryCitations": 0,
+        "verified": 2,
+        "found": 2
+      },
+      "tokenEstimate": {
+        "input": 43,
+        "retrievedContext": 2935,
+        "verificationPayload": 188,
+        "total": 3166
+      },
+      "usage": {
+        "modelUsageAvailable": false,
+        "note": "True model usage tokens are not exposed by current endpoints; estimates used for trend comparison."
+      }
+    },
+    {
+      "id": "lab-cal-015",
+      "area": "Business Litigation",
+      "allPass": true,
+      "passed": 5,
+      "total": 5,
+      "latencyMs": {
+        "search": 416,
+        "verify": 355,
+        "total": 771
+      },
+      "counts": {
+        "sources": 6,
+        "statutoryCitations": 0,
+        "verified": 2,
+        "found": 2
+      },
+      "tokenEstimate": {
+        "input": 44,
+        "retrievedContext": 5194,
+        "verificationPayload": 188,
+        "total": 5426
+      },
+      "usage": {
+        "modelUsageAvailable": false,
+        "note": "True model usage tokens are not exposed by current endpoints; estimates used for trend comparison."
+      }
+    },
+    {
+      "id": "lab-cal-016",
+      "area": "Business Litigation",
+      "allPass": true,
+      "passed": 5,
+      "total": 5,
+      "latencyMs": {
+        "search": 419,
+        "verify": 1123,
+        "total": 1542
+      },
+      "counts": {
+        "sources": 6,
+        "statutoryCitations": 0,
+        "verified": 2,
+        "found": 2
+      },
+      "tokenEstimate": {
+        "input": 41,
+        "retrievedContext": 4738,
+        "verificationPayload": 188,
+        "total": 4967
+      },
+      "usage": {
+        "modelUsageAvailable": false,
+        "note": "True model usage tokens are not exposed by current endpoints; estimates used for trend comparison."
+      }
+    },
+    {
+      "id": "lab-cal-017",
+      "area": "Drafting",
+      "allPass": true,
+      "passed": 5,
+      "total": 5,
+      "latencyMs": {
+        "search": 241,
+        "verify": 544,
+        "total": 785
+      },
+      "counts": {
+        "sources": 6,
+        "statutoryCitations": 0,
+        "verified": 2,
+        "found": 2
+      },
+      "tokenEstimate": {
+        "input": 42,
+        "retrievedContext": 3714,
+        "verificationPayload": 188,
+        "total": 3944
+      },
+      "usage": {
+        "modelUsageAvailable": false,
+        "note": "True model usage tokens are not exposed by current endpoints; estimates used for trend comparison."
+      }
+    },
+    {
+      "id": "lab-cal-018",
+      "area": "Drafting",
+      "allPass": true,
+      "passed": 5,
+      "total": 5,
+      "latencyMs": {
+        "search": 410,
+        "verify": 342,
+        "total": 752
+      },
+      "counts": {
+        "sources": 6,
+        "statutoryCitations": 0,
+        "verified": 2,
+        "found": 2
+      },
+      "tokenEstimate": {
+        "input": 44,
+        "retrievedContext": 4059,
+        "verificationPayload": 188,
+        "total": 4291
+      },
+      "usage": {
+        "modelUsageAvailable": false,
+        "note": "True model usage tokens are not exposed by current endpoints; estimates used for trend comparison."
+      }
+    },
+    {
+      "id": "lab-cal-019",
+      "area": "Drafting",
+      "allPass": true,
+      "passed": 5,
+      "total": 5,
+      "latencyMs": {
+        "search": 433,
+        "verify": 397,
+        "total": 830
+      },
+      "counts": {
+        "sources": 6,
+        "statutoryCitations": 0,
+        "verified": 2,
+        "found": 2
+      },
+      "tokenEstimate": {
+        "input": 49,
+        "retrievedContext": 3915,
+        "verificationPayload": 188,
+        "total": 4152
+      },
+      "usage": {
+        "modelUsageAvailable": false,
+        "note": "True model usage tokens are not exposed by current endpoints; estimates used for trend comparison."
+      }
+    },
+    {
+      "id": "lab-cal-020",
+      "area": "Drafting",
+      "allPass": true,
+      "passed": 6,
+      "total": 6,
+      "latencyMs": {
+        "search": 900,
+        "verify": 831,
+        "total": 1731
+      },
+      "counts": {
+        "sources": 6,
+        "statutoryCitations": 1,
+        "verified": 2,
+        "found": 2
+      },
+      "tokenEstimate": {
+        "input": 43,
+        "retrievedContext": 4032,
+        "verificationPayload": 188,
+        "total": 4263
+      },
+      "usage": {
+        "modelUsageAvailable": false,
+        "note": "True model usage tokens are not exposed by current endpoints; estimates used for trend comparison."
+      }
+    }
+  ]
+}

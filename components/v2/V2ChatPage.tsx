@@ -39,8 +39,32 @@ import { ConfidentialityAttestation } from '../ConfidentialityAttestation.tsx';
 import { checkAnswer } from '../../services/guardrailsServiceV2.ts';
 import { prune as pruneSources } from '../../services/retrievalPrunerV2.ts';
 import { fetchSessionWithCache, invalidateSession } from '../../utils/chatStoreV2.ts';
-import { getChatSanitizer } from '../../services/sanitization/chatAdapter';
+import { getChatSanitizer, findInventedTokensInText } from '../../services/sanitization/chatAdapter';
 import { useSanitizer } from '../../hooks/useSanitizer';
+
+// Warn when a model response references sanitization tokens that do NOT
+// exist in the local token map — a potential hallucination of an entity not
+// present in the original prompt. Renders nothing when the active sanitizer
+// is the pass-through (no map). Ported from the V1 Message.tsx at the
+// 2026-07-02 V1 purge (Phase 6 Day 9 feature).
+const InventedTokenWarning: React.FC<{ text: string }> = ({ text }) => {
+  const unknown = React.useMemo(() => findInventedTokensInText(text), [text]);
+  if (unknown.length === 0) return null;
+  const shown = unknown.slice(0, 5).join(', ');
+  const more = unknown.length > 5 ? ` and ${unknown.length - 5} more` : '';
+  return (
+    <div className="mb-3 rounded border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+      <div className="mb-0.5 font-semibold">
+        ⚠️ Model referenced {unknown.length} token{unknown.length !== 1 ? 's' : ''} not in your local map
+      </div>
+      <div>
+        {shown}
+        {more}. These were not assigned from your prompt — treat as potentially invented. Verify
+        the specific identifier before relying on it.
+      </div>
+    </div>
+  );
+};
 
 type Workflow = 'quick' | 'research';
 
@@ -760,6 +784,7 @@ const MessageBubble: React.FC<{
               : 'bg-white border border-gray-200 text-gray-900 shadow-sm v2-md'
           }`}
         >
+          {!isUser && <InventedTokenWarning text={text} />}
           {isUser ? (
             highlighted ?? text
           ) : (

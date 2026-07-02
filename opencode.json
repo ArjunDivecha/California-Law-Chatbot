@@ -1,0 +1,17 @@
+{
+	"permission": {
+		"*": "ask",
+		"bash": {
+			"git add:*": "allow",
+			"git commit:*": "allow",
+			"git push origin main": "allow",
+			"grep:*": "allow",
+			"npx vercel ls": "allow",
+			"gh api:*": "allow",
+			"python3:*": "allow",
+			"npm run build": "allow",
+			"git reset:*": "allow",
+			"curl:*": "allow"
+		}
+	}
+}

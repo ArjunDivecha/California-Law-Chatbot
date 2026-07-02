@@ -7,18 +7,6 @@
     }
   ],
   "functions": {
-    "api/orchestrate-document.ts": {
-      "memory": 2048,
-      "maxDuration": 300
-    },
-    "api/gemini-chat.ts": {
-      "memory": 1024,
-      "maxDuration": 300
-    },
-    "api/anthropic-chat.ts": {
-      "memory": 1024,
-      "maxDuration": 120
-    },
     "api/agent/turn.ts": {
       "memory": 1024,
       "maxDuration": 300,
@@ -49,34 +37,12 @@
       "maxDuration": 300,
       "includeFiles": "agents/**"
     },
-    "api/agent/shadow.ts": {
-      "memory": 1024,
-      "maxDuration": 300,
-      "includeFiles": "agents/**"
-    },
     "api/**/*.ts": {
       "memory": 1024,
       "maxDuration": 60
     }
   },
   "headers": [
-    {
-      "source": "/api/(.*)",
-      "headers": [
-        {
-          "key": "Access-Control-Allow-Origin",
-          "value": "*"
-        },
-        {
-          "key": "Access-Control-Allow-Methods",
-          "value": "GET, POST, PUT, PATCH, DELETE, OPTIONS"
-        },
-        {
-          "key": "Access-Control-Allow-Headers",
-          "value": "Content-Type, Authorization"
-        }
-      ]
-    },
     {
       "source": "/(.*)",
       "headers": [

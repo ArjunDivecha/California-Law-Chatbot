@@ -831,42 +831,31 @@ function routeCallsBackstop(file) {
   return importsGuard && callsScan && callsReject;
 }
 
-await test('gemini-chat route is wired to the backstop', () => {
-  assert.ok(routeCallsBackstop('api/gemini-chat.ts'));
+// 2026-07-02 V1 purge: the per-route V1 endpoints (gemini-chat, claude-chat,
+// ceb-search, legislative-*, courtlistener-search, drafting-magic,
+// anthropic-chat, …) were deleted. All model traffic now flows through the
+// agent proxy, which runs the server backstop before any dispatch. Assert
+// that chokepoint instead of the dead routes.
+await test('agent proxy (all agent routes) is wired to the server backstop', () => {
+  const text = readFileSync(joinPath(repoRoot, 'api/_lib/agentProxy.ts'), 'utf8');
+  assert.ok(/detectionPipeline/.test(text), 'imports the detection pipeline');
+  assert.ok(/detectPiiServerBackstop\s*\(/.test(text), 'runs the server backstop');
 });
 
-await test('claude-chat route is wired to the backstop', () => {
-  assert.ok(routeCallsBackstop('api/claude-chat.ts'));
-});
-
-await test('ceb-search route is wired to the backstop', () => {
-  assert.ok(routeCallsBackstop('api/ceb-search.ts'));
-});
-
-await test('legislative-fanout route is wired to the backstop', () => {
-  assert.ok(routeCallsBackstop('api/legislative-fanout.ts'));
-});
-
-await test('courtlistener-search route is wired to the backstop', () => {
-  assert.ok(routeCallsBackstop('api/courtlistener-search.ts'));
-});
-
-await test('public-legal-context route is wired to the backstop', () => {
-  assert.ok(routeCallsBackstop('api/public-legal-context.ts'));
-});
-
-await test('drafting-magic route is wired to the backstop', () => {
-  assert.ok(routeCallsBackstop('api/drafting-magic.ts'));
-});
-
-await test('anthropic-chat (Speed) is intentionally NOT wired to the backstop', () => {
-  // Speed is the non-client passthrough; it must not hard-reject PII-shaped
-  // content because attorneys may run hypotheticals there.
-  const text = readFileSync(joinPath(repoRoot, 'api/anthropic-chat.ts'), 'utf8');
-  assert.ok(
-    !/scan(ForRawPII|Request|ConversationHistory)\s*\(/.test(text),
-    'Speed route must not call the backstop'
-  );
+await test('no deleted V1 route file resurfaces', () => {
+  for (const file of [
+    'api/gemini-chat.ts',
+    'api/claude-chat.ts',
+    'api/anthropic-chat.ts',
+    'api/orchestrate-document.ts',
+    'api/ceb-search.ts',
+  ]) {
+    assert.throws(
+      () => readFileSync(joinPath(repoRoot, file), 'utf8'),
+      /ENOENT/,
+      `${file} was deleted in the V1 purge and must not come back`
+    );
+  }
 });
 
 // ---------------------------------------------------------------------------
@@ -970,30 +959,17 @@ await test('chatAdapter: deriveTitleFromRaw uses active sanitizer', async () => 
 // Wiring grep tests — hooks/useChat.ts and components/Sidebar.tsx
 // ---------------------------------------------------------------------------
 
-await test('hooks/useChat.ts imports the chat sanitizer adapter', () => {
-  const text = readFileSync(joinPath(repoRoot, 'hooks/useChat.ts'), 'utf8');
+// 2026-07-02 V1 purge: hooks/useChat.ts and components/Sidebar.tsx (V1 UI)
+// were deleted. The V2 chat surface owns the same responsibilities.
+await test('V2ChatPage imports the chat sanitizer adapter', () => {
+  const text = readFileSync(joinPath(repoRoot, 'components/v2/V2ChatPage.tsx'), 'utf8');
   assert.ok(/from '[^']*chatAdapter[^']*'/.test(text), 'imports chatAdapter');
-  assert.ok(/tokenizeMessagesForSave\s*\(/.test(text), 'calls tokenizeMessagesForSave on save');
-  assert.ok(/rehydrateMessagesForDisplay\s*\(/.test(text), 'calls rehydrateMessagesForDisplay on load');
-  assert.ok(/deriveTitleFromRaw\s*\(/.test(text), 'uses deriveTitleFromRaw for titles');
+  assert.ok(/getChatSanitizer\s*\(/.test(text), 'uses the active sanitizer for rehydration');
 });
 
-await test('hooks/useChat.ts no longer slices raw titles in-place', () => {
-  const text = readFileSync(joinPath(repoRoot, 'hooks/useChat.ts'), 'utf8');
-  // Inline .text.slice(0, 60) for title derivation used to appear three times.
-  // After Day 4.5, titles pass through deriveTitleFromRaw inside scheduleSave.
-  assert.equal(
-    (text.match(/firstUser\.text\.slice\(0,\s*60\)/g) ?? []).length,
-    0,
-    'inline title slicing removed'
-  );
-});
-
-await test('components/Sidebar.tsx rehydrates fetched and event-driven titles', () => {
-  const text = readFileSync(joinPath(repoRoot, 'components/Sidebar.tsx'), 'utf8');
-  assert.ok(/from '[^']*chatAdapter[^']*'/.test(text), 'imports chatAdapter');
+await test('V2Sidebar rehydrates fetched titles', () => {
+  const text = readFileSync(joinPath(repoRoot, 'components/v2/V2Sidebar.tsx'), 'utf8');
   assert.ok(/rehydrateMessage\s*\(/.test(text), 'rehydrates titles in the sidebar');
-  assert.ok(/deriveTitleFromRaw\s*\(/.test(text), 'uses deriveTitleFromRaw for rename');
 });
 
 // ---------------------------------------------------------------------------
@@ -1152,10 +1128,13 @@ await test('mcp: buildToolsArray includes mcp_toolset entries for active+non-pri
     const privTools = buildToolsArray(true);
     const privMcp = privTools.filter((t) => t.type === 'mcp_toolset');
     assert.equal(privMcp.length, 0, 'no MCP toolsets on privileged input');
-    // web_search also omitted on privileged
+    // NOTE (7th addendum, 2026-05-13): web_search is ALWAYS included by
+    // buildToolsArray — the §E privilege gate was dropped by user
+    // ratification. Mode-based web_search gating now lives in
+    // buildToolsForPolicy (policy engine), not here.
     assert.equal(
       privTools.filter((t) => t.type === 'web_search_20250305').length,
-      0,
+      1,
     );
   } finally {
     if (prev !== undefined) process.env.V2_MCP_ENABLED = prev;
@@ -1203,7 +1182,7 @@ const { buildSystemPrompt, detectIntent, getAgentConfig } = skillsMod;
 await test('skills: agent.json loads with the expected fields', () => {
   const cfg = getAgentConfig();
   assert.equal(cfg.name, 'california-legal');
-  assert.equal(cfg.model, 'claude-opus-4-7');
+  assert.equal(cfg.model, 'claude-fable-5');
   assert.equal(cfg.core_skill, 'california-legal-core');
   assert.ok(typeof cfg.max_tokens === 'number' && cfg.max_tokens > 0);
 });
@@ -1498,15 +1477,9 @@ function routeAudits(file) {
   return importsAudit && writesRecord;
 }
 
-for (const file of [
-  'api/gemini-chat.ts',
-  'api/claude-chat.ts',
-  'api/ceb-search.ts',
-  'api/legislative-fanout.ts',
-  'api/courtlistener-search.ts',
-  'api/public-legal-context.ts',
-  'api/drafting-magic.ts',
-]) {
+// 2026-07-02 V1 purge: audit writes are centralized — the agent proxy audits
+// every agent-route turn, and /api/chats audits its own backstop rejections.
+for (const file of ['api/_lib/agentProxy.ts', 'api/chats.ts']) {
   await test(`${file} writes audit records`, () => {
     assert.ok(routeAudits(file), `${file} imports auditLog and calls writeAuditRecord`);
   });
@@ -1517,13 +1490,14 @@ await test('No route log statement writes a raw prompt body to console', () => {
   // res.status(...).json({ ..., raw: message }). False-positive risk is low because
   // these routes were refactored to log metadata only.
   for (const file of [
-    'api/gemini-chat.ts',
-    'api/claude-chat.ts',
-    'api/ceb-search.ts',
-    'api/legislative-fanout.ts',
-    'api/courtlistener-search.ts',
-    'api/public-legal-context.ts',
-    'api/drafting-magic.ts',
+    'api/chats.ts',
+    'api/matter-context.ts',
+    'api/export-document.ts',
+    'api/_lib/agentProxy.ts',
+    'api/agent/turn-stream.ts',
+    'api/agent/draft-stream.ts',
+    'api/agent/drafting-magic.ts',
+    'api/agent/verify-stream.ts',
   ]) {
     const text = readFileSync(joinPath(repoRoot, file), 'utf8');
     assert.ok(
@@ -1534,15 +1508,20 @@ await test('No route log statement writes a raw prompt body to console', () => {
 });
 
 await test('Drafting Magic client tokenizes before the cloud drafter call', () => {
-  const text = readFileSync(joinPath(repoRoot, 'components/draftingMagic/DraftingMagicPage.tsx'), 'utf8');
+  const text = readFileSync(joinPath(repoRoot, 'components/v2/V2DraftingMagicPage.tsx'), 'utf8');
   assert.ok(/tokenizeForWire/.test(text), 'Drafting Magic must tokenize source packet text before POST');
   assert.ok(/getChatSanitizer/.test(text), 'Drafting Magic must rehydrate responses with the browser token map');
-  assert.ok(/['"]\/api\/drafting-magic['"]/.test(text), 'Drafting Magic must call the drafter route');
+  assert.ok(
+    /\/api\/agent\/drafting-magic/.test(
+      text + readFileSync(joinPath(repoRoot, 'hooks/useV2DraftingMagicStream.ts'), 'utf8'),
+    ),
+    'Drafting Magic must call the V2 agent drafter route',
+  );
   assert.ok(/flow:\s*['"]accuracy_client['"]/.test(text), 'Drafting Magic must declare an Accuracy client flow');
 });
 
 await test('Drafting Magic DOCX export stays browser-side', () => {
-  const page = readFileSync(joinPath(repoRoot, 'components/draftingMagic/DraftingMagicPage.tsx'), 'utf8');
+  const page = readFileSync(joinPath(repoRoot, 'components/v2/V2DraftingMagicPage.tsx'), 'utf8');
   const exporter = readFileSync(joinPath(repoRoot, 'components/draftingMagic/draftDocxExport.ts'), 'utf8');
   assert.ok(/downloadDraftPackageDocx/.test(page), 'Drafting Magic page must call the browser DOCX exporter');
   assert.ok(/Packer\.toBlob/.test(exporter), 'DOCX exporter must build the file as a browser Blob');
@@ -1890,11 +1869,9 @@ await test('/api/chats PUT + POST + PATCH call scanChatPayload and gate on the r
   assert.ok(calls >= 3, `expected at least 3 scanChatPayload call sites, got ${calls}`);
 });
 
-await test('hooks/useChat.ts runs presavePiiScan before the PUT round-trip', () => {
-  const text = readFileSync(joinPath(repoRoot, 'hooks/useChat.ts'), 'utf8');
-  assert.ok(/presavePiiScan\s*\(/.test(text), 'calls presavePiiScan');
-  assert.ok(/presave-pii-detected/.test(text), 'logs the presave warning marker');
-});
+// (V1 purge: the client-side presavePiiScan lived in hooks/useChat.ts, which
+// is gone. The server-side scanChatPayload gate on /api/chats — asserted
+// above — is the enforcement point now.)
 
 // ---------------------------------------------------------------------------
 // Real sanitizer (Day 7)
@@ -1975,11 +1952,14 @@ await test('RealChatSanitizer: integrates with setChatSanitizer — chat adapter
 // Wiring grep tests — App.tsx installs the provider + banner
 // ---------------------------------------------------------------------------
 
-await test('App.tsx wraps children in SanitizerProvider and shows the status banner', () => {
+await test('App.tsx wraps children in SanitizerProvider; provider owns the status banner', () => {
   const text = readFileSync(joinPath(repoRoot, 'App.tsx'), 'utf8');
   assert.ok(/SanitizerProvider/.test(text), 'imports/uses SanitizerProvider');
   assert.ok(/<SanitizerProvider>/.test(text) || /<SanitizerProvider\s/.test(text), 'renders it');
-  assert.ok(/SanitizationBanner/.test(text), 'renders banner');
+  // The status banner moved inside the provider (hooks/useSanitizer.tsx) at
+  // the 2026-06-30 web-detector work; assert it there instead of App.tsx.
+  const provider = readFileSync(joinPath(repoRoot, 'hooks/useSanitizer.tsx'), 'utf8');
+  assert.ok(/[Bb]anner/.test(provider), 'provider renders the status banner');
 });
 
 await test('No passphrase modal exists — sanitization auto-unlocks with a device key', () => {
@@ -2078,16 +2058,12 @@ await test('attestation: different users do not share state', () => {
 // Wiring grep
 // ---------------------------------------------------------------------------
 
-await test('App.tsx mounts the attestation modal inside SignedIn', () => {
-  const text = readFileSync(joinPath(repoRoot, 'App.tsx'), 'utf8');
+await test('V2ChatPage mounts the attestation modal (auth-gated surface)', () => {
+  // V1 purge: App.tsx no longer mounts the modal directly — the V2 chat
+  // page (only reachable behind Clerk SignedIn / the DEV bypass) owns it.
+  const text = readFileSync(joinPath(repoRoot, 'components/v2/V2ChatPage.tsx'), 'utf8');
   assert.ok(/ConfidentialityAttestation/.test(text), 'imports/uses the component');
-  // Quick structural check: ConfidentialityAttestation appears between
-  // the SignedIn open and close tags.
-  const signedInIdx = text.indexOf('<SignedIn>');
-  const signedOutIdx = text.indexOf('<SignedOut>');
-  assert.ok(signedInIdx > -1 && signedOutIdx > signedInIdx, 'SignedIn/SignedOut ordering intact');
-  const between = text.slice(signedInIdx, signedOutIdx);
-  assert.ok(/<ConfidentialityAttestation\s*\/?>/.test(between), 'modal mounted inside SignedIn');
+  assert.ok(/<ConfidentialityAttestation\b/.test(text), 'modal mounted on the chat page');
 });
 
 await test('ConfidentialityAttestation covers the four narrative points', () => {
@@ -2143,8 +2119,9 @@ await test('findInventedTokensInText: pass-through sanitizer returns []', () => 
   assert.deepEqual(findInventedTokensInText('CLIENT_001 and CLIENT_002.'), []);
 });
 
-await test('components/Message.tsx shows the InventedTokenWarning banner', () => {
-  const text = readFileSync(joinPath(repoRoot, 'components/Message.tsx'), 'utf8');
+await test('V2ChatPage shows the InventedTokenWarning banner on assistant messages', () => {
+  // V1 purge: ported from components/Message.tsx into the V2 chat surface.
+  const text = readFileSync(joinPath(repoRoot, 'components/v2/V2ChatPage.tsx'), 'utf8');
   assert.ok(/findInventedTokensInText/.test(text), 'imports helper');
   assert.ok(/InventedTokenWarning/.test(text), 'renders the warning component');
   assert.ok(/<InventedTokenWarning\b/.test(text), 'mounts the warning in the message body');

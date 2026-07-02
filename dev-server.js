@@ -70,69 +70,13 @@ const loadHandler = async (path) => {
   return module.default;
 };
 
-// API Routes
-app.all('/api/gemini-chat', async (req, res) => {
-  const handler = await loadHandler('./api/gemini-chat.ts');
-  await handler(req, res);
-});
-
-app.all('/api/claude-chat', async (req, res) => {
-  const handler = await loadHandler('./api/claude-chat.ts');
-  await handler(req, res);
-});
-
-app.all('/api/anthropic-chat', async (req, res) => {
-  const handler = await loadHandler('./api/anthropic-chat.ts');
-  await handler(req, res);
-});
-
-app.all('/api/ceb-search', async (req, res) => {
-  const handler = await loadHandler('./api/ceb-search.ts');
-  await handler(req, res);
-});
-
-app.all('/api/config', async (req, res) => {
-  const handler = await loadHandler('./api/config.ts');
-  await handler(req, res);
-});
-
-app.all('/api/courtlistener-search', async (req, res) => {
-  const handler = await loadHandler('./api/courtlistener-search.ts');
-  await handler(req, res);
-});
-
-app.all('/api/legislative-search', async (req, res) => {
-  const handler = await loadHandler('./api/legislative-search.ts');
-  await handler(req, res);
-});
-
-app.all('/api/legislative-billtext', async (req, res) => {
-  const handler = await loadHandler('./api/legislative-billtext.ts');
-  await handler(req, res);
-});
-
-app.all('/api/verify-citations', async (req, res) => {
-  const handler = await loadHandler('./api/verify-citations.ts');
-  await handler(req, res);
-});
-
-app.all('/api/templates', async (req, res) => {
-  const handler = await loadHandler('./api/templates.ts');
-  await handler(req, res);
-});
-
-app.all('/api/orchestrate-document', async (req, res) => {
-  const handler = await loadHandler('./api/orchestrate-document.ts');
-  await handler(req, res);
-});
-
+// API Routes — V4: only the V2 agent-loop surface remains. The V1-era routes
+// (gemini-chat/claude-chat/orchestrate-document via OpenRouter, ceb-search,
+// courtlistener-search, legislative-*, verify-citations, templates, config,
+// serper-scholar, anthropic-chat) were deleted in the 2026-07-02 V1 purge;
+// their functionality lives in api/_lib/tools/* behind the agent loop.
 app.all('/api/export-document', async (req, res) => {
   const handler = await loadHandler('./api/export-document.ts');
-  await handler(req, res);
-});
-
-app.all('/api/serper-scholar', async (req, res) => {
-  const handler = await loadHandler('./api/serper-scholar.ts');
   await handler(req, res);
 });
 
@@ -170,11 +114,6 @@ app.all('/api/agent/revise-section', async (req, res) => {
 
 app.all('/api/agent/drafting-magic', async (req, res) => {
   const handler = await loadHandler('./api/agent/drafting-magic.ts');
-  await handler(req, res);
-});
-
-app.all('/api/agent/shadow', async (req, res) => {
-  const handler = await loadHandler('./api/agent/shadow.ts');
   await handler(req, res);
 });
 
