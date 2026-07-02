@@ -18,11 +18,7 @@ import type { ChatMessage } from '../types';
 
 // ─── CORS ───────────────────────────────────────────────────────────────────
 
-const CORS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-};
+import { applyResponseSecurity, headerString } from './_shared/routeSecurity.js';
 
 // ─── AUTH ────────────────────────────────────────────────────────────────────
 
@@ -93,8 +89,8 @@ async function getMeta(kv: Redis, chatId: string): Promise<ChatMeta | null> {
 // ─── HANDLER ─────────────────────────────────────────────────────────────────
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  Object.entries(CORS).forEach(([k, v]) => res.setHeader(k, v));
-  if (req.method === 'OPTIONS') return res.status(200).end();
+  applyResponseSecurity(res, headerString(req.headers.origin), { methods: 'GET, POST, PUT, PATCH, DELETE, OPTIONS' });
+  if (req.method === 'OPTIONS') return res.status(204).end();
 
   let userId: string;
   try {

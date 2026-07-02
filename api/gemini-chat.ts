@@ -9,6 +9,7 @@
  */
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { applyResponseSecurity, headerString } from './_shared/routeSecurity.js';
 
 // OpenRouter model names
 const PRIMARY_MODEL = 'google/gemini-3.1-pro-preview';
@@ -46,10 +47,8 @@ export default async function handler(
   req: VercelRequest,
   res: VercelResponse
 ) {
-  // Enable CORS
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  // Strict CORS allowlist + hardening headers (replaces wildcard CORS).
+  applyResponseSecurity(res, headerString(req.headers.origin), { methods: 'POST, OPTIONS' });
   res.setHeader('Cache-Control', 'no-store');
 
   if (req.method === 'OPTIONS') {

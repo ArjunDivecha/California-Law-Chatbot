@@ -8,12 +8,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import type { DocumentTemplate } from '../types';
 
-// CORS headers
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type',
-};
+import { applyResponseSecurity, headerString } from './_shared/routeSecurity.js';
 
 // Template index - in production, load from templates/index.json
 const templates = [
@@ -478,23 +473,18 @@ export default async function handler(
   req: VercelRequest,
   res: VercelResponse
 ) {
+  // Strict CORS allowlist + hardening headers (replaces wildcard CORS).
+  applyResponseSecurity(res, headerString(req.headers.origin), { methods: 'GET, OPTIONS' });
+
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-    return res.status(200).end();
+    return res.status(204).end();
   }
 
   // Only allow GET
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
-
-  // Set CORS headers
-  Object.entries(corsHeaders).forEach(([key, value]) => {
-    res.setHeader(key, value);
-  });
 
   try {
     const { id } = req.query;

@@ -53,6 +53,7 @@ import {
   type StatuteVerifyInput,
 } from './statuteVerify.js';
 import { buildMcpServerSpec, hasMcpToolsets } from './mcpRegistry.js';
+import type { PolicyDecision, ToolId } from '../compliance/policyEngine.js';
 export { hasMcpToolsets };
 
 /** Anthropic tool definition shape (server-side, custom, or MCP toolset). */
@@ -113,6 +114,63 @@ export function buildToolsArray(privileged: boolean): ToolDefinition[] {
   // = true are omitted when privileged=true, parity with web_search.
   const { mcp_toolsets } = buildMcpServerSpec(privileged);
   for (const t of mcp_toolsets) tools.push(t);
+  return tools;
+}
+
+/**
+ * Maps each Anthropic-registered tool NAME to its logical policy ToolId
+ * (api/_lib/compliance/policyEngine.ts). statute_verify shares citation_verify's
+ * gating (both verify PUBLIC citations/statutes — no client-fact leakage).
+ */
+const TOOL_POLICY_ID: Record<string, ToolId> = {
+  web_search: 'web_search',
+  ceb_search: 'ceb_search',
+  courtlistener_search: 'courtlistener',
+  legiscan_search: 'legiscan',
+  openstates_search: 'openstates',
+  citation_verify: 'citation_verify',
+  statute_verify: 'citation_verify',
+  california_code_lookup: 'ca_code',
+};
+
+/** Resolve a registered tool name to its policy ToolId (undefined if unknown). */
+export function policyIdForTool(toolName: string): ToolId | undefined {
+  return TOOL_POLICY_ID[toolName];
+}
+
+/**
+ * Build the `tools` array from a server-authoritative PolicyDecision (P3).
+ * Replaces buildToolsArray()'s "always include everything" behavior: a tool is
+ * included ONLY if its policy ToolId is in decision.allowedTools. This is how
+ * web_search is omitted in client_confidential / protected_discovery, MCP is
+ * dropped for confidential work, etc. Defense-in-depth with toolQueryGuard
+ * (which re-checks at dispatch time).
+ */
+export function buildToolsForPolicy(
+  decision: Pick<PolicyDecision, 'allowedTools'>,
+  privileged = false,
+): ToolDefinition[] {
+  const allowed = new Set<ToolId>(decision.allowedTools);
+  const candidates: ToolDefinition[] = [
+    CEB_SEARCH_TOOL_DEFINITION,
+    COURTLISTENER_SEARCH_TOOL_DEFINITION,
+    LEGISCAN_SEARCH_TOOL_DEFINITION,
+    OPENSTATES_SEARCH_TOOL_DEFINITION,
+    CITATION_VERIFY_TOOL_DEFINITION,
+    CALIFORNIA_CODE_LOOKUP_TOOL_DEFINITION,
+    STATUTE_VERIFY_TOOL_DEFINITION,
+    WEB_SEARCH_TOOL,
+  ];
+  const tools = candidates.filter((t) => {
+    const name = (t as { name?: string }).name;
+    const pid = name ? TOOL_POLICY_ID[name] : undefined;
+    return pid !== undefined && allowed.has(pid);
+  });
+  // MCP toolsets only when the policy explicitly allows 'mcp'.
+  if (allowed.has('mcp')) {
+    const { mcp_toolsets } = buildMcpServerSpec(privileged);
+    for (const t of mcp_toolsets) tools.push(t);
+  }
   return tools;
 }
 

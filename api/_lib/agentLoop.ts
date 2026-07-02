@@ -22,9 +22,10 @@
 
 import Anthropic from '@anthropic-ai/sdk';
 import {
-  buildToolsArray,
+  buildToolsForPolicy,
   buildMcpServers,
   dispatchTool,
+  policyIdForTool,
   type ToolUseBlock,
 } from './tools/index.js';
 import {
@@ -38,7 +39,8 @@ import {
   indexUserSession,
   type SessionMessage,
 } from './sessionStore.js';
-import { buildAuditRecord, writeAuditRecord } from '../_shared/auditLog.js';
+import { buildAuditRecord, writeAuditRecord, writeTurnManifest, computeHmac } from '../_shared/auditLog.js';
+import { buildTurnManifest } from './compliance/turnManifest.js';
 import {
   analyze,
   HIGH_RISK_CATEGORIES,
@@ -47,35 +49,58 @@ import {
 import { COMPOUND_RISK_BUCKET_THRESHOLD } from '../_shared/sanitization/compoundRisk.js';
 import { buildSystemPrompt, getAgentConfig } from './skills.js';
 import { scrubMessage } from './scrubError.js';
+import { assertZdrEligibleModel } from './zdrModels.js';
+import {
+  decidePolicy,
+  type PolicyDecision,
+  type MatterMode,
+  type ClientAiConsentStatus,
+  type DataClass,
+} from './compliance/policyEngine.js';
+import { guardToolQuery, extractQueryString } from './compliance/toolQueryGuard.js';
 
-// Primary engine for Research/Draft workflows. Defaults to Claude Fable 5
-// (flagship), overridable per-environment via V2_PRIMARY_MODEL in Vercel
-// so Opus<->Fable can be flipped without a code change/redeploy. Quick
-// mode and the citation verifier stay on Sonnet 4.6 (see workflow branches
-// below + verifierSubAgent.ts). Prior default was claude-opus-4-7 (fifth
-// addendum); switched to Fable 5 per Arjun 2026-06-12.
-const DEFAULT_MODEL = process.env.V2_PRIMARY_MODEL ?? 'claude-fable-5';
+// Primary engine for Research/Draft workflows. Defaults to Claude Opus 4.8 —
+// GA and ZERO-DATA-RETENTION-eligible under F&F's enterprise terms. Overridable
+// per-environment via V2_PRIMARY_MODEL in Vercel, but ONLY to another
+// ZDR-eligible model (enforced by assertZdrEligibleModel in resolveModel,
+// which fails closed). Quick mode and the citation verifier stay on Sonnet 4.6
+// (also ZDR-eligible). NOTE: the prior default `claude-fable-5` is BOTH
+// non-ZDR-eligible (a "Covered Model" requiring 30-day retention) AND was
+// suspended for all customers 2026-06-12 — it must never receive client
+// content. See docs/PRD_COPRAC_ZDR_COMPLIANCE.md §5.8 and
+// docs/ZDR_ENTERPRISE_IMPLICATIONS.md (Priority 1).
+const DEFAULT_MODEL = process.env.V2_PRIMARY_MODEL ?? 'claude-opus-4-8';
 
 // ── Automatic model failover (authorized by Arjun 2026-06-16) ──────────────
 // If the primary engine is unavailable on this account — the Anthropic API
-// returns HTTP 404 not_found_error, e.g. "Claude Fable 5 is not available.
-// Please use Opus 4.8." — transparently retry on this fallback instead of
-// erroring the whole turn. Both are Anthropic models on the SAME Messages API
-// under the SAME Team-plan retention posture, so failover does NOT alter the
-// data-handling / zero-leak invariant (this is why it is allowed, whereas a
-// cross-PROVIDER fallback would not be). Override per-environment with
-// V2_FALLBACK_MODEL. NOTE: this is unavailability failover, NOT refusal
-// fallback — a stop_reason='refusal' is still surfaced and never retried.
+// returns HTTP 404 not_found_error — transparently retry on this fallback
+// instead of erroring the whole turn. Both primary and fallback MUST be
+// ZDR-ELIGIBLE Anthropic models on the SAME Messages API, so failover does NOT
+// alter the zero-data-retention / zero-leak invariant (this is why it is
+// allowed, whereas a cross-PROVIDER fallback would not be). The resolved model
+// is checked by assertZdrEligibleModel() in resolveModel below, which fails
+// CLOSED — so even an env override cannot introduce a non-ZDR model. Override
+// per-environment with V2_FALLBACK_MODEL. NOTE: this is unavailability
+// failover, NOT refusal fallback — stop_reason='refusal' is surfaced, never retried.
 const FALLBACK_MODEL = process.env.V2_FALLBACK_MODEL ?? 'claude-opus-4-8';
 // Process-lifetime memo of models this account can't reach, so a warm function
 // instance skips a dead primary after the first 404 rather than paying the
 // failed round-trip on every subsequent turn.
 const unavailableModels = new Set<string>();
 
-/** Swap a known-unavailable model for the fallback. Never loops the fallback. */
+/**
+ * Swap a known-unavailable model for the fallback, then assert the FINAL model
+ * is ZDR-eligible (fail-closed) before it can be used. Putting the assertion
+ * here makes it the single chokepoint every Anthropic call passes through
+ * (create, stream, and failover-retry paths all call resolveModel).
+ */
 function resolveModel(requested: string): string {
-  if (requested !== FALLBACK_MODEL && unavailableModels.has(requested)) return FALLBACK_MODEL;
-  return requested;
+  const resolved =
+    requested !== FALLBACK_MODEL && unavailableModels.has(requested)
+      ? FALLBACK_MODEL
+      : requested;
+  assertZdrEligibleModel(resolved);
+  return resolved;
 }
 
 /**
@@ -589,6 +614,7 @@ function extractToolUses(blocks: Anthropic.Messages.ContentBlock[]): ToolUseBloc
 async function dispatchWithCache(
   sessionId: string,
   use: ToolUseBlock,
+  decision?: PolicyDecision,
 ): Promise<{
   tool_use_id: string;
   content: string;
@@ -600,6 +626,29 @@ async function dispatchWithCache(
    *  Empty on cache hits (we don't have the raw anymore). */
   source_summary: ToolSourceSummary[];
 }> {
+  // P3: guard the OUTBOUND tool query before it can leave the system. Blocks
+  // disallowed tools and any confidential/protected query the PII detector
+  // flags as carrying client facts (incl. prompt-injection exfiltration).
+  // Runs BEFORE the cache read so a now-blocked tool can't be served a stale
+  // (previously-allowed) cached result.
+  if (decision) {
+    const guard = guardToolQuery({
+      toolPolicyId: policyIdForTool(use.name),
+      toolName: use.name,
+      query: extractQueryString(use.input),
+      decision,
+    });
+    if (!guard.allowed) {
+      return {
+        tool_use_id: use.id,
+        content: `Tool "${use.name}" was blocked by compliance policy: ${guard.reason}`,
+        is_error: true,
+        sanitization: null,
+        source_summary: [],
+      };
+    }
+  }
+
   const cached = await readToolResult(sessionId, use.id).catch(() => null);
   if (cached) {
     // Cached results are already sanitized (we wrote the sanitized form
@@ -840,6 +889,41 @@ function callMessagesStream(
  * number of tool-use rounds internally up to MAX_ITERATIONS. Returns
  * the final assistant text and round telemetry.
  */
+/**
+ * P3: compute the server-authoritative PolicyDecision for this turn.
+ * Matter binding (session meta) drives the mode; UNAMBIGUOUS PII in the input
+ * (SSN, bank, email, phone — NOT bare names/dates, which are frequently
+ * public-record case names) escalates it. Client-consent ENFORCEMENT is wired
+ * in P6; until a consent-capture mechanism exists, consent defaults to
+ * 'allowed' so tool gating engages without hard-blocking confidential matters.
+ */
+export async function computeTurnPolicy(
+  sessionId: string,
+  userText: string,
+): Promise<PolicyDecision> {
+  const meta = await readMeta(sessionId).catch(() => null);
+  const boundMode: MatterMode = meta?.matter_mode ?? 'public_research';
+  // P6: enforce REAL client consent for explicitly-bound confidential/protected
+  // matters (recorded via compliance/attestations.ts). A public matter that
+  // merely ESCALATED on detected PII gets tool hardening (web_search dropped),
+  // NOT a hard consent block — the attorney still gets a ZDR-Anthropic answer.
+  const consent: ClientAiConsentStatus =
+    boundMode === 'public_research' ? 'allowed' : meta?.client_ai_consent ?? 'not_obtained';
+  const spans = analyze(userText ?? '').spans;
+  const hardPii = spans.some(
+    (s: Span) =>
+      HIGH_RISK_CATEGORIES.has(s.category) && s.category !== 'name' && s.category !== 'date',
+  );
+  const detectedDataClasses: DataClass[] = hardPii ? ['client_confidential'] : [];
+  return decidePolicy({
+    matterMode: boundMode,
+    clientConsent: consent,
+    detectedDataClasses,
+    requestedAction: 'tool_call',
+    userRole: 'attorney',
+  });
+}
+
 export async function runTurn(opts: RunTurnOptions): Promise<RunTurnResult> {
   const t0 = performance.now();
   const turnId = opts.turn_id ?? newTurnId();
@@ -894,11 +978,17 @@ export async function runTurn(opts: RunTurnOptions): Promise<RunTurnResult> {
   // Quick workflow → no tools at all (Sonnet answers directly). Research
   // (default) → full V2 tool set (CEB/CourtListener/LegiScan/OpenStates/
   // citation_verify/web_search).
+  // P3: server-authoritative gating — the tools array is built from the
+  // PolicyDecision (web_search omitted in confidential/protected, MCP dropped
+  // for confidential, etc.), not unconditionally.
+  const policy = await computeTurnPolicy(opts.session_id, opts.user_text);
   const tools =
     workflow === 'quick'
       ? ([] as unknown as Anthropic.Messages.Tool[])
-      : (buildToolsArray(opts.privileged) as unknown as Anthropic.Messages.Tool[]);
-  const mcpServers = buildMcpServers(opts.privileged);
+      : (buildToolsForPolicy(policy, opts.privileged) as unknown as Anthropic.Messages.Tool[]);
+  const mcpServers = policy.allowedTools.includes('mcp')
+    ? buildMcpServers(opts.privileged)
+    : [];
 
   // ── 3. Loop: call messages.create → if assistant emitted tool_use,
   //       dispatch and append tool_result, loop again. Cap at
@@ -969,7 +1059,7 @@ export async function runTurn(opts: RunTurnOptions): Promise<RunTurnResult> {
     // synthetic "user" message per Anthropic's convention.
     toolRounds += 1;
     const toolResults = await Promise.all(
-      toolUses.map((use) => dispatchWithCache(opts.session_id, use)),
+      toolUses.map((use) => dispatchWithCache(opts.session_id, use, policy)),
     );
 
     // Accumulate tool-output sanitization telemetry across the turn.
@@ -1033,6 +1123,19 @@ export async function runTurn(opts: RunTurnOptions): Promise<RunTurnResult> {
       latencyMs: Math.round(elapsedMs),
       statusCode: 200,
       warningFlags: auditWarnings.length > 0 ? auditWarnings : undefined,
+    }),
+  );
+
+  // P4: per-turn compliance manifest (hashes/metadata only; fails open).
+  await writeTurnManifest(
+    buildTurnManifest({
+      turnId,
+      sessionId: opts.session_id,
+      model: resolveModel(model),
+      decision: policy,
+      toolsCalled: [],
+      sanitizedPromptHmac: computeHmac(opts.user_text),
+      timestamp: new Date().toISOString(),
     }),
   );
 
@@ -1173,11 +1276,17 @@ export async function* runTurnStream(
   // Quick workflow → no tools at all (Sonnet answers directly). Research
   // (default) → full V2 tool set (CEB/CourtListener/LegiScan/OpenStates/
   // citation_verify/web_search).
+  // P3: server-authoritative gating — the tools array is built from the
+  // PolicyDecision (web_search omitted in confidential/protected, MCP dropped
+  // for confidential, etc.), not unconditionally.
+  const policy = await computeTurnPolicy(opts.session_id, opts.user_text);
   const tools =
     workflow === 'quick'
       ? ([] as unknown as Anthropic.Messages.Tool[])
-      : (buildToolsArray(opts.privileged) as unknown as Anthropic.Messages.Tool[]);
-  const mcpServers = buildMcpServers(opts.privileged);
+      : (buildToolsForPolicy(policy, opts.privileged) as unknown as Anthropic.Messages.Tool[]);
+  const mcpServers = policy.allowedTools.includes('mcp')
+    ? buildMcpServers(opts.privileged)
+    : [];
 
   let totalTokens = 0;
   let toolRounds = 0;
@@ -1369,7 +1478,7 @@ export async function* runTurnStream(
       }> = [];
       for (const use of toolUses) {
         const dt0 = performance.now();
-        const result = await dispatchWithCache(opts.session_id, use);
+        const result = await dispatchWithCache(opts.session_id, use, policy);
         const elapsed = performance.now() - dt0;
         // Tool-output sanitization telemetry (audit §8 #8 compliance).
         if (result.sanitization) {
@@ -1449,6 +1558,19 @@ export async function* runTurnStream(
         latencyMs: Math.round(elapsedMs),
         statusCode: 200,
         warningFlags: auditWarnings.length > 0 ? auditWarnings : undefined,
+      }),
+    );
+
+    // P4: per-turn compliance manifest (hashes/metadata only; fails open).
+    await writeTurnManifest(
+      buildTurnManifest({
+        turnId,
+        sessionId: opts.session_id,
+        model: resolveModel(model),
+        decision: policy,
+        toolsCalled: [],
+        sanitizedPromptHmac: computeHmac(opts.user_text),
+        timestamp: new Date().toISOString(),
       }),
     );
 

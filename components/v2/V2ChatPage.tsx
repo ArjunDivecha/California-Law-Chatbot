@@ -29,6 +29,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useUser, useAuth } from '@clerk/clerk-react';
+import { MatterModeSelector } from './MatterModeSelector';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useV2AgentStream, type V2SourceSummary } from '../../hooks/useV2AgentStream.ts';
@@ -337,6 +338,7 @@ export const V2ChatPage: React.FC = () => {
             </div>
           </div>
           <div className="flex items-center gap-3 text-xs">
+            <MatterModeSelector sessionId={sessionId} getToken={getToken} />
             <Link
               to="/v2/draft"
               className="rounded-full bg-pink-50 px-3 py-1.5 text-pink-700 font-semibold hover:bg-pink-100"

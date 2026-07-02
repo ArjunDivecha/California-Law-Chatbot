@@ -13,6 +13,7 @@
  */
 
 import { Redis } from '@upstash/redis';
+import type { MatterMode, ClientAiConsentStatus } from './compliance/policyEngine.js';
 
 // ---------------------------------------------------------------------------
 // Redis client — injectable for tests
@@ -169,6 +170,23 @@ export interface SessionMeta {
   system_prompt_sha256?: string;
   agent_config_sha256?: string;
   title?: string;
+  // ── Matter binding (P2 compliance) ──────────────────────────────────────
+  // Matter mode drives confidentiality; detection may only ESCALATE it
+  // (see api/_lib/compliance/policyEngine.ts). Absent on legacy sessions.
+  matter_id?: string;
+  /** Bound matter mode. Absent ⇒ consumers treat as 'public_research'. */
+  matter_mode?: MatterMode;
+  /** Client AI-use consent. Absent ⇒ consumers treat as 'not_obtained'. */
+  client_ai_consent?: ClientAiConsentStatus;
+  /** When true, protected_discovery is locked on and cannot be downgraded in-session. */
+  protected_locked?: boolean;
+  // ── Server-side attestations (P6 compliance) ────────────────────────────
+  consent_version?: string;
+  consent_signer?: string;
+  consent_at?: string;
+  policy_ack_version?: string;
+  policy_ack_signer?: string;
+  policy_ack_at?: string;
 }
 
 export async function readMeta(sessionId: string): Promise<SessionMeta | null> {
@@ -184,6 +202,23 @@ export async function readMeta(sessionId: string): Promise<SessionMeta | null> {
     system_prompt_sha256: hash.system_prompt_sha256,
     agent_config_sha256: hash.agent_config_sha256,
     title: hash.title,
+    matter_id: hash.matter_id || undefined,
+    matter_mode: (hash.matter_mode as MatterMode) || undefined,
+    client_ai_consent: (hash.client_ai_consent as ClientAiConsentStatus) || undefined,
+    // @upstash/redis auto-parses 'true'/'false' back to booleans on read, so
+    // accept BOTH the string and boolean forms (String() normalizes either).
+    protected_locked:
+      String(hash.protected_locked) === 'true'
+        ? true
+        : String(hash.protected_locked) === 'false'
+          ? false
+          : undefined,
+    consent_version: hash.consent_version || undefined,
+    consent_signer: hash.consent_signer || undefined,
+    consent_at: hash.consent_at || undefined,
+    policy_ack_version: hash.policy_ack_version || undefined,
+    policy_ack_signer: hash.policy_ack_signer || undefined,
+    policy_ack_at: hash.policy_ack_at || undefined,
   };
 }
 

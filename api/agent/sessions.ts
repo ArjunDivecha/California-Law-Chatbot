@@ -17,11 +17,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { verifyToken } from '@clerk/backend';
 import { listSessionsForUser } from '../_lib/sessionStore.js';
 
-const CORS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-};
+import { applyResponseSecurity, headerString } from '../_shared/routeSecurity.js';
 
 async function getUserId(req: VercelRequest): Promise<string> {
   const secretKey = process.env.CLERK_SECRET_KEY;
@@ -48,7 +44,7 @@ async function getUserId(req: VercelRequest): Promise<string> {
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  for (const [k, v] of Object.entries(CORS)) res.setHeader(k, v);
+  applyResponseSecurity(res, headerString(req.headers.origin), { methods: 'GET, OPTIONS' });
   if (req.method === 'OPTIONS') {
     res.status(204).end();
     return;

@@ -1,7 +1,7 @@
 {
   "name": "california-legal",
   "description": "California legal research assistant for Femme & Femme Law — sanitization-first agent loop on the Anthropic Messages API.",
-  "model": "claude-fable-5",
+  "model": "claude-opus-4-8",
   "max_tokens": 8192,
   "max_iterations": 12,
   "core_skill": "california-legal-core",
