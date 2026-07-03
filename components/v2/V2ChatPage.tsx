@@ -99,7 +99,7 @@ const LOCAL_DRAFT_DEBOUNCE_MS = 1500;
  * stream is in flight. Mirrors V1's WELCOME_MESSAGE.
  */
 const WELCOME_MESSAGE =
-  'Welcome — I\'m V2 of the California Law Chatbot. Ask a legal-research question, or use the workflow toggle above to pick Draft Document or Verify Citation. I have access to CEB practice guides, CourtListener case law, LegiScan + OpenStates legislation, a citation verifier, and web search.';
+  'Welcome — I\'m V2 of the California Law Chatbot. Ask a legal-research question, or use the workflow toggle above to pick Draft Document or Verify Citation. I have access to CourtListener case law, LegiScan + OpenStates legislation, California statute lookup, a citation verifier, and web search.';
 
 /**
  * Convert an Anthropic-shape message content (string | content-block
@@ -126,8 +126,6 @@ function renderContent(content: unknown): string {
 
 function toolHumanName(name: string): string {
   switch (name) {
-    case 'ceb_search':
-      return 'CEB practice guides';
     case 'courtlistener_search':
       return 'CourtListener case law';
     case 'web_search':
@@ -898,21 +896,20 @@ const MessageBubble: React.FC<{
 /**
  * Sources panel — rendered below an assistant bubble that had tool calls.
  * Lists per-tool what was retrieved. Click-throughs go to the actual
- * source URL. Replaces V1's CEBBadge with a tool-agnostic listing that
- * covers CEB / CourtListener / LegiScan / OpenStates / citation_verify.
+ * source URL. A tool-agnostic listing that covers CourtListener / LegiScan /
+ * OpenStates / citation_verify.
  */
 const SourcesPanel: React.FC<{ sources: V2SourceSummary[] }> = ({ sources }) => {
   // P4.3 — dedupe near-duplicates (CourtListener + citation_verify can
   // both surface the same case) and cap to 12.
   const pruned = pruneSources(sources, 12);
-  // Group by source_type so the user sees "CEB (3), CourtListener (2)" sections
+  // Group by source_type so the user sees "CourtListener (2), LegiScan (1)" sections
   const grouped = pruned.reduce<Record<string, V2SourceSummary[]>>((acc, s) => {
     (acc[s.source_type] = acc[s.source_type] ?? []).push(s);
     return acc;
   }, {});
   const labelFor = (t: string): string => {
     switch (t) {
-      case 'ceb': return 'CEB Practice Guides';
       case 'courtlistener': return 'CourtListener Cases';
       case 'legiscan': return 'LegiScan Bills';
       case 'openstates': return 'OpenStates Bills';

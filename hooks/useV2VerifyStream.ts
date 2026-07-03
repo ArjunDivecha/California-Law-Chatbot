@@ -24,7 +24,7 @@ export interface V2Verdict {
   index: number;
   citation: string;
   /**
-   * `real` — positive evidence (matching CL hit or CEB ref)
+   * `real` — positive evidence (matching CourtListener hit)
    * `fake` — contradictory evidence (different case at the cite, etc.)
    * `ambiguous` — tools returned no evidence either way; manual verify needed
    * `pending` — in-flight (UI placeholder)

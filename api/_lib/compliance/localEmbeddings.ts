@@ -16,8 +16,14 @@
  *   embedding provider for protected data (CLAUDE.md: "FAIL IS FAIL").
  *
  * OPS (to provision): run the BGE-M3 daemon locally (HTTP POST {texts,model} ->
- *   {embeddings: number[][]}) and set EMBEDDINGS_DAEMON_URL. See
- *   scripts/reembed-ceb-local.mjs to re-embed the 77,406 CEB vectors.
+ *   {embeddings: number[][]}) and set EMBEDDINGS_DAEMON_URL.
+ *
+ * NOTE (2026-07-03): the CEB re-embed script this file originally supported
+ * (scripts/reembed-ceb-local.mjs) was removed when CEB search was retired —
+ * CEB's Terms & Conditions prohibit ingesting their content into any
+ * database/AI application, so there is no CEB content left to embed. This
+ * client itself is general-purpose infra for any future firm-controlled
+ * protected-discovery content and has zero callers today.
  *
  * INPUT FILES:  none (network client; daemon is external).
  * OUTPUT FILES: none.

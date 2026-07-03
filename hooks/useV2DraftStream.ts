@@ -6,7 +6,7 @@
  *   template          — emitted once up-front w/ template_id + skill_loaded
  *   sanitization      — privileged + compound_risk + redactions
  *   iteration         — tool-round counter (1-indexed)
- *   tool_use_start    — model called a tool ("Searching CEB…")
+ *   tool_use_start    — model called a tool ("Searching CourtListener…")
  *   tool_use_input    — tool input JSON
  *   tool_result       — tool returned (elapsed_ms, is_error)
  *   token             — text delta (most frequent)

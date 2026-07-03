@@ -65,10 +65,12 @@ export type RequestedAction =
 
 export type TokenizationLevel = 'off' | 'light' | 'strict';
 
-/** Logical tool ids. P3 maps these to the Anthropic tool registry. */
+/** Logical tool ids. P3 maps these to the Anthropic tool registry.
+ *  ceb_search retired 2026-07-03 — CEB's Terms & Conditions prohibit
+ *  ingesting their content into an AI application (the api/_lib/tools/
+ *  cebSearch.ts implementation was deleted the same day). */
 export const ALL_TOOLS = [
   'web_search',
-  'ceb_search',
   'courtlistener',
   'legiscan',
   'openstates',
@@ -90,13 +92,6 @@ export interface PolicyInput {
   /** Defaults to 'attorney'. */
   userRole?: UserRole;
   hasProtectiveOrder?: boolean;
-  /**
-   * Whether the OpenAI embeddings provider (used by ceb_search) has an
-   * approved DPA-backed registry entry for the effective data class. Default
-   * false → ceb_search is treated as an un-approved external disclosure
-   * surface for confidential/protected work. (Provider registry = P4.)
-   */
-  openAiEmbeddingsApproved?: boolean;
 }
 
 export interface BlockedTool {
@@ -214,9 +209,6 @@ export function decidePolicy(input: PolicyInput): PolicyDecision {
   } else if (effectiveMode === 'client_confidential') {
     block('web_search', 'web_search disabled in client_confidential (external query leakage); use a lawyer-approved sanitized public-law query');
     block('mcp', 'MCP connector sends tool I/O to third-party servers outside the DPA boundary; blocked for confidential work');
-    if (!input.openAiEmbeddingsApproved) {
-      block('ceb_search', 'ceb_search embeds the query via OpenAI; requires an approved DPA-backed registry entry for confidential data');
-    }
   } else {
     // protected_discovery — most restrictive.
     block('web_search', 'web_search categorically blocked in protected_discovery');
@@ -224,9 +216,6 @@ export function decidePolicy(input: PolicyInput): PolicyDecision {
     block('courtlistener', 'public-law API query may carry protected facts; blocked by default in protected_discovery');
     block('legiscan', 'public-law API query may carry protected facts; blocked by default in protected_discovery');
     block('openstates', 'public-law API query may carry protected facts; blocked by default in protected_discovery');
-    if (!input.openAiEmbeddingsApproved) {
-      block('ceb_search', 'OpenAI embeddings + Upstash not approved for protected_discovery; use a firm-controlled store + local embeddings');
-    }
   }
 
   // 6. Consent + role hard blocks (override allowances → block external calls).

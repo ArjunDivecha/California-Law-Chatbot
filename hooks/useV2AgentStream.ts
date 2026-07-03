@@ -5,7 +5,7 @@
  *   sanitization   — privileged + compound_risk + redactions (set once
  *                    early, before any tokens)
  *   tokens         — accumulated text (paints assistant message bubble)
- *   toolEvents     — ordered list of tool affordances (Searching CEB…, ✓ done)
+ *   toolEvents     — ordered list of tool affordances (Searching CourtListener…, ✓ done)
  *   isStreaming    — true while a turn is in flight
  *   error          — terminal error if the stream blew up or proxy
  *                    returned a gate error (e.g. sanitizer_unavailable)

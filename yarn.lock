@@ -1672,13 +1672,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@upstash/vector@npm:^1.1.5":
-  version: 1.2.2
-  resolution: "@upstash/vector@npm:1.2.2"
-  checksum: 10c0/f9ecb7ebff1668b29e5d15a1ca7ada0d093563c6603cb808ddf8175a2942e438671d62db7ad27d26a3190947863d2cb2342099a1ac8c73e54c9ebf54086fdf35
-  languageName: node
-  linkType: hard
-
 "@vercel/blob@npm:^2.3.3":
   version: 2.3.3
   resolution: "@vercel/blob@npm:2.3.3"
@@ -2260,7 +2253,6 @@ __metadata:
     "@types/react": "npm:^19.2.0"
     "@types/react-dom": "npm:^19.2.0"
     "@upstash/redis": "npm:^1.37.0"
-    "@upstash/vector": "npm:^1.1.5"
     "@vercel/blob": "npm:^2.3.3"
     "@vercel/functions": "npm:^3.6.0"
     "@vercel/node": "npm:^5.5.28"

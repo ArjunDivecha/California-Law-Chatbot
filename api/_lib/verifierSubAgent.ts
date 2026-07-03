@@ -9,9 +9,11 @@
  *   - Invokes anthropic.messages.create with a NEW conversation (no session
  *     state, no shared history with the main workbench).
  *   - System prompt is the verification-specific Skill below.
- *   - Tools: citation_verify, courtlistener_search, ceb_search.
+ *   - Tools: citation_verify, courtlistener_search, statute_verify.
  *     web_search is omitted — verification must rely on deterministic
- *     case-law sources, never on general web content.
+ *     case-law sources, never on general web content. ceb_search was
+ *     retired 2026-07-03 (CEB ToS prohibits AI/database ingestion of
+ *     their content — see docs/VERIFICATION_ALTERNATIVES_REVIEW_2026-07-02.md).
  *   - Output schema: JSON {status, case_name?, confidence, reasoning}.
  *   - The MODEL applies judgment to reject mismatched search hits
  *     (e.g., CourtListener returning "John Doe v. Gary Settle" for a
@@ -25,7 +27,7 @@
  *     reorderings. The model can read both citations and decide.
  *   - The verifier needs to be defensible in deposition — "an LLM with
  *     verification-specific instructions and read-only access to
- *     CourtListener / CEB confirmed each citation" is a clearer story
+ *     CourtListener confirmed each citation" is a clearer story
  *     than "we ran a regex against CourtListener's search API."
  *
  * Used by:
@@ -36,11 +38,9 @@
 
 import Anthropic from '@anthropic-ai/sdk';
 import {
-  CEB_SEARCH_TOOL_DEFINITION,
   COURTLISTENER_SEARCH_TOOL_DEFINITION,
   CITATION_VERIFY_TOOL_DEFINITION,
   STATUTE_VERIFY_TOOL_DEFINITION,
-  cebSearch,
   courtlistenerSearch,
   citationVerify,
   statuteVerify,
@@ -56,13 +56,13 @@ const VERIFIER_MAX_ROUNDS = 8;
 
 export interface VerifierVerdict {
   /**
-   * `real` — tools returned positive evidence (matching CL hit or CEB ref).
+   * `real` — tools returned positive evidence (matching CourtListener hit).
    * `fake` — tools returned contradictory evidence (different case at the
    *           cite, or party-name mismatch).
    * `ambiguous` — tools returned NO evidence either way (e.g. CourtListener
-   *               rate-limited, CEB had no hit, citation_verify not_found).
+   *               rate-limited, citation_verify not_found).
    *               Distinguishes "we don't know" from "we know it's fake."
-   *               Attorney should verify against Westlaw/Lexis manually.
+   *               Attorney should verify against Westlaw/Lexis/Cert manually.
    */
   status: 'real' | 'fake' | 'ambiguous';
   /** 'case' (court decision) or 'statute' (code section). */
@@ -114,7 +114,7 @@ CRITICAL RULES — read carefully:
    - The matched reporter cite OR the case name's reporter parallel cite roughly corresponds to the citation. CL records sometimes have parallel-reporter cites only.
 
 4. **Pick exactly ONE status:**
-   - \`real\` — Positive evidence in at least one tool. A matching CourtListener record OR a CEB practice-guide reference. Confidence ≥ 0.7.
+   - \`real\` — Positive evidence in at least one tool. A matching CourtListener record. Confidence ≥ 0.7.
    - \`fake\` — Contradictory evidence. CourtListener returned a hit at the cited reporter but the party names are clearly unrelated, OR returned hits whose dates contradict the cited year, OR the reporter doesn't exist (e.g. "99 Cal.5th" when Cal.5th's max volume is much lower). Confidence ≥ 0.75.
    - \`ambiguous\` — No evidence either way. All tools returned empty (zero hits) OR were unavailable (rate-limited, errored). You CANNOT distinguish a fabricated cite from a genuine old/uncommon opinion missing from CL's index. Confidence 0.3-0.6.
 
@@ -140,7 +140,7 @@ Good examples (the literal final message):
 
 {"status":"fake","confidence":0.92,"reasoning":"CourtListener returned 'John Doe v. Gary Settle' (unrelated) as the only hit for 'Hendricks v. California Probate Bureau'; courtlistener_search by case-name returned zero hits. No California Supreme Court opinion exists at 7 Cal.5th 904. Likely fabricated."}
 
-{"status":"ambiguous","confidence":0.45,"reasoning":"citation_verify not_found and CourtListener rate-limited; CEB returned no reference. Zero confirmatory and zero contradictory evidence. Older Cal. opinions are often missing from CL's index. Manual verification against Westlaw/Lexis required."}`;
+{"status":"ambiguous","confidence":0.45,"reasoning":"citation_verify not_found and CourtListener rate-limited. Zero confirmatory and zero contradictory evidence. Older Cal. opinions are sometimes missing from CL's index. Manual verification against Westlaw/Lexis/Cert required."}`;
 
 /**
  * JSON-schema for the verdict (output_config.format). Structured outputs
@@ -165,7 +165,6 @@ const VERDICT_SCHEMA = {
 } as const;
 
 const VERIFIER_TOOLS = [
-  CEB_SEARCH_TOOL_DEFINITION,
   COURTLISTENER_SEARCH_TOOL_DEFINITION,
   CITATION_VERIFY_TOOL_DEFINITION,
   STATUTE_VERIFY_TOOL_DEFINITION,
@@ -187,10 +186,6 @@ async function dispatchVerifierTool(use: ToolUseBlock): Promise<string> {
       }
       case 'courtlistener_search': {
         const r = await courtlistenerSearch(use.input as { query: string });
-        return JSON.stringify(r);
-      }
-      case 'ceb_search': {
-        const r = await cebSearch(use.input as { query: string });
         return JSON.stringify(r);
       }
       case 'statute_verify': {

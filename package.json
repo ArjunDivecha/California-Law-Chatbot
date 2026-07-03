@@ -20,7 +20,6 @@
     "@clerk/backend": "^3.2.8",
     "@clerk/clerk-react": "^5.61.4",
     "@upstash/redis": "^1.37.0",
-    "@upstash/vector": "^1.1.5",
     "@vercel/blob": "^2.3.3",
     "@vercel/functions": "^3.6.0",
     "better-sqlite3": "^12.11.1",

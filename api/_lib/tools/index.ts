@@ -13,15 +13,18 @@
  *
  * Anthropic's `web_search_20250305` is a server-side tool — Anthropic
  * runs the search and returns results in the same response. It does
- * NOT appear in our dispatcher map. Our custom tools (ceb_search,
- * courtlistener_search) DO run in-process here.
+ * NOT appear in our dispatcher map. Our custom tools (courtlistener_search,
+ * etc.) DO run in-process here.
+ *
+ * NOTE (2026-07-03): ceb_search was retired here — CEB's Terms & Conditions
+ * prohibit ingesting their content "into ... databases, file storage,
+ * artificial intelligence applications, or large language models," which is
+ * exactly what the Upstash Vector embedding index did. See
+ * docs/VERIFICATION_ALTERNATIVES_REVIEW_2026-07-02.md §5. CEB remains a
+ * paid, live, human-in-browser lookup for the attorneys; the app no longer
+ * queries or stores its content.
  */
 
-import {
-  CEB_SEARCH_TOOL_DEFINITION,
-  cebSearch,
-  type CebSearchInput,
-} from './cebSearch.js';
 import {
   COURTLISTENER_SEARCH_TOOL_DEFINITION,
   courtlistenerSearch,
@@ -58,7 +61,6 @@ export { hasMcpToolsets };
 
 /** Anthropic tool definition shape (server-side, custom, or MCP toolset). */
 export type ToolDefinition =
-  | typeof CEB_SEARCH_TOOL_DEFINITION
   | typeof COURTLISTENER_SEARCH_TOOL_DEFINITION
   | typeof LEGISCAN_SEARCH_TOOL_DEFINITION
   | typeof OPENSTATES_SEARCH_TOOL_DEFINITION
@@ -100,7 +102,6 @@ export function buildToolsArray(privileged: boolean): ToolDefinition[] {
   // The `privileged` parameter is retained for audit/telemetry only.
   void privileged;
   const tools: ToolDefinition[] = [
-    CEB_SEARCH_TOOL_DEFINITION,
     COURTLISTENER_SEARCH_TOOL_DEFINITION,
     LEGISCAN_SEARCH_TOOL_DEFINITION,
     OPENSTATES_SEARCH_TOOL_DEFINITION,
@@ -124,7 +125,6 @@ export function buildToolsArray(privileged: boolean): ToolDefinition[] {
  */
 const TOOL_POLICY_ID: Record<string, ToolId> = {
   web_search: 'web_search',
-  ceb_search: 'ceb_search',
   courtlistener_search: 'courtlistener',
   legiscan_search: 'legiscan',
   openstates_search: 'openstates',
@@ -152,7 +152,6 @@ export function buildToolsForPolicy(
 ): ToolDefinition[] {
   const allowed = new Set<ToolId>(decision.allowedTools);
   const candidates: ToolDefinition[] = [
-    CEB_SEARCH_TOOL_DEFINITION,
     COURTLISTENER_SEARCH_TOOL_DEFINITION,
     LEGISCAN_SEARCH_TOOL_DEFINITION,
     OPENSTATES_SEARCH_TOOL_DEFINITION,
@@ -215,14 +214,6 @@ export interface ToolResultBlock {
 export async function dispatchTool(use: ToolUseBlock): Promise<ToolResultBlock> {
   try {
     switch (use.name) {
-      case 'ceb_search': {
-        const result = await cebSearch(use.input as unknown as CebSearchInput);
-        return {
-          type: 'tool_result',
-          tool_use_id: use.id,
-          content: JSON.stringify(result),
-        };
-      }
       case 'courtlistener_search': {
         const result = await courtlistenerSearch(
           use.input as unknown as CourtListenerSearchInput,
@@ -303,7 +294,6 @@ export async function dispatchTool(use: ToolUseBlock): Promise<ToolResultBlock> 
 }
 
 export {
-  cebSearch,
   courtlistenerSearch,
   legiscanSearch,
   openstatesSearch,
@@ -312,7 +302,6 @@ export {
   statuteVerify,
 };
 export {
-  CEB_SEARCH_TOOL_DEFINITION,
   COURTLISTENER_SEARCH_TOOL_DEFINITION,
   LEGISCAN_SEARCH_TOOL_DEFINITION,
   OPENSTATES_SEARCH_TOOL_DEFINITION,

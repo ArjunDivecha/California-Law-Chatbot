@@ -66,7 +66,9 @@ await ok('bound protected_discovery matter ⇒ public-law search + web_search al
   setSessionRedis(mockRedis({ user_id: 'u', matter_mode: 'protected_discovery' }));
   const d = await computeTurnPolicy('s5', 'analyze the produced documents');
   assert.equal(d.effectiveMode, 'protected_discovery');
-  for (const t of ['web_search', 'courtlistener', 'ceb_search']) assert.ok(!has(d, t));
+  for (const t of ['web_search', 'courtlistener']) assert.ok(!has(d, t));
+  // ceb_search was retired 2026-07-03 — no longer a valid ToolId at all.
+  assert.ok(!d.allowedTools.includes('ceb_search'));
 });
 
 setSessionRedis(null); // restore

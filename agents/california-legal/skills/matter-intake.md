@@ -229,7 +229,7 @@ After the interview, generate three things the attorney can copy into their matt
 
 ## California-specific notes
 
-- F&F's primary practice areas (probate, family law, business litigation, business entities, business transactions per CEB namespaces) — bias the matter-type defaults toward `probate | family | contract | other` rather than the upstream defaults that lean toward corporate litigation.
+- F&F's primary practice areas (probate, family law, business litigation, business entities, business transactions) — bias the matter-type defaults toward `probate | family | contract | other` rather than the upstream defaults that lean toward corporate litigation.
 - For probate matters: `our role` is typically `petitioner | executor | trustee` rather than `plaintiff | defendant`.
 - California preservation duty: under *Cedars-Sinai Medical Center v. Superior Court* (1998) 18 Cal.4th 1 and CCP §2031.300, the duty to preserve attaches once litigation is reasonably anticipated. Default the legal-hold-needed flag to `yes` for any matter type that isn't pure transactional / pre-dispute.
 - Statute-of-limitations defaults to track: CCP §337 (4 yr written K), CCP §339 (2 yr oral K), CCP §340 (1 yr personal injury defamation libel etc.), CCP §335.1 (2 yr injury to person), Probate Code §16460 (3 yr claims against trustee).

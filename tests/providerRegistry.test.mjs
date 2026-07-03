@@ -24,18 +24,17 @@ const ok = (n, f) => { f(); pass += 1; console.log(`  ok - ${n}`); };
 const NOW = '2026-06-24';
 
 // ── provider registry ──
-ok('Upstash Vector REJECTS sensitive_personal_data (DPA §12.4 ceiling)', () => {
-  const r = isProviderApprovedFor('upstash_vector', 'client_confidential', 'sensitive_personal_data', NOW);
-  assert.equal(r.approved, false);
-  assert.match(r.reason, /Restricted Data/);
-});
-ok('Upstash Vector approved for public_law (CEB public corpus)', () => {
-  assert.equal(isProviderApprovedFor('upstash_vector', 'public_research', 'public_law', NOW).approved, true);
-});
-ok('OpenAI embeddings approved for client_confidential, NOT protected, NOT sensitive', () => {
-  assert.equal(isProviderApprovedFor('openai_embeddings', 'client_confidential', 'client_confidential', NOW).approved, true);
-  assert.equal(isProviderApprovedFor('openai_embeddings', 'protected_discovery', 'client_confidential', NOW).approved, false);
-  assert.equal(isProviderApprovedFor('openai_embeddings', 'client_confidential', 'sensitive_personal_data', NOW).approved, false);
+// upstash_vector and openai_embeddings were removed from the registry
+// 2026-07-03 — both existed solely to support ceb_search, which was
+// retired the same day (CEB's Terms & Conditions prohibit ingesting their
+// content into any database/AI application). Neither provider is called
+// anywhere else in the codebase; unknown-provider fail-closed is asserted
+// below by probing one of the retired ids.
+ok('retired providers (upstash_vector, openai_embeddings) are gone ⇒ fail closed', () => {
+  assert.equal(isProviderApprovedFor('upstash_vector', 'public_research', 'public_law', NOW).approved, false);
+  assert.equal(isProviderApprovedFor('openai_embeddings', 'client_confidential', 'client_confidential', NOW).approved, false);
+  assert.equal(getProvider('upstash_vector'), undefined);
+  assert.equal(getProvider('openai_embeddings'), undefined);
 });
 ok('Anthropic direct approved for protected_discovery + sensitive data', () => {
   assert.equal(isProviderApprovedFor('anthropic_messages', 'protected_discovery', 'sensitive_personal_data', NOW).approved, true);

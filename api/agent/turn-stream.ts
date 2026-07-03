@@ -13,7 +13,7 @@
  *   sanitization      — fired ONCE up-front with privileged + compound_risk_buckets
  *   iteration         — fired at the start of each tool-use round (1-indexed)
  *   token             — text delta from the model (most frequent)
- *   tool_use_start    — model is about to call a tool (UI: "Searching CEB…")
+ *   tool_use_start    — model is about to call a tool (UI: "Searching CourtListener…")
  *   tool_use_input    — fully assembled input JSON for the tool call
  *   tool_result       — tool returned (timing + is_error)
  *   done              — final summary (final_text, tool_rounds, total_tokens, elapsed_ms)

@@ -135,7 +135,7 @@ const MCP_BETA_HEADER = 'mcp-client-2025-11-20';
  */
 export interface ToolSourceSummary {
   tool_name: string;
-  source_type: 'ceb' | 'courtlistener' | 'legiscan' | 'openstates' | 'citation_verify' | 'ca_code' | 'web' | 'unknown';
+  source_type: 'courtlistener' | 'legiscan' | 'openstates' | 'citation_verify' | 'ca_code' | 'web' | 'unknown';
   title: string;
   detail?: string;
   url?: string;
@@ -159,37 +159,7 @@ function summarizeToolOutputForSources(toolName: string, raw: string): ToolSourc
   if (!body || typeof body !== 'object') return [];
   const out: ToolSourceSummary[] = [];
   const LIMIT = 5;
-  if (toolName === 'ceb_search') {
-    const hits = (body as { hits?: Array<Record<string, unknown>> }).hits ?? [];
-    for (const h of hits.slice(0, LIMIT)) {
-      const meta = (h.metadata ?? {}) as Record<string, unknown>;
-      // CEB hits don't have a clean title field — derive one from
-      // metadata.source_file (pdf basename) and metadata.category.
-      const sourceFile = String(meta.source_file ?? '');
-      const cleaned = sourceFile
-        .replace(/\.pdf$/i, '')
-        .replace(/^california_/i, '')
-        .replace(/_[0-9]+_[0-9]+/g, '')
-        .replace(/_/g, ' ')
-        .replace(/\s+/g, ' ')
-        .trim();
-      const niceTitle = cleaned
-        ? cleaned.charAt(0).toUpperCase() + cleaned.slice(1)
-        : 'CEB practice guide';
-      const category = String(meta.category ?? '').replace(/_/g, ' ');
-      const score = typeof h.score === 'number' ? h.score.toFixed(2) : '';
-      const detailParts: string[] = [];
-      if (category) detailParts.push(`category: ${category}`);
-      if (score) detailParts.push(`score: ${score}`);
-      out.push({
-        tool_name: toolName,
-        source_type: 'ceb',
-        title: niceTitle,
-        detail: detailParts.join(' · ') || undefined,
-        url: typeof meta.url === 'string' ? meta.url : undefined,
-      });
-    }
-  } else if (toolName === 'courtlistener_search') {
+  if (toolName === 'courtlistener_search') {
     const hits = (body as { hits?: Array<Record<string, unknown>> }).hits ?? [];
     for (const h of hits.slice(0, LIMIT)) {
       out.push({
@@ -278,7 +248,7 @@ export interface ToolOutputSanitization {
  * and `docs/sanitization-audit-2026-05-10.md` §8 item #8 both require this:
  * every tool_result block runs through the same span detector that
  * processes user input. Without this, a public-records tool (CourtListener,
- * CEB) could surface a party name or address that re-identifies a
+ * LegiScan) could surface a party name or address that re-identifies a
  * privileged matter — that text would then flow into the next
  * messages.create() call with no defense.
  *
@@ -383,12 +353,10 @@ export function sanitizeToolOutput(
   // Task #71 — for tool outputs whose results contain public-record case
   // captions, exempt the `name` category from redaction when the span
   // falls inside a known caption field. Applies to case-law-shaped tools
-  // (courtlistener_search, citation_verify) and CEB which sometimes
-  // surfaces case names. Other categories (ssn/phone/etc.) still get
-  // redacted everywhere.
+  // (courtlistener_search, citation_verify). Other categories
+  // (ssn/phone/etc.) still get redacted everywhere.
   const captionAware = options?.toolName === 'courtlistener_search' ||
-    options?.toolName === 'citation_verify' ||
-    options?.toolName === 'ceb_search';
+    options?.toolName === 'citation_verify';
   const safeRanges = captionAware ? findCaptionSafeRanges(content) : [];
   // Dates in tool OUTPUT are public-record (legislative action/effective
   // dates, case dates, web results). The client's own dates were tokenized
@@ -976,7 +944,7 @@ export async function runTurn(opts: RunTurnOptions): Promise<RunTurnResult> {
   //       and the parallel mcp_servers spec (empty unless V2_MCP_ENABLED
   //       and a server is opted in via its per-server env flag).
   // Quick workflow → no tools at all (Sonnet answers directly). Research
-  // (default) → full V2 tool set (CEB/CourtListener/LegiScan/OpenStates/
+  // (default) → full V2 tool set (CourtListener/LegiScan/OpenStates/
   // citation_verify/web_search).
   // P3: server-authoritative gating — the tools array is built from the
   // PolicyDecision (web_search omitted in confidential/protected, MCP dropped
@@ -1218,7 +1186,7 @@ export type TurnStreamEvent =
  * partial output during the multi-second inference. Tool dispatch happens
  * between iteration boundaries; tool events surface as `tool_use_start`
  * (with name) → `tool_result` (with timing) so the UI can render a
- * "Searching CEB…" affordance.
+ * "Searching CourtListener…" affordance.
  *
  * Keeps runTurn (non-streaming) as a separate function so headless
  * integrations don't have to consume an async generator. Persistence,
@@ -1274,7 +1242,7 @@ export async function* runTurnStream(
   );
 
   // Quick workflow → no tools at all (Sonnet answers directly). Research
-  // (default) → full V2 tool set (CEB/CourtListener/LegiScan/OpenStates/
+  // (default) → full V2 tool set (CourtListener/LegiScan/OpenStates/
   // citation_verify/web_search).
   // P3: server-authoritative gating — the tools array is built from the
   // PolicyDecision (web_search omitted in confidential/protected, MCP dropped

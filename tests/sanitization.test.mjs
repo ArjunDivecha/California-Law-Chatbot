@@ -1193,8 +1193,8 @@ await test('skills: buildSystemPrompt loads the core skill and returns its body'
   assert.ok(result.skills_loaded.includes('california-legal-core'), 'core skill loaded');
   assert.equal(result.intent, null, 'no intent detected from empty input');
   assert.ok(/California legal research assistant/.test(result.prompt));
-  assert.ok(/ceb_search/.test(result.prompt));
   assert.ok(/courtlistener_search/.test(result.prompt));
+  assert.ok(!/ceb_search/.test(result.prompt), 'ceb_search was retired 2026-07-03 and must not appear');
   assert.ok(/Never repeat the user's input/.test(result.prompt));
 });
 
@@ -1238,7 +1238,7 @@ await test('skills: matter-intake skill composes core + matter-intake bodies', (
   assert.ok(/conflicts/i.test(result.prompt), 'matter-intake conflicts step included');
   assert.ok(/risk triage/i.test(result.prompt), 'matter-intake risk-triage step included');
   // Core skill is also there
-  assert.ok(/ceb_search/.test(result.prompt), 'core ceb_search guidance still there');
+  assert.ok(/courtlistener_search/.test(result.prompt), 'core courtlistener_search guidance still there');
 });
 
 await test('skills: claim-chart skill composes core + claim-chart bodies', () => {

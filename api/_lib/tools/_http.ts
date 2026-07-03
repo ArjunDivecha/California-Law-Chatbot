@@ -1,10 +1,10 @@
 /**
  * Shared fetch helper for in-process tools.
  *
- * Why this exists: the V2 tools (courtlistener_search, ceb_search,
+ * Why this exists: the V2 tools (courtlistener_search,
  * legiscan_search, openstates_search, citation_verify) called bare
  * `fetch()` with no timeout. A single hung upstream (CourtListener /
- * LegiScan / OpenStates / OpenAI) would block the whole agent turn until
+ * LegiScan / OpenStates) would block the whole agent turn until
  * the Vercel function's 300s ceiling — burning a function-minute and
  * stranding the attorney. `statuteVerify.ts` already used an
  * AbortController; this generalises that pattern.

@@ -3,7 +3,6 @@ export enum MessageRole {
   BOT = 'bot',
 }
 
-export type SourceMode = 'ceb-only' | 'ai-only' | 'hybrid';
 export type ResponseMode = 'speed' | 'accuracy';
 
 export interface Source {
@@ -14,15 +13,6 @@ export interface Source {
   // Citation verification (from /api/verify-citations)
   citationVerified?: boolean; // true = verified against CourtListener, false = not found
   citationVerificationSource?: string; // CourtListener URL if verified
-}
-
-export interface CEBSource extends Source {
-  isCEB: true;
-  category: 'trusts_estates' | 'family_law' | 'business_litigation' | 'business_entities' | 'business_transactions';
-  cebCitation: string;
-  pageNumber?: number;
-  section?: string;
-  confidence: number; // Similarity score from vector search (0-1)
 }
 
 export interface Claim {
@@ -46,13 +36,10 @@ export interface ChatMessage {
   id: string;
   role: MessageRole;
   text: string;
-  sources?: (Source | CEBSource)[];
+  sources?: Source[];
   verificationStatus?: VerificationStatus;
   verificationReport?: VerificationReport;
   claims?: Claim[]; // Extracted claims for verification
-  isCEBBased?: boolean; // Flag for CEB-based responses (bypasses verification)
-  cebCategory?: string; // Which CEB vertical was used
-  sourceMode?: SourceMode; // Which mode was used for this message
   responseMode?: ResponseMode; // Whether the answer used the fast direct path or full accuracy flow
 }
 
@@ -151,7 +138,6 @@ export interface DocumentTemplate {
   name: string;
   description: string;
   practiceAreas: string[];
-  cebCategories: string[];
   variables: VariableDefinition[];
   sections: SectionDefinition[];
   formatting: DocumentFormatting;
@@ -315,14 +301,14 @@ export interface StatuteSource {
  */
 export interface RankedAuthority {
   rank: number;
-  type: 'case' | 'statute' | 'ceb' | 'secondary';
+  type: 'case' | 'statute' | 'secondary';
   citation: string;
   relevanceScore: number;
   summary: string;
 }
 
 /**
- * Model language excerpt from CEB
+ * Model language excerpt from a secondary source
  */
 export interface ModelLanguageExcerpt {
   source: string;
@@ -342,7 +328,6 @@ export interface ResearchPackage {
   completedAt: string;
 
   // Sources
-  cebSources: CEBSource[];
   caseLaw: CaseLawSource[];
   statutes: StatuteSource[];
 

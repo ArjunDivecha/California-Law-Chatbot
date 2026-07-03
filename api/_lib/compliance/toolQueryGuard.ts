@@ -4,7 +4,7 @@
  * api/_lib/compliance/toolQueryGuard.ts
  * =============================================================================
  * WHAT THIS DOES (plain language):
- *   The LAST check before an in-process tool (ceb_search, courtlistener_search,
+ *   The LAST check before an in-process tool (courtlistener_search,
  *   …) actually runs. It looks at the EXACT outbound query the model produced
  *   and decides whether it may leave the system. Three defenses (PRD §5.5):
  *     1. If the policy disabled external calls → block.

@@ -45,25 +45,23 @@ ok('public_research: all tools allowed, tokenization off, external allowed', () 
   assert.equal(d.tokenization, 'off');
   assert.equal(d.externalCallsAllowed, true);
   assert.ok(d.allowedTools.includes('web_search'));
-  assert.ok(d.allowedTools.includes('ceb_search'));
+  assert.ok(!d.allowedTools.includes('ceb_search'), 'ceb_search was retired 2026-07-03');
   assert.equal(d.requiredEvidenceSinks.length, 0);
   assert.equal(d.block, undefined);
 });
 
-// ── client_confidential: web_search + mcp blocked; ceb gated; light tokenization ──
-ok('client_confidential: web_search + mcp + ceb_search blocked (ceb unapproved)', () => {
+// ── client_confidential: web_search + mcp blocked; light tokenization ──
+// (ceb_search retired 2026-07-03 — CEB ToS prohibits ingesting their content
+// into an AI application; openAiEmbeddingsApproved was removed with it.)
+ok('client_confidential: web_search + mcp blocked', () => {
   const d = decidePolicy({ ...base, matterMode: 'client_confidential' });
   assert.equal(d.tokenization, 'light');
   assert.ok(!d.allowedTools.includes('web_search'));
   assert.ok(!d.allowedTools.includes('mcp'));
-  assert.ok(!d.allowedTools.includes('ceb_search'));
+  assert.ok(!d.allowedTools.includes('ceb_search'), 'ceb_search was retired 2026-07-03');
   assert.ok(d.allowedTools.includes('courtlistener'));
   assert.deepEqual(d.requiredEvidenceSinks, ['audit']);
   assert.ok(d.requiredDisclosures.includes('ai_use_disclosure'));
-});
-ok('client_confidential: ceb_search allowed when OpenAI embeddings approved', () => {
-  const d = decidePolicy({ ...base, matterMode: 'client_confidential', openAiEmbeddingsApproved: true });
-  assert.ok(d.allowedTools.includes('ceb_search'));
 });
 ok('client_confidential export ⇒ lawyer_review gate', () => {
   const d = decidePolicy({ ...base, matterMode: 'client_confidential', requestedAction: 'export' });
@@ -71,12 +69,13 @@ ok('client_confidential export ⇒ lawyer_review gate', () => {
 });
 
 // ── protected_discovery: most restrictive ──
-ok('protected_discovery: web/mcp/public-law/ceb all blocked; strict; worm', () => {
+ok('protected_discovery: web/mcp/public-law all blocked; strict; worm', () => {
   const d = decidePolicy({ ...base, matterMode: 'protected_discovery' });
   assert.equal(d.tokenization, 'strict');
-  for (const t of ['web_search', 'mcp', 'courtlistener', 'legiscan', 'openstates', 'ceb_search']) {
+  for (const t of ['web_search', 'mcp', 'courtlistener', 'legiscan', 'openstates']) {
     assert.ok(!d.allowedTools.includes(t), `${t} should be blocked`);
   }
+  assert.ok(!d.allowedTools.includes('ceb_search'), 'ceb_search was retired 2026-07-03');
   assert.ok(d.allowedTools.includes('citation_verify'));
   assert.deepEqual(d.requiredEvidenceSinks, ['audit', 'worm']);
 });

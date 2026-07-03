@@ -9,15 +9,16 @@
  *   1. anthropic.messages.create (no tools)        — pure inference round-trip
  *   2. anthropic.messages.stream (no tools)        — streaming TTFB/TTFT/E2E
  *   3. anthropic.messages.stream + web_search      — Gemini-grounding replacement
- *   4. ceb_search primitive                        — OpenAI embed + Upstash Vector
- *      (text-embedding-3-small, 5 CEB namespaces in parallel, topK=5)
- *   5. courtlistener_search                        — REST v4 /search/ over HTTPS
+ *   4. courtlistener_search                        — REST v4 /search/ over HTTPS
+ *
+ * (ceb_search primitive removed 2026-07-03 — ceb_search was retired the
+ * same day; CEB's Terms & Conditions prohibit ingesting their content into
+ * any database/AI application.)
  *
  * Captures:
  *   - e2e_ms: total wall-clock for the call to complete
  *   - ttfb_ms (streaming only): first event from the server
  *   - ttft_ms (streaming only): first text_delta event
- *   - sub-step timing for ceb_search (embed_ms, vector_ms)
  *   - token counts when available
  *
  * Output:
@@ -26,9 +27,7 @@
  *
  * Run:  yarn latency:baseline
  *
- * Env required: ANTHROPIC_API_KEY, OPENAI_API_KEY,
- *               UPSTASH_VECTOR_REST_URL, UPSTASH_VECTOR_REST_TOKEN,
- *               COURTLISTENER_API_KEY.
+ * Env required: ANTHROPIC_API_KEY, COURTLISTENER_API_KEY.
  * Falls back to /Users/arjundivecha/Dropbox/AAA Backup/.env.txt if any
  * are missing from the current environment.
  */
@@ -38,7 +37,6 @@ import { dirname, join as joinPath, resolve as resolvePath } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { performance } from 'node:perf_hooks';
 import Anthropic from '@anthropic-ai/sdk';
-import { Index } from '@upstash/vector';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -228,81 +226,11 @@ async function measureAnthropicWebSearch(query) {
   }
 }
 
-async function openaiEmbed(text) {
-  const resp = await fetch('https://api.openai.com/v1/embeddings', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-    },
-    body: JSON.stringify({ input: text, model: 'text-embedding-3-small' }),
-  });
-  if (!resp.ok) {
-    const body = await resp.text().catch(() => '');
-    throw new Error(`OpenAI embed ${resp.status}: ${body.slice(0, 200)}`);
-  }
-  const j = await resp.json();
-  return j.data[0].embedding;
-}
-
-const CEB_NAMESPACES = [
-  'ceb_trusts_estates',
-  'ceb_family_law',
-  'ceb_business_litigation',
-  'ceb_business_entities',
-  'ceb_business_transactions',
-];
-
-async function measureCebSearch(query) {
-  const start = performance.now();
-  let embed_ms = null;
-  let vector_ms = null;
-  try {
-    const embedStart = performance.now();
-    const vector = await openaiEmbed(query);
-    embed_ms = performance.now() - embedStart;
-
-    const index = new Index({
-      url: process.env.UPSTASH_VECTOR_REST_URL,
-      token: process.env.UPSTASH_VECTOR_REST_TOKEN,
-    });
-
-    const vectorStart = performance.now();
-    // Mirror api/ceb-search.ts: search 5 namespaces in parallel.
-    const perNs = await Promise.all(
-      CEB_NAMESPACES.map(async (ns) => {
-        try {
-          const r = await index.query({
-            vector,
-            topK: 5,
-            includeMetadata: true,
-            ...({ namespace: ns }),
-          });
-          return r.length;
-        } catch (err) {
-          return -1;
-        }
-      }),
-    );
-    vector_ms = performance.now() - vectorStart;
-    return {
-      ok: true,
-      e2e_ms: performance.now() - start,
-      embed_ms,
-      vector_ms,
-      ns_result_counts: perNs,
-      total_results: perNs.reduce((a, b) => a + Math.max(0, b), 0),
-    };
-  } catch (err) {
-    return {
-      ok: false,
-      e2e_ms: performance.now() - start,
-      embed_ms,
-      vector_ms,
-      error: err.message,
-    };
-  }
-}
+// NOTE (2026-07-03): measureCebSearch (OpenAI embed + Upstash Vector query
+// across 5 CEB namespaces) was removed here — ceb_search was retired the
+// same day (CEB's Terms & Conditions prohibit ingesting their content into
+// any database/AI application). Neither OpenAI embeddings nor Upstash
+// Vector is called anywhere else in the codebase.
 
 async function measureCourtListener(query) {
   const start = performance.now();
@@ -362,7 +290,6 @@ const ENDPOINTS = [
   ['anthropic.messages.create', measureAnthropicCreate],
   ['anthropic.messages.stream', measureAnthropicStream],
   ['anthropic.messages.stream + web_search', measureAnthropicWebSearch],
-  ['ceb_search (embed + Upstash Vector)', measureCebSearch],
   ['courtlistener_search', measureCourtListener],
 ];
 

@@ -234,7 +234,7 @@ export function containsCodeCitation(text: string): boolean {
 }
 
 /**
- * Extract search terms for CEB vector search from parsed citations
+ * Extract search terms for case-law/statute search from parsed citations
  */
 export function citationToSearchTerms(citations: ParsedCitation[]): string[] {
     return citations.map(cite => {

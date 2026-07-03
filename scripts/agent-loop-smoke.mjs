@@ -1,15 +1,15 @@
 /**
  * Phase 1 smoke test — runs runAgentProxy end-to-end against real
- * Anthropic + Upstash KV + (when invoked by the model) ceb_search /
- * courtlistener_search. Bypasses the Vercel route handler — calls the
- * proxy directly. Consumes API credits.
+ * Anthropic + Upstash KV + (when invoked by the model)
+ * courtlistener_search / legiscan_search / openstates_search. Bypasses the
+ * Vercel route handler — calls the proxy directly. Consumes API credits.
  *
  * Three scenarios:
  *   1. Public-research query (privileged: false) — web_search should be
  *      in the tools array.
  *   2. Compound-risk query (privileged: true) — web_search must be
- *      OMITTED from the tools array; agent must rely on ceb_search /
- *      courtlistener_search only.
+ *      OMITTED from the tools array; agent must rely on
+ *      courtlistener_search / legiscan_search / openstates_search only.
  *   3. Direct PII query (privileged: true) — same as #2 plus the input
  *      has explicit-PII spans that go through redaction.
  *

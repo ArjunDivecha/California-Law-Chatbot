@@ -36,27 +36,30 @@ const conf = tc('client_confidential');
 const prot = tc('protected_discovery', { userRole: 'attorney' });
 
 // ── buildToolsForPolicy ──
-ok('public: includes web_search + ceb_search + public-law search', () => {
+// ceb_search was retired 2026-07-03 (CEB ToS prohibits AI/database
+// ingestion of their content) — it no longer appears in any tools array.
+ok('public: includes web_search + public-law search', () => {
   const n = names(buildToolsForPolicy(pub));
   assert.ok(n.includes('web_search'));
-  assert.ok(n.includes('ceb_search'));
   assert.ok(n.includes('courtlistener_search'));
+  assert.ok(!n.includes('ceb_search'), 'ceb_search was retired and must never appear');
 });
-ok('confidential: web_search + ceb_search DROPPED; verify/ca_code kept', () => {
+ok('confidential: web_search DROPPED; verify/ca_code kept', () => {
   const n = names(buildToolsForPolicy(conf));
   assert.ok(!n.includes('web_search'));
-  assert.ok(!n.includes('ceb_search'));
   assert.ok(n.includes('courtlistener_search'));
   assert.ok(n.includes('citation_verify'));
   assert.ok(n.includes('statute_verify'));
   assert.ok(n.includes('california_code_lookup'));
+  assert.ok(!n.includes('ceb_search'), 'ceb_search was retired and must never appear');
 });
-ok('protected: web/ceb/public-law search all dropped; citation_verify kept', () => {
+ok('protected: web/public-law search all dropped; citation_verify kept', () => {
   const n = names(buildToolsForPolicy(prot));
-  for (const t of ['web_search', 'ceb_search', 'courtlistener_search', 'legiscan_search', 'openstates_search']) {
+  for (const t of ['web_search', 'courtlistener_search', 'legiscan_search', 'openstates_search']) {
     assert.ok(!n.includes(t), `${t} should be dropped in protected`);
   }
   assert.ok(n.includes('citation_verify'));
+  assert.ok(!n.includes('ceb_search'), 'ceb_search was retired and must never appear');
 });
 ok('policyIdForTool maps real registered names', () => {
   assert.equal(policyIdForTool('courtlistener_search'), 'courtlistener');

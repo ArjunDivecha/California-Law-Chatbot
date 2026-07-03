@@ -18,12 +18,17 @@
  *     - Anthropic Messages API: standard commercial terms — no training on
  *       API content, DPA auto-incorporated, deletion-on-request, default
  *       30-day retention (flagged content up to 2y; T&S scores up to 7y).
- *     - OpenAI embeddings: no training since 2023-03-01; 30-day abuse-
- *       monitoring retention; DPA available (sign for the org).
- *     - Upstash Vector/Redis: DPA §12.4 PROHIBITS "Restricted Data"
- *       (sensitive_personal_data); SOC 2 / HIPAA cover REDIS, not Vector;
- *       encryption is opt-in (must be verified on).
+ *     - Upstash Redis: DPA §12.4 PROHIBITS "Restricted Data"
+ *       (sensitive_personal_data); SOC 2 / HIPAA cover Redis; encryption is
+ *       opt-in (must be verified on).
  *     - CourtListener / LegiScan / OpenStates: public-law APIs; query logs.
+ *
+ * NOTE (2026-07-03): the `openai_embeddings` and `upstash_vector` entries
+ * were removed here — both existed solely to support `ceb_search`, which
+ * was retired the same day (CEB's Terms & Conditions prohibit ingesting
+ * their content into any database/AI application — see
+ * docs/VERIFICATION_ALTERNATIVES_REVIEW_2026-07-02.md §5). Neither OpenAI
+ * nor Upstash Vector is called anywhere else in the codebase.
  *
  * NOTE: the *_VERIFY items in PRD §13 must be confirmed by counsel/ops before
  * relying on them for confidential/protected data; the registry intentionally
@@ -95,44 +100,6 @@ const REGISTRY: ProviderEntry[] = [
       { source: 'Anthropic API & data retention docs', url: 'https://platform.claude.com/docs/en/manage-claude/api-and-data-retention', retrievedAt: '2026-06-23' },
       { source: 'Anthropic DPA (auto-incorporated in Commercial Terms)', url: 'https://www.anthropic.com/legal/commercial-terms', retrievedAt: '2026-06-23' },
       { source: 'Morgan v. V2X, Inc., 2026 WL 864223 (D. Colo.) deep-research memo 2026-06-02: standard Commercial Terms + DPA satisfy the protective-order standard (no-train, no third-party disclosure, deletion-on-request, retained documentation); ZDR NOT required. ZDR declined 2026-07-01 (~$100k/yr).', retrievedAt: '2026-07-01' },
-    ],
-    reviewExpiry: '2026-12-31',
-    owner: 'F&F / project',
-  },
-  {
-    providerId: 'openai_embeddings',
-    service: 'OpenAI text-embedding-3-small (native API)',
-    dataClassesAllowed: ['public_law', 'client_confidential', 'personal_data'],
-    mattersAllowed: ['public_research', 'client_confidential'],
-    trainsOnData: false,
-    retention: '30 days (abuse monitoring); no training on API data since 2023-03-01',
-    subprocessors: ['Microsoft Azure'],
-    region: 'US',
-    deletionRights: 'DPA deletion',
-    privilegeClass: 'review_required', // until the DPA is signed for the org (PRD §13 item 3)
-    evidence: [
-      { source: 'OpenAI data controls (no training on API since 2023-03-01)', url: 'https://developers.openai.com/api/docs/guides/your-data', retrievedAt: '2026-06-23' },
-    ],
-    reviewExpiry: '2026-12-31',
-    owner: 'F&F / project',
-  },
-  {
-    providerId: 'upstash_vector',
-    service: 'Upstash Vector (CEB embeddings store)',
-    // CEB corpus is PUBLISHED practice-guide content. Client/query vectors that
-    // carry confidential facts should NOT be stored here; sensitive_personal_data
-    // is contractually prohibited (DPA §12.4).
-    dataClassesAllowed: ['public_law'],
-    mattersAllowed: ['public_research', 'client_confidential'],
-    trainsOnData: false,
-    retention: 'Per DPA; backups up to 4 weeks post-termination',
-    restrictedDataProhibited: true, // DPA §12.4
-    subprocessors: ['AWS', 'GCP'],
-    region: 'US (verify region pin)',
-    deletionRights: 'DPA return/delete on termination',
-    privilegeClass: 'review_required',
-    evidence: [
-      { source: 'Upstash DPA §12.4 (Restricted Data prohibited); SOC2/HIPAA scoped to Redis NOT Vector; encryption opt-in', url: 'https://upstash.com/trust/dpa.pdf', retrievedAt: '2026-06-23', note: 'For protected_discovery / sensitive data use a firm-controlled store + local embeddings (PRD §5.7a).' },
     ],
     reviewExpiry: '2026-12-31',
     owner: 'F&F / project',
