@@ -27,7 +27,13 @@ export interface AllowlistMatch {
 
 const CASE_PATTERNS: RegExp[] = [
   // People v. Smith (2020) 50 Cal.App.5th 123
-  /\b[A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z&.]+)*\s+v\.\s+[A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z&.]+)*(?:\s*\(\d{4}\))?(?:\s+\d+\s+[A-Z][a-z.]*\.?(?:\s*[A-Z][a-z.]*\.?)*\s*\d+[a-z]{2}?\s*\d+)?/g,
+  // Requires a year citation OR a reporter citation after the caption
+  // (2026-07-04 review fix). With both optional, a bare "Robert Chen v.
+  // Maria Lopez" -- an attorney describing their own clients' dispute --
+  // matched the allowlist and suppressed detection of BOTH client
+  // names. Same hardening the In re / Estate of patterns below already
+  // received.
+  /\b[A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z&.]+)*\s+v\.\s+[A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z&.]+)*(?:\s*\(\d{4}\)(?:\s+\d+\s+[A-Z][A-Za-z.]*(?:\s*[A-Z][a-z.]*\.?)*\s*\d+(?:[a-z]{2})?(?:\s*\d+)?)?|\s+\d+\s+[A-Z][A-Za-z.]*(?:\s*[A-Z][a-z.]*\.?)*\s*\d+(?:[a-z]{2})?(?:\s*\d+)?)/g,
   // In re Marriage of Clarke (1990) 12 Cal.App.4th 100
   // Requires a year citation so it only fires on PUBLISHED-CASE references,
   // not on private client probate/dissolution matters that share the same

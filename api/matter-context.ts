@@ -21,7 +21,7 @@
  */
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { applyResponseSecurity, headerString } from './_shared/routeSecurity.js';
-import { requireUser } from './_lib/httpGuard.js';
+import { requireUser, isValidSessionId } from './_lib/httpGuard.js';
 import { readMeta, writeMeta } from './_lib/sessionStore.js';
 import { validateMatterTransition, parseMatterMode } from './_lib/compliance/matterContext.js';
 import { recordClientConsent, getAttestations } from './_lib/compliance/attestations.js';
@@ -43,6 +43,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const sessionId = (req.method === 'GET' ? req.query.session_id : req.body?.session_id) as string | undefined;
   if (!sessionId || typeof sessionId !== 'string') {
     return res.status(400).json({ error: 'session_id required' });
+  }
+  // Reject malformed ids before they interpolate into Redis session keys.
+  if (!isValidSessionId(sessionId)) {
+    return res.status(400).json({ error: 'invalid session_id' });
   }
   const meta = await readMeta(sessionId);
   // Ownership: enforce only when the session already exists. A not-yet-persisted

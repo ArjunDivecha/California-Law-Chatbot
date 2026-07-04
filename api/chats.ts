@@ -17,6 +17,16 @@ import { randomUUID } from 'crypto';
 import type { ChatMessage } from '../types';
 import { scanForRawPII } from './_shared/sanitization/guard.js';
 import { buildAuditRecord, writeAuditRecord } from './_shared/auditLog.js';
+import { scrubMessage } from './_lib/scrubError.js';
+
+/**
+ * Strict chat-id format. `chatId` is interpolated into a Redis key
+ * (`chat:${chatId}:meta`) and a blob path (`chats/${userId}/${chatId}.json`),
+ * so an unvalidated value is a path-traversal / key-injection vector (e.g.
+ * `..`). Ids are server-minted UUIDs; this allow-list also accepts other
+ * URL-safe tokens without permitting separators.
+ */
+const CHAT_ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
 
 // ─── CORS ───────────────────────────────────────────────────────────────────
 
@@ -150,6 +160,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const chatId = req.query.id as string | undefined;
+  // Validate the id format on every method that carries one, before it is
+  // interpolated into any Redis key or blob path (path-traversal guard).
+  if (chatId !== undefined && !CHAT_ID_RE.test(chatId)) {
+    return res.status(400).json({ error: 'invalid id' });
+  }
   const kv = redis();
 
   try {
@@ -183,8 +198,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         kv.set(metaKey(id), JSON.stringify(meta)),
         kv.zadd(userKey(userId), { score: now, member: id }),
       ]);
-      const verify = await kv.get(metaKey(id));
-      console.log(`[chats] POST id=${id} userId=${userId} verifyStored=${verify ? 'YES' : 'NO'}`);
       return res.status(201).json(meta);
     }
 
@@ -200,44 +213,31 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const candidates = [blobPath(userId, chatId), meta.blobUrl].filter(
         (value, index, arr): value is string => !!value && arr.indexOf(value) === index
       );
-      const attempts: Array<Record<string, unknown>> = [];
       try {
         for (const candidate of candidates) {
-          const attempt: Record<string, unknown> = { candidate };
           try {
             const result = await get(candidate, { access: 'private', useCache: false });
-            attempt.resultNull = !result;
-            attempt.statusCode = result?.statusCode ?? null;
-            attempt.hasStream = !!result?.stream;
-            if (!result || result.statusCode !== 200 || !result.stream) {
-              attempts.push(attempt);
-              continue;
-            }
+            if (!result || result.statusCode !== 200 || !result.stream) continue;
             const body = await new Response(result.stream).text();
-            attempt.bodyLength = body.length;
             const parsed = parseMessagesJson(body);
-            attempt.parsedLen = parsed?.length ?? null;
             if (parsed) {
               messages = parsed;
-              attempts.push(attempt);
               break;
             }
           } catch (inner: any) {
-            attempt.error = inner?.message ?? String(inner);
+            // Individual candidate read failed; try the next candidate.
+            console.error('[chats] GET blob candidate read failed:', scrubMessage(inner?.message ?? String(inner)));
           }
-          attempts.push(attempt);
         }
       } catch (e: any) {
-        console.error('[chats] GET blob read failed:', e);
+        console.error('[chats] GET blob read failed:', scrubMessage(e?.message ?? String(e)));
       }
-      console.log(`[chats] GET id=${chatId} metaBlobUrl=${meta.blobUrl ?? 'none'} attempts=${JSON.stringify(attempts)}`);
-      return res.status(200).json({ ...meta, messages, _debug: { hasBlobUrl: !!meta.blobUrl, attempts } });
+      return res.status(200).json({ ...meta, messages });
     }
 
     // ── SAVE (upsert) ─────────────────────────────────────────────────────────
     if (req.method === 'PUT') {
       const { messages, title } = req.body ?? {};
-      console.log(`[chats] PUT id=${chatId} msgCount=${Array.isArray(messages) ? messages.length : 'not-array'} title=${title}`);
       if (!Array.isArray(messages)) return res.status(400).json({ error: 'messages array required' });
 
       const piiCats = scanChatPayload({ title, messages });
@@ -266,7 +266,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         });
       } catch (error) {
         if (!isBlobAlreadyExistsError(error)) throw error;
-        console.warn(`[chats] PUT overwrite fallback id=${chatId} path=${path} reason=${String((error as any)?.message ?? error)}`);
+        console.warn(`[chats] PUT overwrite fallback: ${scrubMessage((error as any)?.message ?? String(error))}`);
         await del(path).catch(() => {});
         blobResult = await put(path, JSON.stringify(messages), {
           access: 'private', contentType: 'application/json', addRandomSuffix: false,
@@ -277,7 +277,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         kv.set(metaKey(chatId), JSON.stringify(updated)),
         kv.zadd(userKey(userId), { score: now, member: chatId }),
       ]);
-      console.log(`[chats] PUT saved ok id=${chatId} msgCount=${messages.length} upsert=${!existing}`);
 
       // ── Prune oldest chats if user exceeds cap ─────────────────────────────
       const MAX_CHATS = 100;
@@ -291,7 +290,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             ...oldest.map(id => kv.del(metaKey(id))),
             ...oldest.map(id => del(blobPath(userId, id)).catch(() => {})),
           ]);
-          console.log(`[chats] pruned ${oldest.length} old chats for user ${userId}`);
+          console.log(`[chats] pruned ${oldest.length} old chats`);
         }
       }
 
@@ -333,7 +332,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ error: 'Method not allowed' });
 
   } catch (err: any) {
-    console.error('[/api/chats]', err);
-    return res.status(500).json({ error: err?.message ?? String(err) });
+    // Log the real error server-side; return a generic message so Redis/blob
+    // internals don't leak to the client.
+    console.error('[/api/chats]', scrubMessage(err?.message ?? String(err)));
+    return res.status(500).json({ error: 'Internal server error' });
   }
 }

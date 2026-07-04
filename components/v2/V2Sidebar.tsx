@@ -122,7 +122,12 @@ export const V2Sidebar: React.FC = () => {
       <div className="p-3 border-b border-gray-100">
         <button
           type="button"
-          onClick={() => navigate('/v2')}
+          // The nonce matters: when the user is already on /v2 (the common
+          // case — first chat of the day starts there), navigate('/v2')
+          // alone is a no-op and the button appears dead. V2ChatPage
+          // watches location.state.newChat and resets (fresh session id,
+          // cleared messages/draft) whenever it sees a new nonce.
+          onClick={() => navigate('/v2', { state: { newChat: Date.now() } })}
           className="w-full rounded-lg bg-pink-500 hover:bg-pink-600 text-white text-sm font-semibold py-2"
         >
           + New chat

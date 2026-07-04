@@ -30,6 +30,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { runAgentProxyStream } from '../_lib/agentProxy.js';
 import { scrubMessage } from '../_lib/scrubError.js';
+import { acquireLock, releaseLock } from '../_lib/sessionStore.js';
 import {
   handlePreflight,
   applyCors,
@@ -77,6 +78,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return;
   }
 
+  // Single-flight lock (2026-07-04 code-review fix C3). Two concurrent
+  // turns on one session (double-click, retry, two tabs) interleave their
+  // Redis appends and can leave an assistant tool_use followed by the
+  // other turn's user text — history the Anthropic API then rejects.
+  // The lock existed in sessionStore but was never acquired anywhere.
+  // Auto-expires (TTL) so a crashed handler can't wedge the session.
+  const locked = await acquireLock(sessionId);
+  if (!locked) {
+    res.status(409).json({
+      error: 'turn_in_flight',
+      message: 'A turn is already running on this session. Wait for it to finish and try again.',
+    });
+    return;
+  }
+
   // SSE headers. X-Accel-Buffering disables nginx buffering on
   // intermediaries — without it, events can be batched and feel choppy.
   res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
@@ -86,8 +102,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.flushHeaders?.();
 
   const writeEvent = (kind: string, data: unknown) => {
+    if (res.writableEnded) return;
     res.write(`event: ${kind}\ndata: ${JSON.stringify(data)}\n\n`);
   };
+
+  // Client-disconnect detection (2026-07-04 code-review fix). Without
+  // it, a closed tab left the 8–12-round loop running to completion at
+  // full token + tool cost — res.write on a dead socket doesn't throw.
+  // We break the for-await below, which runs the generator's finally
+  // blocks and stops further model/tool rounds. NOTE: the in-flight
+  // model call and its persistence still complete inside the generator,
+  // so the interrupted turn is not lost — subsequent rounds just don't
+  // start.
+  let clientGone = false;
+  req.on('close', () => {
+    clientGone = true;
+  });
 
   let terminal: 'done' | 'error' | 'proxy_error' | null = null;
   try {
@@ -101,13 +131,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       workflow: body.workflow,
       output_format: body.output_format,
     })) {
+      if (clientGone) break;
       writeEvent(event.kind, event);
       if (event.kind === 'done' || event.kind === 'error' || event.kind === 'proxy_error') {
         terminal = event.kind;
         break;
       }
     }
-    if (!terminal) {
+    if (!terminal && !clientGone) {
       // Generator returned without yielding a terminal event — emit a
       // synthetic error so the client knows the stream ended cleanly.
       writeEvent('error', { code: 'no_terminal_event', message: 'stream ended without done/error' });
@@ -119,6 +150,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const message = scrubMessage(err instanceof Error ? err.message : String(err));
     writeEvent('error', { code: 'internal_error', message });
   } finally {
+    await releaseLock(sessionId).catch(() => {});
     res.end();
   }
 }

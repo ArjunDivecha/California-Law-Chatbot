@@ -44,9 +44,11 @@ import {
  * Previous identity-stub implementation (commit 726ecd0) defeated
  * Option C — replaced 2026-05-14 with the real browser-side hooks.
  */
-import { useUser } from '@clerk/clerk-react';
+import { useUser, useAuth } from '@clerk/clerk-react';
 import { Link } from 'react-router-dom';
-import { useV2DraftingMagicStream, type MagicSource } from '../../hooks/useV2DraftingMagicStream';
+import { type MagicSource } from '../../hooks/useV2DraftingMagicStream';
+import { assertNoRawPii } from '../../services/sanitization/wireGuard';
+import { getUserAllowlist } from '../../services/sanitization/userAllowlist';
 import { useSanitizer } from '../../hooks/useSanitizer';
 import {
   getChatSanitizer,
@@ -892,6 +894,7 @@ function FileUploadControl({
 
 export const V2DraftingMagicPage: React.FC = () => {
   const { user } = useUser();
+  const { getToken } = useAuth();
   const userId = user?.id ?? null;
   const v2SessionIdRef = useRef(`v2m_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`);
   const { ready: sanitizerReady, unlocked: sanitizerUnlocked, tokenCount, daemonStatus } = useSanitizer();
@@ -1452,24 +1455,25 @@ export const V2DraftingMagicPage: React.FC = () => {
 
   /**
    * V2 adapter: codex called a synchronous JSON endpoint, V2 streams SSE.
-   * This helper consumes the SSE, awaits the terminal `magic_done` event,
-   * and converts the final markdown back into a GeneratedDraftPackage so
-   * the rest of the UI stays unchanged.
+   * This helper consumes the SSE, awaits the terminal `done` event, and
+   * converts the final markdown back into a GeneratedDraftPackage so the
+   * rest of the UI stays unchanged.
+   *
+   * Rewritten 2026-07-04 (code-review fix C1). The previous version had
+   * three compounding defects: it sent RAW source text (no
+   * tokenizeForWire — full client documents on the wire untokenized),
+   * sent no Authorization header, and listened for SSE events named
+   * `magic_token`/`magic_done` that the server never emits (it forwards
+   * the proxy's `token`/`done`), so every call also ended in a bogus
+   * "empty response" error. This version mirrors the wire contract of
+   * hooks/useV2DraftingMagicStream: tokenize every free-text field,
+   * assert no raw PII on the assembled body, send the Clerk bearer
+   * token, consume the real event kinds, and rehydrate the result for
+   * display.
    */
   const callV2DraftingMagic = async (
     extraInstruction?: string,
   ): Promise<GeneratedDraftPackage> => {
-    const v2Packet: MagicSource[] = sources
-      .filter((s) => s.included)
-      .map((s) => ({
-        id: s.id,
-        name: getSourceDisplayName(s),
-        role: s.role.toLowerCase(),
-        included: true,
-        base: s.base,
-        text: getSourceText(s),
-        description: s.description,
-      }));
     const outputType: 'draft' | 'review_memo' =
       /memo/i.test(strategy.outputType) ? 'review_memo' : 'draft';
     const instructions = [
@@ -1481,21 +1485,54 @@ export const V2DraftingMagicPage: React.FC = () => {
       .join('')
       .trim();
 
+    // Tokenize every free-text field before send. The packet carries
+    // entire client documents — the worst-case leakage path on this
+    // endpoint. tokenizeForWire fails CLOSED (throws on detector
+    // outage), which surfaces as a generation error banner.
+    const wireInstructions = await tokenizeForWire(instructions);
+    const v2Packet: MagicSource[] = [];
+    for (const s of sources.filter((src) => src.included)) {
+      const wireText = await tokenizeForWire(getSourceText(s) ?? '');
+      const wireName = await tokenizeForWire(getSourceDisplayName(s) ?? '');
+      const wireDesc = s.description ? await tokenizeForWire(s.description) : null;
+      v2Packet.push({
+        id: s.id,
+        name: wireName.sanitized,
+        role: s.role.toLowerCase(),
+        included: true,
+        base: s.base,
+        text: wireText.sanitized,
+        description: wireDesc?.sanitized ?? s.description,
+      });
+    }
+
+    const body = {
+      session_id: v2SessionIdRef.current,
+      packet: v2Packet,
+      instructions: wireInstructions.sanitized,
+      output_type: outputType,
+      user_id: userId,
+      user_allowlist: getUserAllowlist(),
+    };
+    // Plan §S browser-side CI assertion — final deterministic-regex
+    // check on the assembled body before it leaves the device.
+    assertNoRawPii(body);
+
+    const bearer = await getToken().catch(() => null);
     const resp = await fetch('/api/agent/drafting-magic', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
-      body: JSON.stringify({
-        session_id: v2SessionIdRef.current,
-        packet: v2Packet,
-        instructions,
-        output_type: outputType,
-        user_id: userId,
-      }),
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'text/event-stream',
+        ...(bearer ? { Authorization: `Bearer ${bearer}` } : {}),
+      },
+      body: JSON.stringify(body),
     });
     if (!resp.ok || !resp.body) {
       throw new Error(`V2 drafting-magic API failed with status ${resp.status}.`);
     }
-    // Parse SSE: accumulate token events; await magic_done with final_text.
+    // Parse SSE: accumulate `token` events; await `done` with
+    // result.final_text (the proxy's real event vocabulary).
     const reader = resp.body.getReader();
     const decoder = new TextDecoder();
     let buf = '';
@@ -1520,11 +1557,16 @@ export const V2DraftingMagicPage: React.FC = () => {
         if (!dataLine) continue;
         try {
           const parsed = JSON.parse(dataLine);
-          if (evt === 'magic_token' && typeof parsed.text === 'string') {
+          if (evt === 'token' && typeof parsed.text === 'string') {
             assembled += parsed.text;
-          } else if (evt === 'magic_done' && typeof parsed.final_text === 'string') {
-            finalText = parsed.final_text;
-          } else if (evt === 'error') {
+          } else if (evt === 'done') {
+            const result = parsed.result as { final_text?: string } | undefined;
+            if (typeof result?.final_text === 'string') finalText = result.final_text;
+          } else if (evt === 'refusal') {
+            errMsg = `Fable declined this request${
+              parsed.category ? ` (${parsed.category})` : ''
+            }: ${parsed.explanation ?? 'no explanation provided'}. Not sent to any other model — revise and try again.`;
+          } else if (evt === 'error' || evt === 'proxy_error') {
             errMsg = parsed.message || parsed.code || 'V2 stream error';
           }
         } catch {
@@ -1537,7 +1579,9 @@ export const V2DraftingMagicPage: React.FC = () => {
     if (!markdown.trim()) {
       throw new Error('V2 drafting-magic returned an empty response.');
     }
-    return parseV2MagicMarkdown(markdown);
+    // Tokens came back as @@TOKEN@@ placeholders — rehydrate to real
+    // names for on-device display before parsing into sections.
+    return parseV2MagicMarkdown(getChatSanitizer().rehydrateMessage(markdown));
   };
 
   const generateDraft = async () => {

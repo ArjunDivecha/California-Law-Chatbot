@@ -27,7 +27,7 @@
  */
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useLocation } from 'react-router-dom';
 import { useUser, useAuth } from '@clerk/clerk-react';
 import { MatterModeSelector } from './MatterModeSelector';
 import ReactMarkdown from 'react-markdown';
@@ -154,12 +154,11 @@ export const V2ChatPage: React.FC = () => {
   const urlSessionId = params.sessionId ?? null;
 
   // sessionId is URL-driven when present; otherwise mint a fresh one.
-  // useMemo (not useState) so navigating between sessions actually
-  // switches the active session, not just the URL.
-  const sessionId = useMemo(
-    () => urlSessionId ?? newSessionId(),
-    [urlSessionId],
-  );
+  // The fresh id lives in state (not a memo) so the "New chat" button can
+  // re-mint it even when the URL doesn't change — clicking New chat while
+  // already on /v2 was previously a silent no-op.
+  const [freshSessionId, setFreshSessionId] = useState<string>(() => newSessionId());
+  const sessionId = urlSessionId ?? freshSessionId;
   // Restore in-progress textarea from localStorage on mount (per-session).
   const [draft, setDraft] = useState<string>(() => {
     if (typeof window === 'undefined') return '';
@@ -173,7 +172,7 @@ export const V2ChatPage: React.FC = () => {
   const [workflow, setWorkflow] = useState<Workflow>('research');
   const [messages, setMessages] = useState<DisplayMessage[]>([]);
   const [hydrating, setHydrating] = useState(false);
-  const { state, send, reset } = useV2AgentStream();
+  const { state, send, reset, cancel } = useV2AgentStream();
   // tokenCount re-renders when the IndexedDB token map loads or grows,
   // so derived (rehydrated) messages refresh once the map is available.
   // Bug fix 2026-05-18: prior code set tokenized text directly into
@@ -191,6 +190,63 @@ export const V2ChatPage: React.FC = () => {
     useV2SanitizationPreview(draft);
 
   const scrollRef = useRef<HTMLDivElement | null>(null);
+
+  // "New chat" support. The sidebar navigates to /v2 with a fresh nonce in
+  // location.state. When the user is ALREADY on /v2 (no URL session id),
+  // that navigation changes nothing react-router-visible — so we watch the
+  // nonce and hard-reset the surface: new session id, cleared messages,
+  // cleared draft, cleared stream state. The mount-time nonce is remembered
+  // and ignored so a browser refresh (which replays history state) doesn't
+  // wipe a restored draft.
+  const location = useLocation();
+  const initialNewChatNonce = useRef<number | null>(
+    (location.state as { newChat?: number } | null)?.newChat ?? null,
+  );
+  useEffect(() => {
+    const nonce = (location.state as { newChat?: number } | null)?.newChat ?? null;
+    if (nonce === null || nonce === initialNewChatNonce.current) return;
+    initialNewChatNonce.current = nonce;
+    if (urlSessionId) return; // URL change handles the reset on its own
+    setFreshSessionId(newSessionId());
+    setMessages([]);
+    setDraft('');
+    setMobileGateNotice(null);
+    reset();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.state, urlSessionId]);
+
+  // Which session the in-flight stream belongs to. Set by onSubmit,
+  // checked by the done-fold effect (cross-session guard, review fix C5),
+  // cleared on session switches.
+  const streamingSessionRef = useRef<string | null>(null);
+
+  // Session switch (param-only /v2/abc → /v2/def navigation reuses this
+  // component instance — no remount). Abort any in-flight stream so
+  // session A's answer can't stream into session B's view, and restore
+  // the destination session's saved draft (previously the half-typed
+  // draft bled from one session into the next and then saved under the
+  // wrong key).
+  const prevUrlSessionRef = useRef<string | null>(urlSessionId);
+  useEffect(() => {
+    if (prevUrlSessionRef.current === urlSessionId) return;
+    prevUrlSessionRef.current = urlSessionId;
+    reset();
+    streamingSessionRef.current = null;
+    setMobileGateNotice(null);
+    try {
+      // Named session → restore its saved draft. Bare /v2 → clear (the
+      // New-chat flow wants an empty box; initial-mount restore is
+      // handled by the useState initializer, which this effect skips
+      // because the ref starts equal to the mount-time urlSessionId).
+      setDraft(
+        urlSessionId
+          ? window.localStorage.getItem(LOCAL_DRAFT_KEY(urlSessionId)) ?? ''
+          : '',
+      );
+    } catch {
+      setDraft('');
+    }
+  }, [urlSessionId, reset]);
 
   // Matter mode as reported by the MatterModeSelector — used to fail closed
   // on devices without the on-device privacy filter (mobile): confidential /
@@ -306,6 +362,10 @@ export const V2ChatPage: React.FC = () => {
         const sid = urlSessionId ?? 'new';
         window.localStorage.removeItem(LOCAL_DRAFT_KEY(sid));
       } catch {}
+      // Record which session this stream belongs to, so the done-fold
+      // below can refuse to graft the answer onto a DIFFERENT session's
+      // transcript if the user navigates mid-stream (review fix C5).
+      streamingSessionRef.current = sessionId;
       void send({
         session_id: sessionId,
         user_text: text,
@@ -313,13 +373,31 @@ export const V2ChatPage: React.FC = () => {
         workflow,
       });
     },
-    [draft, state.isStreaming, send, sessionId, userId, matterMode],
+    // `workflow` and `urlSessionId` were missing here (2026-07-04 review
+    // fix): toggling Quick↔Research without retyping sent the PREVIOUS
+    // workflow from the stale closure.
+    [draft, state.isStreaming, send, sessionId, userId, matterMode, workflow, urlSessionId],
   );
 
   // When `done` fires, fold the streamed tokens into a permanent assistant
   // message so subsequent turns start with a clean slate.
   useEffect(() => {
-    if (state.done && state.tokens) {
+    // final_text can arrive without token events (structured-output /
+    // no-stream flows) — fold whenever either is present.
+    if (state.done && (state.done.final_text || state.tokens)) {
+      // Cross-session guard (review fix C5): navigating /v2/abc → /v2/def
+      // is a param-only change (no remount), so a stream started in
+      // session A can complete while session B's transcript is on
+      // screen. Fold ONLY when the stream's session is still active;
+      // either way, invalidate the STREAM's session cache (the turn
+      // landed there), not the currently-viewed one.
+      const streamSession = streamingSessionRef.current;
+      invalidateSession(streamSession ?? sessionId);
+      (window as unknown as { __v2RefreshSidebar?: () => void }).__v2RefreshSidebar?.();
+      if (streamSession !== null && streamSession !== sessionId) {
+        reset();
+        return;
+      }
       setMessages((prev) => [
         ...prev,
         {
@@ -330,13 +408,6 @@ export const V2ChatPage: React.FC = () => {
           workflow,
         },
       ]);
-      // Tell the V2Sidebar to refresh — the new turn just landed in
-      // KV's per-user index and we want it visible immediately rather
-      // than waiting for the next sidebar mount.
-      (window as unknown as { __v2RefreshSidebar?: () => void }).__v2RefreshSidebar?.();
-      // P4.5 — invalidate the cache for this session so the next
-      // visit to /v2/<sessionId> re-fetches with the new turn included.
-      invalidateSession(sessionId);
       // Reset stream state so the next turn's privileged chip + tool events
       // don't carry over from the previous turn.
       // Use a short timeout so the user can see the final summary briefly
@@ -344,7 +415,7 @@ export const V2ChatPage: React.FC = () => {
       const t = window.setTimeout(() => reset(), 1500);
       return () => window.clearTimeout(t);
     }
-  }, [state.done, state.tokens, reset]);
+  }, [state.done, state.tokens, reset, sessionId, workflow, state.sources]);
 
   const privilegedBadge = useMemo(() => {
     if (!state.sanitization) return null;
@@ -539,13 +610,24 @@ export const V2ChatPage: React.FC = () => {
                   }
                 }}
               />
-              <button
-                type="submit"
-                disabled={state.isStreaming || !draft.trim()}
-                className="rounded-lg bg-pink-500 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-pink-600 disabled:cursor-not-allowed disabled:bg-gray-300"
-              >
-                {state.isStreaming ? 'Working…' : 'Send'}
-              </button>
+              {state.isStreaming ? (
+                <button
+                  type="button"
+                  onClick={() => cancel()}
+                  title="Stop this turn — partial output is kept"
+                  className="rounded-lg border border-pink-300 bg-white px-4 py-2 text-sm font-semibold text-pink-600 shadow-sm hover:bg-pink-50"
+                >
+                  ■ Stop
+                </button>
+              ) : (
+                <button
+                  type="submit"
+                  disabled={!draft.trim()}
+                  className="rounded-lg bg-pink-500 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-pink-600 disabled:cursor-not-allowed disabled:bg-gray-300"
+                >
+                  Send
+                </button>
+              )}
             </div>
 
             {/* Live sanitization preview (P1.1) — debounced 300ms after you stop
@@ -565,6 +647,11 @@ export const V2ChatPage: React.FC = () => {
               <div className="mt-2">
                 <button
                   type="button"
+                  // preventDefault on mousedown: without it, pressing the
+                  // button blurs the textarea first, the blur handler
+                  // collapses the selection, selectedText empties, and this
+                  // button unmounts before its own click can fire.
+                  onMouseDown={(e) => e.preventDefault()}
                   onClick={() => {
                     addToUserDenylist(selectedText);
                     setSelectedText('');
@@ -757,18 +844,35 @@ const HighlightedDraftInput: React.FC<{
         >
           {preview.segments.map((seg, i) =>
             seg.token ? (
+              // The mark body stays pointer-events-none so clicking a
+              // highlighted word still places the caret in the textarea
+              // underneath (2026-07-04 review fix — a full-mark click
+              // target meant "click to edit a name" silently
+              // un-protected it). The dismiss action lives on a small ×
+              // badge floated above the word's end instead.
               <mark
                 key={i}
-                onClick={() => {
-                  // Newest instruction wins: un-protect if it was on the
-                  // "always privileged" list, then allow.
-                  removeFromUserDenylist(seg.token!.raw);
-                  addToUserAllowlist(seg.token!.raw);
-                }}
-                title={`${seg.token.value} — click to mark "${seg.token.raw}" as NOT privileged (always send as-is on this device)`}
-                className="pointer-events-auto cursor-pointer rounded-sm bg-amber-200/70 text-transparent underline decoration-amber-600 decoration-dotted underline-offset-4 hover:bg-amber-300"
+                className="relative rounded-sm bg-amber-200/70 text-transparent underline decoration-amber-600 decoration-dotted underline-offset-4"
               >
                 {seg.text}
+                <button
+                  type="button"
+                  tabIndex={-1}
+                  // preventDefault on mousedown keeps the textarea focused
+                  // (no blur, no selection collapse) so the click lands.
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => {
+                    // Newest instruction wins: un-protect if it was on the
+                    // "always privileged" list, then allow.
+                    removeFromUserDenylist(seg.token!.raw);
+                    addToUserAllowlist(seg.token!.raw);
+                  }}
+                  title={`${seg.token.value} — mark "${seg.token.raw}" as NOT privileged (always send as-is on this device)`}
+                  aria-label={`Mark "${seg.token.raw}" as not privileged`}
+                  className="pointer-events-auto absolute -right-2 -top-2.5 flex h-4 w-4 cursor-pointer items-center justify-center rounded-full border border-amber-400 bg-amber-100 text-[10px] leading-none text-amber-800 shadow-sm hover:bg-amber-300"
+                >
+                  ×
+                </button>
               </mark>
             ) : (
               <span key={i}>{seg.text}</span>

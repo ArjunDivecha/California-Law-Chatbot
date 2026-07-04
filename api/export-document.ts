@@ -26,7 +26,7 @@ import {
 } from 'docx';
 import { jsPDF } from 'jspdf';
 import { applyResponseSecurity, headerString } from './_shared/routeSecurity.js';
-import { requireUser } from './_lib/httpGuard.js';
+import { requireUser, checkRateLimit } from './_lib/httpGuard.js';
 
 interface GeneratedSection {
   sectionId: string;
@@ -97,6 +97,13 @@ export default async function handler(
   // serve them to unauthenticated callers. requireUser writes the 401 itself.
   const userId = await requireUser(req, res);
   if (!userId) return;
+
+  // Abuse bound: per-user rate limit (same guard as the agent endpoints).
+  // Fail-open semantics preserved — a Redis blip never locks out exports.
+  const rl = await checkRateLimit(userId);
+  if (!rl.ok) {
+    return res.status(rl.status).json({ error: 'rate_limited', message: rl.message });
+  }
 
   try {
     const request: ExportDocumentRequest = req.body;

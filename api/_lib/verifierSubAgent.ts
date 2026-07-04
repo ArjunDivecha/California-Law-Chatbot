@@ -89,7 +89,8 @@ STATUTE PROTOCOL (code sections — CA codes, U.S.C., C.F.R.)
 1. Call **statute_verify** with the full citation text. It fetches the official source (leginfo for CA, Cornell LII for U.S.C., eCFR.gov for C.F.R.) and returns {outcome, exists, statute_text, source, url}.
 2. Map the tool's outcome to your status:
    - outcome="verified" → the section EXISTS. Set status \`real\` UNLESS content-match fails (next step).
-   - outcome="not_found" → the section DOES NOT EXIST at the official source. Set status \`fake\` (confidence ≥ 0.9). This is a fabricated/incorrect section number.
+   - outcome="not_found" → the section DOES NOT EXIST at the official source (search space exhausted). Set status \`fake\` (confidence ≥ 0.9). This is a fabricated/incorrect section number.
+   - outcome="unconfirmed" → the source responded but existence could not be established (e.g. more results than scanned, or a landing page without the section text). Set status \`ambiguous\` — do NOT call it fake.
    - outcome="unavailable" → the source could not be reached. Set status \`ambiguous\` — you cannot conclude.
    - outcome="unparseable" → statute_verify could not parse a cite; fall back to CASE PROTOCOL or return ambiguous.
 3. **CONTENT MATCH (when verified).** If the user's message also asserts what the statute SAYS or stands for, compare that assertion to the returned statute_text. If the statute_text clearly does NOT support the asserted proposition (e.g. the brief says "§ 187 defines burglary" but the text defines murder), set status \`fake\` and explain the mismatch in reasoning — a real section cited for a proposition it doesn't support is still a citation error. If statute_text supports or is consistent with the assertion (or no specific proposition was asserted), keep \`real\`.
@@ -107,6 +108,7 @@ CRITICAL RULES — read carefully:
    - citation_verify on the full citation text (uses CourtListener search-by-citation)
    - courtlistener_search by the CASE-NAME alone (extracts "Name v. Name" from the citation; broader recall)
    Either tool returning a matching case is sufficient evidence.
+   citation_verify statuses: 'verified' is positive evidence (the hit's own citation list bears the exact cite). 'unconfirmed' means candidates were found but the exact cite was NOT confirmed — inspect possible_match and the case-name search yourself; 'unconfirmed' alone is NOT positive evidence. 'unavailable' means the verifier errored — never treat as evidence of fabrication.
 
 3. **A match counts when**:
    - The party names in the matched record are essentially the same as the citation's party names (allow for caption variations: "Estate of X" ≈ "In re Estate of X"; "Marriage of X" ≈ "In re Marriage of X"; surname-only matches OK if uncommon).
@@ -177,26 +179,46 @@ interface ToolUseBlock {
   input: Record<string, unknown>;
 }
 
-async function dispatchVerifierTool(use: ToolUseBlock): Promise<string> {
+/**
+ * Dispatch a verifier tool call. Returns the JSON string for the model
+ * plus a `positiveEvidence` flag used by the code-level evidence gate in
+ * verifyCitationViaSubAgent (2026-07-04 review fix C4): a 'real' verdict
+ * is only accepted when at least one tool call during the run produced
+ * positive evidence, so a model that ignores the grounding instruction
+ * cannot mint 'real' from memorized (possibly hallucinated) knowledge.
+ */
+async function dispatchVerifierTool(
+  use: ToolUseBlock,
+): Promise<{ content: string; positiveEvidence: boolean }> {
   try {
     switch (use.name) {
       case 'citation_verify': {
         const r = await citationVerify(use.input as { text?: string; citations?: string[] });
-        return JSON.stringify(r);
+        return { content: JSON.stringify(r), positiveEvidence: r.verified > 0 };
       }
       case 'courtlistener_search': {
         const r = await courtlistenerSearch(use.input as { query: string });
-        return JSON.stringify(r);
+        const hits = (r as { results?: unknown[] }).results;
+        return {
+          content: JSON.stringify(r),
+          positiveEvidence: Array.isArray(hits) && hits.length > 0,
+        };
       }
       case 'statute_verify': {
         const r = await statuteVerify(use.input as { text: string });
-        return JSON.stringify(r);
+        return {
+          content: JSON.stringify(r),
+          positiveEvidence: (r as { outcome?: string }).outcome === 'verified',
+        };
       }
       default:
-        return JSON.stringify({ error: `Unknown tool: ${use.name}` });
+        return { content: JSON.stringify({ error: `Unknown tool: ${use.name}` }), positiveEvidence: false };
     }
   } catch (err) {
-    return JSON.stringify({ error: err instanceof Error ? err.message : String(err) });
+    return {
+      content: JSON.stringify({ error: err instanceof Error ? err.message : String(err) }),
+      positiveEvidence: false,
+    };
   }
 }
 
@@ -262,6 +284,7 @@ export async function verifyCitationViaSubAgent(citationText: string): Promise<V
 
   let toolRounds = 0;
   let finalText = '';
+  let sawPositiveEvidence = false;
   for (let iter = 0; iter < VERIFIER_MAX_ROUNDS; iter += 1) {
     const response = await client.messages.create({
       model: VERIFIER_MODEL,
@@ -300,7 +323,8 @@ export async function verifyCitationViaSubAgent(citationText: string): Promise<V
     messages.push({ role: 'assistant', content: blocks });
     const toolResults: Anthropic.Messages.ToolResultBlockParam[] = [];
     for (const use of toolUses) {
-      const content = await dispatchVerifierTool(use);
+      const { content, positiveEvidence } = await dispatchVerifierTool(use);
+      if (positiveEvidence) sawPositiveEvidence = true;
       toolResults.push({
         type: 'tool_result',
         tool_use_id: use.id,
@@ -315,6 +339,21 @@ export async function verifyCitationViaSubAgent(citationText: string): Promise<V
   if (verdict) {
     verdict.tool_rounds = toolRounds;
     verdict.elapsed_ms = Math.round(elapsed);
+    // Evidence gate (review fix C4): 'real' requires that at least one
+    // tool call actually returned positive evidence during THIS run.
+    // Grounding was previously prompt-dependent only — a model emitting
+    // 'real' from memory produced a green ✓ and a plausible URL with no
+    // tool hit behind it. Downgrade to ambiguous, never silently accept.
+    if (verdict.status === 'real' && !sawPositiveEvidence) {
+      return {
+        ...verdict,
+        status: 'ambiguous',
+        confidence: Math.min(verdict.confidence, 0.4),
+        reasoning:
+          `Downgraded from 'real': no tool call in this run returned positive evidence ` +
+          `(model verdict was not grounded). Manual verification required. Model reasoning: ${verdict.reasoning}`,
+      };
+    }
     return verdict;
   }
 

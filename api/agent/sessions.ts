@@ -14,34 +14,11 @@
  */
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { verifyToken } from '@clerk/backend';
 import { listSessionsForUser } from '../_lib/sessionStore.js';
+import { requireUser } from '../_lib/httpGuard.js';
+import { scrubMessage } from '../_lib/scrubError.js';
 
 import { applyResponseSecurity, headerString } from '../_shared/routeSecurity.js';
-
-async function getUserId(req: VercelRequest): Promise<string> {
-  const secretKey = process.env.CLERK_SECRET_KEY;
-  if (!secretKey) throw Object.assign(new Error('CLERK_SECRET_KEY not set'), { status: 500 });
-
-  let token: string | undefined;
-  const auth = req.headers.authorization;
-  if (auth?.startsWith('Bearer ')) {
-    token = auth.slice(7);
-  } else {
-    const cookie = req.headers.cookie ?? '';
-    const m = cookie.match(/(?:^|;\s*)__session=([^;]+)/);
-    token = m ? decodeURIComponent(m[1]) : undefined;
-  }
-  if (!token) throw Object.assign(new Error('No session token'), { status: 401 });
-
-  try {
-    const payload = await verifyToken(token, { secretKey });
-    if (!payload.sub) throw new Error('No userId in token');
-    return payload.sub;
-  } catch (err) {
-    throw Object.assign(new Error('Authentication failed'), { status: 401 });
-  }
-}
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   applyResponseSecurity(res, headerString(req.headers.origin), { methods: 'GET, OPTIONS' });
@@ -54,26 +31,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return;
   }
 
-  let userId: string;
-  try {
-    userId = await getUserId(req);
-  } catch (err) {
-    const status = (err as { status?: number }).status ?? 500;
-    res.status(status).json({
-      error: status === 401 ? 'unauthorized' : 'internal_error',
-      message: (err as Error).message,
-    });
-    return;
-  }
+  // Shared guard (same as the turn endpoints). Critical for local dev:
+  // the turn path falls back to the synthetic `dev-user` when the token
+  // can't be verified off-Vercel, so the list endpoint must resolve the
+  // SAME user id or the sidebar 401s while turns keep landing — sessions
+  // written but never listed. requireUser writes the 401 itself.
+  const userId = await requireUser(req, res);
+  if (!userId) return;
 
-  const limit = Math.min(100, Math.max(1, Number(req.query.limit ?? 50)));
+  // NaN-safe: req.query.limit can be an array (?limit=1&limit=2), and
+  // Number(['1','2']) → NaN would poison the zrange range. Parse the first
+  // value and fall back to the 50 default when it isn't a finite number.
+  const rawLimit = Array.isArray(req.query.limit) ? req.query.limit[0] : req.query.limit;
+  const parsedLimit = Number(rawLimit ?? 50);
+  const limit = Math.min(100, Math.max(1, Number.isFinite(parsedLimit) ? parsedLimit : 50));
   try {
     const sessions = await listSessionsForUser(userId, limit);
     res.status(200).json({ sessions });
   } catch (err) {
-    res.status(500).json({
-      error: 'internal_error',
-      message: (err as Error).message,
-    });
+    // Don't leak Redis/config internals to the client; log the real error.
+    console.error('[agent/sessions] internal error:', scrubMessage(err instanceof Error ? err.message : String(err)));
+    res.status(500).json({ error: 'internal_error', message: 'Internal server error' });
   }
 }

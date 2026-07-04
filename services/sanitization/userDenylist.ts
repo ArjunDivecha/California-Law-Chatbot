@@ -116,23 +116,38 @@ export function subscribeToUserDenylist(handler: () => void): () => void {
  * them as `name` spans (label 'user-denylist') so the tokenizer treats
  * them exactly like detected client names. Case-insensitive, word-
  * boundary matching so marking "Ann" privileged doesn't hit "Annual".
+ *
+ * Deliberately avoids regex lookbehind: on Safari < 16.4 the RegExp
+ * constructor throws on lookbehind, and this function runs on the WIRE
+ * path (detectPii) — a throw there would block every send for any user
+ * with a denylist entry. Boundaries are checked manually instead.
  */
+const WORDLIKE = /[A-Za-z0-9À-ÖØ-öø-ÿ]/;
+
 export function findUserDenylistSpans(text: string): Span[] {
   if (!text) return [];
   const out: Span[] = [];
+  const lowerText = text.toLowerCase();
   for (const term of readRaw()) {
-    const esc = term.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    if (!esc) continue;
-    const re = new RegExp(`(?<![A-Za-z0-9])${esc}(?![A-Za-z0-9])`, 'gi');
-    let m: RegExpExecArray | null;
-    while ((m = re.exec(text)) !== null) {
-      out.push({
-        start: m.index,
-        end: m.index + m[0].length,
-        category: 'name',
-        raw: m[0],
-        label: 'user-denylist',
-      });
+    const needle = term.trim().toLowerCase();
+    if (!needle) continue;
+    let from = 0;
+    let idx: number;
+    while ((idx = lowerText.indexOf(needle, from)) !== -1) {
+      const before = idx === 0 ? '' : text[idx - 1];
+      const after = idx + needle.length >= text.length ? '' : text[idx + needle.length];
+      const boundaryLeft = !before || !WORDLIKE.test(before);
+      const boundaryRight = !after || !WORDLIKE.test(after);
+      if (boundaryLeft && boundaryRight) {
+        out.push({
+          start: idx,
+          end: idx + needle.length,
+          category: 'name',
+          raw: text.slice(idx, idx + needle.length),
+          label: 'user-denylist',
+        });
+      }
+      from = idx + needle.length;
     }
   }
   return out;

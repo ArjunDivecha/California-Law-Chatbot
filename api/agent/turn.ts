@@ -15,6 +15,7 @@
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { runAgentProxy } from '../_lib/agentProxy.js';
+import { acquireLock, releaseLock } from '../_lib/sessionStore.js';
 import {
   handlePreflight,
   applyCors,
@@ -59,14 +60,31 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return;
   }
 
-  const result = await runAgentProxy({
-    session_id: sessionId,
-    user_text: body.user_text ?? '',
-    user_id: userId,
-    model: body.model,
-    system_prompt: body.system_prompt,
-    user_allowlist: body.user_allowlist,
-  });
+  // Single-flight lock — same guard as turn-stream (code-review fix C3):
+  // concurrent turns interleave Redis appends and corrupt tool_use/
+  // tool_result pairing. TTL auto-expiry prevents a wedged session.
+  const locked = await acquireLock(sessionId);
+  if (!locked) {
+    res.status(409).json({
+      error: 'turn_in_flight',
+      message: 'A turn is already running on this session. Wait for it to finish and try again.',
+    });
+    return;
+  }
+
+  let result;
+  try {
+    result = await runAgentProxy({
+      session_id: sessionId,
+      user_text: body.user_text ?? '',
+      user_id: userId,
+      model: body.model,
+      system_prompt: body.system_prompt,
+      user_allowlist: body.user_allowlist,
+    });
+  } finally {
+    await releaseLock(sessionId).catch(() => {});
+  }
 
   if (result.ok === false) {
     res.status(result.status_code).json({ error: result.error });

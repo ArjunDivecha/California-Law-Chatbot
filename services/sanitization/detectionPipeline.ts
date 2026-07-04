@@ -107,6 +107,19 @@ function mergeSpans(spans: Span[]): Span[] {
       out.push(s);
       continue;
     }
+    // Attorney-explicit denylist spans win every overlap (2026-07-04
+    // review fix C6). Without this, an OPF span covering the same term
+    // survives the merge with its OPF label, and the bare-place filter
+    // downstream (which exempts only label === 'user-denylist') then
+    // drops it — silently un-redacting a term the attorney explicitly
+    // protected (e.g. "Fresno" marked always-privileged).
+    const lastIsDeny = last.label === 'user-denylist';
+    const sIsDeny = s.label === 'user-denylist';
+    if (lastIsDeny && !sIsDeny) continue;
+    if (!lastIsDeny && sIsDeny) {
+      out[out.length - 1] = s;
+      continue;
+    }
     const lastIsName = last.category === 'name';
     const sIsName = s.category === 'name';
     if (lastIsName && !sIsName) {

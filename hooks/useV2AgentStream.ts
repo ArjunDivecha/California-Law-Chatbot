@@ -22,7 +22,7 @@
  * splits on `\n\n` to find complete events.
  */
 
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from '@clerk/clerk-react';
 import {
   getChatSanitizer,
@@ -146,6 +146,12 @@ export function useV2AgentStream() {
     abortRef.current = null;
     setState((s) => ({ ...s, isStreaming: false }));
   }, []);
+
+  // Abort any in-flight stream on unmount (2026-07-04 review fix).
+  // Without this, navigating away left a detached reader loop running —
+  // the server kept burning a full multi-round turn and setState fired
+  // on an unmounted component.
+  useEffect(() => () => { abortRef.current?.abort(); }, []);
 
   const send = useCallback(async (opts: SendOpts): Promise<void> => {
     // Reset to fresh turn state, but keep the user message ownership

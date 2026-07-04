@@ -16,38 +16,41 @@
  * =============================================================================
  */
 import { securityHeaders } from '../_lib/compliance/securityHeaders.js';
+import { allowedOrigins, resolveAllowedOrigin } from '../_lib/httpGuard.js';
 
 /** Minimal response surface we need (compatible with VercelResponse). */
 export interface MinimalRes {
   setHeader(name: string, value: string): void;
 }
 
-/** Allowed browser origins. Prod origins + localhost dev + APP_ORIGIN env. */
+/**
+ * Allowed browser origins — delegates to the SINGLE source of truth in
+ * httpGuard.ts (built-in defaults + V2_ALLOWED_ORIGINS + APP_ORIGIN env).
+ * This route family and the /api/agent/* family previously carried two
+ * independent allow-lists that drifted apart; they now converge here.
+ */
 export function defaultAllowedOrigins(): string[] {
-  const list = [
-    'http://localhost:5173',
-    'http://127.0.0.1:5173',
-    'https://california-law-chatbot.vercel.app',
-    'https://california-law-chatbot-v2.vercel.app',
-    'https://chat.femmeandfemmelaw.com',
-  ];
-  // APP_ORIGIN supports a single origin or a comma-separated list.
-  const env = process.env.APP_ORIGIN;
-  if (env) list.push(...env.split(',').map((s) => s.trim()).filter(Boolean));
-  return list;
+  return allowedOrigins();
 }
 
 /**
  * The origin to echo back, or null. Pure: a missing Origin (same-origin /
  * non-CORS request) ⇒ null (no ACAO needed); an allowlisted origin ⇒ itself;
  * anything else ⇒ null (browser blocks the cross-origin call). Never '*'.
+ *
+ * Origin resolution is delegated to httpGuard.resolveAllowedOrigin so there
+ * is exactly one allow-list across the codebase. An explicit `allowed` list
+ * (rare; no current caller passes one) still overrides for local scoping.
  */
 export function resolveCorsOrigin(
   requestOrigin: string | undefined,
-  allowed: string[] = defaultAllowedOrigins(),
+  allowed?: string[],
 ): string | null {
-  if (!requestOrigin) return null;
-  return allowed.includes(requestOrigin) ? requestOrigin : null;
+  if (allowed) {
+    if (!requestOrigin) return null;
+    return allowed.includes(requestOrigin) ? requestOrigin : null;
+  }
+  return resolveAllowedOrigin(requestOrigin);
 }
 
 export interface ResponseSecurityOptions {

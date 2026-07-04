@@ -8,6 +8,17 @@
 
 import { fetchWithTimeout } from './_http.js';
 
+/**
+ * Coerce a possibly-string / NaN tool input to a clamped integer. Tool inputs
+ * arrive from the model as loosely-typed JSON — a `limit` may show up as "5"
+ * (string) or garbage. Falls back to `def` on anything non-finite.
+ */
+function clampInt(value: unknown, def: number, min: number, max: number): number {
+  const n = typeof value === 'string' ? parseInt(value, 10) : typeof value === 'number' ? value : NaN;
+  if (!Number.isFinite(n)) return def;
+  return Math.min(max, Math.max(min, Math.trunc(n)));
+}
+
 export interface OpenStatesSearchInput {
   /** Free-text query — bill keywords or identifier. Required. */
   query: string;
@@ -66,7 +77,7 @@ export async function openstatesSearch(
   if (!apiKey) throw new Error('openstatesSearch: OPENSTATES_API_KEY not configured');
 
   const jurisdiction = (input.jurisdiction ?? 'ca').toLowerCase();
-  const limit = Math.min(MAX_LIMIT, Math.max(1, input.limit ?? DEFAULT_LIMIT));
+  const limit = clampInt(input.limit, DEFAULT_LIMIT, 1, MAX_LIMIT);
 
   const url = new URL(BASE_URL);
   url.searchParams.set('jurisdiction', jurisdiction);

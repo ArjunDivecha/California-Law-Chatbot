@@ -26,7 +26,18 @@ export interface CitationVerification {
   text: string;
   type: 'case' | 'statute' | 'unknown';
   is_valid_format: boolean;
-  status: 'verified' | 'unverified' | 'not_found';
+  /**
+   * 'verified'    — a CourtListener hit's own citation list contains the
+   *                 queried volume/reporter/page (evidence-checked).
+   * 'unconfirmed' — search returned candidates but none could be
+   *                 confirmed to bear this exact cite. NOT evidence of
+   *                 fabrication; also NOT license to cite as verified.
+   * 'not_found'   — well-formed cite, zero search hits.
+   * 'unverified'  — malformed citation, not checked.
+   * 'unavailable' — CourtListener errored/rate-limited; verification
+   *                 could not run. Never interpret as fabricated.
+   */
+  status: 'verified' | 'unconfirmed' | 'unverified' | 'not_found' | 'unavailable';
   courtlistener_match?: {
     cluster_id: string;
     url: string;
@@ -34,22 +45,29 @@ export interface CitationVerification {
     court?: string;
     date_filed?: string;
   };
+  /** Top search hit when status='unconfirmed' — a lead, not a match. */
+  possible_match?: CitationVerification['courtlistener_match'];
 }
 
 export interface CitationVerifyResult {
   citations: CitationVerification[];
   total_found: number;
   verified: number;
+  unconfirmed: number;
   unverified: number;
   not_found: number;
+  unavailable: number;
   elapsed_ms: number;
 }
 
 // California + federal reporter patterns — same as V1.
 const CASE_CITATION_PATTERNS: RegExp[] = [
+  /(\d+)\s+(Cal\.?\s*Rptr\.?\s*(?:2d|3d)?)\s+(\d+)/gi,
   /(\d+)\s+(Cal\.?\s*(?:App\.?)?\s*(?:2d|3d|4th|5th)?)\s+(\d+)/gi,
   /(\d+)\s+(F\.?\s*(?:Supp\.?)?\s*(?:2d|3d)?)\s+(\d+)/gi,
+  /(\d+)\s+(P\.?\s*(?:2d|3d))\s+(\d+)/gi,
   /(\d+)\s+(U\.?S\.?)\s+(\d+)/gi,
+  /(\d+)\s+(S\.?\s*Ct\.?)\s+(\d+)/gi,
   /(\d{4})\s+(WL|Cal\.?\s*(?:App\.?)?\s*LEXIS)\s+(\d+)/gi,
 ];
 
@@ -67,7 +85,7 @@ const PARTY_NAME = String.raw`[A-Z][\w'.&\-]*(?:\s+(?:[A-Z][\w'.&\-]*|of|the|and
 // Note we explicitly enumerate the period-bearing forms instead of using
 // a generic [^,;.\n]+ — that earlier pattern choked on multi-period
 // reporters like "Cal.App.5th".
-const REPORTER = String.raw`\d+\s+(?:Cal\.?\s*(?:App\.?)?\s*(?:2d|3d|4th|5th)?|F\.?\s*(?:Supp\.?)?\s*(?:2d|3d)?|U\.?S\.?)\s+\d+`;
+const REPORTER = String.raw`\d+\s+(?:Cal\.?\s*Rptr\.?\s*(?:2d|3d)?|Cal\.?\s*(?:App\.?)?\s*(?:2d|3d|4th|5th)?|F\.?\s*(?:Supp\.?)?\s*(?:2d|3d)?|P\.?\s*(?:2d|3d)|U\.?S\.?|S\.?\s*Ct\.?)\s+\d+`;
 
 export function extractCitations(text: string): Array<{ text: string; type: 'case' | 'statute' | 'unknown' }> {
   const seen = new Set<string>();
@@ -112,8 +130,64 @@ export function extractCitations(text: string): Array<{ text: string; type: 'cas
   return out;
 }
 
+/**
+ * A citation is well-formed only when it contains an actual reporter
+ * cite (volume + reporter + page) or a WL/LEXIS docket form. The old
+ * check (`has a digit` + `mentions Cal/F./U.S. anywhere`) passed
+ * strings like "5 California Street" straight into the verifier.
+ */
 function isValidCitationFormat(c: string): boolean {
-  return /\d+/.test(c) && /Cal|F\.|U\.?S\.|WL|LEXIS/i.test(c);
+  const reporterRe = new RegExp(REPORTER, 'i');
+  const wlRe = /\b\d{4}\s+(?:WL|Cal\.?\s*(?:App\.?)?\s*LEXIS)\s+\d+\b/i;
+  return reporterRe.test(c) || wlRe.test(c);
+}
+
+/**
+ * Parse the volume/reporter/page components out of a citation string so
+ * a search hit can be checked for the EXACT cite rather than trusted on
+ * relevance rank. Returns null when no reporter cite is present.
+ */
+export function parseReporterCite(
+  c: string,
+): { volume: string; reporter: string; page: string } | null {
+  const m = new RegExp(`(\\d+)\\s+(Cal\\.?\\s*Rptr\\.?\\s*(?:2d|3d)?|Cal\\.?\\s*(?:App\\.?)?\\s*(?:2d|3d|4th|5th)?|F\\.?\\s*(?:Supp\\.?)?\\s*(?:2d|3d)?|P\\.?\\s*(?:2d|3d)|U\\.?S\\.?|S\\.?\\s*Ct\\.?)\\s+(\\d+)`, 'i').exec(c);
+  if (!m) return null;
+  return { volume: m[1], reporter: m[2], page: m[3] };
+}
+
+/** Normalize a reporter string for comparison: lowercase, strip dots/spaces. */
+function normReporter(r: string): string {
+  return r.toLowerCase().replace(/[.\s]/g, '');
+}
+
+/**
+ * True when one of the hit's own citation strings bears the queried
+ * volume/reporter/page. This is the evidence gate: without it, the top
+ * relevance hit for a hallucinated cite was stamped 'verified'.
+ */
+function hitBearsCite(
+  hit: CLHit,
+  cite: { volume: string; reporter: string; page: string },
+): boolean {
+  const hitCites: string[] = [];
+  const c = (hit as { citation?: unknown }).citation;
+  if (Array.isArray(c)) {
+    for (const x of c) if (typeof x === 'string') hitCites.push(x);
+  } else if (typeof c === 'string') {
+    hitCites.push(c);
+  }
+  for (const hc of hitCites) {
+    const parsed = parseReporterCite(hc);
+    if (!parsed) continue;
+    if (
+      parsed.volume === cite.volume &&
+      parsed.page === cite.page &&
+      normReporter(parsed.reporter) === normReporter(cite.reporter)
+    ) {
+      return true;
+    }
+  }
+  return false;
 }
 
 interface CLHit {
@@ -152,7 +226,13 @@ async function clSearch(
   };
   if (apiKey) headers['Authorization'] = `Token ${apiKey}`;
   const resp = await fetchWithTimeout(url, { headers });
-  if (!resp.ok) return [];
+  if (!resp.ok) {
+    // Throw rather than return [] (2026-07-04 review fix C4): an empty
+    // return here used to flow through as status 'not_found' ("likely
+    // fabricated"), so a CourtListener 429 burst made REAL citations
+    // read as fake and the model dropped valid authority.
+    throw new Error(`CourtListener search http ${resp.status}`);
+  }
   const data = (await resp.json().catch(() => ({}))) as { results?: CLHit[] };
   return data.results ?? [];
 }
@@ -175,10 +255,29 @@ async function clSearch(
 async function verifyOne(
   citation: string,
   apiKey: string | undefined,
-): Promise<CitationVerification['courtlistener_match'] | null> {
-  const hits = await clSearch(citation, apiKey);
-  if (hits.length === 0) return null;
-  return hitToMatch(hits[0]);
+): Promise<Pick<CitationVerification, 'status' | 'courtlistener_match' | 'possible_match'>> {
+  let hits: CLHit[];
+  try {
+    hits = await clSearch(citation, apiKey);
+  } catch {
+    return { status: 'unavailable' };
+  }
+  if (hits.length === 0) return { status: 'not_found' };
+
+  // Evidence gate (2026-07-04 review fix C4): only stamp 'verified' when
+  // a hit's own citation list bears the queried volume/reporter/page.
+  // Previously hits[0] (top relevance hit) was returned as 'verified'
+  // unconditionally — a hallucinated cite whose text matched an
+  // unrelated opinion shipped with a real-looking URL and a green badge.
+  const cite = parseReporterCite(citation);
+  if (cite) {
+    const exact = hits.find((h) => hitBearsCite(h, cite));
+    if (exact) return { status: 'verified', courtlistener_match: hitToMatch(exact) };
+    return { status: 'unconfirmed', possible_match: hitToMatch(hits[0]) };
+  }
+  // No parseable reporter components (WL/LEXIS forms): search found
+  // candidates but exactness cannot be established — unconfirmed.
+  return { status: 'unconfirmed', possible_match: hitToMatch(hits[0]) };
 }
 
 export async function citationVerify(input: CitationVerifyInput): Promise<CitationVerifyResult> {
@@ -197,8 +296,10 @@ export async function citationVerify(input: CitationVerifyInput): Promise<Citati
       citations: [],
       total_found: 0,
       verified: 0,
+      unconfirmed: 0,
       unverified: 0,
       not_found: 0,
+      unavailable: 0,
       elapsed_ms: performance.now() - t0,
     };
   }
@@ -209,15 +310,16 @@ export async function citationVerify(input: CitationVerifyInput): Promise<Citati
       await new Promise((r) => setTimeout(r, i * 100));
       const isValid = isValidCitationFormat(c.text);
       if (!isValid) {
-        return { text: c.text, type: c.type, is_valid_format: false, status: 'unverified' };
+        return { text: c.text, type: c.type, is_valid_format: false, status: 'unverified' as const };
       }
-      const match = await verifyOne(c.text, apiKey).catch(() => null);
+      const verdict = await verifyOne(c.text, apiKey).catch(
+        () => ({ status: 'unavailable' as const }),
+      );
       return {
         text: c.text,
         type: c.type,
         is_valid_format: true,
-        courtlistener_match: match ?? undefined,
-        status: match ? 'verified' : 'not_found',
+        ...verdict,
       };
     }),
   );
@@ -226,8 +328,10 @@ export async function citationVerify(input: CitationVerifyInput): Promise<Citati
     citations: verifications,
     total_found: verifications.length,
     verified: verifications.filter((v) => v.status === 'verified').length,
+    unconfirmed: verifications.filter((v) => v.status === 'unconfirmed').length,
     unverified: verifications.filter((v) => v.status === 'unverified').length,
     not_found: verifications.filter((v) => v.status === 'not_found').length,
+    unavailable: verifications.filter((v) => v.status === 'unavailable').length,
     elapsed_ms: performance.now() - t0,
   };
 }
@@ -235,7 +339,7 @@ export async function citationVerify(input: CitationVerifyInput): Promise<Citati
 export const CITATION_VERIFY_TOOL_DEFINITION = {
   name: 'citation_verify',
   description:
-    "Verify legal citations against CourtListener. Pass either a passage of text (citations are extracted automatically) or an explicit list of citations. Returns per-citation status: 'verified' (found on CourtListener), 'not_found' (well-formed but no match), or 'unverified' (malformed). Use this tool before finalizing any drafted document that contains case citations. Do not assert a case exists unless this tool returns 'verified'.",
+    "Verify legal citations against CourtListener. Pass either a passage of text (citations are extracted automatically) or an explicit list of citations. Per-citation status: 'verified' (a CourtListener opinion's own citation list bears this exact volume/reporter/page — safe to cite), 'unconfirmed' (candidates found but the exact cite could not be confirmed — treat as UNRELIABLE: do not present it as verified, and do not claim it is fabricated), 'not_found' (well-formed but zero hits — likely fabricated), 'unverified' (malformed), 'unavailable' (verifier errored/rate-limited — verification did not run; NEVER treat as evidence the case is fake). Use this tool before finalizing any drafted output containing case citations. Do not assert a case exists unless status is 'verified'.",
   input_schema: {
     type: 'object',
     properties: {

@@ -538,9 +538,102 @@ async function registerSessionForUser(
   }
 }
 
+/**
+ * History window sent to the model per call. Bounded because the full
+ * session history (including complete CourtListener/statute tool_result
+ * payloads) was previously resent on EVERY iteration of EVERY turn —
+ * unbounded context growth that eventually exceeds the model window and
+ * grows per-turn cost quadratically. Override via V2_HISTORY_WINDOW.
+ */
+const DEFAULT_HISTORY_WINDOW = 40;
+
+function historyWindowSize(): number {
+  const n = Number(process.env.V2_HISTORY_WINDOW ?? DEFAULT_HISTORY_WINDOW);
+  return Number.isFinite(n) && n >= 4 ? Math.floor(n) : DEFAULT_HISTORY_WINDOW;
+}
+
+type AnyBlock = { type?: string; id?: string; tool_use_id?: string; [k: string]: unknown };
+
+function blocksOf(content: unknown): AnyBlock[] | null {
+  return Array.isArray(content) ? (content as AnyBlock[]) : null;
+}
+
+/**
+ * Repair + window the persisted history before it goes to the API.
+ *
+ * REPAIR (2026-07-04 code-review fix C3): the loop persists the
+ * assistant message containing tool_use blocks BEFORE dispatching tools
+ * and persists the matching tool_result message after. A crash, Redis
+ * blip, or Vercel hard-kill between the two leaves an orphaned tool_use
+ * in the stored history — and the Anthropic API rejects any request
+ * whose history contains a tool_use with no matching tool_result, which
+ * previously bricked the session PERMANENTLY (every later turn 400s).
+ * This pass strips unpaired tool_use blocks (and, symmetrically,
+ * unpaired tool_result blocks) so one interrupted turn costs one turn,
+ * not the whole session.
+ *
+ * WINDOW: keep only the most recent `historyWindowSize()` messages,
+ * advancing the cut so the window never begins with a dangling
+ * tool_result message. Repair runs AFTER the slice so pairs broken by
+ * the cut are also healed.
+ */
+export function repairAndWindowHistory(history: SessionMessage[]): SessionMessage[] {
+  // ── Window ──
+  const cap = historyWindowSize();
+  let windowed = history.length > cap ? history.slice(history.length - cap) : [...history];
+
+  // ── Repair pass ──
+  const out: SessionMessage[] = [];
+  for (let i = 0; i < windowed.length; i += 1) {
+    const msg = windowed[i];
+    const blocks = blocksOf(msg.content);
+
+    if (msg.role === 'assistant' && blocks?.some((b) => b.type === 'tool_use')) {
+      const nextBlocks = blocksOf(windowed[i + 1]?.content);
+      const resultIds = new Set(
+        (nextBlocks ?? [])
+          .filter((b) => b.type === 'tool_result')
+          .map((b) => b.tool_use_id),
+      );
+      const unpaired = blocks.filter((b) => b.type === 'tool_use' && !resultIds.has(b.id));
+      if (unpaired.length > 0) {
+        const kept = blocks.filter((b) => b.type !== 'tool_use' || resultIds.has(b.id));
+        // Drop thinking blocks too when stripping tool_use — a thinking
+        // block without its tool_use sibling is equally rejected.
+        const keptSafe = kept.filter((b) => b.type !== 'thinking' && b.type !== 'redacted_thinking');
+        if (keptSafe.some((b) => b.type === 'text' || b.type === 'tool_use')) {
+          out.push({ ...msg, content: keptSafe });
+        }
+        // else: message had only orphaned tool_use/thinking — drop it.
+        continue;
+      }
+    }
+
+    if (msg.role === 'user' && blocks?.some((b) => b.type === 'tool_result')) {
+      const prevBlocks = blocksOf(out[out.length - 1]?.content);
+      const useIds = new Set(
+        (prevBlocks ?? []).filter((b) => b.type === 'tool_use').map((b) => b.id),
+      );
+      const kept = blocks.filter(
+        (b) => b.type !== 'tool_result' || useIds.has(b.tool_use_id),
+      );
+      if (kept.length !== blocks.length) {
+        if (kept.length > 0) out.push({ ...msg, content: kept });
+        continue;
+      }
+    }
+
+    out.push(msg);
+  }
+
+  // The API requires the conversation to start with a user message.
+  while (out.length > 0 && out[0].role !== 'user') out.shift();
+  return out;
+}
+
 /** Coerce SessionMessage[] into Anthropic's MessageParam[] shape. */
 function toAnthropicMessages(history: SessionMessage[]): Anthropic.Messages.MessageParam[] {
-  return history.map(
+  return repairAndWindowHistory(history).map(
     (m) => ({ role: m.role, content: m.content }) as Anthropic.Messages.MessageParam,
   );
 }

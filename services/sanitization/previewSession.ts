@@ -203,7 +203,14 @@ export function computePreview(
     const key = assignmentKey(s.category, s.raw);
     if (state.suppressed.has(key)) continue;
     // Drop terms the attorney marked "not private" (per-device allowlist).
-    if (userAllowLower && userAllowLower.has(s.raw.trim().toLowerCase())) continue;
+    // Denylist spans are exempt — mirrors the wire path, where explicit
+    // "always privileged" outranks the allowlist (the stores cross-cancel,
+    // but a race between tabs could briefly have a term in both).
+    if (
+      s.label !== 'user-denylist' &&
+      userAllowLower &&
+      userAllowLower.has(s.raw.trim().toLowerCase())
+    ) continue;
     combined.push(s);
   }
   for (const m of state.manual) {

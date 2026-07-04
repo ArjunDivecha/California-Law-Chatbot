@@ -23,8 +23,10 @@
  *
  * INPUT FILES:  none read from disk here. Uploaded files are read in-browser
  *               via extractTextFromFile().
- * OUTPUT FILES: exports generated server-side by /api/export-document and
- *               downloaded by the browser; nothing written locally here.
+ * OUTPUT FILES: DOCX / PDF / HTML exports are generated ENTIRELY IN THE BROWSER
+ *               (docx + jspdf packages) and downloaded directly. The raw
+ *               rehydrated document text never leaves the device — there is no
+ *               server POST for export (parity with the Drafting Magic export).
  * =============================================================================
  */
 
@@ -795,54 +797,181 @@ const InstructionWithHighlight: React.FC<{ text: string }> = ({ text }) => {
 };
 
 // ---------------------------------------------------------------------------
-// Export — POST the current document to /api/export-document as a single
-// section and download the result.
+// Export — generate the file ENTIRELY IN THE BROWSER and download it. The raw
+// (rehydrated) document text NEVER leaves the device: DOCX is built with the
+// `docx` package, PDF with `jspdf`, HTML as a self-contained string. This
+// preserves the same "raw client text never leaves the device" invariant that
+// the Drafting Magic export (downloadDraftPackageDocx) holds — no server POST.
+// Any failure surfaces to the attorney via onError instead of failing silently.
 // ---------------------------------------------------------------------------
+
+/** Escape a string for safe inclusion in HTML text content. */
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+/** Split markdown-ish text into blocks: headings (leading #) and paragraphs. */
+function parseBlocks(text: string): Array<{ kind: 'heading' | 'paragraph'; level: number; text: string }> {
+  return text
+    .split(/\n{2,}/)
+    .map((raw) => raw.replace(/\s+$/g, ''))
+    .filter((b) => b.trim().length > 0)
+    .map((block) => {
+      const h = block.match(/^(#{1,6})\s+(.*)$/s);
+      if (h) return { kind: 'heading' as const, level: h[1].length, text: h[2].trim() };
+      return { kind: 'paragraph' as const, level: 0, text: block };
+    });
+}
+
+async function exportDocx(documentText: string): Promise<void> {
+  const docx = await import('docx');
+  const { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } = docx;
+  const HEADINGS = [
+    HeadingLevel.HEADING_1,
+    HeadingLevel.HEADING_2,
+    HeadingLevel.HEADING_3,
+    HeadingLevel.HEADING_4,
+    HeadingLevel.HEADING_5,
+    HeadingLevel.HEADING_6,
+  ];
+  const children: InstanceType<typeof Paragraph>[] = [
+    new Paragraph({
+      text: 'Document',
+      heading: HeadingLevel.TITLE,
+      alignment: AlignmentType.CENTER,
+      spacing: { after: 240 },
+    }),
+  ];
+  for (const b of parseBlocks(documentText)) {
+    if (b.kind === 'heading') {
+      children.push(
+        new Paragraph({ text: b.text, heading: HEADINGS[Math.min(b.level, 6) - 1], spacing: { before: 220, after: 100 } }),
+      );
+    } else {
+      // Preserve single line breaks inside a paragraph.
+      const lines = b.text.split(/\n/);
+      const runs: InstanceType<typeof TextRun>[] = [];
+      lines.forEach((line, i) => {
+        runs.push(new TextRun({ text: line, size: 24, break: i > 0 ? 1 : 0 }));
+      });
+      children.push(new Paragraph({ spacing: { after: 160 }, children: runs }));
+    }
+  }
+  const doc = new Document({
+    title: 'Document',
+    description: 'Browser-side export of the edited document. Generated locally; not sent to any server.',
+    sections: [{ properties: {}, children }],
+  });
+  const blob = await Packer.toBlob(doc);
+  downloadClientBlob(blob, `document-${Date.now()}.docx`);
+}
+
+async function exportPdf(documentText: string): Promise<void> {
+  const { jsPDF } = await import('jspdf');
+  const doc = new jsPDF({ unit: 'pt', format: 'letter' });
+  const margin = 72; // 1 inch
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const maxWidth = pageWidth - margin * 2;
+  let y = margin;
+
+  const ensureSpace = (lineHeight: number) => {
+    if (y + lineHeight > pageHeight - margin) {
+      doc.addPage();
+      y = margin;
+    }
+  };
+
+  // Title
+  doc.setFont('times', 'bold');
+  doc.setFontSize(16);
+  ensureSpace(22);
+  doc.text('Document', pageWidth / 2, y, { align: 'center' });
+  y += 28;
+
+  for (const b of parseBlocks(documentText)) {
+    if (b.kind === 'heading') {
+      doc.setFont('times', 'bold');
+      doc.setFontSize(b.level <= 1 ? 14 : 12);
+      const lines = doc.splitTextToSize(b.text, maxWidth) as string[];
+      y += 8;
+      for (const line of lines) {
+        ensureSpace(18);
+        doc.text(line, margin, y);
+        y += 18;
+      }
+      y += 2;
+    } else {
+      doc.setFont('times', 'normal');
+      doc.setFontSize(12);
+      const lines = doc.splitTextToSize(b.text.replace(/\n/g, ' \n'), maxWidth) as string[];
+      for (const line of lines) {
+        ensureSpace(16);
+        doc.text(line, margin, y);
+        y += 16;
+      }
+      y += 8;
+    }
+  }
+  const blob = doc.output('blob');
+  downloadClientBlob(blob, `document-${Date.now()}.pdf`);
+}
+
+function exportHtml(documentText: string): void {
+  const body = parseBlocks(documentText)
+    .map((b) =>
+      b.kind === 'heading'
+        ? `<h${Math.min(b.level, 6)}>${escapeHtml(b.text)}</h${Math.min(b.level, 6)}>`
+        : `<p>${escapeHtml(b.text).replace(/\n/g, '<br>')}</p>`,
+    )
+    .join('\n');
+  const html = `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Document</title>
+<style>
+  body { font-family: "Times New Roman", Georgia, serif; max-width: 8.5in; margin: 1in auto; color: #111; line-height: 1.5; }
+  h1 { text-align: center; }
+</style>
+</head>
+<body>
+<h1>Document</h1>
+${body}
+</body>
+</html>`;
+  const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+  downloadClientBlob(blob, `document-${Date.now()}.html`);
+}
+
+function downloadClientBlob(blob: Blob, filename: string): void {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
 const ExportButtons: React.FC<{ documentText: string; disabled?: boolean }> = ({ documentText, disabled }) => {
   const [busy, setBusy] = useState<null | 'docx' | 'pdf' | 'html'>(null);
+  const [error, setError] = useState<string | null>(null);
   const onExport = useCallback(
     async (format: 'docx' | 'pdf' | 'html') => {
       setBusy(format);
+      setError(null);
       try {
-        const doc = {
-          id: `v2_doc_${Date.now()}`,
-          templateId: 'edited_document',
-          templateName: 'Document',
-          createdAt: new Date().toISOString(),
-          sections: [
-            {
-              sectionId: 'body',
-              sectionName: 'Document',
-              content: documentText,
-              wordCount: documentText.split(/\s+/).length,
-              citations: [],
-              generatedAt: new Date().toISOString(),
-              revisionCount: 0,
-            },
-          ],
-          formatting: {
-            fontFamily: 'Times New Roman',
-            fontSize: 12,
-            lineSpacing: 'single',
-            margins: { top: 1, bottom: 1, left: 1, right: 1 },
-            pageNumbers: false,
-          },
-        };
-        const resp = await fetch('/api/export-document', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ document: doc, format }),
-        });
-        if (!resp.ok) return;
-        const blob = await resp.blob();
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `document-${Date.now()}.${format}`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+        if (format === 'docx') await exportDocx(documentText);
+        else if (format === 'pdf') await exportPdf(documentText);
+        else exportHtml(documentText);
+      } catch (err) {
+        // FAIL IS FAIL — surface the real error, never a silent no-op.
+        setError(`${format.toUpperCase()} export failed: ${(err as Error).message}`);
       } finally {
         setBusy(null);
       }
@@ -850,18 +979,25 @@ const ExportButtons: React.FC<{ documentText: string; disabled?: boolean }> = ({
     [documentText],
   );
   return (
-    <div className="flex items-center gap-1.5">
-      {(['docx', 'pdf', 'html'] as const).map((fmt) => (
-        <button
-          key={fmt}
-          type="button"
-          onClick={() => onExport(fmt)}
-          disabled={disabled || busy !== null}
-          className="rounded-full bg-pink-500 hover:bg-pink-600 disabled:bg-gray-300 text-white text-[11px] font-semibold px-2.5 py-1"
-        >
-          {busy === fmt ? '…' : fmt.toUpperCase()}
-        </button>
-      ))}
+    <div className="flex flex-col items-end gap-1">
+      <div className="flex items-center gap-1.5">
+        {(['docx', 'pdf', 'html'] as const).map((fmt) => (
+          <button
+            key={fmt}
+            type="button"
+            onClick={() => onExport(fmt)}
+            disabled={disabled || busy !== null}
+            className="rounded-full bg-pink-500 hover:bg-pink-600 disabled:bg-gray-300 text-white text-[11px] font-semibold px-2.5 py-1"
+          >
+            {busy === fmt ? '…' : fmt.toUpperCase()}
+          </button>
+        ))}
+      </div>
+      {error && (
+        <span role="alert" className="text-[10px] text-red-600 max-w-[240px] text-right">
+          {error}
+        </span>
+      )}
     </div>
   );
 };

@@ -203,6 +203,28 @@ export interface ToolResultBlock {
 }
 
 /**
+ * Validate that a required text field on a tool input is a non-empty string.
+ * The model supplies tool inputs as loosely-typed JSON; a `query`/`text` may
+ * arrive as a number, object, null, or empty string. Rather than let that reach
+ * a handler (where `.trim()` throws an opaque TypeError), reject it up front
+ * with a clear is_error tool_result. Returns null when the field is valid.
+ */
+function requireStringField(use: ToolUseBlock, field: string): ToolResultBlock | null {
+  const v = (use.input as Record<string, unknown>)[field];
+  if (typeof v !== 'string' || v.trim() === '') {
+    return {
+      type: 'tool_result',
+      tool_use_id: use.id,
+      content: `Tool ${use.name} requires a non-empty string "${field}". Received: ${
+        v === undefined ? 'undefined' : JSON.stringify(v)?.slice(0, 100)
+      }.`,
+      is_error: true,
+    };
+  }
+  return null;
+}
+
+/**
  * Dispatch one tool_use block to its in-process handler. Anthropic's
  * server-side tools (web_search) never reach this function — they're
  * resolved server-side and arrive as content blocks the model
@@ -215,6 +237,8 @@ export async function dispatchTool(use: ToolUseBlock): Promise<ToolResultBlock> 
   try {
     switch (use.name) {
       case 'courtlistener_search': {
+        const bad = requireStringField(use, 'query');
+        if (bad) return bad;
         const result = await courtlistenerSearch(
           use.input as unknown as CourtListenerSearchInput,
         );
@@ -225,6 +249,8 @@ export async function dispatchTool(use: ToolUseBlock): Promise<ToolResultBlock> 
         };
       }
       case 'legiscan_search': {
+        const bad = requireStringField(use, 'query');
+        if (bad) return bad;
         const result = await legiscanSearch(
           use.input as unknown as LegiscanSearchInput,
         );
@@ -235,6 +261,8 @@ export async function dispatchTool(use: ToolUseBlock): Promise<ToolResultBlock> 
         };
       }
       case 'openstates_search': {
+        const bad = requireStringField(use, 'query');
+        if (bad) return bad;
         const result = await openstatesSearch(
           use.input as unknown as OpenStatesSearchInput,
         );
@@ -255,6 +283,8 @@ export async function dispatchTool(use: ToolUseBlock): Promise<ToolResultBlock> 
         };
       }
       case 'california_code_lookup': {
+        const bad = requireStringField(use, 'text');
+        if (bad) return bad;
         const result = await californiaCodeLookup(
           use.input as unknown as CaCodeLookupInput,
         );
@@ -265,6 +295,8 @@ export async function dispatchTool(use: ToolUseBlock): Promise<ToolResultBlock> 
         };
       }
       case 'statute_verify': {
+        const bad = requireStringField(use, 'text');
+        if (bad) return bad;
         const result = await statuteVerify(
           use.input as unknown as StatuteVerifyInput,
         );

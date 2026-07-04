@@ -9,6 +9,17 @@
 
 import { fetchWithTimeout } from './_http.js';
 
+/**
+ * Coerce a possibly-string / NaN tool input to a clamped integer. Tool inputs
+ * arrive from the model as loosely-typed JSON — a `limit` may show up as "5"
+ * (string) or garbage. Falls back to `def` on anything non-finite.
+ */
+function clampInt(value: unknown, def: number, min: number, max: number): number {
+  const n = typeof value === 'string' ? parseInt(value, 10) : typeof value === 'number' ? value : NaN;
+  if (!Number.isFinite(n)) return def;
+  return Math.min(max, Math.max(min, Math.trunc(n)));
+}
+
 export interface LegiscanSearchInput {
   /** Free-text query (e.g., "tenant relocation Oakland", "AB 1482"). Required. */
   query: string;
@@ -62,7 +73,7 @@ export async function legiscanSearch(
   if (!apiKey) throw new Error('legiscanSearch: LEGISCAN_API_KEY not configured');
 
   const state = (input.state ?? 'CA').toUpperCase();
-  const limit = Math.min(MAX_LIMIT, Math.max(1, input.limit ?? DEFAULT_LIMIT));
+  const limit = clampInt(input.limit, DEFAULT_LIMIT, 1, MAX_LIMIT);
   const url = `https://api.legiscan.com/?key=${encodeURIComponent(apiKey)}&op=search&state=${encodeURIComponent(state)}&query=${encodeURIComponent(q)}`;
 
   const t0 = performance.now();

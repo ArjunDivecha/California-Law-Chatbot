@@ -24,6 +24,7 @@ import {
 } from '../../api/_shared/sanitization/tokenize.js';
 import type { SanitizationStore } from '../../api/_shared/sanitization/store.js';
 import { detectPii } from './detectionPipeline.js';
+import { DETECTOR_UNSUPPORTED_ON_DEVICE } from './deviceCapability.js';
 
 const DEFAULT_TITLE_MAX = 60;
 
@@ -98,14 +99,23 @@ export class RealChatSanitizer implements ChatSanitizer {
   }
 
   /**
-   * Tokenize using the OPF-driven detection pipeline (best-effort:
-   * falls back to the heuristic detector if the daemon is unreachable,
-   * with the `usedOpf` flag indicating which detector ran).
+   * Tokenize using the OPF-driven detection pipeline.
    *
-   * Returns metadata so the caller can decide whether to flag the
-   * message as having degraded sanitization. Used by the wire path
-   * (useChat.sendMessage) and any other feature that needs the
-   * highest-quality detection plus visibility into the method used.
+   * WIRE PATH — FAILS CLOSED (2026-07-04 code-review fix C2). This is
+   * the tokenizer every send path (chat, verify, drafting magic) runs
+   * before text leaves the device, so a detector outage must THROW
+   * (mode 'strict' → OpfUnavailableError) rather than silently degrade
+   * to the heuristic detector, which misses first-mention lowercase /
+   * foreign names. Every caller (useV2AgentStream, useV2VerifyStream,
+   * useV2DraftingMagicStream) catches and blocks the send with a clear
+   * error. This matches the documented fail-closed posture and the
+   * Drafting Magic contract (throws on !usedOpf).
+   *
+   * The single deliberate exception: devices that cannot run the
+   * detector at all (phones/tablets — DETECTOR_UNSUPPORTED_ON_DEVICE).
+   * There the UI already restricts sends to public-research mode and
+   * the server regex backstop still guards, so we keep best-effort to
+   * preserve the ratified mobile public-research path.
    */
   async tokenizeMessageWithDetection(text: string): Promise<{
     sanitized: string;
@@ -115,7 +125,8 @@ export class RealChatSanitizer implements ChatSanitizer {
     if (!text || typeof text !== 'string') {
       return { sanitized: text ?? '', usedOpf: false, opfElapsedMs: null };
     }
-    const detection = await detectPii(text, 'best-effort');
+    const mode = DETECTOR_UNSUPPORTED_ON_DEVICE ? 'best-effort' : 'strict';
+    const detection = await detectPii(text, mode);
     const { sanitized, tokenMap } = await tokenizeWithSpans(text, this.store, detection.spans);
     for (const [token, raw] of tokenMap) {
       this.tokenMap.set(token, raw);

@@ -12,6 +12,28 @@
 
 import { fetchWithTimeout } from './_http.js';
 
+/**
+ * Coerce a possibly-string / NaN tool input to a clamped integer. Tool inputs
+ * arrive from the model as loosely-typed JSON — a `limit` may show up as "5"
+ * (string) or garbage. Falls back to `def` on anything non-finite.
+ */
+function clampInt(value: unknown, def: number, min: number, max: number): number {
+  const n = typeof value === 'string' ? parseInt(value, 10) : typeof value === 'number' ? value : NaN;
+  if (!Number.isFinite(n)) return def;
+  return Math.min(max, Math.max(min, Math.trunc(n)));
+}
+
+/** Coerce a boolean that may arrive as the string "true"/"false". */
+function coerceBool(value: unknown, def: boolean): boolean {
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'string') {
+    const v = value.trim().toLowerCase();
+    if (v === 'true') return true;
+    if (v === 'false') return false;
+  }
+  return def;
+}
+
 export interface CourtListenerSearchInput {
   /** Search query. Required. */
   query: string;
@@ -95,8 +117,8 @@ export async function courtlistenerSearch(
     throw new Error('courtlistenerSearch: COURTLISTENER_API_KEY not configured');
   }
 
-  const californiaOnly = input.california_only !== false; // default true
-  const limit = Math.min(MAX_LIMIT, Math.max(1, input.limit ?? DEFAULT_LIMIT));
+  const californiaOnly = coerceBool(input.california_only, true); // default true
+  const limit = clampInt(input.limit, DEFAULT_LIMIT, 1, MAX_LIMIT);
 
   const queryWithCourt = californiaOnly
     ? `(${q}) AND (${CA_COURT_IDS.map((c) => `court_id:${c}`).join(' OR ')})`

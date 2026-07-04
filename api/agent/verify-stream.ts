@@ -64,6 +64,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     res.status(400).json({ error: 'invalid_input', message: 'text is required' });
     return;
   }
+  // Abuse bound: reject oversized bodies before we scan/tokenize them.
+  const MAX_TEXT_CHARS = 50_000;
+  if (text.length > MAX_TEXT_CHARS) {
+    res.status(400).json({
+      error: 'invalid_input',
+      message: `text exceeds ${MAX_TEXT_CHARS} character limit`,
+    });
+    return;
+  }
 
   // Server-side regex backstop. Browser is expected to tokenize via
   // useV2VerifyStream → tokenizeForWire before send (per 6th-addendum
@@ -123,12 +132,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       query: sentenceFor(s.raw),
       type: 'statute' as const,
     }));
-    const extracted = [...caseCites, ...statuteCites];
+    const allExtracted = [...caseCites, ...statuteCites];
+    // Abuse bound: cap the number of citations verified per request. Each
+    // citation is an ~18s sub-agent run, so an over-long brief could tie up
+    // the endpoint for many minutes. Truncate explicitly and report how many
+    // were skipped — no silent drop.
+    const MAX_CITATIONS = 20;
+    const extracted = allExtracted.slice(0, MAX_CITATIONS);
+    const skippedCount = allExtracted.length - extracted.length;
     writeEvent('manifest', {
       kind: 'manifest',
       citation_count: extracted.length,
       citations: extracted.map((c) => c.display),
       citation_types: extracted.map((c) => c.type),
+      total_found: allExtracted.length,
+      skipped: skippedCount,
     });
 
     if (extracted.length === 0) {
@@ -188,6 +206,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       fake: fakeCount,
       ambiguous: ambiguousCount,
       total: extracted.length,
+      skipped: skippedCount,
       elapsed_ms: Math.round(performance.now() - t0),
     });
   } catch (err) {

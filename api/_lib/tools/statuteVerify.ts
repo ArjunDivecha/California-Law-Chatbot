@@ -85,12 +85,29 @@ export interface StatuteVerifyResult {
   url: string | null;
   /**
    * 'verified'   — section exists, text retrieved.
-   * 'not_found'  — source reachable, section does not exist (likely fabricated).
+   * 'not_found'  — source reachable AND the search space was EXHAUSTED, yet the
+   *                section does not exist (likely fabricated). Never emitted
+   *                when the source may hold the section beyond what was scanned.
+   * 'unconfirmed'— source reachable but existence could NOT be decided: e.g. an
+   *                eCFR match may lie past the relevance-ranked results we
+   *                scanned, or a Cornell page returned HTTP 200 without the
+   *                expected section marker (repealed / omitted / redirect
+   *                landing). Treat as inconclusive — NOT as fabricated.
    * 'unavailable'— source unreachable / errored (cannot conclude; ambiguous).
    * 'unparseable'— input did not contain a recognizable statutory citation.
    */
-  outcome: 'verified' | 'not_found' | 'unavailable' | 'unparseable';
+  outcome: 'verified' | 'not_found' | 'unconfirmed' | 'unavailable' | 'unparseable';
   error?: string;
+  /**
+   * Raw text of the single citation that was actually checked. When the input
+   * contains more than one statutory citation, ONLY THE FIRST is verified — this
+   * field names which one, so a caller never mistakes partial coverage for full.
+   */
+  checked_citation?: string;
+  /** Count of additional citations present in the input that were NOT checked. */
+  unchecked_citation_count?: number;
+  /** Raw texts of those unchecked citations, for transparency. */
+  unchecked_citations?: string[];
 }
 
 // ---------------------------------------------------------------------------
@@ -240,6 +257,12 @@ async function verifyCalifornia(p: ParsedStatute): Promise<StatuteVerifyResult> 
  * Federal U.S.C. via Cornell LII — a respected full-text mirror of the
  * Office of Law Revision Counsel's official code. Real section → HTTP 200
  * with the statute body; fabricated section → HTTP 404.
+ *
+ * A bare HTTP 200 is NOT sufficient to call a section 'verified': repealed,
+ * omitted, or redirected sections also land on a 200 page that lacks the
+ * statute body. We require the expected section marker ("§ {section}") to
+ * actually appear in the page text; otherwise the result is 'unconfirmed'
+ * (inconclusive), never 'verified'.
  */
 async function verifyUsc(p: ParsedStatute): Promise<StatuteVerifyResult> {
   const url = `https://www.law.cornell.edu/uscode/text/${p.code}/${p.section}`;
@@ -255,6 +278,16 @@ async function verifyUsc(p: ParsedStatute): Promise<StatuteVerifyResult> {
     const m = body.match(/<div[^>]*class="[^"]*tab-pane[^"]*"[^>]*id="tab_default_1"[^>]*>([\s\S]*?)<\/div>\s*<\/div>/i)
       || body.match(/<div[^>]*id="field-body-content"[^>]*>([\s\S]*?)<\/div>/i);
     const text = m ? clip(m[1].replace(/<[^>]+>/g, ' ').replace(/&[a-z]+;/gi, ' ')) : null;
+    // Confirm the queried section marker is actually present on the page.
+    const secEsc = p.section.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const markerFound = new RegExp(`§\\s*(?:&nbsp;)?\\s*${secEsc}\\b`, 'i').test(body);
+    if (!markerFound) {
+      return {
+        parsed: p, exists: false, statute_text: text, source: 'law.cornell.edu/uscode (LII)', url,
+        outcome: 'unconfirmed',
+        error: `HTTP 200 but the expected section marker "§ ${p.section}" was not found in the page — the section may be repealed, omitted, or the request redirected to a landing page. Existence could not be confirmed.`,
+      };
+    }
     return { parsed: p, exists: true, statute_text: text, source: 'law.cornell.edu/uscode (LII)', url, outcome: 'verified' };
   } catch (err) {
     return { parsed: p, exists: false, statute_text: null, source: 'law.cornell.edu/uscode (LII)', url, outcome: 'unavailable', error: err instanceof Error ? err.message : String(err) };
@@ -266,52 +299,95 @@ async function verifyUsc(p: ParsedStatute): Promise<StatuteVerifyResult> {
  * structured results; we accept the citation as real only when a result's
  * hierarchy.title and hierarchy.section EXACTLY match the cited title and
  * section (guards against a fuzzy text hit on an unrelated section).
+ *
+ * Existence is decided over a RELEVANCE-RANKED page (per_page=20). A real
+ * regulation ranked beyond position 20 would otherwise read as 'not_found'
+ * (= likely fabricated). To avoid that, 'not_found' is emitted ONLY when the
+ * search space was exhausted (total_count ≤ what we scanned). When the API
+ * reports more matches than we scanned — or does not report a total at all —
+ * a miss is 'unconfirmed' (inconclusive), never 'not_found'.
  */
 async function verifyCfr(p: ParsedStatute): Promise<StatuteVerifyResult> {
   const displayUrl = `https://www.ecfr.gov/current/title-${p.code}/section-${p.section}`;
-  const api = `https://www.ecfr.gov/api/search/v1/results?query=${encodeURIComponent(`"${p.section}"`)}&per_page=20&order=relevance`;
+  const SCANNED = 20;
+  const api = `https://www.ecfr.gov/api/search/v1/results?query=${encodeURIComponent(`"${p.section}"`)}&per_page=${SCANNED}&order=relevance`;
   try {
     const { status, body } = await fetchText(api, 'application/json');
     if (status !== 200) {
       return { parsed: p, exists: false, statute_text: null, source: 'ecfr.gov (official)', url: displayUrl, outcome: 'unavailable', error: `HTTP ${status}` };
     }
-    const data = JSON.parse(body) as { results?: Array<{ hierarchy?: { title?: string; section?: string }; full_text_excerpt?: string }> };
-    const hit = (data.results ?? []).find(
+    const data = JSON.parse(body) as {
+      results?: Array<{ hierarchy?: { title?: string; section?: string }; full_text_excerpt?: string }>;
+      meta?: { total_count?: number };
+    };
+    const results = data.results ?? [];
+    const hit = results.find(
       (r) => String(r.hierarchy?.title) === String(p.code) && String(r.hierarchy?.section) === String(p.section)
     );
-    if (!hit) {
+    if (hit) {
+      return { parsed: p, exists: true, statute_text: hit.full_text_excerpt ? clip(hit.full_text_excerpt) : null, source: 'ecfr.gov (official)', url: displayUrl, outcome: 'verified' };
+    }
+    // No match among the results we scanned. Only conclude "does not exist"
+    // if the search space was actually exhausted.
+    const total = data.meta?.total_count;
+    const exhausted = typeof total === 'number' && total <= results.length;
+    if (exhausted) {
       return { parsed: p, exists: false, statute_text: null, source: 'ecfr.gov (official)', url: displayUrl, outcome: 'not_found' };
     }
-    return { parsed: p, exists: true, statute_text: hit.full_text_excerpt ? clip(hit.full_text_excerpt) : null, source: 'ecfr.gov (official)', url: displayUrl, outcome: 'verified' };
+    return {
+      parsed: p, exists: false, statute_text: null, source: 'ecfr.gov (official)', url: displayUrl,
+      outcome: 'unconfirmed',
+      error: `No exact hierarchy match among the top ${results.length} relevance-ranked results${
+        typeof total === 'number' ? ` (of ${total} total)` : ' (total match count not reported by the API)'
+      }; a matching section may lie beyond the scanned results. Existence could not be confirmed.`,
+    };
   } catch (err) {
     return { parsed: p, exists: false, statute_text: null, source: 'ecfr.gov (official)', url: displayUrl, outcome: 'unavailable', error: err instanceof Error ? err.message : String(err) };
   }
 }
 
 /**
- * Verify a single statutory citation. Parses the jurisdiction, fetches the
+ * Verify a statutory citation. Parses the jurisdiction, fetches the
  * authoritative source, and returns existence + text for content matching.
+ *
+ * IMPORTANT — SINGLE-CITATION COVERAGE: if the input text contains MORE THAN
+ * ONE statutory citation, ONLY THE FIRST is verified. The returned result
+ * always reports `checked_citation` (which one was checked) and, when
+ * applicable, `unchecked_citation_count` / `unchecked_citations` so callers
+ * never read a first-citation result as if it covered the whole input.
  */
 export async function statuteVerify(input: StatuteVerifyInput): Promise<StatuteVerifyResult> {
   const text = input?.text?.trim();
   if (!text) throw new Error('statuteVerify: text is required');
 
-  const parsed = parseStatuteCitation(text);
+  const all = extractStatuteCitations(text);
+  const parsed = all[0] ?? null;
   if (!parsed) {
     return { parsed: null, exists: false, statute_text: null, source: null, url: null, outcome: 'unparseable' };
   }
+
+  let result: StatuteVerifyResult;
   switch (parsed.jurisdiction) {
-    case 'CA': return verifyCalifornia(parsed);
-    case 'USC': return verifyUsc(parsed);
-    case 'CFR': return verifyCfr(parsed);
-    default: return { parsed, exists: false, statute_text: null, source: null, url: parsed.url, outcome: 'unparseable' };
+    case 'CA': result = await verifyCalifornia(parsed); break;
+    case 'USC': result = await verifyUsc(parsed); break;
+    case 'CFR': result = await verifyCfr(parsed); break;
+    default: result = { parsed, exists: false, statute_text: null, source: null, url: parsed.url, outcome: 'unparseable' };
   }
+
+  // Report exactly what was checked, and flag any citations left unchecked.
+  result.checked_citation = parsed.raw;
+  const others = all.slice(1);
+  if (others.length > 0) {
+    result.unchecked_citation_count = others.length;
+    result.unchecked_citations = others.map((o) => o.raw);
+  }
+  return result;
 }
 
 export const STATUTE_VERIFY_TOOL_DEFINITION = {
   name: 'statute_verify',
   description:
-    "Verify a STATUTORY citation (a code section, NOT a court case) against the authoritative primary source. Covers California codes (leginfo.legislature.ca.gov), federal U.S. Code (Cornell LII), and the Code of Federal Regulations (official eCFR.gov API). Returns whether the section actually exists plus its real statutory text so you can compare what a brief CLAIMS the statute says to the actual language. Use this for cites like 'Penal Code § 187', '42 U.S.C. § 1983', or '21 C.F.R. § 101.9' — NOT for case citations like 'People v. Anderson'. outcome='not_found' means the section does not exist (likely fabricated); 'unavailable' means the source could not be reached (inconclusive).",
+    "Verify a STATUTORY citation (a code section, NOT a court case) against the authoritative primary source. Covers California codes (leginfo.legislature.ca.gov), federal U.S. Code (Cornell LII), and the Code of Federal Regulations (official eCFR.gov API). Returns whether the section actually exists plus its real statutory text so you can compare what a brief CLAIMS the statute says to the actual language. If the input contains more than one citation, ONLY THE FIRST is checked — see checked_citation / unchecked_citations. Use this for cites like 'Penal Code § 187', '42 U.S.C. § 1983', or '21 C.F.R. § 101.9' — NOT for case citations like 'People v. Anderson'. outcome='not_found' means the section does not exist AND the search space was exhausted (likely fabricated); 'unconfirmed' means existence could NOT be decided (a match may lie beyond scanned results, or a 200 page lacked the section marker) — treat as inconclusive, NOT as fabricated; 'unavailable' means the source could not be reached (inconclusive).",
   input_schema: {
     type: 'object' as const,
     properties: {

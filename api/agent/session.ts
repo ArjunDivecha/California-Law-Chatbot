@@ -15,34 +15,11 @@
  */
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { verifyToken } from '@clerk/backend';
 import { readMessages, readMeta } from '../_lib/sessionStore.js';
+import { requireUser, isValidSessionId } from '../_lib/httpGuard.js';
+import { scrubMessage } from '../_lib/scrubError.js';
 
 import { applyResponseSecurity, headerString } from '../_shared/routeSecurity.js';
-
-async function getUserId(req: VercelRequest): Promise<string> {
-  const secretKey = process.env.CLERK_SECRET_KEY;
-  if (!secretKey) throw Object.assign(new Error('CLERK_SECRET_KEY not set'), { status: 500 });
-
-  let token: string | undefined;
-  const auth = req.headers.authorization;
-  if (auth?.startsWith('Bearer ')) {
-    token = auth.slice(7);
-  } else {
-    const cookie = req.headers.cookie ?? '';
-    const m = cookie.match(/(?:^|;\s*)__session=([^;]+)/);
-    token = m ? decodeURIComponent(m[1]) : undefined;
-  }
-  if (!token) throw Object.assign(new Error('No session token'), { status: 401 });
-
-  try {
-    const payload = await verifyToken(token, { secretKey });
-    if (!payload.sub) throw new Error('No userId in token');
-    return payload.sub;
-  } catch (err) {
-    throw Object.assign(new Error('Authentication failed'), { status: 401 });
-  }
-}
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   applyResponseSecurity(res, headerString(req.headers.origin), { methods: 'GET, OPTIONS' });
@@ -60,18 +37,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     res.status(400).json({ error: 'invalid_input', message: 'id query param required' });
     return;
   }
-
-  let userId: string;
-  try {
-    userId = await getUserId(req);
-  } catch (err) {
-    const status = (err as { status?: number }).status ?? 500;
-    res.status(status).json({
-      error: status === 401 ? 'unauthorized' : 'internal_error',
-      message: (err as Error).message,
-    });
+  // Reject malformed client-minted ids before they interpolate into Redis keys.
+  if (!isValidSessionId(sessionId)) {
+    res.status(400).json({ error: 'invalid_input', message: 'invalid session id' });
     return;
   }
+
+  // Shared guard (same as the turn endpoints) — resolves the synthetic
+  // `dev-user` off-Vercel so locally-written sessions can be hydrated.
+  // requireUser writes the 401 itself.
+  const userId = await requireUser(req, res);
+  if (!userId) return;
 
   try {
     const meta = await readMeta(sessionId);
@@ -89,6 +65,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const messages = await readMessages(sessionId);
     res.status(200).json({ session_id: sessionId, meta, messages });
   } catch (err) {
-    res.status(500).json({ error: 'internal_error', message: (err as Error).message });
+    // Don't leak Redis/config internals to the client; log the real error.
+    console.error('[agent/session] internal error:', scrubMessage(err instanceof Error ? err.message : String(err)));
+    res.status(500).json({ error: 'internal_error', message: 'Internal server error' });
   }
 }

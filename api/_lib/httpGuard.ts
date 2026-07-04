@@ -45,30 +45,55 @@ const DEFAULT_ALLOWED_ORIGINS = [
   'https://california-law-chatbot-v2.vercel.app',
   'https://chat.femmeandfemmelaw.com',
   'http://localhost:5173',
+  'http://127.0.0.1:5173',
   'http://localhost:3000',
 ];
 
-/** Vercel preview deploys: https://california-law-chatbot-v2-<hash>-<scope>.vercel.app */
-const PREVIEW_ORIGIN_RE =
-  /^https:\/\/california-law-chatbot(?:-v2)?(?:-[a-z0-9-]+)?\.vercel\.app$/i;
+// NOTE (2026-07-03, CORS consolidation): the former wildcard preview regex
+// (`^https://california-law-chatbot(-v2)?(-<anything>)?\.vercel\.app$`) was
+// REMOVED. `*.vercel.app` project names are first-come / attacker-registrable,
+// and applyCors sets Access-Control-Allow-Credentials:true — a guessable
+// wildcard was a credentialed-CORS hole. The project's own preview URLs use a
+// non-guessable team scope we can't pin from `.vercel/project.json` (only the
+// opaque orgId is stored there), so a safe exact allow-list beats a wildcard.
+// To authorise a preview deploy, add its exact origin to the V2_ALLOWED_ORIGINS
+// (or APP_ORIGIN) env var. This is the ONE source of truth for allowed origins,
+// shared by api/_shared/routeSecurity.ts via resolveAllowedOrigin().
 
-function allowedOrigins(): string[] {
-  const fromEnv = (process.env.V2_ALLOWED_ORIGINS ?? '')
-    .split(',')
+/**
+ * The single canonical allow-list, merging the built-in defaults with the
+ * V2_ALLOWED_ORIGINS and APP_ORIGIN env vars (both comma-separated). Both env
+ * vars are honoured so the two historical CORS implementations converge on one
+ * list rather than drifting apart (split-brain: turns passing while session
+ * reads fail on the same preview deploy).
+ */
+export function allowedOrigins(): string[] {
+  const fromEnv = [
+    ...(process.env.V2_ALLOWED_ORIGINS ?? '').split(','),
+    ...(process.env.APP_ORIGIN ?? '').split(','),
+  ]
     .map((s) => s.trim())
     .filter(Boolean);
   return [...new Set([...DEFAULT_ALLOWED_ORIGINS, ...fromEnv])];
 }
 
+/**
+ * Single source of truth for origin resolution: returns the request origin
+ * only if it is explicitly allow-listed, otherwise null. No wildcard, no
+ * reflection of arbitrary origins. A missing Origin (same-origin / non-CORS
+ * request) ⇒ null (no ACAO header needed).
+ */
+export function resolveAllowedOrigin(origin: string | undefined): string | null {
+  if (!origin) return null;
+  return allowedOrigins().includes(origin) ? origin : null;
+}
+
 function resolveOrigin(req: VercelRequest): string {
   const origin = (req.headers.origin as string | undefined) ?? '';
-  if (!origin) return DEFAULT_ALLOWED_ORIGINS[0];
-  if (allowedOrigins().includes(origin) || PREVIEW_ORIGIN_RE.test(origin)) {
-    return origin; // reflect a first-party / preview origin
-  }
-  // Disallowed origin: return the canonical prod origin so the browser's
-  // ACAO check fails for the actual caller (no wildcard, no reflection).
-  return DEFAULT_ALLOWED_ORIGINS[0];
+  // Reflect an allow-listed origin; otherwise return the canonical prod origin
+  // so the browser's ACAO check fails for the actual caller (no wildcard,
+  // no reflection).
+  return resolveAllowedOrigin(origin) ?? DEFAULT_ALLOWED_ORIGINS[0];
 }
 
 /** Set CORS headers. Call before writing any response/SSE headers. */

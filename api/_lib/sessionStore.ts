@@ -98,7 +98,10 @@ function userSessionsKey(userId: string): string {
 }
 
 const TOOL_RESULT_TTL_SECONDS = 60 * 60 * 24;
-const LOCK_TTL_SECONDS = 30;
+// Must exceed the longest possible turn (vercel.json maxDuration is 300s
+// for the streaming routes) -- a lock that expires mid-turn lets a second
+// turn interleave and corrupt the history, defeating its purpose.
+const LOCK_TTL_SECONDS = 330;
 
 // ---------------------------------------------------------------------------
 // Message log (append-only)
