@@ -36,6 +36,10 @@ import {
   getUserAllowlistLower,
   subscribeToUserAllowlist,
 } from '../services/sanitization/userAllowlist.ts';
+import {
+  findUserDenylistSpans,
+  subscribeToUserDenylist,
+} from '../services/sanitization/userDenylist.ts';
 import type { Span } from '../api/_shared/sanitization/index.ts';
 
 export type { PreviewData };
@@ -72,6 +76,11 @@ export function useV2SanitizationPreview(text: string): {
     () => subscribeToUserAllowlist(() => setAllowlistVersion((v) => v + 1)),
     []
   );
+  // Same recompute trigger for the "always privileged" denylist.
+  useEffect(
+    () => subscribeToUserDenylist(() => setAllowlistVersion((v) => v + 1)),
+    []
+  );
 
   useEffect(() => {
     if (!text || text.length === 0) {
@@ -105,8 +114,16 @@ export function useV2SanitizationPreview(text: string): {
       // wire-path suppression in detectPii so the preview matches what
       // actually gets sent.
       const allow = getUserAllowlistLower();
+      // "Always privileged" terms are force-detected regardless of what
+      // the ML detector found — mirrors the wire path in detectPii.
+      const denySpans = findUserDenylistSpans(text);
       try {
-        const next = computePreview(text, sessionRef.current, glinerSpans, allow);
+        const next = computePreview(
+          text,
+          sessionRef.current,
+          [...glinerSpans, ...denySpans],
+          allow
+        );
         setPreview(next);
       } catch {
         setPreview(EMPTY);

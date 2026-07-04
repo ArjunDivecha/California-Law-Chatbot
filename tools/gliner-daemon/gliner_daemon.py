@@ -208,6 +208,16 @@ STOPLIST_LOWER = {
     # Generic user/system role words that GLiNER mistags as person
     'user', 'users', 'the user', 'the system', 'the model', 'the agent',
     'the assistant', 'the bot', 'the chatbot',
+    # Pronouns GLiNER occasionally mis-tags as person ("I want to draft a
+    # will" -> "I" flagged as CLIENT_001). Full-span match only, so real
+    # names containing these letters are unaffected. (Added 2026-07-04;
+    # keep in sync with services/sanitization/glinerPostProcess.ts.)
+    'i', 'me', 'my', 'mine', 'myself', 'we', 'us', 'our', 'ours',
+    'ourselves', 'you', 'your', 'yours', 'yourself', 'yourselves',
+    'he', 'him', 'his', 'himself', 'she', 'her', 'hers', 'herself',
+    'it', 'its', 'itself', 'they', 'them', 'their', 'theirs',
+    'themselves', 'who', 'whom', 'someone', 'somebody', 'anyone',
+    'anybody', 'everyone', 'everybody', 'no one', 'nobody',
     # Government bodies, public offices & agencies. In statute/bill text these
     # are the SUBJECT or AUTHORITY, never a private client — but GLiNER tags the
     # Title-Case phrase as a 'person'. (Reported FP: SB 524 bill title.)
@@ -307,6 +317,10 @@ class GLiNERService:
             if span_text.strip().lower() in STOPLIST_LOWER:
                 continue
             if not span_text.strip():
+                continue
+            # A one-character "name" is never a real personal name — it's
+            # the model mis-tagging a pronoun, initial, or stray letter.
+            if cat == 'name' and len(span_text.strip()) < 2:
                 continue
             # OPF-daemon-compatible label naming so opfClient maps them.
             # Use private_person/private_address/etc. so the existing

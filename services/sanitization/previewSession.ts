@@ -250,7 +250,13 @@ export function computePreview(
     const isManual = state.manual.some(
       (m) => m.start === s.start && m.end === s.end && m.category === s.category
     );
-    if (!isManual && overlapsAllowlist(s.start, s.end, allowlistHits)) {
+    // 'user-denylist' spans are attorney-explicit ("always privileged"),
+    // so like manual redactions they outrank the static legal allowlist.
+    if (
+      !isManual &&
+      s.label !== 'user-denylist' &&
+      overlapsAllowlist(s.start, s.end, allowlistHits)
+    ) {
       continue;
     }
 

@@ -34,7 +34,18 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useV2AgentStream, type V2SourceSummary } from '../../hooks/useV2AgentStream.ts';
 import { useV2SanitizationPreview } from '../../hooks/useV2SanitizationPreview.ts';
-import { addToUserAllowlist } from '../../services/sanitization/userAllowlist.ts';
+import {
+  addToUserAllowlist,
+  removeFromUserAllowlist,
+  getUserAllowlist,
+  subscribeToUserAllowlist,
+} from '../../services/sanitization/userAllowlist.ts';
+import {
+  addToUserDenylist,
+  removeFromUserDenylist,
+  getUserDenylist,
+  subscribeToUserDenylist,
+} from '../../services/sanitization/userDenylist.ts';
 import { ConfidentialityAttestation } from '../ConfidentialityAttestation.tsx';
 import { checkAnswer } from '../../services/guardrailsServiceV2.ts';
 import { prune as pruneSources } from '../../services/retrievalPrunerV2.ts';
@@ -186,6 +197,12 @@ export const V2ChatPage: React.FC = () => {
   // protected sends are refused there.
   const [matterMode, setMatterMode] = useState<string>('public_research');
   const [mobileGateNotice, setMobileGateNotice] = useState<string | null>(null);
+
+  // Text currently selected inside the draft textarea — enables the
+  // "always treat as privileged" action (adds to the user denylist).
+  const [selectedText, setSelectedText] = useState('');
+  // Privacy-lists management modal (allowed + protected terms).
+  const [showPrivacyLists, setShowPrivacyLists] = useState(false);
 
   // Auto-scroll on new tokens / new messages.
   useEffect(() => {
@@ -509,13 +526,12 @@ export const V2ChatPage: React.FC = () => {
               </div>
             )}
             <div className="flex items-end gap-3">
-              <textarea
+              <HighlightedDraftInput
                 value={draft}
-                onChange={(e) => setDraft(e.target.value)}
-                placeholder="Ask a California legal-research question…"
-                rows={2}
-                className="flex-1 resize-none rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-pink-400 focus:outline-none"
+                onChange={setDraft}
+                preview={livePreview}
                 disabled={state.isStreaming}
+                onSelectionChange={setSelectedText}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
@@ -542,11 +558,44 @@ export const V2ChatPage: React.FC = () => {
               isComputing={previewComputing}
             />
 
-            <div className="mt-2 text-[11px] text-gray-400">
-              V2 preview: Anthropic agent loop with live sanitization preview. Conversation persists to Upstash KV under{' '}
-              <span className="font-mono">{sessionId}</span>.
+            {/* Selection → force-redact. Appears when text is selected in
+                the draft box; adds the selection to the "always privileged"
+                denylist so it tokenizes on every future mention. */}
+            {selectedText.trim() && (
+              <div className="mt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    addToUserDenylist(selectedText);
+                    setSelectedText('');
+                  }}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-rose-200 bg-rose-50 px-2.5 py-1 text-[11px] font-semibold text-rose-700 hover:bg-rose-100"
+                  title="Always redact this text before sending (this device)"
+                >
+                  🔒 Always treat “{selectedText.trim().slice(0, 40)}
+                  {selectedText.trim().length > 40 ? '…' : ''}” as privileged
+                </button>
+              </div>
+            )}
+
+            <div className="mt-2 flex items-center gap-2 text-[11px] text-gray-400">
+              <span>
+                V2 preview: Anthropic agent loop with live sanitization preview. Conversation persists to Upstash KV under{' '}
+                <span className="font-mono">{sessionId}</span>.
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowPrivacyLists(true)}
+                className="shrink-0 font-semibold text-pink-500 underline decoration-dotted underline-offset-2 hover:text-pink-700"
+              >
+                Privacy lists
+              </button>
             </div>
           </form>
+
+          {showPrivacyLists && (
+            <PrivacyListsModal onClose={() => setShowPrivacyLists(false)} />
+          )}
         </div>
       </main>
     </div>
@@ -635,6 +684,103 @@ const WorkflowToggle: React.FC<{
 };
 
 /**
+ * Draft textarea with an in-place highlight overlay. Detected spans from
+ * the live sanitization preview are marked amber directly over the words
+ * in the input, and each mark is clickable — clicking it declares the
+ * term NOT privileged (adds it to the per-device user allowlist), which
+ * immediately removes the highlight and lets the term go over the wire
+ * as plain text.
+ *
+ * Mechanics: the overlay is an absolutely-positioned div stacked ON TOP
+ * of the textarea with identical typography/padding, transparent text,
+ * and pointer-events disabled — except on the <mark> elements, which
+ * accept clicks. The overlay only renders when the (300ms-debounced)
+ * preview matches the current draft exactly, so highlights never sit on
+ * stale offsets while the user is mid-keystroke.
+ */
+const HighlightedDraftInput: React.FC<{
+  value: string;
+  onChange: (v: string) => void;
+  preview: import('../../hooks/useV2SanitizationPreview.ts').PreviewData;
+  disabled?: boolean;
+  onKeyDown?: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
+  /** Reports the currently-selected text (empty string when none). */
+  onSelectionChange?: (selected: string) => void;
+}> = ({ value, onChange, preview, disabled, onKeyDown, onSelectionChange }) => {
+  const overlayRef = useRef<HTMLDivElement | null>(null);
+  const taRef = useRef<HTMLTextAreaElement | null>(null);
+
+  const reportSelection = () => {
+    if (!onSelectionChange) return;
+    const ta = taRef.current;
+    if (!ta) return;
+    const sel =
+      ta.selectionStart != null && ta.selectionEnd != null && ta.selectionEnd > ta.selectionStart
+        ? ta.value.slice(ta.selectionStart, ta.selectionEnd)
+        : '';
+    onSelectionChange(sel);
+  };
+
+  // The preview is debounced, so it can lag the draft by a keystroke or
+  // two. Only overlay highlights when the segments reconstruct the
+  // current value exactly — otherwise offsets would be wrong.
+  const previewText = preview.segments.map((s) => s.text).join('');
+  const inSync = previewText === value && preview.tokens.length > 0;
+
+  const syncScroll = () => {
+    if (overlayRef.current && taRef.current) {
+      overlayRef.current.scrollTop = taRef.current.scrollTop;
+      overlayRef.current.scrollLeft = taRef.current.scrollLeft;
+    }
+  };
+
+  return (
+    <div className="relative flex-1">
+      <textarea
+        ref={taRef}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onScroll={syncScroll}
+        onSelect={reportSelection}
+        onBlur={reportSelection}
+        placeholder="Ask a California legal-research question…"
+        rows={2}
+        className="w-full resize-none rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-pink-400 focus:outline-none"
+        disabled={disabled}
+        onKeyDown={onKeyDown}
+      />
+      {inSync && (
+        <div
+          ref={overlayRef}
+          aria-hidden
+          className="pointer-events-none absolute inset-0 overflow-hidden whitespace-pre-wrap break-words rounded-lg border border-transparent px-3 py-2 text-sm text-transparent"
+        >
+          {preview.segments.map((seg, i) =>
+            seg.token ? (
+              <mark
+                key={i}
+                onClick={() => {
+                  // Newest instruction wins: un-protect if it was on the
+                  // "always privileged" list, then allow.
+                  removeFromUserDenylist(seg.token!.raw);
+                  addToUserAllowlist(seg.token!.raw);
+                }}
+                title={`${seg.token.value} — click to mark "${seg.token.raw}" as NOT privileged (always send as-is on this device)`}
+                className="pointer-events-auto cursor-pointer rounded-sm bg-amber-200/70 text-transparent underline decoration-amber-600 decoration-dotted underline-offset-4 hover:bg-amber-300"
+              >
+                {seg.text}
+              </mark>
+            ) : (
+              <span key={i}>{seg.text}</span>
+            )
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
+/**
  * Live sanitization preview panel — appears below the textarea. Shows
  * the detector's verdict on the in-progress text after a 300ms debounce.
  * Informational; never blocks submission (per the 7th addendum).
@@ -690,8 +836,11 @@ const LiveSanitizationPanel: React.FC<{
               // user allowlist. detectPii (send path) and the preview both
               // then skip it, so it goes over the wire as plain text. The
               // preview recomputes via the allowlist-changed subscription.
-              onClick={() => addToUserAllowlist(t.raw)}
-              title={`Not private — always send "${t.raw.slice(0, 40)}" as-is (this device). Manage under “Allowed terms”.`}
+              onClick={() => {
+                removeFromUserDenylist(t.raw);
+                addToUserAllowlist(t.raw);
+              }}
+              title={`Not private — always send "${t.raw.slice(0, 40)}" as-is (this device). Manage under “Privacy lists” below.`}
               aria-label={`Mark "${t.raw}" as not private`}
               className="ml-0.5 -mr-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full text-amber-700/60 hover:bg-amber-200 hover:text-amber-900"
             >
@@ -702,6 +851,181 @@ const LiveSanitizationPanel: React.FC<{
         {preview.tokens.length > 8 && (
           <span className="text-[10px] text-gray-400">+{preview.tokens.length - 8} more</span>
         )}
+      </div>
+    </div>
+  );
+};
+
+/**
+ * Privacy-lists management modal. Two per-device lists (localStorage):
+ *   - Allowed terms (user allowlist)  — "not privileged, always send raw"
+ *   - Protected terms (user denylist) — "always privileged, always redact"
+ * Entries can be removed (un-dismiss / un-protect) and new protected
+ * terms can be typed in directly. Live-updates via the same-tab /
+ * cross-tab subscriptions, so edits made elsewhere (chip ×, highlight
+ * click, selection button) appear immediately.
+ */
+const PrivacyListsModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
+  const [version, setVersion] = useState(0);
+  useEffect(() => subscribeToUserAllowlist(() => setVersion((v) => v + 1)), []);
+  useEffect(() => subscribeToUserDenylist(() => setVersion((v) => v + 1)), []);
+  // Re-read on every version bump.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const allowed = useMemo(() => getUserAllowlist(), [version]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const protectedTerms = useMemo(() => getUserDenylist(), [version]);
+  const [newProtected, setNewProtected] = useState('');
+  const [newAllowed, setNewAllowed] = useState('');
+
+  const TermRow: React.FC<{ term: string; onRemove: () => void; removeTitle: string }> = ({
+    term,
+    onRemove,
+    removeTitle,
+  }) => (
+    <li className="flex items-center justify-between gap-2 rounded border border-gray-100 bg-gray-50 px-2.5 py-1.5">
+      <span className="truncate text-xs text-gray-800">{term}</span>
+      <button
+        type="button"
+        onClick={onRemove}
+        title={removeTitle}
+        className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold text-gray-400 hover:bg-red-50 hover:text-red-600"
+      >
+        Remove
+      </button>
+    </li>
+  );
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4"
+      onClick={onClose}
+    >
+      <div
+        className="max-h-[80vh] w-full max-w-2xl overflow-y-auto rounded-xl bg-white p-6 shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="mb-1 flex items-center justify-between">
+          <h2 className="text-base font-semibold text-gray-900">Privacy lists</h2>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="rounded px-2 py-1 text-sm text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+          >
+            ✕
+          </button>
+        </div>
+        <p className="mb-4 text-xs text-gray-500">
+          Stored on this device only. These lists teach the privacy filter your
+          preferences: allowed terms are always sent as-is; protected terms are
+          always redacted (tokenized) before anything leaves this computer.
+        </p>
+
+        <div className="grid gap-6 sm:grid-cols-2">
+          {/* Allowed (not privileged) */}
+          <section>
+            <h3 className="mb-1 text-sm font-semibold text-emerald-700">
+              🌐 Allowed terms <span className="font-normal text-gray-400">({allowed.length})</span>
+            </h3>
+            <p className="mb-2 text-[11px] text-gray-500">
+              Marked “not privileged” — never flagged, sent as plain text.
+            </p>
+            <form
+              className="mb-2 flex gap-1.5"
+              onSubmit={(e) => {
+                e.preventDefault();
+                const t = newAllowed.trim();
+                if (!t) return;
+                removeFromUserDenylist(t);
+                addToUserAllowlist(t);
+                setNewAllowed('');
+              }}
+            >
+              <input
+                value={newAllowed}
+                onChange={(e) => setNewAllowed(e.target.value)}
+                placeholder="Add a term…"
+                className="min-w-0 flex-1 rounded border border-gray-200 px-2 py-1 text-xs focus:border-emerald-400 focus:outline-none"
+              />
+              <button
+                type="submit"
+                disabled={!newAllowed.trim()}
+                className="shrink-0 rounded bg-emerald-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-emerald-700 disabled:bg-gray-300"
+              >
+                Add
+              </button>
+            </form>
+            {allowed.length === 0 ? (
+              <div className="rounded border border-dashed border-gray-200 px-3 py-4 text-center text-[11px] text-gray-400">
+                Nothing here yet. Click a highlighted word in the input (or the ×
+                on a detection chip) to mark it not privileged.
+              </div>
+            ) : (
+              <ul className="space-y-1">
+                {allowed.map((t) => (
+                  <TermRow
+                    key={t}
+                    term={t}
+                    onRemove={() => removeFromUserAllowlist(t)}
+                    removeTitle="Remove — the detector may flag this term again"
+                  />
+                ))}
+              </ul>
+            )}
+          </section>
+
+          {/* Protected (always privileged) */}
+          <section>
+            <h3 className="mb-1 text-sm font-semibold text-rose-700">
+              🔒 Protected terms <span className="font-normal text-gray-400">({protectedTerms.length})</span>
+            </h3>
+            <p className="mb-2 text-[11px] text-gray-500">
+              Marked “always privileged” — always redacted before sending, even
+              if the detector misses them.
+            </p>
+            <form
+              className="mb-2 flex gap-1.5"
+              onSubmit={(e) => {
+                e.preventDefault();
+                const t = newProtected.trim();
+                if (!t) return;
+                addToUserDenylist(t);
+                setNewProtected('');
+              }}
+            >
+              <input
+                value={newProtected}
+                onChange={(e) => setNewProtected(e.target.value)}
+                placeholder="Add a term (e.g. a client name)…"
+                className="min-w-0 flex-1 rounded border border-gray-200 px-2 py-1 text-xs focus:border-rose-400 focus:outline-none"
+              />
+              <button
+                type="submit"
+                disabled={!newProtected.trim()}
+                className="shrink-0 rounded bg-rose-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-rose-700 disabled:bg-gray-300"
+              >
+                Add
+              </button>
+            </form>
+            {protectedTerms.length === 0 ? (
+              <div className="rounded border border-dashed border-gray-200 px-3 py-4 text-center text-[11px] text-gray-400">
+                Nothing here yet. Select text in the input and click “Always
+                treat as privileged”, or add a term above.
+              </div>
+            ) : (
+              <ul className="space-y-1">
+                {protectedTerms.map((t) => (
+                  <TermRow
+                    key={t}
+                    term={t}
+                    onRemove={() => removeFromUserDenylist(t)}
+                    removeTitle="Remove — this term will no longer be force-redacted"
+                  />
+                ))}
+              </ul>
+            )}
+          </section>
+        </div>
       </div>
     </div>
   );

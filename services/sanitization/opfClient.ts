@@ -23,6 +23,7 @@
 
 import type { SpanCategory, Span } from '../../api/_shared/sanitization/index.js';
 import * as webDetector from './glinerWebClient.js';
+import { STOPLIST_LOWER } from './glinerPostProcess.js';
 import { DETECTOR_UNSUPPORTED_ON_DEVICE } from './deviceCapability.js';
 
 export { DETECTOR_UNSUPPORTED_ON_DEVICE } from './deviceCapability.js';
@@ -426,6 +427,15 @@ export async function detectSpans(
   for (const raw of data.spans) {
     const category = opfLabelToCategory(raw.label);
     if (!category) continue;
+    // Client-side mirror of the daemon's stoplist. The installed daemon
+    // binary can lag behind the repo stoplist (it ships as a compiled
+    // .pkg), so re-apply the full-span stoplist here — this is what
+    // keeps pronouns ("I", "me") and generic roles from surviving a
+    // stale daemon build. The in-browser web detector already applies
+    // this via postProcess(); this covers the daemon transport.
+    const trimmedLower = raw.text.trim().toLowerCase();
+    if (STOPLIST_LOWER.has(trimmedLower)) continue;
+    if (category === 'name' && trimmedLower.length < 2) continue;
     spans.push({
       start: raw.start,
       end: raw.end,

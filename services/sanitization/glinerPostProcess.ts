@@ -158,6 +158,15 @@ export const STOPLIST_LOWER: ReadonlySet<string> = new Set<string>([
   // Generic user/system role words GLiNER mistags as person
   'user', 'users', 'the user', 'the system', 'the model', 'the agent',
   'the assistant', 'the bot', 'the chatbot',
+  // Pronouns GLiNER occasionally mis-tags as person ("I want to draft a
+  // will" → "I" flagged as CLIENT_001). Full-span match only, so real
+  // names containing these letters are unaffected. (Added 2026-07-04.)
+  'i', 'me', 'my', 'mine', 'myself', 'we', 'us', 'our', 'ours',
+  'ourselves', 'you', 'your', 'yours', 'yourself', 'yourselves',
+  'he', 'him', 'his', 'himself', 'she', 'her', 'hers', 'herself',
+  'it', 'its', 'itself', 'they', 'them', 'their', 'theirs',
+  'themselves', 'who', 'whom', 'someone', 'somebody', 'anyone',
+  'anybody', 'everyone', 'everybody', 'no one', 'nobody',
 ]);
 
 // Prefix tokens GLiNER glues onto person spans; trim them off the START.
@@ -216,6 +225,9 @@ export function postProcess(raw: RawGlinerSpan[]): CategorizedSpan[] {
     }
     if (STOPLIST_LOWER.has(spanText.trim().toLowerCase())) continue;
     if (!spanText.trim()) continue;
+    // A one-character "name" is never a real personal name — it's the
+    // model mis-tagging a pronoun, initial, or stray letter.
+    if (cat === 'name' && spanText.trim().length < 2) continue;
     out.push({
       start: spanStart,
       end: r.end,

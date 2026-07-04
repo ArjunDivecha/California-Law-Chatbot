@@ -45,6 +45,7 @@ import {
 } from '../../api/_shared/sanitization/compoundRisk.js';
 import { detectSpans, type DetectResult } from './opfClient.js';
 import { getUserAllowlistLower } from './userAllowlist.js';
+import { findUserDenylistSpans } from './userDenylist.js';
 
 /**
  * Thrown by `detectPiiServerBackstop()` when raw PII is detected in the
@@ -404,6 +405,10 @@ export async function detectPii(
 
   const allowlist = findAllowlistMatches(text);
   const regexSpans = patternSpans(text);
+  // Per-device "always privileged" terms (userDenylist) — force-detected
+  // regardless of what the ML detector finds. Attorney explicit choice
+  // outranks every automatic suppression below.
+  const denySpans = findUserDenylistSpans(text);
 
   let opfResult: DetectResult | null = null;
   try {
@@ -412,10 +417,14 @@ export async function detectPii(
     if (mode === 'strict') {
       throw new OpfUnavailableError(err);
     }
-    // best-effort: fall back to heuristic
+    // best-effort: fall back to heuristic (+ denylist force-detections)
     const heuristic = analyzeHeuristic(text);
+    const spans = mergeSpans([...heuristic.spans, ...denySpans]);
     return {
       ...heuristic,
+      spans,
+      privileged:
+        heuristic.privileged || spans.some((s) => HIGH_RISK_CATEGORIES.has(s.category)),
       usedOpf: false,
       opfElapsedMs: null,
     };
@@ -462,6 +471,10 @@ export async function detectPii(
     afterUserAllow.push(...splitSpanByUserAllowlist(span, userAllowSet));
   }
   const suppressedByAllowlist = all.length - afterUserAllow.length;
+  // Denylist force-detections join AFTER the allowlist filters — the
+  // attorney explicitly marked these privileged, so neither the static
+  // legal allowlist nor the user allowlist may suppress them.
+  afterUserAllow.push(...denySpans);
   const mergedRaw = mergeSpans(afterUserAllow);
 
   // Bare-place / generic-term suppression (2026-06-30, browser-GLiNER
@@ -483,7 +496,11 @@ export async function detectPii(
     if (/^[a-z][a-z.'\- ]*\b(county|city)$/.test(t)) return true; // "<X> County" / "<X> City"
     return false;
   };
-  const merged = mergedRaw.filter((s) => !isBarePlaceOrTerm(s.raw));
+  // Denylist spans are exempt — if the attorney marked "Berkeley"
+  // privileged, the geo stoplist must not silently un-redact it.
+  const merged = mergedRaw.filter(
+    (s) => s.label === 'user-denylist' || !isBarePlaceOrTerm(s.raw)
+  );
 
   // OPF spans don't carry heuristic signal labels, so confidence is
   // modelled as 1.0 for the OPF path. The heuristic fallback path uses
