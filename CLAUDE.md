@@ -2,6 +2,17 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## OpenWiki
+
+This repository has documentation located in the /openwiki directory.
+
+Start here:
+- [OpenWiki quickstart](openwiki/quickstart.md)
+
+OpenWiki includes repository overview, architecture notes, workflows, domain concepts, operations, integrations, testing guidance, and source maps.
+
+When working in this repository, read the OpenWiki quickstart first, then follow its links to the relevant architecture, workflow, domain, operation, and testing notes.
+
 ## Project Overview
 
 California Law Chatbot is a legal research assistant powered by a two-pass AI verification system: Google Gemini (generator, via OpenRouter) + Anthropic Claude Sonnet 4.5 (verifier, via OpenRouter). Includes a CEB (Continuing Education of the Bar) RAG system with 77,406 vector embeddings across 5 legal verticals.
