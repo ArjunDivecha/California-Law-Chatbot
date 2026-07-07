@@ -194,9 +194,12 @@ export const V2DraftPage: React.FC = () => {
   // ----- Source loading -----
   const onUploadClick = useCallback(() => fileInputRef.current?.click(), []);
 
-  const onFileChosen = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  // Shared by the file-picker AND the drag-and-drop path. Drag-and-drop
+  // support added 2026-07-04: dropping a file on the page previously fell
+  // through to the browser default (navigate to file:///…, replacing the
+  // whole app). A window-level guard in App.tsx now blocks that; this
+  // handler makes the drop actually useful.
+  const handleFile = useCallback(async (file: File) => {
     setUploadBusy(true);
     setUploadError(null);
     try {
@@ -216,6 +219,22 @@ export const V2DraftPage: React.FC = () => {
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
   }, []);
+
+  const onFileChosen = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      await handleFile(file);
+    },
+    [handleFile],
+  );
+
+  const onFileDropped = useCallback(
+    async (file: File) => {
+      await handleFile(file);
+    },
+    [handleFile],
+  );
 
   const onLoadDocument = useCallback(() => {
     const text = pasteText.trim();
@@ -378,6 +397,7 @@ export const V2DraftPage: React.FC = () => {
           fileInputRef={fileInputRef}
           onUploadClick={onUploadClick}
           onFileChosen={onFileChosen}
+          onFileDropped={onFileDropped}
           onLoadDocument={onLoadDocument}
         />
       ) : (
@@ -656,21 +676,44 @@ const LoadScreen: React.FC<{
   fileInputRef: React.RefObject<HTMLInputElement>;
   onUploadClick: () => void;
   onFileChosen: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onFileDropped: (file: File) => void;
   onLoadDocument: () => void;
 }> = ({
   pasteText, setPasteText, uploadBusy, uploadError, uploadedName,
-  fileInputRef, onUploadClick, onFileChosen, onLoadDocument,
+  fileInputRef, onUploadClick, onFileChosen, onFileDropped, onLoadDocument,
 }) => {
   const { preview } = useV2SanitizationPreview(pasteText);
   const detectionCount = preview.tokens.length;
+  const [dragOver, setDragOver] = useState(false);
   return (
-    <div className="flex-1 overflow-y-auto">
-      <div className="max-w-3xl mx-auto px-6 py-10">
+    <div
+      className="flex-1 overflow-y-auto"
+      onDragOver={(e) => {
+        e.preventDefault();
+        setDragOver(true);
+      }}
+      onDragLeave={(e) => {
+        // Only clear when actually leaving the container (not entering a child).
+        if (e.currentTarget === e.target) setDragOver(false);
+      }}
+      onDrop={(e) => {
+        e.preventDefault();
+        setDragOver(false);
+        const file = e.dataTransfer.files?.[0];
+        if (file) onFileDropped(file);
+      }}
+    >
+      <div
+        className={`max-w-3xl mx-auto px-6 py-10 rounded-xl transition ${
+          dragOver ? 'ring-2 ring-pink-400 ring-offset-2 bg-pink-50/40' : ''
+        }`}
+      >
         <h2 className="text-xl font-semibold text-gray-900 mb-1">Start with your document</h2>
         <p className="text-sm text-gray-600 mb-5">
-          Paste your document below, or upload a file (.txt, .doc, .docx, .pdf). Then you'll tell the
-          assistant what to change — it proposes edits and you approve each one. Private details are
-          replaced with placeholders before anything is sent.
+          Paste your document below, drag a file anywhere onto this page, or upload one
+          (.txt, .doc, .docx, .pdf). Then you'll tell the assistant what to change — it
+          proposes edits and you approve each one. Private details are replaced with
+          placeholders before anything is sent.
         </p>
 
         <div className="flex items-center gap-3 mb-3">

@@ -120,6 +120,25 @@ function mergeSpans(spans: Span[]): Span[] {
       out[out.length - 1] = s;
       continue;
     }
+    // Deterministic regex-pattern spans (SSN, driver license, credit
+    // card, ...) outrank OPF's contextual guess when they disagree on
+    // category (2026-07-07 fix, T-PII-032 regression). Length-only
+    // tie-breaking let a longer, wrongly-categorized OPF span ("license
+    // A1234567" mistagged bank_account) swallow a shorter, correctly
+    // -categorized regex match (driver_license "A1234567") purely
+    // because it was longer. OPF spans always carry an 'opf:' label
+    // prefix (see opfClient.ts); regex spans never do. Only applies
+    // when categories actually conflict — matching categories fall
+    // through to the length rule below as before.
+    const lastIsOpf = last.label.startsWith('opf:');
+    const sIsOpf = s.label.startsWith('opf:');
+    const lastIsRegex = !lastIsOpf && last.category !== 'name';
+    const sIsRegex = !sIsOpf && s.category !== 'name';
+    if (lastIsRegex && sIsOpf && last.category !== s.category) continue;
+    if (lastIsOpf && sIsRegex && last.category !== s.category) {
+      out[out.length - 1] = s;
+      continue;
+    }
     const lastIsName = last.category === 'name';
     const sIsName = s.category === 'name';
     if (lastIsName && !sIsName) {

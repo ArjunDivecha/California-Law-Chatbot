@@ -53,7 +53,24 @@ const SignedInShell: React.FC = () => (
   </div>
 );
 
-const App: React.FC = () => (
+const App: React.FC = () => {
+  // Global drop guard (2026-07-04). Dragging a file onto any part of the app
+  // that isn't an explicit drop zone previously triggered the browser's
+  // default action — NAVIGATING to the file (file:///…GA.PDF), silently
+  // replacing the app and losing all in-progress state. Prevent the default
+  // at the window level; real drop zones (Draft page upload) handle their
+  // own drops before this fires.
+  React.useEffect(() => {
+    const prevent = (e: DragEvent) => e.preventDefault();
+    window.addEventListener('dragover', prevent);
+    window.addEventListener('drop', prevent);
+    return () => {
+      window.removeEventListener('dragover', prevent);
+      window.removeEventListener('drop', prevent);
+    };
+  }, []);
+
+  return (
   <ErrorBoundary>
     {/* SanitizerProvider opens the device-scoped IndexedDB token store
         and installs RealChatSanitizer as the active ChatSanitizer.
@@ -93,6 +110,7 @@ const App: React.FC = () => (
       </Routes>
     </SanitizerProvider>
   </ErrorBoundary>
-);
+  );
+};
 
 export default App;
