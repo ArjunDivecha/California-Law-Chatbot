@@ -53,3 +53,6 @@ archive-env-2026-07-01/
 Etf pair trading -*
 Finrobot-*
 Proposal Move the Femme & Femme Research Assistant to Anthropic's Managed Platform.pdf
+
+# Playwright CLI scratch output (snapshots/screenshots/logs from manual verification runs)
+.playwright-cli/

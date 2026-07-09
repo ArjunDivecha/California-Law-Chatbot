@@ -1,0 +1,21 @@
+{
+  "generated_at": "2026-07-07T19:32:03.977Z",
+  "label": "2026-07-07",
+  "manifest_version": 2,
+  "manifest_authored": "2026-05-12",
+  "elapsed_seconds": 0.4,
+  "totals": {
+    "total": 1,
+    "pass": 1,
+    "fail": 0,
+    "wire_leaks": 0
+  },
+  "by_category": {
+    "mixed_direct_pii": {
+      "total": 1,
+      "pass": 1,
+      "fail": 0
+    }
+  },
+  "failed": []
+}
