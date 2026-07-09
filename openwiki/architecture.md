@@ -65,7 +65,7 @@ Related modules refine that policy with governance, conflict checks, billing, re
 The app uses an on-device privacy filter rather than trusting server-side redaction alone.
 
 - `hooks/useSanitizer.tsx` initializes the active sanitizer.
-- `services/sanitization/detectionPipeline.ts` combines OPF detection, regex patterns, allowlist suppression, and denylist logic.
+- `services/sanitization/detectionPipeline.ts` combines OPF detection, regex patterns, allowlist suppression, and denylist logic. When overlapping spans disagree on category, deterministic regex-pattern spans (SSN, driver license, credit card, etc.) outrank OPF spans; when categories agree, the longer span wins as before.
 - `services/sanitization/realSanitizer.ts` performs tokenize/rehydrate operations and maintains the in-memory token map.
 - `services/sanitization/chatAdapter.ts` is the client-facing abstraction used by the V2 hooks.
 
@@ -95,3 +95,4 @@ Document export uses browser-side generation in some flows and a server export r
 ## Historical context
 
 The repository history shows a deliberate migration from an older OpenRouter/Gemini-era app to a single Anthropic-direct V2/V4 line. Several deleted files and historical docs in `README.md` and `docs/archive-v1/` are now reference-only.
+e-v1/` are now reference-only.

@@ -42,7 +42,7 @@ Useful source files:
 Watch-outs:
 
 - The prompt contract expects structured JSON output with atomic changes.
-- File ingestion happens in-browser.
+- File ingestion happens in-browser. The Draft page has its own drop zone that reads dropped files via the same path as the upload button; a window-level guard in `App.tsx` prevents drops outside that zone from navigating the browser away from the SPA.
 - Sanitization applies to the full payload before it leaves the device.
 - Draft/export behavior is split between browser generation and server export, so confirm which path a change uses.
 
