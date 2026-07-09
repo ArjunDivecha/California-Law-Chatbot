@@ -16,7 +16,7 @@ DESCRIPTION:
     to the console with pass/fail status per test.
 
 INPUT FILES:
-    /Users/arjundivecha/Dropbox/AAA Backup/A Working/California-Law-Chatbot-V2/.env
+    /Users/arjundivecha/Dropbox/AAA Backup/A Working/California-Law-Chatbot/.env
         Environment file containing UPSTASH_VECTOR_REST_URL,
         UPSTASH_VECTOR_REST_TOKEN, and OPENAI_API_KEY.
 

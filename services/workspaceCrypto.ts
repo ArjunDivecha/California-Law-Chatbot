@@ -36,8 +36,8 @@
  *               (object store 'keys', record 'workspace-aes-gcm-v1') to hold the
  *               non-extractable CryptoKey.
  *
- * USED BY: /Users/arjundivecha/Dropbox/AAA Backup/A Working/California-Law-Chatbot-V2/components/v2/V2DraftingMagicPage.tsx
- * TESTED BY: /Users/arjundivecha/Dropbox/AAA Backup/A Working/California-Law-Chatbot-V2/tests/workspaceCrypto.test.ts
+ * USED BY: /Users/arjundivecha/Dropbox/AAA Backup/A Working/California-Law-Chatbot/components/v2/V2DraftingMagicPage.tsx
+ * TESTED BY: /Users/arjundivecha/Dropbox/AAA Backup/A Working/California-Law-Chatbot/tests/workspaceCrypto.test.ts
  * =============================================================================
  */
 

@@ -11,7 +11,7 @@ DESCRIPTION:
     correctly and results can be retrieved.
 
 INPUT FILES:
-    /Users/arjundivecha/Dropbox/AAA Backup/A Working/California-Law-Chatbot-V2/.env
+    /Users/arjundivecha/Dropbox/AAA Backup/A Working/California-Law-Chatbot/.env
         Environment variables loaded via python-dotenv: UPSTASH_VECTOR_REST_URL,
         UPSTASH_VECTOR_REST_TOKEN, and OPENAI_API_KEY.
 

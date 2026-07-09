@@ -196,7 +196,7 @@ report.summary = { passed, total, parity: `${passed}/${total}` };
 report.v2_errors = v2.errors.slice(0, 10);
 report.codex_errors = codex.errors.slice(0, 10);
 console.log(`\nSUMMARY: ${passed}/${total} scenarios PASS`);
-const outPath = `/Users/arjundivecha/Dropbox/AAA Backup/A Working/California-Law-Chatbot-V2/reports/magic-parity-${new Date().toISOString().slice(0, 10)}.json`;
+const outPath = `/Users/arjundivecha/Dropbox/AAA Backup/A Working/California-Law-Chatbot/reports/magic-parity-${new Date().toISOString().slice(0, 10)}.json`;
 writeFileSync(outPath, JSON.stringify(report, null, 2));
 console.log(`\nReport: ${outPath}`);
 

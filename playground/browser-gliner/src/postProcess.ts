@@ -22,8 +22,8 @@
  * OUTPUT FILES: none.
  *
  * SOURCE OF TRUTH:
- *   /Users/arjundivecha/Dropbox/AAA Backup/A Working/California-Law-Chatbot-V2/scripts/gliner_detect.py
- *   /Users/arjundivecha/Dropbox/AAA Backup/A Working/California-Law-Chatbot-V2/tools/gliner-daemon/gliner_daemon.py
+ *   /Users/arjundivecha/Dropbox/AAA Backup/A Working/California-Law-Chatbot/scripts/gliner_detect.py
+ *   /Users/arjundivecha/Dropbox/AAA Backup/A Working/California-Law-Chatbot/tools/gliner-daemon/gliner_daemon.py
  * =============================================================================
  */
 

@@ -11,7 +11,7 @@ DESCRIPTION:
     printed to stdout for manual inspection.
 
 INPUT FILES:
-    /Users/arjundivecha/Dropbox/AAA Backup/A Working/California-Law-Chatbot-V2/.env
+    /Users/arjundivecha/Dropbox/AAA Backup/A Working/California-Law-Chatbot/.env
         Loaded by python-dotenv. Must define UPSTASH_VECTOR_REST_URL and
         UPSTASH_VECTOR_REST_TOKEN.
 

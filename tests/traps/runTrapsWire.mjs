@@ -74,7 +74,7 @@ const useGlinerOnly = args.includes('--gliner-only');
 // signals: OPF + GLiNER + regex).
 const useGlinerHybrid = args.includes('--gliner-hybrid');
 const FT_CHECKPOINT =
-  '/Users/arjundivecha/Dropbox/AAA Backup/A Working/California-Law-Chatbot-prd-run/remote_artifacts/runs/privacy_filter_full/run_b_weighted';
+  '/Users/arjundivecha/Dropbox/AAA Backup/A Complete/California-Law-Chatbot-training-artifacts-archive/remote_artifacts/runs/privacy_filter_full/run_b_weighted';
 const OPF_BIN = '/Users/arjundivecha/.opf-daemon/venv/bin/opf';
 const PYTHON_BIN = '/Users/arjundivecha/.opf-daemon/venv/bin/python';
 const GLINER_SCRIPT = joinPath(repoRoot, 'scripts/gliner_detect.py');
