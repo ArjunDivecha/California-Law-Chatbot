@@ -6,8 +6,8 @@ repo_name: tauri-spike
 github_repo: ArjunDivecha/California-Law-Chatbot
 session_id: dcfa3b4c-a3f4-42b5-99e1-e69ab4b2204e
 source_file: dcfa3b4c-a3f4-42b5-99e1-e69ab4b2204e.jsonl
-exported_at: 2026-07-16T21:37:05.837879+00:00
-export_base_commit_sha: 793649e14c3e395770d5e8e167c07832aa1b753b
+exported_at: 2026-07-16T21:55:58.062154+00:00
+export_base_commit_sha: 6bd79f15edbcc7863c449ff4fa3cb799a1b76f2c
 redacted: true
 ---
 
@@ -160,3 +160,32 @@ Verified end-to-end, not simulated:
 
 
 **Assistant:** The CA-coupling map is in. Checking the app relaunch with the new icon:
+
+
+**Assistant:** Both things done — the icon is live and I have a full answer on the 50-state question.
+
+## Dock icon ✓
+
+The winged heart is now the app icon — I gave it the proper macOS treatment (rounded squircle with transparent margins per Apple's icon grid, so it sits in the dock like a real Mac app instead of a flat square), regenerated all platform sizes (`.icns`, `.ico`, Windows/Android sets), and relaunched the app — **check your dock now**. Committed as `6bd79f1`.
+
+## How tied is the app to California?
+
+I had an agent map every CA-specific reference in the codebase. Bottom line: **roughly 60–70% of the system is already a jurisdiction-neutral engine; the CA-bound 30–40% is mostly *content*, not architecture.** Going to 50 states is a per-state content-and-data project layered on a platform that m
+
+
+**User:** go ahead with phase 2 - sidecar + sqlite
+
+
+**Assistant:** Phase 2 it is: bundle the API as a sidecar the app launches itself, and swap Upstash Redis for local SQLite. First, let me study the session store's interface and find everything that touches Upstash in the agent path.
+
+
+**Assistant:** Now the Rust side — spawn the sidecar on launch, wait for it to be reachable, kill it on exit:
+
+
+**Assistant:** Rust compiles. Now the real test — build the front end, run the desktop server standalone, and prove an agent turn lands in SQLite with the cloud stores severed:
+
+
+**Assistant:** Everything's local: messages, session meta, the user session index, and even the daily audit + manifest logs all landed in SQLite. Now the full self-contained flow — Tauri spawns the sidecar itself:
+
+
+**Assistant:** Health didn't come up in 120s — something failed. Checking the logs:

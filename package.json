@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "vite",
     "tauri": "tauri",
+    "desktop": "vite build && tauri dev --no-watch --config src-tauri/tauri.desktop.conf.json",
+    "desktop:server": "tsx desktop-server.mjs",
     "dev:api": "tsx dev-server.js",
     "dev:full": "tsx dev-server.js & sleep 2 && vite",
     "build": "vite build",
