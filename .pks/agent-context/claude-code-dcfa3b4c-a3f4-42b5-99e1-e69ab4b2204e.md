@@ -6,8 +6,8 @@ repo_name: tauri-spike
 github_repo: ArjunDivecha/California-Law-Chatbot
 session_id: dcfa3b4c-a3f4-42b5-99e1-e69ab4b2204e
 source_file: dcfa3b4c-a3f4-42b5-99e1-e69ab4b2204e.jsonl
-exported_at: 2026-07-16T21:30:11.347548+00:00
-export_base_commit_sha: d2c5f7910ff21585cb6205f4573b557359d2f0b6
+exported_at: 2026-07-16T21:37:05.837879+00:00
+export_base_commit_sha: 793649e14c3e395770d5e8e167c07832aa1b753b
 redacted: true
 ---
 
@@ -133,3 +133,30 @@ The evidence in brief:
 
 
 **Assistant:** The agent loop works end-to-end locally — real Anthropic call, correct Family Code § 2320 answer with a tool round, 13s. Now checking the Tauri build.
+
+
+**Assistant:** Done — the spike works, and yes, we're isolated: branch `worktree-tauri-spike` in a dedicated worktree, with your uncommitted edits on `main` untouched.
+
+## What just happened
+
+**There should be a native "California Law Chatbot" window open on your Mac right now** (1440×900, still running — close it whenever you like; I left the dev processes up so you can play with it).
+
+Verified end-to-end, not simulated:
+
+1. **Tauri 2 scaffolded and compiled** — first Rust build took only 31 seconds on your M4 Max. The webview loads the Vite dev server, which proxies `/api` to `dev-server.js` — so the entire V2 stack (policy engine, PII pipeline, tools, audit) runs locally with **zero changes to the app code**. That was the bet, and it held.
+2. **Real agent turn through the local stack**: `POST /api/age
+
+
+**User:** [Image #1] use this for the mac dock icon
+
+
+**User:** [Image: source: /Users/arjundivecha/Dropbox/AAA Backup/A Working/California-Law-Chatbot/Heart Favicon.png]
+
+
+**Assistant:** Nice choice — that's the Heart Favicon already in the repo. I'll prep it properly for macOS (dock icons need the rounded-squircle-with-margins treatment on a transparent canvas, otherwise it shows as a giant flat square), then regenerate all Tauri icon sizes from it and relaunch the app so you see it in the dock.
+
+
+**Assistant:** Icons generated. Let me sanity-check the masked artwork visually, then restart the app so the dock picks it up (icon is embedded at compile time).
+
+
+**Assistant:** The CA-coupling map is in. Checking the app relaunch with the new icon:
