@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "tauri": "tauri",
     "dev:api": "tsx dev-server.js",
     "dev:full": "tsx dev-server.js & sleep 2 && vite",
     "build": "vite build",
@@ -38,6 +39,7 @@
     "sqlite-vec": "^0.1.9"
   },
   "devDependencies": {
+    "@tauri-apps/cli": "^2.11.4",
     "@types/node": "^22.14.0",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
