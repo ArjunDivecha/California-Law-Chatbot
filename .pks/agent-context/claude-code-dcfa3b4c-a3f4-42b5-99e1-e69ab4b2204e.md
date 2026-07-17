@@ -6,8 +6,8 @@ repo_name: tauri-spike
 github_repo: ArjunDivecha/California-Law-Chatbot
 session_id: dcfa3b4c-a3f4-42b5-99e1-e69ab4b2204e
 source_file: dcfa3b4c-a3f4-42b5-99e1-e69ab4b2204e.jsonl
-exported_at: 2026-07-16T21:55:58.062154+00:00
-export_base_commit_sha: 6bd79f15edbcc7863c449ff4fa3cb799a1b76f2c
+exported_at: 2026-07-17T03:14:33.370628+00:00
+export_base_commit_sha: 2a677fc680356da6cfd7b466d6613c0f76f87ee4
 redacted: true
 ---
 
@@ -189,3 +189,44 @@ I had an agent map every CA-specific reference in the codebase. Bottom line: **r
 
 
 **Assistant:** Health didn't come up in 120s — something failed. Checking the logs:
+
+
+**Assistant:** **Phase 2 done and verified — the desktop app now runs with zero cloud data stores.** Committed as `2a677fc`. The window open on your Mac right now (heart icon in the dock) is the fully local build — sign in with Google and everything you do persists on your machine.
+
+## What was built
+
+1. **SQLite session store** (`api/_lib/desktop/sqliteKv.ts`) — a mini-Redis on `better-sqlite3` implementing the exact `SessionRedis` + `AuditSink` interfaces (lists, hashes, TTL/NX locks, sorted sets, lazy expiry). It's injected through the injection seams that already existed for tests — zero changes to the agent loop, session store, or any caller.
+2. **Sidecar** (`desktop-server.mjs`) — one process serving both the built front end and the full V2 agent API on `127.0.0.1:8477`. Critically, it **deletes th
+
+
+**User:** go ahead
+
+
+**Assistant:** Phase 3: turn this into a real self-contained `.app` — bundled sidecar (no repo `tsx`), bundled Node runtime, resources packaged, `tauri build`, then verify the built app end-to-end. (Notarization/auto-update and the license/metering swap for Clerk stay deferred — those are commercial-launch items.) First, the runtime facts I need: how `better-sqlite3` loads its native addon, how the agent skills dir and templates are resolved, and whether esbuild is available.
+
+
+**Assistant:** Quick regression check that the rewritten server still works under tsx before building the bundler:
+
+
+**Assistant:** Static-import version works. Now the sidecar bundler script:
+
+
+**Assistant:** `gliner`/ONNX (local NER model) is in the server import graph and can't be bundled. Let me find who pulls it in and whether the server actually needs it at runtime:
+
+
+**Assistant:** Compiles. Kicking off the release build (`.app` bundle) in the background — release Rust compile plus bundling will take a few minutes:
+
+
+**Assistant:** Release build is running in the background (task `b7a2i6jrp`). When it lands I'll verify the actual `.app` — launch it standalone, hit the sidecar health endpoint, run a real agent turn, and confirm rows in SQLite — then commit phase 3 and report. The `.app` will include: the esbuild-bundled server (single 100k-line CJS), a real `node_modules` for the `better-sqlite3` native addon, the `agents/` skills, the built front end, and a bundled Node 24 runtime as a signed external binary — no dependency on the repo at runtime.
+
+
+**User:** <task-notification>
+<task-id>b7a2i6jrp</task-id>
+<tool-use-id>toolu_018FxB9S8VqLqKt4kp1VmfWg</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-arjundivecha-Dropbox-AAA-Backup-A-Working-California-Law-Chatbot/4301b62e-a868-4e37-a94c-e3fa0f6f0f59/tasks/b7a2i6jrp.output</output-file>
+<status>completed</status>
+<summary>Background command "Release build of the .app (background)" completed (exit code 0)</summary>
+</task-notification>
+
+
+**Assistant:** The `.app` is built — 207MB, with `node` alongside the main binary and `desktop-resources` in Resources. Moment of truth — launching the actual app:

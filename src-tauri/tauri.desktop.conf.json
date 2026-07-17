@@ -5,7 +5,8 @@
     "beforeDevCommand": {
       "script": "yarn desktop:server",
       "wait": false
-    }
+    },
+    "beforeBuildCommand": "yarn build && node scripts/build-desktop-sidecar.mjs"
   },
   "app": {
     "windows": [
@@ -18,5 +19,9 @@
         "url": "http://localhost:8477"
       }
     ]
+  },
+  "bundle": {
+    "resources": ["desktop-resources"],
+    "externalBin": ["binaries/node"]
   }
 }

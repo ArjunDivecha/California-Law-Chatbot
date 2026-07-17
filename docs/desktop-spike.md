@@ -1,5 +1,27 @@
 # Desktop (Tauri) spike — 2026-07-16
 
+> **Phase 3 landed (same day): a standalone .app.** `yarn desktop:app`
+> produces `src-tauri/target/release/bundle/macos/California Law Chatbot.app`
+> (~207 MB) with no runtime dependency on the repo: the whole server graph is
+> esbuild-bundled to one CJS file (`scripts/build-desktop-sidecar.mjs`;
+> better-sqlite3 ships as a real node_modules because its `bindings` loader
+> can't be bundled; gliner/onnxruntime are external — browser-only), the
+> agents/ skills + built front end ride along as resources, and a full Node
+> 24 runtime is bundled as a Tauri externalBin (`Contents/MacOS/node`).
+> Release builds spawn the sidecar from Rust and kill it on exit. Bundle
+> placement gotchas: the CJS lives at `desktop-resources/api/_lib/` so
+> skills.ts's `__dirname/../../agents` resolution still lands, and
+> `import.meta.url` is shimmed (scripts/import-meta-url-shim.js) because
+> CJS output lowers it to `{}`. API keys: the packaged app has no repo .env —
+> desktop-env.mjs also reads `~/Library/Application Support/California Law
+> Chatbot/.env` (and the AAA fallback on this machine).
+> Verified end-to-end on the built .app: sidecar health, real agent turn
+> (Fam. Code § 271, leginfo citation → the code-lookup tool works from
+> inside the package), front end served, session rows in SQLite.
+> Still deferred: Developer ID signing + notarization (ad-hoc signed now —
+> fine on this Mac, Gatekeeper warns elsewhere), auto-update, Clerk →
+> license-key auth + metering proxy (commercial build).
+
 > **Phase 2 landed (same day):** sidecar + SQLite. `yarn desktop` now runs the
 > fully local build: the Tauri CLI launches `desktop-server.mjs` (via the
 > overlay config's `beforeDevCommand{wait:false}` — a Rust-side spawn would

@@ -40,7 +40,9 @@ use tauri::{Manager, RunEvent};
 
 struct SidecarChild(Mutex<Option<Child>>);
 
-fn spawn_sidecar(port: &str) -> std::io::Result<Child> {
+/// Dev-only (DESKTOP_SIDECAR=1 on a debug build): run the sidecar from the
+/// repo via tsx. Repo root is baked in at compile time — dev builds only.
+fn spawn_sidecar_dev(port: &str) -> std::io::Result<Child> {
     let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
         .parent()
         .expect("src-tauri has a parent dir")
@@ -48,6 +50,29 @@ fn spawn_sidecar(port: &str) -> std::io::Result<Child> {
     Command::new(root.join("node_modules/.bin/tsx"))
         .arg("desktop-server.mjs")
         .current_dir(&root)
+        .env("DESKTOP_PORT", port)
+        .spawn()
+}
+
+/// Packaged path: run the esbuild-bundled sidecar with the bundled Node
+/// runtime. `binaries/node` (externalBin) lands next to the app executable
+/// (Contents/MacOS/node); `desktop-resources/` lands in Contents/Resources.
+fn spawn_sidecar_packaged(
+    app: &tauri::AppHandle,
+    port: &str,
+) -> std::io::Result<Child> {
+    let res_dir = app
+        .path()
+        .resource_dir()
+        .map_err(|e| std::io::Error::other(e.to_string()))?
+        .join("desktop-resources");
+    let node = std::env::current_exe()?
+        .parent()
+        .expect("executable has a parent dir")
+        .join("node");
+    Command::new(node)
+        .arg(res_dir.join("api").join("_lib").join("desktop-server.cjs"))
+        .current_dir(&res_dir)
         .env("DESKTOP_PORT", port)
         .spawn()
 }
@@ -65,13 +90,18 @@ pub fn run() {
             }
             // Release/packaged builds own the sidecar; dev builds leave it
             // to the CLI's beforeDevCommand (see header). DESKTOP_SIDECAR=1
-            // forces the spawn in dev for testing this path.
-            let should_spawn = !cfg!(debug_assertions)
-                || std::env::var("DESKTOP_SIDECAR").as_deref() == Ok("1");
+            // forces the (repo-tsx) spawn in dev for testing this path.
+            let force_dev_spawn =
+                std::env::var("DESKTOP_SIDECAR").as_deref() == Ok("1");
+            let should_spawn = !cfg!(debug_assertions) || force_dev_spawn;
             if should_spawn {
                 let port =
                     std::env::var("DESKTOP_PORT").unwrap_or_else(|_| "8477".to_string());
-                let child = spawn_sidecar(&port)?;
+                let child = if cfg!(debug_assertions) {
+                    spawn_sidecar_dev(&port)?
+                } else {
+                    spawn_sidecar_packaged(app.handle(), &port)?
+                };
                 *app.state::<SidecarChild>().0.lock().unwrap() = Some(child);
                 // Block setup until the sidecar accepts connections so the
                 // webview's first load can't race it. ~15 s ceiling.
