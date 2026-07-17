@@ -23,10 +23,19 @@
 > Node runtime requires JIT entitlements (`src-tauri/entitlements.plist`:
 > allow-jit, allow-unsigned-executable-memory, disable-library-validation
 > for the better_sqlite3 addon) — without them the sidecar is SIGKILLed on
-> launch (verified). Still deferred: notarization (one-time
-> `xcrun notarytool store-credentials` with an app-specific password, then
-> `notarytool submit` + `stapler staple` — needed only for distribution to
-> other Macs), auto-update, Clerk → license-key auth + metering proxy.
+> launch (verified).
+>
+> **Notarization (2026-07-17): DONE — the .app is distributable.** Keychain
+> profile `clc-notary` (created once via `xcrun notarytool
+> store-credentials`), then `yarn desktop:app` runs the full chain: build →
+> sign → `scripts/notarize-desktop-app.mjs` (zip → `notarytool submit
+> --wait` → `stapler staple` → `spctl` check). Gotcha caught by Apple's
+> first rejection: the better_sqlite3.node addon under bundle resources is
+> NOT signed by Tauri — `scripts/build-desktop-sidecar.mjs` now codesigns
+> it (Developer ID + timestamp) before bundling. Verified: notarization
+> Accepted, ticket stapled, `spctl --assess` says
+> `accepted, source=Notarized Developer ID`, app launches and serves.
+> Still deferred: auto-update, Clerk → license-key auth + metering proxy.
 
 > **Phase 2 landed (same day):** sidecar + SQLite. `yarn desktop` now runs the
 > fully local build: the Tauri CLI launches `desktop-server.mjs` (via the

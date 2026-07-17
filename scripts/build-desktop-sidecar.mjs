@@ -92,6 +92,28 @@ for (const pkg of ['better-sqlite3', 'bindings', 'file-uri-to-path']) {
 rmSync(join(NM, 'better-sqlite3', 'build', 'Release', 'obj'), { recursive: true, force: true });
 rmSync(join(NM, 'better-sqlite3', 'deps'), { recursive: true, force: true });
 
+// Sign the native addon with Developer ID + secure timestamp. Tauri signs
+// the app and externalBins but NOT files under bundle.resources, and Apple
+// notarization rejects any unsigned Mach-O in the bundle (verified: the
+// 2026-07-17 submission failed on exactly this file). Signing here means
+// the addon enters the bundle already signed and survives re-bundling.
+const SIGN_ID =
+  process.env.DESKTOP_SIGN_IDENTITY ||
+  'Developer ID Application: Arjun Divecha (P8U4R52G69)';
+const addon = join(NM, 'better-sqlite3', 'build', 'Release', 'better_sqlite3.node');
+try {
+  execSync(
+    `codesign --force --timestamp --options runtime --sign "${SIGN_ID}" "${addon}"`,
+    { stdio: 'inherit' },
+  );
+} catch (e) {
+  console.error(
+    `❌ codesign of ${addon} failed — a notarized build is impossible without it. ` +
+      'Set DESKTOP_SIGN_IDENTITY or install the Developer ID certificate.',
+  );
+  process.exit(1);
+}
+
 // 3. App resources: agent skills + built front end.
 cpSync(join(ROOT, 'agents'), join(RES, 'agents'), { recursive: true });
 cpSync(join(ROOT, 'dist'), join(RES, 'dist'), { recursive: true });

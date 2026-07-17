@@ -6,8 +6,8 @@ repo_name: tauri-spike
 github_repo: ArjunDivecha/California-Law-Chatbot
 session_id: dcfa3b4c-a3f4-42b5-99e1-e69ab4b2204e
 source_file: dcfa3b4c-a3f4-42b5-99e1-e69ab4b2204e.jsonl
-exported_at: 2026-07-17T03:40:10.069615+00:00
-export_base_commit_sha: c7d3a33bb96236223d872b81632c1c3d9d68ec95
+exported_at: 2026-07-17T16:06:58.605087+00:00
+export_base_commit_sha: b9813016e843e1cbc6ce203d201dbfc17c4058e3
 redacted: true
 ---
 
@@ -307,3 +307,78 @@ Status so far:
 
 
 **Assistant:** The build actually completed before the task was killed. Verifying the entitlements fix end-to-end:
+
+
+**Assistant:** Done — both items complete, plus your Developer ID is now wired in.
+
+**1. T-PII-032 — resolved (it was already fixed, docs were stale).** The regression was closed by `40c9881` on 2026-07-09; I verified the entire suite fresh — wire traps **120/120 exit 0**, analyze traps 120/120, sanitization 153/153 — retired the stale "known-broken" notes in CLAUDE.md, and committed the trap report as evidence.
+
+**2. Merged to `main`** (`29fb4e7`, then `4037989` for the signing work) — 7 commits total: desktop shell, icon, SQLite phase 2, standalone .app phase 3, suite verification, and signing. Your uncommitted files in the main checkout are untouched. **Still not pushed** — pushing auto-deploys to production Vercel; the diff is additive so it's safe, just say "push" when you want it live.
+
+**3. Signed
+
+
+**User:** give me step by step directions - ❯ give me step by step directions -
+
+
+**Assistant:** Here's exactly what to do — takes about 3 minutes:
+
+## Step 1: Create an app-specific password (on Apple's website)
+
+1. Open **https://account.apple.com** in your browser and sign in with your Apple ID (the one your Developer account is under).
+2. You may need to approve a two-factor prompt on your iPhone/Mac.
+3. Find the **"App-Specific Passwords"** section (under "Sign-In and Security").
+4. Click **"+"** (Generate an app-specific password).
+5. Give it a name like `clc-notary`.
+6. Apple shows you a password that looks like `abcd-efgh-ijkl-mnop`. **Copy it now** — it's only shown once.
+
+## Step 2: Store it in your keychain (one command, here in this session)
+
+Type this in the chat, starting with `!` (that runs it as a shell command so I can't see interruptions and the password goes straigh
+
+
+**User:** <bash-input> xcrun notarytool store-credentials clc-notary --apple-id arjun.divecha@gmo.com --team-id P8U4R52G69 --password snfy-yxzl-xolc-lrjk</bash-input>
+
+
+**User:** <bash-stdout></bash-stdout><bash-stderr>Error: HTTP status code: 403. A required agreement is missing or has expired. This request requires an in-effect agreement that has not been signed or has expired. Ensure your team has signed the necessary legal agreements and that they are not expired.
+
+This process stores your credentials securely in the Keychain. You reference these credentials later using a profile name.
+
+Validating your credentials...
+</bash-stderr>
+
+
+**Assistant:** Almost — your credentials are fine, but Apple is blocking it because there's an **unsigned/expired developer agreement** on your account (Apple updates their license agreement periodically and freezes notarization until you re-accept it). Quick fix:
+
+## Accept the agreement
+
+1. Go to **https://developer.apple.com/account** and sign in with the same Apple ID (`arjun.divecha@gmo.com`).
+2. You'll almost certainly see a yellow/red banner at the top: *"The Apple Developer Program License Agreement has been updated and needs to be reviewed"* — click **Review Agreement**, tick the box, click **Agree**.
+   - If there's no banner, check **Agreements** (or Membership details) in the left sidebar for anything marked "pending" or "expired".
+3. If your membership itself has lapsed (it'll say so on the
+
+
+**User:** <bash-input> xcrun notarytool store-credentials clc-notary --apple-id arjun.divecha@gmo.com --team-id P8U4R52G69 --password snfy-yxzl-xolc-lrjk</bash-input>
+
+
+**User:** <bash-stdout></bash-stdout><bash-stderr>Error: HTTP status code: 403. A required agreement is missing or has expired. This request requires an in-effect agreement that has not been signed or has expired. Ensure your team has signed the necessary legal agreements and that they are not expired.
+
+This process stores your credentials securely in the Keychain. You reference these credentials later using a profile name.
+
+Validating your credentials...
+</bash-stderr>
+
+
+**Assistant:** Still the same 403 — Apple hasn't cleared the agreement flag. Before trying again, let's pin down which of the three usual causes it is. Can you check these on **https://developer.apple.com/account** (signed in as `arjun.divecha@gmo.com`)?
+
+1. **Is there a pending agreement banner?** If you just accepted it, Apple's backend can take **15–30 minutes** to propagate — if you accepted it moments ago, wait 20 minutes and re-run the same `!` command.
+
+2. **Membership status** — on the Membership/Account page, does it show your Apple Developer Program membership as **active**, with team ID **P8U4R52G69**? If it says *expired* or prompts you to enroll/renew, that's the actual blocker — the $99/yr renewal has to go through first (agreement acceptance won't help until it does).
+
+3. **Right Apple ID?
+
+
+**User:** 1 no such thing 2 status is active 3 correct apple id
+
+
+_Transcript truncated for commit-sized artifact._
