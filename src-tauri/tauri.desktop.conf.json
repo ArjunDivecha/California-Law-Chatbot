@@ -22,6 +22,10 @@
   },
   "bundle": {
     "resources": ["desktop-resources"],
-    "externalBin": ["binaries/node"]
+    "externalBin": ["binaries/node"],
+    "macOS": {
+      "signingIdentity": "Developer ID Application: Arjun Divecha (P8U4R52G69)",
+      "entitlements": "entitlements.plist"
+    }
   }
 }

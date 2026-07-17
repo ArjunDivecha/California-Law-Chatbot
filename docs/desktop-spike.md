@@ -18,9 +18,15 @@
 > Verified end-to-end on the built .app: sidecar health, real agent turn
 > (Fam. Code § 271, leginfo citation → the code-lookup tool works from
 > inside the package), front end served, session rows in SQLite.
-> Still deferred: Developer ID signing + notarization (ad-hoc signed now —
-> fine on this Mac, Gatekeeper warns elsewhere), auto-update, Clerk →
-> license-key auth + metering proxy (commercial build).
+> **Signing (2026-07-17):** the .app is now signed with `Developer ID
+> Application: Arjun Divecha (P8U4R52G69)` + hardened runtime. The bundled
+> Node runtime requires JIT entitlements (`src-tauri/entitlements.plist`:
+> allow-jit, allow-unsigned-executable-memory, disable-library-validation
+> for the better_sqlite3 addon) — without them the sidecar is SIGKILLed on
+> launch (verified). Still deferred: notarization (one-time
+> `xcrun notarytool store-credentials` with an app-specific password, then
+> `notarytool submit` + `stapler staple` — needed only for distribution to
+> other Macs), auto-update, Clerk → license-key auth + metering proxy.
 
 > **Phase 2 landed (same day):** sidecar + SQLite. `yarn desktop` now runs the
 > fully local build: the Tauri CLI launches `desktop-server.mjs` (via the
