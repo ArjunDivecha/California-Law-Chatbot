@@ -6,8 +6,8 @@ repo_name: tauri-spike
 github_repo: ArjunDivecha/California-Law-Chatbot
 session_id: dcfa3b4c-a3f4-42b5-99e1-e69ab4b2204e
 source_file: dcfa3b4c-a3f4-42b5-99e1-e69ab4b2204e.jsonl
-exported_at: 2026-07-17T16:06:58.605087+00:00
-export_base_commit_sha: b9813016e843e1cbc6ce203d201dbfc17c4058e3
+exported_at: 2026-07-17T16:23:13.712260+00:00
+export_base_commit_sha: c148c76998c627736612605b6868270f3d030cbe
 redacted: true
 ---
 
