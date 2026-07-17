@@ -1,0 +1,46 @@
+{
+  "generated_at": "2026-07-17T03:31:41.206Z",
+  "label": "2026-07-17",
+  "manifest_version": 2,
+  "manifest_authored": "2026-05-12",
+  "elapsed_seconds": 5.9,
+  "totals": {
+    "total": 120,
+    "pass": 120,
+    "fail": 0,
+    "wire_leaks": 0
+  },
+  "by_category": {
+    "compound_identifier": {
+      "total": 25,
+      "pass": 25,
+      "fail": 0
+    },
+    "single_word_name": {
+      "total": 10,
+      "pass": 10,
+      "fail": 0
+    },
+    "tool_output_reintroduction": {
+      "total": 11,
+      "pass": 11,
+      "fail": 0
+    },
+    "financial": {
+      "total": 10,
+      "pass": 10,
+      "fail": 0
+    },
+    "adversarial": {
+      "total": 10,
+      "pass": 10,
+      "fail": 0
+    },
+    "mixed_direct_pii": {
+      "total": 54,
+      "pass": 54,
+      "fail": 0
+    }
+  },
+  "failed": []
+}

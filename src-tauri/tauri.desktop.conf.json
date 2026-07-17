@@ -1,0 +1,27 @@
+{
+  "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
+  "build": {
+    "devUrl": "http://localhost:8477",
+    "beforeDevCommand": {
+      "script": "yarn desktop:server",
+      "wait": false
+    },
+    "beforeBuildCommand": "yarn build && node scripts/build-desktop-sidecar.mjs"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "California Law Chatbot",
+        "width": 1440,
+        "height": 900,
+        "resizable": true,
+        "fullscreen": false,
+        "url": "http://localhost:8477"
+      }
+    ]
+  },
+  "bundle": {
+    "resources": ["desktop-resources"],
+    "externalBin": ["binaries/node"]
+  }
+}
