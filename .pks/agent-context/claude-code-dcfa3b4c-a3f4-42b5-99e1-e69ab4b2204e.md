@@ -6,8 +6,8 @@ repo_name: tauri-spike
 github_repo: ArjunDivecha/California-Law-Chatbot
 session_id: dcfa3b4c-a3f4-42b5-99e1-e69ab4b2204e
 source_file: dcfa3b4c-a3f4-42b5-99e1-e69ab4b2204e.jsonl
-exported_at: 2026-07-17T03:14:33.370628+00:00
-export_base_commit_sha: 2a677fc680356da6cfd7b466d6613c0f76f87ee4
+exported_at: 2026-07-17T03:33:07.801199+00:00
+export_base_commit_sha: 17df276fc5c87478a7175feb16cace5a11918e44
 redacted: true
 ---
 
@@ -230,3 +230,37 @@ I had an agent map every CA-specific reference in the codebase. Bottom line: **r
 
 
 **Assistant:** The `.app` is built — 207MB, with `node` alongside the main binary and `desktop-resources` in Resources. Moment of truth — launching the actual app:
+
+
+**Assistant:** ## What shipped
+
+**`yarn desktop:app` → `California Law Chatbot.app` (207MB), verified end-to-end on the actual built bundle:**
+- Sidecar health: serving from `~/Library/Application Support/California Law Chatbot/sessions.db`
+- Real agent turn through the packaged app: correct Fam. Code § 271 sanctions answer **with a leginfo citation link** — meaning the code-lookup tool chain works from inside the package
+- Front end served by the app's own sidecar (HTTP 200), session rows confirmed in SQLite
+
+## How it's put together
+
+- **One CJS bundle** — esbuild compiles the entire server graph (express, agent loop, policy engine, tools) into a single file, placed at `desktop-resources/api/_lib/` deliberately so `skills.ts`'s `__dirname/../../agents` resolution still finds the skills.
+- **Three thing
+
+
+**User:** whats next
+
+
+**Assistant:** Here's the map, in the order I'd do it:
+
+**1. Fix T-PII-032 (the wire-pipeline driver-license regression) — first, and I can do it now.** It's the known-red confidentiality bug (119/120 traps), it's in production today, and it's disqualifying for any product whose entire pitch is "confidentiality-first." The fix is already spec'd as a contract in FABLE.md. ~30 minutes including running both trap runners.
+
+**2. Merge `worktree-tauri-spike` → `main`.** Four clean commits, all verified. The desktop code is additive (new files + icons) — it doesn't touch the Vercel deployment path, so Rachel's production web app is unaffected. Your call; I can merge when you say.
+
+**3. Decide the app's identity for the commercial track.** Small but load-bearing: pick the product name (not "California Law Chatb
+
+
+**User:** go ahead with 1 and 2 and I have a apple developer id
+
+
+**Assistant:** Starting with the T-PII-032 fix. The contract is in FABLE.md — let me pull the spec and the failing code path.
+
+
+**Assistant:** The contract is clear. Reproduce first, then root-cause:

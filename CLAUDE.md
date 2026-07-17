@@ -52,8 +52,9 @@ yarn test:sanitization  # tsx tests/sanitization.test.mjs — VERIFIED (153 pass
 yarn test:traps         # tsx tests/traps/runTraps.mjs — VERIFIED (100/100 analyze traps)
 # All 15 tests/*.test.{mjs,ts} pass when run directly via ./node_modules/.bin/tsx — VERIFIED
 
-# KNOWN-RED — the wire-pipeline trap runner (not wired to any npm script):
-./node_modules/.bin/tsx tests/traps/runTrapsWire.mjs   # 119/120, exits 1 — see FABLE.md P0
+# Wire-pipeline trap runner (not wired to any npm script) — GREEN as of
+# 2026-07-17 (120/120, exit 0; the T-PII-032 regression was fixed in 40c9881):
+./node_modules/.bin/tsx tests/traps/runTrapsWire.mjs
 
 yarn dev                # vite dev server, http://localhost:5173  (unverified this run)
 yarn dev:api            # tsx dev-server.js — local API proxy      (unverified this run)
@@ -77,7 +78,7 @@ yarn dev:full           # dev:api + dev together                   (unverified t
 
 1. **CEB RAG and all OpenRouter/Gemini routing are RETIRED** (2026-07-02/03 V1 purge). `ceb-search`, `gemini-chat`, `claude-chat`, `courtlistener-search`, `verify-citations`, etc. no longer exist as endpoints. `ceb_search` is permanently blocked (CEB Terms & Conditions prohibit ingesting their content — `policyEngine.ts` comment). Do not reintroduce.
 2. **Anthropic-direct only.** Primary model `claude-fable-5` (`agentLoop.ts:71`, override `V2_PRIMARY_MODEL`); `claude-opus-4-8` is the *automatic failover* on a model-unavailable 404 (`:84`, `V2_FALLBACK_MODEL`), not a co-default; Quick mode and the citation verifier use `claude-sonnet-4-6`. Any new model id must be added to `approvedModels.ts` or the request throws.
-3. **Two sanitizer implementations share one pattern set** (`api/_shared/sanitization/patterns.ts`): the analyze pipeline (`api/_shared/sanitization/index.ts`) and the wire pipeline (`services/sanitization/detectionPipeline.ts`). They can drift — that drift is exactly what produced the current T-PII-032 wire regression (FABLE.md P0). Keep them in sync and run **both** trap runners after any sanitization change.
+3. **Two sanitizer implementations share one pattern set** (`api/_shared/sanitization/patterns.ts`): the analyze pipeline (`api/_shared/sanitization/index.ts`) and the wire pipeline (`services/sanitization/detectionPipeline.ts`). They can drift — that drift is exactly what produced the T-PII-032 wire regression (FABLE.md P0; fixed in 40c9881, re-verified green 2026-07-17). Keep them in sync and run **both** trap runners after any sanitization change.
 4. **Gating is fail-CLOSED; audit/plumbing is deliberately fail-OPEN.** `policyEngine`, `toolQueryGuard`, and the PII backstop (→ 503) block on error. Rate limiting (`httpGuard.ts:206`), session-ownership on KV blip (`httpGuard.ts:186`), and audit/manifest writes (`api/_shared/auditLog.ts`) fail *open* by design and say so in comments — do not "harden" them into fail-closed without understanding the availability tradeoff.
 5. **`public_research` matter mode lets raw PII reach Anthropic by design** (`agentLoop.ts:960-980`): the DPA-covered direct channel is treated as safe, so escalation only strips third-party tool egress, it does not hard-block the Anthropic call. Confidential/protected modes behave differently. This is intentional, not a leak — but know it before changing matter-mode logic.
 6. **`api/chats.ts` reimplements Clerk auth locally** instead of using `httpGuard.requireUser` (duplicates `utils/auth.ts`). If you change auth, change it in both places.
@@ -88,5 +89,6 @@ yarn dev:full           # dev:api + dev together                   (unverified t
 
 - **Active, in production**: `california-law-chatbot.vercel.app` and `chat.femmeandfemmelaw.com` (Vercel auto-deploy from `main`).
 - Mainline is V4: one `/v2` front end, V1 fully purged.
-- **Known-broken**: `runTrapsWire.mjs` fails T-PII-032 — a California driver-license number (`A1234567`) is not tokenized by the on-device wire pipeline (119/120). This is a confidentiality regression; the fix is authored as a Divecha contract in FABLE.md.
+- **Sanitization suite fully green** (verified 2026-07-17): `runTrapsWire.mjs` 120/120, `runTraps.mjs` 120/120, `sanitization.test.mjs` 153/153. The T-PII-032 wire regression flagged in FABLE.md was fixed in `40c9881`.
+- **Desktop app** (branch work, 2026-07-16/17): a standalone Tauri .app with a bundled sidecar + local SQLite session/audit store (zero cloud data stores) lives under `src-tauri/` + `desktop-server.mjs` — see `docs/desktop-spike.md`. `yarn desktop` (dev) / `yarn desktop:app` (build).
 - Uncommitted working-tree edits exist in `App.tsx` and `components/v2/V2DraftPage.tsx` (pre-existing; not part of this review).
