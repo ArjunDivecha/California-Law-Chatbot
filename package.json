@@ -9,7 +9,7 @@
     "desktop": "vite build && tauri dev --no-watch --config src-tauri/tauri.desktop.conf.json",
     "desktop:server": "tsx desktop-server.mjs",
     "desktop:bundle": "node scripts/build-desktop-sidecar.mjs",
-    "desktop:app": "tauri build --config src-tauri/tauri.desktop.conf.json --bundles app",
+    "desktop:app": "tauri build --config src-tauri/tauri.desktop.conf.json --bundles app && node scripts/notarize-desktop-app.mjs",
     "dev:api": "tsx dev-server.js",
     "dev:full": "tsx dev-server.js & sleep 2 && vite",
     "build": "vite build",
