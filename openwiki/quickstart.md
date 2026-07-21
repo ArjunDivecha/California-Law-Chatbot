@@ -1,3 +1,9 @@
+---
+type: "Reference"
+title: "OpenWiki quickstart"
+description: "Entry point for the California Law Chatbot OpenWiki knowledge base. Covers the V2 product line, entry points, common agent tasks, repo map, build scripts, and key source docs."
+---
+
 # OpenWiki quickstart
 
 California Law Chatbot is a Vite + React + TypeScript application backed by Vercel serverless APIs. The current mainline is the V2/V4 product line: a Clerk-authenticated legal research and drafting assistant for California practice, with a strong privacy/compliance layer, on-device sanitization, and workflow-specific pages for chat, drafting, verification, and drafting magic.
