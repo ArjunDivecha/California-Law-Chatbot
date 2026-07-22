@@ -1,3 +1,9 @@
+---
+type: "Reference"
+title: "Architecture overview"
+description: "Runtime architecture of the California Law Chatbot: React SPA, Vercel serverless functions, trust boundary in api/_lib/, client sanitization pipeline, UI routing, and data storage."
+---
+
 # Architecture overview
 
 ## System shape

@@ -1,3 +1,9 @@
+---
+type: "Reference"
+title: "Workflows"
+description: "User-facing workflows in the California Law Chatbot: research chat, document drafting, citation verification, drafting magic, matter mode/consent, and chat storage/export."
+---
+
 # Workflows
 
 ## 1. Research chat

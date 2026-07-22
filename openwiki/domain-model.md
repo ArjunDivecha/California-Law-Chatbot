@@ -1,3 +1,9 @@
+---
+type: "Reference"
+title: "Domain model"
+description: "Core domain concepts of the California Law Chatbot: sessions, matter modes, client AI consent, sanitized text and token maps, turn manifests, tool registry, and chat/document types."
+---
+
 # Domain model
 
 ## Core application concepts
