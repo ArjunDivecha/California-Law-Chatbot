@@ -40,22 +40,26 @@
  */
 
 /**
- * Anthropic models approved for use with client content under F&F's standard
- * commercial terms + DPA. Counsel/change-control gate — reviewed 2026-07-01.
+ * Anthropic model FAMILIES approved for use with client content under F&F's
+ * standard commercial terms + DPA. Changed from per-ID pinning to family-level
+ * approval on 2026-07-22 (Arjun's directive: automatic latest-model adoption —
+ * see api/_lib/modelResolver.ts). Rationale: every model in these families
+ * runs under the same org-level account terms (no-training + DPA), so the
+ * per-ID review gate added churn without changing the data posture. The guard
+ * remains fail-closed against anything OUTSIDE these families, and against
+ * preview/mythos surfaces, which are never approved.
  */
-export const APPROVED_MODELS: ReadonlySet<string> = new Set<string>([
-  'claude-fable-5',
-  'claude-opus-4-8',
-  'claude-opus-4-7',
-  'claude-sonnet-4-6',
-  'claude-sonnet-4-5',
-  'claude-haiku-4-5',
-  'claude-haiku-4-5-20251001',
-]);
+export const APPROVED_FAMILY_RE =
+  /^claude-(fable|opus|sonnet|haiku)-[a-z0-9][a-z0-9.-]*$/;
 
-/** True iff `model` is on the approved allowlist. */
+const BLOCKED_SUBSTRINGS = ['preview', 'mythos'];
+
+/** True iff `model` belongs to an approved family (and no blocked surface). */
 export function isApprovedModel(model: string): boolean {
-  return APPROVED_MODELS.has(model);
+  return (
+    APPROVED_FAMILY_RE.test(model) &&
+    !BLOCKED_SUBSTRINGS.some((s) => model.includes(s))
+  );
 }
 
 /**
@@ -68,8 +72,9 @@ export function assertApprovedModel(model: string): void {
   if (isApprovedModel(model)) return;
   throw new Error(
     `Model guard: refusing to send a request to unapproved model "${model}". ` +
-      `Approved models: ${[...APPROVED_MODELS].join(', ')}. ` +
-      `Set V2_PRIMARY_MODEL / V2_FALLBACK_MODEL to an approved model, or add ` +
-      `the model to api/_lib/approvedModels.ts with counsel sign-off.`,
+      `Approved families: claude-fable-*, claude-opus-*, claude-sonnet-*, ` +
+      `claude-haiku-* (preview/mythos surfaces always blocked). Set ` +
+      `V2_PRIMARY_MODEL / V2_FALLBACK_MODEL to an approved model, or update ` +
+      `api/_lib/approvedModels.ts.`,
   );
 }

@@ -50,6 +50,7 @@ import { COMPOUND_RISK_BUCKET_THRESHOLD } from '../_shared/sanitization/compound
 import { buildSystemPrompt, getAgentConfig } from './skills.js';
 import { scrubMessage } from './scrubError.js';
 import { assertApprovedModel } from './approvedModels.js';
+import { latestPrimary, latestFallback, latestFast } from './modelResolver.js';
 import {
   decidePolicy,
   type PolicyDecision,
@@ -65,10 +66,13 @@ import { guardToolQuery, extractQueryString } from './compliance/toolQueryGuard.
 // terms + DPA (no training, deletion-on-request); ZDR is not part of the
 // posture (not acquired — see approvedModels.ts). Overridable per-environment
 // via V2_PRIMARY_MODEL in Vercel, but ONLY to another approved model (enforced
-// by assertApprovedModel in resolveModel, which fails closed). Quick mode and
-// the citation verifier stay on Sonnet 4.6. See
-// docs/PRD_COPRAC_ZDR_COMPLIANCE.md §5.8 (de-ZDR'd 2026-07-01).
-const DEFAULT_MODEL = process.env.V2_PRIMARY_MODEL ?? 'claude-fable-5';
+// by assertApprovedModel in resolveModel, which fails closed). As of
+// 2026-07-22 (Arjun's directive) the defaults AUTO-TRACK the newest model in
+// each approved family via modelResolver.ts — cached, zero per-turn latency,
+// pinned known-good ids until the first resolution lands. Env overrides win.
+function DEFAULT_MODEL(): string {
+  return process.env.V2_PRIMARY_MODEL ?? latestPrimary();
+}
 
 // ── Automatic model failover (authorized by Arjun 2026-06-16) ──────────────
 // If the primary engine is unavailable on this account — the Anthropic API
@@ -81,7 +85,9 @@ const DEFAULT_MODEL = process.env.V2_PRIMARY_MODEL ?? 'claude-fable-5';
 // CLOSED — so even an env override cannot introduce an unreviewed model.
 // Override per-environment with V2_FALLBACK_MODEL. NOTE: this is unavailability
 // failover, NOT refusal fallback — stop_reason='refusal' is surfaced, never retried.
-const FALLBACK_MODEL = process.env.V2_FALLBACK_MODEL ?? 'claude-opus-4-8';
+function FALLBACK_MODEL(): string {
+  return process.env.V2_FALLBACK_MODEL ?? latestFallback();
+}
 // Process-lifetime memo of models this account can't reach, so a warm function
 // instance skips a dead primary after the first 404 rather than paying the
 // failed round-trip on every subsequent turn.
@@ -95,8 +101,8 @@ const unavailableModels = new Set<string>();
  */
 function resolveModel(requested: string): string {
   const resolved =
-    requested !== FALLBACK_MODEL && unavailableModels.has(requested)
-      ? FALLBACK_MODEL
+    requested !== FALLBACK_MODEL() && unavailableModels.has(requested)
+      ? FALLBACK_MODEL()
       : requested;
   assertApprovedModel(resolved);
   return resolved;
@@ -908,12 +914,12 @@ async function callMessagesCreate(
   } catch (err) {
     // Unavailable primary → transparently retry once on the fallback model
     // (same provider/posture). Refusals are not errors and never reach here.
-    if (activeModel !== FALLBACK_MODEL && isModelUnavailableError(err)) {
+    if (activeModel !== FALLBACK_MODEL() && isModelUnavailableError(err)) {
       unavailableModels.add(activeModel);
       console.warn(
-        `[agentLoop] model ${activeModel} unavailable; failing over to ${FALLBACK_MODEL}`,
+        `[agentLoop] model ${activeModel} unavailable; failing over to ${FALLBACK_MODEL()}`,
       );
-      return await run(FALLBACK_MODEL);
+      return await run(FALLBACK_MODEL());
     }
     throw err;
   }
@@ -992,7 +998,7 @@ export async function runTurn(opts: RunTurnOptions): Promise<RunTurnResult> {
   // Quick workflow trades depth for latency — Sonnet 4.6 + no tools.
   const model =
     opts.model ??
-    (workflow === 'quick' ? 'claude-sonnet-4-6' : DEFAULT_MODEL);
+    (workflow === 'quick' ? latestFast() : DEFAULT_MODEL());
   const systemPrompt =
     opts.system_prompt ??
     (workflow === 'quick'
@@ -1295,7 +1301,7 @@ export async function* runTurnStream(
   // Quick workflow trades depth for latency — Sonnet 4.6 + no tools.
   const model =
     opts.model ??
-    (workflow === 'quick' ? 'claude-sonnet-4-6' : DEFAULT_MODEL);
+    (workflow === 'quick' ? latestFast() : DEFAULT_MODEL());
   const systemPrompt =
     opts.system_prompt ??
     (workflow === 'quick'
@@ -1471,15 +1477,15 @@ export async function* runTurnStream(
         // 404 fires before any token, so nothing partial was yielded.
         if (
           !didModelFailover &&
-          activeModel !== FALLBACK_MODEL &&
+          activeModel !== FALLBACK_MODEL() &&
           isModelUnavailableError(streamErr)
         ) {
           unavailableModels.add(activeModel);
           didModelFailover = true;
           console.warn(
-            `[agentLoop] model ${activeModel} unavailable; failing over to ${FALLBACK_MODEL}`,
+            `[agentLoop] model ${activeModel} unavailable; failing over to ${FALLBACK_MODEL()}`,
           );
-          yield { kind: 'model_failover', from: activeModel, to: FALLBACK_MODEL };
+          yield { kind: 'model_failover', from: activeModel, to: FALLBACK_MODEL() };
           iter -= 1;
           continue;
         }

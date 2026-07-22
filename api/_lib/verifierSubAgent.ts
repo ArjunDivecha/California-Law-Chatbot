@@ -50,7 +50,11 @@ import { getAgentConfig } from './skills.js';
 // The verifier uses Sonnet 4.6 — adequate for read-and-decide, faster
 // and cheaper than Opus 4.7 for what is fundamentally a structured-
 // output task. Override via env if needed.
-const VERIFIER_MODEL = process.env.V2_VERIFIER_MODEL ?? 'claude-sonnet-4-6';
+// Auto-tracks the newest Sonnet-family model (Arjun 2026-07-22); env wins.
+import { latestFast } from './modelResolver.js';
+function VERIFIER_MODEL(): string {
+  return process.env.V2_VERIFIER_MODEL ?? latestFast();
+}
 const VERIFIER_MAX_TOKENS = 2048;
 const VERIFIER_MAX_ROUNDS = 8;
 
@@ -287,7 +291,7 @@ export async function verifyCitationViaSubAgent(citationText: string): Promise<V
   let sawPositiveEvidence = false;
   for (let iter = 0; iter < VERIFIER_MAX_ROUNDS; iter += 1) {
     const response = await client.messages.create({
-      model: VERIFIER_MODEL,
+      model: VERIFIER_MODEL(),
       max_tokens: VERIFIER_MAX_TOKENS,
       system: VERIFIER_SYSTEM_PROMPT,
       messages,
