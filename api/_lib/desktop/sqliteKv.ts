@@ -23,7 +23,7 @@
  * INPUT FILES:  none (creates the DB if missing)
  * OUTPUT FILES: SQLite database at
  *   $DESKTOP_DATA_DIR/sessions.db  (if DESKTOP_DATA_DIR is set), else
- *   /Users/<user>/Library/Application Support/California Law Chatbot/sessions.db
+ *   /Users/<user>/Library/Application Support/AskPauli/sessions.db
  *   (on macOS; os.homedir()-derived equivalent elsewhere)
  *
  * DEPENDENCIES: better-sqlite3 (already a package.json dependency)
@@ -40,7 +40,7 @@ import type { AuditSink } from '../../_shared/auditLog.js';
 export function defaultDataDir(): string {
   return (
     process.env.DESKTOP_DATA_DIR ||
-    join(homedir(), 'Library', 'Application Support', 'California Law Chatbot')
+    join(homedir(), 'Library', 'Application Support', 'AskPauli')
   );
 }
 

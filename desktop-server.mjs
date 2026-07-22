@@ -5,7 +5,7 @@
  *
  * DESCRIPTION:
  * Self-contained local API + static server for the desktop (Tauri) build of
- * California Law Chatbot — the "sidecar" the Tauri shell runs. Serves the
+ * AskPauli — the "sidecar" the Tauri shell runs. Serves the
  * built front end (dist/) and the full V2 agent-loop API on
  * http://127.0.0.1:$DESKTOP_PORT (default 8477), bound to loopback only.
  *
@@ -13,8 +13,8 @@
  * API keys and then deletes all Upstash/Blob credentials; this file injects
  * the SQLite adapter (api/_lib/desktop/sqliteKv.ts) into sessionStore and
  * auditLog. Sessions, tool-result cache, locks, rate-limit counters and
- * audit records live in ~/Library/Application Support/California Law
- * Chatbot/sessions.db and never leave the machine. Legacy /api/chats
+ * audit records live in ~/Library/Application Support/AskPauli/sessions.db
+ * and never leave the machine. Legacy /api/chats
  * (Vercel Blob) is NOT mounted — the V2 UI persists chats in IndexedDB.
  *
  * All route handlers are STATIC imports so esbuild can bundle this file into
@@ -30,7 +30,7 @@
  *
  * OUTPUT FILES:
  * - $DESKTOP_DATA_DIR/sessions.db (default: ~/Library/Application Support/
- *   California Law Chatbot/sessions.db) — SQLite store for sessions/audit
+ *   AskPauli/sessions.db) — SQLite store for sessions/audit
  *
  * USAGE:
  *   yarn build && yarn desktop:server          # from the repo root

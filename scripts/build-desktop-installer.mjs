@@ -6,10 +6,10 @@
  * DESCRIPTION:
  * Packages the notarized desktop .app into a zip an attorney can install
  * with two clicks. The zip contains:
- *   1. California Law Chatbot.app       — the signed + notarized app
- *   2. Install California Law Chatbot.command — double-clickable installer:
+ *   1. AskPauli.app       — the signed + notarized app
+ *   2. Install AskPauli.command — double-clickable installer:
  *      copies the app to /Applications, writes the API-keys file to
- *      ~/Library/Application Support/California Law Chatbot/.env
+ *      ~/Library/Application Support/AskPauli/.env
  *      (chmod 600, with a freshly generated per-machine AUDIT_HMAC_KEY),
  *      then launches the app.
  *   3. INSTALL-INSTRUCTIONS.md          — attorney-facing steps (right-click
@@ -21,13 +21,13 @@
  * recipients). Keys can be rotated at the providers at any time.
  *
  * INPUT FILES (repo-root relative):
- * - src-tauri/target/release/bundle/macos/California Law Chatbot.app
+ * - src-tauri/target/release/bundle/macos/AskPauli.app
  *   (must already be notarized — run `yarn desktop:app` first)
  * - .env — source of ANTHROPIC_API_KEY, COURTLISTENER_API_KEY,
  *   OPENSTATES_API_KEY, LEGISCAN_API_KEY (fails loudly if any is missing)
  *
  * OUTPUT FILES:
- * - installer-pkg/dist/California-Law-Chatbot-Desktop-<YYYY-MM-DD>.zip
+ * - installer-pkg/dist/AskPauli-Desktop-<YYYY-MM-DD>.zip
  *
  * USAGE: node scripts/build-desktop-installer.mjs
  * =============================================================================
@@ -38,7 +38,7 @@ import { mkdirSync, rmSync, writeFileSync, existsSync, chmodSync, readFileSync }
 import { join } from 'node:path';
 
 const ROOT = process.cwd();
-const APP = join(ROOT, 'src-tauri', 'target', 'release', 'bundle', 'macos', 'California Law Chatbot.app');
+const APP = join(ROOT, 'src-tauri', 'target', 'release', 'bundle', 'macos', 'AskPauli.app');
 const OUT_DIR = join(ROOT, 'installer-pkg', 'dist');
 const KEYS = ['ANTHROPIC_API_KEY', 'COURTLISTENER_API_KEY', 'OPENSTATES_API_KEY', 'LEGISCAN_API_KEY'];
 
@@ -74,20 +74,20 @@ rmSync(stage, { recursive: true, force: true });
 mkdirSync(stage, { recursive: true });
 
 // 1. The app (ditto preserves signatures/extended attributes).
-execFileSync('ditto', [APP, join(stage, 'California Law Chatbot.app')]);
+execFileSync('ditto', [APP, join(stage, 'AskPauli.app')]);
 
 // 2. The installer .command.
 const envFileBody = KEYS.map((k) => `${k}=${env[k]}`).join('\n');
 const command = `#!/bin/bash
-# California Law Chatbot — one-time installer.
+# AskPauli — one-time installer.
 # Copies the app to /Applications and sets up your private keys file.
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
-echo "Installing California Law Chatbot…"
+echo "Installing AskPauli…"
 
-ditto "$HERE/California Law Chatbot.app" "/Applications/California Law Chatbot.app"
+ditto "$HERE/AskPauli.app" "/Applications/AskPauli.app"
 
-SUPPORT="$HOME/Library/Application Support/California Law Chatbot"
+SUPPORT="$HOME/Library/Application Support/AskPauli"
 mkdir -p "$SUPPORT"
 cat > "$SUPPORT/.env" <<EOF
 ${envFileBody}
@@ -96,24 +96,24 @@ EOF
 chmod 600 "$SUPPORT/.env"
 
 echo "Done. Launching the app…"
-open "/Applications/California Law Chatbot.app"
+open "/Applications/AskPauli.app"
 echo ""
 echo "✅ Installed. You can find it in Applications and in Launchpad."
 echo "   (You can close this window.)"
 `;
-writeFileSync(join(stage, 'Install California Law Chatbot.command'), command);
-chmodSync(join(stage, 'Install California Law Chatbot.command'), 0o755);
+writeFileSync(join(stage, 'Install AskPauli.command'), command);
+chmodSync(join(stage, 'Install AskPauli.command'), 0o755);
 
 // 3. Attorney instructions.
 writeFileSync(
   join(stage, 'INSTALL-INSTRUCTIONS.md'),
-  `# Installing California Law Chatbot (desktop app)
+  `# Installing AskPauli (desktop app)
 
 Takes about 2 minutes, once.
 
 1. Download the zip Arjun sent you and double-click it to unzip
    (you'll get a folder with the app, this file, and an installer).
-2. **Right-click** (or Control-click) **"Install California Law Chatbot.command"**
+2. **Right-click** (or Control-click) **"Install AskPauli.command"**
    and choose **Open**. If macOS asks "are you sure?", click **Open**.
    (Right-click-then-Open matters the first time — a plain double-click
    may be blocked because the installer script isn't from the App Store.)
@@ -132,7 +132,7 @@ under the firm's data-protection agreement.
 
 // 4. Zip it.
 mkdirSync(OUT_DIR, { recursive: true });
-const zipPath = join(OUT_DIR, `California-Law-Chatbot-Desktop-${date}.zip`);
+const zipPath = join(OUT_DIR, `AskPauli-Desktop-${date}.zip`);
 rmSync(zipPath, { force: true });
 execFileSync('ditto', ['-c', '-k', '--keepParent', stage, zipPath]);
 rmSync(stage, { recursive: true, force: true });

@@ -1,8 +1,8 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "California Law Chatbot",
-  "version": "0.1.0",
-  "identifier": "com.femmeandfemmelaw.californialawchatbot",
+  "productName": "AskPauli",
+  "version": "0.2.0",
+  "identifier": "com.askpauli.desktop",
   "build": {
     "frontendDist": "../dist",
     "devUrl": "http://localhost:5173",
@@ -11,7 +11,7 @@
   "app": {
     "windows": [
       {
-        "title": "California Law Chatbot",
+        "title": "AskPauli",
         "width": 1440,
         "height": 900,
         "resizable": true,

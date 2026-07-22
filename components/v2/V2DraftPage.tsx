@@ -377,7 +377,7 @@ export const V2DraftPage: React.FC = () => {
     >
       <header className="bg-white border-b border-gray-100 px-6 py-3 flex items-center justify-between">
         <div>
-          <h1 className="text-lg font-semibold text-gray-900">California Law Chatbot</h1>
+          <h1 className="text-lg font-semibold text-gray-900">AskPauli</h1>
           <p className="text-xs font-semibold uppercase tracking-wide text-pink-500">
             V2 Draft · edit a document
           </p>

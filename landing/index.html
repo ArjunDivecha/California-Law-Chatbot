@@ -1,0 +1,181 @@
+<!doctype html>
+<!--
+  =============================================================================
+  FILE: landing/index.html
+  =============================================================================
+  AskPauli.com landing page — static, self-contained marketing front page.
+  Deployed as its own Vercel project (askpauli-landing); the product web app
+  lives separately at app.askpauli.com. Light mode only (hard requirement).
+
+  INPUT FILES (same directory, deployed together):
+  - pauli-heart.png (hero art, 512px)  - favicon.png (64px)
+  OUTPUT: none — static page.
+  =============================================================================
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AskPauli — California legal AI that keeps client secrets on your Mac</title>
+  <meta name="description" content="AskPauli is a local-first AI legal research and drafting assistant for California solo and small firms. Client data never leaves your computer. Every citation verified. Named in homage to Pauli Murray." />
+  <link rel="icon" type="image/png" href="/favicon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,500;9..144,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ink: #2d1b2e;
+      --ink-soft: #5c4a5e;
+      --pink: #d6336c;
+      --pink-deep: #a61e4d;
+      --pink-wash: #fdf2f6;
+      --pink-line: #f3c6d8;
+      --cream: #fffdfb;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Inter', -apple-system, sans-serif;
+      color: var(--ink);
+      background: linear-gradient(180deg, #fef6f9 0%, #fdeef4 45%, #fce4ee 100%);
+      line-height: 1.6;
+    }
+    .wrap { max-width: 880px; margin: 0 auto; padding: 0 24px; }
+    header.hero { text-align: center; padding: 72px 0 48px; }
+    .hero img.heart { width: 168px; height: auto; filter: drop-shadow(0 12px 28px rgba(214, 51, 108, 0.25)); }
+    h1 {
+      font-family: 'Fraunces', Georgia, serif;
+      font-weight: 600;
+      font-size: clamp(2.6rem, 7vw, 4rem);
+      letter-spacing: -0.02em;
+      margin-top: 20px;
+    }
+    h1 .ask { color: var(--ink); }
+    h1 .pauli { color: var(--pink); }
+    .tagline {
+      font-family: 'Fraunces', Georgia, serif;
+      font-weight: 300;
+      font-size: clamp(1.2rem, 3vw, 1.55rem);
+      color: var(--ink-soft);
+      max-width: 620px;
+      margin: 14px auto 0;
+    }
+    .pilot-badge {
+      display: inline-block;
+      margin-top: 28px;
+      padding: 8px 18px;
+      border: 1px solid var(--pink-line);
+      border-radius: 999px;
+      background: #fff;
+      color: var(--pink-deep);
+      font-size: 0.85rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    section.features { padding: 26px 0 10px; }
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 18px; }
+    .card {
+      background: var(--cream);
+      border: 1px solid var(--pink-line);
+      border-radius: 18px;
+      padding: 26px 24px;
+      box-shadow: 0 6px 18px rgba(166, 30, 77, 0.06);
+    }
+    .card h3 {
+      font-family: 'Fraunces', Georgia, serif;
+      font-weight: 600;
+      font-size: 1.15rem;
+      margin-bottom: 8px;
+      color: var(--pink-deep);
+    }
+    .card p { font-size: 0.95rem; color: var(--ink-soft); }
+    section.pauli {
+      margin: 56px 0;
+      background: #fff;
+      border: 2px solid var(--pink);
+      border-radius: 24px;
+      padding: 40px 38px;
+      box-shadow: 0 14px 40px rgba(166, 30, 77, 0.10);
+    }
+    .pauli .kicker {
+      color: var(--pink);
+      font-weight: 600;
+      font-size: 0.82rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+    .pauli h2 {
+      font-family: 'Fraunces', Georgia, serif;
+      font-weight: 600;
+      font-size: clamp(1.5rem, 4vw, 2rem);
+      margin-bottom: 16px;
+    }
+    .pauli p { color: var(--ink-soft); font-size: 1.02rem; margin-bottom: 14px; }
+    .pauli p:last-child { margin-bottom: 0; }
+    .pauli em { font-style: italic; }
+    footer {
+      text-align: center;
+      padding: 30px 0 44px;
+      color: var(--ink-soft);
+      font-size: 0.85rem;
+    }
+    footer .fineprint { max-width: 560px; margin: 8px auto 0; font-size: 0.78rem; color: #8a7590; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="hero">
+      <img class="heart" src="/pauli-heart.png" alt="AskPauli winged heart" />
+      <h1><span class="ask">Ask</span><span class="pauli">Pauli</span></h1>
+      <p class="tagline">AI legal research &amp; drafting for California solo and small firms — where your clients&rsquo; secrets never leave your Mac.</p>
+      <div class="pilot-badge">In private pilot with California family-law attorneys</div>
+    </header>
+
+    <section class="features">
+      <div class="cards">
+        <div class="card">
+          <h3>Nothing leaves your computer</h3>
+          <p>Matters, drafts, chat history, and audit logs live in a private database on your own Mac. No cloud storage. No vendor servers. Client names and identifying details are masked on your machine before any text is sent to the AI.</p>
+        </div>
+        <div class="card">
+          <h3>Every citation verified</h3>
+          <p>Real case law from CourtListener, live California statutes, and a built-in verifier that checks every cite before you rely on it — because a confident hallucination is not legal research.</p>
+        </div>
+        <div class="card">
+          <h3>Built to the ethics rules</h3>
+          <p>Designed feature-by-feature against the California State Bar&rsquo;s generative-AI guidance — confidentiality safeguards, client-consent gates, and a verification trail your malpractice carrier will actually like.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="pauli">
+      <div class="kicker">Why &ldquo;AskPauli&rdquo;?</div>
+      <h2>In homage to the Rev. Dr. Pauli Murray, 1910&ndash;1985</h2>
+      <p>
+        Pauli Murray was a Black, gender-nonconforming civil rights lawyer and California&rsquo;s first
+        Black deputy attorney general. Murray&rsquo;s legal scholarship became the backbone of
+        <em> Brown v. Board of Education</em> — Thurgood Marshall called their work the
+        &ldquo;bible&rdquo; of the litigation. Murray&rsquo;s 1965 &ldquo;Jane Crow&rdquo; article laid the
+        groundwork for <em>Reed v. Reed</em>, the case that first extended the Equal Protection
+        Clause to women — and Ruth Bader Ginsburg credited Murray as an honorary co-author of the brief.
+      </p>
+      <p>
+        A co-founder of the National Organization for Women and an LGBTQ+ icon, Murray&rsquo;s name today
+        graces a Yale residential college and a Sundance-premiered documentary. Pauli Murray saw, decades
+        early, the legal arguments others couldn&rsquo;t — and wrote them down so the rest of the law could
+        catch up.
+      </p>
+      <p>
+        That&rsquo;s the standard this tool aspires to: rigorous, humane, ahead of the curve — and always
+        showing its work.
+      </p>
+    </section>
+
+    <footer>
+      <div>© 2026 AskPauli · Made with ♥ in California</div>
+      <div class="fineprint">AskPauli is a research and drafting tool for licensed attorneys. It is not a law firm and does not provide legal advice. AI output is independently verified by the lawyer responsible for the matter — as it should be.</div>
+    </footer>
+  </div>
+</body>
+</html>
