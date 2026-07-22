@@ -12,7 +12,8 @@
  * Load order (first hit wins per key):
  *   1. process env (whatever the Tauri shell passed through)
  *   2. <cwd>/.env then <cwd>/.env.local (dev runs from the repo root)
- *   3. ~/Library/Application Support/California Law Chatbot/.env
+ *   3. ~/Library/Application Support/AskPauli/.env (auto-migrated from the
+ *      pre-rename "California Law Chatbot" directory if that still exists)
  *      (the packaged .app has no repo — users/installers put keys here)
  *   4. /Users/arjundivecha/Dropbox/AAA Backup/.env.txt (global fallback per
  *      ~/CLAUDE.md convention; same parser as dev-server.js)
@@ -27,15 +28,23 @@
  */
 
 import dotenv from 'dotenv';
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync, renameSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 
+// One-time migration: the app was named "California Law Chatbot" before the
+// AskPauli rename (2026-07-22). If a user still has the old data directory
+// (sessions.db, .env) and no new one, move it wholesale so nothing is lost.
+const APP_SUPPORT = join(homedir(), 'Library', 'Application Support');
+const OLD_DIR = join(APP_SUPPORT, 'California Law Chatbot');
+const NEW_DIR = join(APP_SUPPORT, 'AskPauli');
+if (!existsSync(NEW_DIR) && existsSync(OLD_DIR)) {
+  renameSync(OLD_DIR, NEW_DIR);
+}
+
 dotenv.config();
 dotenv.config({ path: '.env.local', override: true });
-dotenv.config({
-  path: join(homedir(), 'Library', 'Application Support', 'California Law Chatbot', '.env'),
-});
+dotenv.config({ path: join(NEW_DIR, '.env') });
 
 (function loadFallbackEnv() {
   const required = ['ANTHROPIC_API_KEY', 'OPENAI_API_KEY', 'COURTLISTENER_API_KEY'];

@@ -14,7 +14,7 @@ const SignInPage: React.FC = () => {
             <img src="/Heart Favicon.png" alt="Logo" className="w-full h-full object-contain" />
           </div>
           <h1 className="text-2xl font-semibold text-gray-900" style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}>
-            California Law Chatbot
+            AskPauli
           </h1>
         </div>
         <a

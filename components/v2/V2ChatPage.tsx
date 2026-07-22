@@ -110,7 +110,7 @@ const LOCAL_DRAFT_DEBOUNCE_MS = 1500;
  * stream is in flight. Mirrors V1's WELCOME_MESSAGE.
  */
 const WELCOME_MESSAGE =
-  'Welcome — I\'m V2 of the California Law Chatbot. Ask a legal-research question, or use the workflow toggle above to pick Draft Document or Verify Citation. I have access to CourtListener case law, LegiScan + OpenStates legislation, California statute lookup, a citation verifier, and web search.';
+  'Welcome — I\'m AskPauli, your California legal research assistant. Ask a legal-research question, or use the workflow toggle above to pick Draft Document or Verify Citation. I have access to CourtListener case law, LegiScan + OpenStates legislation, California statute lookup, a citation verifier, and web search.';
 
 /**
  * Convert an Anthropic-shape message content (string | content-block
@@ -459,7 +459,7 @@ export const V2ChatPage: React.FC = () => {
               <img src="/Heart Favicon.png" alt="Logo" className="w-full h-full object-contain" />
             </div>
             <div>
-              <h1 className="text-lg font-semibold text-gray-900">California Law Chatbot</h1>
+              <h1 className="text-lg font-semibold text-gray-900">AskPauli</h1>
               <span className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-pink-500">
                 V2 Preview · Anthropic Agent Loop
               </span>
@@ -490,15 +490,34 @@ export const V2ChatPage: React.FC = () => {
 
           <div ref={scrollRef} className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
             {displayedMessages.length === 0 && !state.isStreaming && !hydrating && (
-              <div className="rounded-2xl border border-gray-200 bg-white p-5 max-w-2xl mx-auto shadow-sm">
-                <div className="text-[13px] font-semibold text-pink-600 uppercase tracking-wider mb-2">
-                  V2 Welcome
+              <>
+                <div className="rounded-2xl border border-gray-200 bg-white p-5 max-w-2xl mx-auto shadow-sm">
+                  <div className="text-[13px] font-semibold text-pink-600 uppercase tracking-wider mb-2">
+                    Welcome
+                  </div>
+                  <p className="text-[14px] text-gray-700 leading-relaxed">{WELCOME_MESSAGE}</p>
+                  <div className="mt-3 text-[12px] text-gray-500">
+                    <strong className="text-gray-700">Try:</strong> "What does CRC 2.550 require for a motion to seal?" — "Draft a holographic codicil for Estate of Smith" — paste a memo into Verify Citation to check every cite.
+                  </div>
                 </div>
-                <p className="text-[14px] text-gray-700 leading-relaxed">{WELCOME_MESSAGE}</p>
-                <div className="mt-3 text-[12px] text-gray-500">
-                  <strong className="text-gray-700">Try:</strong> "What does CRC 2.550 require for a motion to seal?" — "Draft a holographic codicil for Estate of Smith" — paste a memo into Verify Citation to check every cite.
+                <div className="rounded-2xl border border-pink-200 bg-pink-50 p-5 max-w-2xl mx-auto shadow-sm">
+                  <div className="text-[13px] font-semibold text-pink-700 uppercase tracking-wider mb-2">
+                    Why “AskPauli”?
+                  </div>
+                  <p className="text-[14px] text-gray-800 leading-relaxed">
+                    This app is named in homage to <strong>Rev. Dr. Pauli Murray</strong> (1910–1985) —
+                    Black, gender-nonconforming civil rights lawyer and California&rsquo;s first Black
+                    deputy attorney general. Murray&rsquo;s legal scholarship became the backbone of{' '}
+                    <em>Brown v. Board of Education</em> — Thurgood Marshall called their work the
+                    &ldquo;bible&rdquo; of the litigation — and their 1965 &ldquo;Jane Crow&rdquo; article laid the
+                    groundwork for <em>Reed v. Reed</em>, on which Ruth Bader Ginsburg credited Murray
+                    as an honorary co-author of the brief. A co-founder of the National Organization
+                    for Women and an LGBTQ+ icon, Murray&rsquo;s name today graces a Yale residential
+                    college and a Sundance-premiered documentary. We ask{' '}
+                    <em>what would Pauli do</em> — and we verify every citation.
+                  </p>
                 </div>
-              </div>
+              </>
             )}
             {hydrating && (
               <div className="text-center text-gray-400 text-sm py-6 italic">Loading prior session…</div>

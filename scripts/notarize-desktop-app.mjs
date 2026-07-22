@@ -37,7 +37,7 @@ import { join } from 'node:path';
 const APP = join(
   process.cwd(),
   'src-tauri', 'target', 'release', 'bundle', 'macos',
-  'California Law Chatbot.app',
+  'AskPauli.app',
 );
 const PROFILE = process.env.NOTARY_KEYCHAIN_PROFILE || 'clc-notary';
 

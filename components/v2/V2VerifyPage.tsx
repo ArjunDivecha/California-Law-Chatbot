@@ -39,7 +39,7 @@ export const V2VerifyPage: React.FC = () => {
               <img src="/Heart Favicon.png" alt="Logo" className="w-full h-full object-contain" />
             </div>
             <div>
-              <h1 className="text-lg font-semibold text-gray-900">California Law Chatbot</h1>
+              <h1 className="text-lg font-semibold text-gray-900">AskPauli</h1>
               <span className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-pink-500">
                 V2 Verify · Citation Sub-Agent
               </span>

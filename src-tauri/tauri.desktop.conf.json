@@ -11,7 +11,7 @@
   "app": {
     "windows": [
       {
-        "title": "California Law Chatbot",
+        "title": "AskPauli",
         "width": 1440,
         "height": 900,
         "resizable": true,
