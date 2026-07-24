@@ -110,3 +110,7 @@ cc: {{client_name}}
 - Does not include a "without prejudice" footer unless the attorney instructs.
 - Does not threaten conduct outside the legal-remedies envelope.
 - Does not characterize the recipient's conduct in inflammatory terms.
+
+## Caveat discipline
+
+The reader is a licensed attorney. No generic disclaimers anywhere in the output ("this is not legal advice", "consult an attorney", "for informational purposes") — the AI-use notice lives in the application chrome, never in the document. A caveat earns its place only when it changes what the attorney should do next (an unresolved ambiguity, a jurisdiction-specific trap, an unverifiable fact); state it once, where it applies, not as scattered hedge sentences. Do not compress sections unless asked.

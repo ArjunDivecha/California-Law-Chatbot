@@ -57,6 +57,7 @@ import agentDraftStream from './api/agent/draft-stream.ts';
 import agentReviseSection from './api/agent/revise-section.ts';
 import agentDraftingMagic from './api/agent/drafting-magic.ts';
 import agentVerifyStream from './api/agent/verify-stream.ts';
+import agentDraftQc from './api/agent/draft-qc.ts';
 import agentSessions from './api/agent/sessions.ts';
 import agentSession from './api/agent/session.ts';
 
@@ -76,6 +77,7 @@ const ROUTES = {
   '/api/agent/revise-section': agentReviseSection,
   '/api/agent/drafting-magic': agentDraftingMagic,
   '/api/agent/verify-stream': agentVerifyStream,
+  '/api/agent/draft-qc': agentDraftQc,
   '/api/agent/sessions': agentSessions,
   '/api/agent/session': agentSession,
 };

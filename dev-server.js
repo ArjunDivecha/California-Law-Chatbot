@@ -122,6 +122,11 @@ app.all('/api/agent/verify-stream', async (req, res) => {
   await handler(req, res);
 });
 
+app.all('/api/agent/draft-qc', async (req, res) => {
+  const handler = await loadHandler('./api/agent/draft-qc.ts');
+  await handler(req, res);
+});
+
 app.all('/api/agent/sessions', async (req, res) => {
   const handler = await loadHandler('./api/agent/sessions.ts');
   await handler(req, res);

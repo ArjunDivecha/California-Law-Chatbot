@@ -68,6 +68,7 @@ import {
   type EditableDraftSection,
 } from '../draftingMagic/draftSectionState';
 import { extractTextFromFile } from '../draftingMagic/fileTextExtraction';
+import { useV2DraftQC } from '../../hooks/useV2DraftQC';
 import type { GeneratedDraftPackage } from '../draftingMagic/localDraftGeneration';
 import { buildPacketComparisonRows, extractDraftingUnits, getSourceText } from '../draftingMagic/localExtraction';
 import { V2SanitizationChip } from './V2SanitizationChip';
@@ -897,6 +898,10 @@ export const V2DraftingMagicPage: React.FC = () => {
   const { getToken } = useAuth();
   const userId = user?.id ?? null;
   const v2SessionIdRef = useRef(`v2m_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`);
+  // Automatic citation QC over the generated draft (flag-by-section →
+  // fix-only-flagged loop; see api/agent/draft-qc.ts).
+  const draftQc = useV2DraftQC();
+  const [fixingFlagged, setFixingFlagged] = useState(false);
   const { ready: sanitizerReady, unlocked: sanitizerUnlocked, tokenCount, daemonStatus } = useSanitizer();
   const [activeTab, setActiveTab] = useState<WorkflowTab>('inputs');
   const [practicePathway, setPracticePathway] = useState<PracticePathway>('estate-planning');
@@ -1606,6 +1611,9 @@ export const V2DraftingMagicPage: React.FC = () => {
       setSelectedSectionId(mergedSections[0]?.id || initialDraftSections[0].id);
       setDraftReady(true);
       setLastDraftedAt(new Date().toISOString());
+      // Kick automatic citation QC in the background — badges fill in
+      // progressively while the attorney reads the draft.
+      runDraftQcFor(mergedSections, false);
     } catch (error) {
       setGenerationError(error instanceof Error ? error.message : 'Drafting Magic failed.');
     } finally {
@@ -1640,17 +1648,87 @@ export const V2DraftingMagicPage: React.FC = () => {
       const rehydrated = await callV2DraftingMagic(
         `Regenerate ONLY the "${targetSection.title}" section. Keep all other sections unchanged.`,
       );
-      setDraftSections((current) =>
-        replaceDraftSectionFromGenerated(current, rehydrated.sections, sectionId),
-      );
+      const nextSections = replaceDraftSectionFromGenerated(draftSections, rehydrated.sections, sectionId);
+      setDraftSections(nextSections);
       setComplianceItems(rehydrated.checklist);
       setSelectedSectionId(sectionId);
       setLastDraftedAt(new Date().toISOString());
+      // Re-verify just the regenerated section; keep other QC results.
+      runDraftQcFor(nextSections.filter((s) => s.id === sectionId), true);
     } catch (error) {
       setGenerationError(error instanceof Error ? error.message : 'Drafting Magic section regeneration failed.');
     } finally {
       setGenerationStatus('idle');
       setRegeneratingSectionId(null);
+    }
+  };
+
+  /** Feed editable sections into the QC hook (skips empty bodies). */
+  const runDraftQcFor = (sections: EditableDraftSection[], merge: boolean) => {
+    const targets = sections
+      .filter((s) => s.content.trim().length > 0)
+      .map((s) => ({ section_id: s.id, title: s.title, text: s.content }));
+    if (targets.length === 0) return;
+    void draftQc.run(v2SessionIdRef.current, targets, merge);
+  };
+
+  /**
+   * One combined regeneration call for ALL flagged sections (not N full
+   * runs), splicing each replacement in, marking fixed sections "Needs
+   * review" (attorney stays in the loop), then re-verifying only those
+   * sections. Locked sections are never touched.
+   */
+  const fixFlaggedSections = async () => {
+    const flaggedIds = Object.entries(draftQc.state.perSection)
+      .filter(([, r]) => r.status === 'flagged')
+      .map(([id]) => id);
+    const flagged = draftSections.filter((s) => flaggedIds.includes(s.id) && !s.locked);
+    if (flagged.length === 0 || !privacyFilterReady) return;
+
+    const findings = flagged
+      .map((s) => {
+        const issues = (draftQc.state.perSection[s.id]?.issues ?? [])
+          .filter((i) => i.status !== 'error')
+          .map(
+            (i) =>
+              `- "${i.citation}" — ${i.status === 'fake' ? 'VERIFIED FAKE' : 'could not be verified'}${
+                i.reasoning ? ` (${i.reasoning})` : ''
+              }`,
+          )
+          .join('\n');
+        return `Section "${s.title}":\n${issues}`;
+      })
+      .join('\n\n');
+    const instruction = [
+      `Regenerate ONLY these sections: ${flagged.map((s) => `"${s.title}"`).join(', ')}. Keep all other sections unchanged.`,
+      '',
+      'Citation QC flagged the following authorities as fake or unverifiable:',
+      '',
+      findings,
+      '',
+      'For each flagged authority: cite a verified controlling authority if one exists; otherwise remove the citation and rework the sentence so it makes no unsupported claim of authority. Do not change anything unrelated to the flagged citations.',
+    ].join('\n');
+
+    setFixingFlagged(true);
+    setGenerationError(null);
+    setGenerationStatus('generating');
+    try {
+      const rehydrated = await callV2DraftingMagic(instruction);
+      let next = draftSections;
+      for (const s of flagged) {
+        next = replaceDraftSectionFromGenerated(next, rehydrated.sections, s.id);
+      }
+      next = next.map((sec) =>
+        flaggedIds.includes(sec.id) && !sec.locked ? { ...sec, status: 'Needs review' as const } : sec,
+      );
+      setDraftSections(next);
+      setLastDraftedAt(new Date().toISOString());
+      runDraftQcFor(next.filter((s) => flaggedIds.includes(s.id)), true);
+    } catch (error) {
+      setGenerationError(error instanceof Error ? error.message : 'Fix-flagged regeneration failed.');
+    } finally {
+      setFixingFlagged(false);
+      setGenerationStatus('idle');
     }
   };
 
@@ -2527,6 +2605,76 @@ export const V2DraftingMagicPage: React.FC = () => {
                   </div>
                 )}
 
+                {draftQc.state.error && (
+                  <div className="mb-3 flex items-start gap-2 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900">
+                    <AlertTriangle size={16} className="mt-0.5 shrink-0" />
+                    <span>Citation QC failed: {draftQc.state.error}</span>
+                  </div>
+                )}
+
+                {draftQc.state.isRunning && (
+                  <div className="mb-3 flex items-start gap-2 rounded-lg border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900">
+                    <Loader2 size={16} className="mt-0.5 shrink-0 animate-spin" />
+                    <span>
+                      Citation QC running — every cited authority is being verified against CourtListener and official
+                      statute sources ({Object.values(draftQc.state.perSection).reduce((n, r) => n + r.verdicts_in, 0)}
+                      {' of '}
+                      {Object.values(draftQc.state.perSection).reduce((n, r) => n + r.citation_count, 0)} citations checked).
+                      You can keep editing while it runs.
+                    </span>
+                  </div>
+                )}
+
+                {!draftQc.state.isRunning && draftQc.state.summary && (
+                  <div
+                    className={`mb-3 flex flex-wrap items-center justify-between gap-3 rounded-lg border px-4 py-3 text-sm ${
+                      draftQc.state.summary.fake + draftQc.state.summary.ambiguous > 0
+                        ? 'border-amber-200 bg-amber-50 text-amber-900'
+                        : 'border-emerald-200 bg-emerald-50 text-emerald-900'
+                    }`}
+                  >
+                    <span className="flex items-start gap-2">
+                      {draftQc.state.summary.fake + draftQc.state.summary.ambiguous > 0 ? (
+                        <AlertTriangle size={16} className="mt-0.5 shrink-0" />
+                      ) : (
+                        <ShieldCheck size={16} className="mt-0.5 shrink-0" />
+                      )}
+                      <span>
+                        Citation QC: {draftQc.state.summary.verified} verified
+                        {draftQc.state.summary.fake > 0 && `, ${draftQc.state.summary.fake} fake`}
+                        {draftQc.state.summary.ambiguous > 0 && `, ${draftQc.state.summary.ambiguous} unverifiable`}
+                        {draftQc.state.summary.errors > 0 && `, ${draftQc.state.summary.errors} check errors`}
+                        {draftQc.state.summary.skipped > 0 &&
+                          ` (${draftQc.state.summary.skipped} citations over the per-run cap were not checked)`}
+                        .
+                      </span>
+                    </span>
+                    <span className="flex gap-2">
+                      {Object.values(draftQc.state.perSection).some((r) => r.status === 'flagged') && (
+                        <button
+                          type="button"
+                          onClick={() => void fixFlaggedSections()}
+                          disabled={fixingFlagged || isGeneratingDraft || !privacyFilterReady}
+                          className="inline-flex items-center gap-1.5 rounded-md bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-700 disabled:cursor-not-allowed disabled:bg-gray-300"
+                        >
+                          {fixingFlagged ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
+                          {fixingFlagged
+                            ? 'Fixing flagged sections'
+                            : `Fix flagged (${Object.values(draftQc.state.perSection).filter((r) => r.status === 'flagged').length})`}
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => runDraftQcFor(draftSections, false)}
+                        disabled={draftQc.state.isRunning || isGeneratingDraft}
+                        className="inline-flex items-center gap-1.5 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:text-gray-400"
+                      >
+                        Re-run QC
+                      </button>
+                    </span>
+                  </div>
+                )}
+
                 <div className="space-y-3">
                   {draftSections.map((section) => {
                     const isSelected = selectedSectionId === section.id;
@@ -2559,6 +2707,33 @@ export const V2DraftingMagicPage: React.FC = () => {
                               </span>
                               {section.locked && <Badge tone="info">Locked</Badge>}
                               {section.editedAt && <Badge tone="success">Edited</Badge>}
+                              {(() => {
+                                const qc = draftQc.state.perSection[section.id];
+                                if (!qc) return null;
+                                if (qc.status === 'pending' || qc.status === 'verifying') {
+                                  return (
+                                    <span className="inline-flex items-center gap-1 rounded-md border border-sky-200 bg-sky-50 px-2 py-1 text-[11px] font-semibold leading-none text-sky-700">
+                                      <Loader2 size={11} className="animate-spin" /> QC…
+                                    </span>
+                                  );
+                                }
+                                if (qc.status === 'clean') {
+                                  return (
+                                    <span className="inline-flex items-center gap-1 rounded-md border border-emerald-200 bg-emerald-50 px-2 py-1 text-[11px] font-semibold leading-none text-emerald-700">
+                                      <ShieldCheck size={11} /> Citations verified
+                                    </span>
+                                  );
+                                }
+                                if (qc.status === 'flagged') {
+                                  return (
+                                    <span className="inline-flex items-center gap-1 rounded-md border border-amber-300 bg-amber-50 px-2 py-1 text-[11px] font-semibold leading-none text-amber-800">
+                                      <AlertTriangle size={11} /> {qc.issues.filter((i) => i.status !== 'error').length} citation issue
+                                      {qc.issues.filter((i) => i.status !== 'error').length === 1 ? '' : 's'}
+                                    </span>
+                                  );
+                                }
+                                return null;
+                              })()}
                             </div>
                           </div>
                           <div className="flex flex-wrap gap-2">
@@ -2600,6 +2775,25 @@ export const V2DraftingMagicPage: React.FC = () => {
                           className="mt-3 min-h-32 w-full resize-y rounded-md border border-gray-200 bg-gray-50 px-3 py-3 text-sm leading-7 text-gray-700 outline-none transition focus:border-pink-300 focus:bg-white focus:ring-2 focus:ring-pink-100"
                           aria-label={`Edit draft content for ${section.title}`}
                         />
+
+                        {(draftQc.state.perSection[section.id]?.issues.length ?? 0) > 0 && (
+                          <div className="mt-3 rounded-md border border-amber-200 bg-amber-50/60 px-3 py-2 text-xs text-amber-900">
+                            <div className="font-semibold">Citation QC findings</div>
+                            <ul className="mt-1 space-y-1">
+                              {draftQc.state.perSection[section.id].issues.map((issue, i) => (
+                                <li key={`${section.id}-issue-${i}`}>
+                                  <span className="font-medium">“{issue.citation}”</span>{' '}
+                                  {issue.status === 'fake'
+                                    ? '— verified FAKE.'
+                                    : issue.status === 'ambiguous'
+                                      ? '— could not be verified; confirm against Westlaw/Lexis before filing.'
+                                      : '— verifier errored; unverified.'}
+                                  {issue.reasoning ? ` ${issue.reasoning}` : ''}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
 
                         <div className="mt-4 flex flex-wrap gap-2 text-xs text-gray-500">
                           <span className="inline-flex items-center gap-1">
