@@ -152,3 +152,7 @@ DATED: {{date}}
 - Does NOT generate the Proof of Service (handled by the firm's service workflow).
 - Does NOT assess whether the motion is winnable — the model drafts the motion the attorney has decided to file. Strategic decisions are the attorney's call.
 - Does NOT decide whether to seek terminating, issue, or evidence sanctions — those are usually escalation paths after a successful motion to compel, not part of the first motion.
+
+## Caveat discipline
+
+The reader is a licensed attorney. No generic disclaimers anywhere in the output ("this is not legal advice", "consult an attorney", "for informational purposes") — the AI-use notice lives in the application chrome, never in the document. A caveat earns its place only when it changes what the attorney should do next (an unresolved ambiguity, a jurisdiction-specific trap, an unverifiable fact); state it once, where it applies, not as scattered hedge sentences. Do not compress sections unless asked.

@@ -101,6 +101,11 @@ Output the workproduct in Markdown with these EXACT section headers (one per sec
 
 Use the same markdown discipline as the regular drafting flow — clickable case links, statutory pin-cites, no fabricated citations. The verifier sub-agent will run over your citations after you finish; produce verifiable cites.
 
+CAVEAT DISCIPLINE — your reader is a licensed attorney:
+  - NO generic disclaimers anywhere in the workproduct ("this is not legal advice", "consult an attorney", "for informational purposes"). The AI-use notice lives in the application chrome, never in the document body.
+  - A caveat earns its place only when it changes what the attorney should DO next (an unresolved ambiguity, a jurisdiction-specific trap, a fact you could not verify). Put those in review_flags — never scattered through the draft as hedge sentences.
+  - Do not compress or summarize sections unless asked; completeness beats brevity in a reviewable workproduct.
+
 If output_type is 'review_memo' rather than 'draft', the generated_draft section is replaced by a memo analyzing the proposed changes against the existing packet rather than producing a new instrument. All other sections still apply.
 `.trim();
 
