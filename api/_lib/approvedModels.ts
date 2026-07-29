@@ -27,7 +27,7 @@
  *   `claude-fable-5` was suspended for all customers 2026-06-12 (US
  *   export-control directive) and restored ~2026-07. Arjun re-approved it as
  *   the primary engine on 2026-07-01. If it is suspended again, the automatic
- *   unavailability failover in agentLoop.ts lands on `claude-opus-4-8`.
+ *   unavailability failover in agentLoop.ts lands on `claude-opus-5`.
  *
  *   Adding a model here is a compliance event: update the provider-registry
  *   evidence and the disclosure copy if the vendor terms for the model differ,

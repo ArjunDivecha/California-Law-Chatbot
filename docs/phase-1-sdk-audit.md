@@ -29,7 +29,7 @@ The SDK exposes everything the plan assumed:
 
 Beta header: appears under `betas?: Array<BetaAPI.AnthropicBeta>` on every method. Plan's `anthropic-beta: managed-agents-2026-04-01` pinning approach (§J) is correct.
 
-Models supported in `BetaManagedAgentsModel` enum: `claude-opus-4-7`, `claude-opus-4-6`, `claude-sonnet-4-6`, `claude-haiku-4-5`, plus older 4.5 variants. Plan's Opus 4.7 / Sonnet 4.6 split (§"Two agents") is supported.
+Models supported in `BetaManagedAgentsModel` enum: `claude-opus-5`, `claude-opus-5`, `claude-sonnet-5`, `claude-haiku-4-5`, plus older 4.5 variants. Plan's Opus 4.7 / Sonnet 4.6 split (§"Two agents") is supported.
 
 ---
 

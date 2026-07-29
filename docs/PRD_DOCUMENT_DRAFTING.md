@@ -541,7 +541,7 @@ User: "Make the meet and confer section more detailed, emphasizing good faith ef
 
 **Purpose**: Coordinate all sub-agents and manage document generation workflow.
 
-**Model**: Claude Sonnet 4.5 (`claude-sonnet-4-5-20250514`)
+**Model**: Claude Sonnet 4.5 (`claude-sonnet-5`)
 
 **System Prompt**:
 ```
@@ -1193,7 +1193,7 @@ const citationTools: Tool[] = [
 
 **Purpose**: Final quality control and consistency check.
 
-**Model**: Claude Sonnet 4.5 (`claude-sonnet-4-5-20250514`) - accuracy-critical, needs strong reasoning
+**Model**: Claude Sonnet 4.5 (`claude-sonnet-5`) - accuracy-critical, needs strong reasoning
 
 **System Prompt**:
 ```

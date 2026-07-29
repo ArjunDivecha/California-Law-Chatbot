@@ -102,7 +102,7 @@ Per the codebase map (current `main` branch). Every external leg that can receiv
 | # | Leg | What it sees | Current routing | Realized data posture **today** | Gap |
 |---|---|---|---|---|---|
 | L1 | **Generator** | Full query + context | OpenRouter → `google/gemini-3.1-pro-preview` (fallback `gemini-2.5-pro`) [V] | OpenRouter terms govern; **§16 disclaims all warranty** on downstream handling [V]; Gemini model is **preview** [V] | No direct contract; preview model; ZDR not enforced |
-| L2 | **Verifier** | Full query + draft + sources | OpenRouter → `anthropic/claude-sonnet-4-6` [V] | **Enterprise ZDR does NOT apply** (third-party route) [V] | The firm's ZDR asset is unused here |
+| L2 | **Verifier** | Full query + draft + sources | OpenRouter → `anthropic/claude-sonnet-5` [V] | **Enterprise ZDR does NOT apply** (third-party route) [V] | The firm's ZDR asset is unused here |
 | L3 | **Research agent** | Query + sources | OpenRouter → Claude Haiku [V] | Same as L2 | Same |
 | L4 | **Query embeddings** | Raw query text | **Native OpenAI API**, `text-embedding-3-small` [V] | No training [V]; **30-day default retention** (no ZDR) [V] | ZDR + DPA not yet in place |
 | L5 | **Vector store** | Query *vector*; **CEB reference text as metadata** | Upstash Vector REST [V] | DPA **prohibits Restricted Data** [V]; SOC 2/HIPAA = Redis only [V]; encryption **opt-in** [V]; metadata **cleartext** [V] | Hard contractual + security gap for *client* content |
@@ -111,7 +111,7 @@ Per the codebase map (current `main` branch). Every external leg that can receiv
 
 **Other current-state facts that matter for V3** [V]:
 - **No sanitization on `main`.** `services/sanitization/*` exists only on parked `codex/*` branches. Today the app relies entirely on **user self-anonymization** + README warnings.
-- **`api/anthropic-chat.ts` already exists** (native Anthropic SDK, `claude-sonnet-4-6`) but is **not wired into the main flow** — a ready-made starting point for direct routing.
+- **`api/anthropic-chat.ts` already exists** (native Anthropic SDK, `claude-sonnet-5`) but is **not wired into the main flow** — a ready-made starting point for direct routing.
 - **Verification is not fail-closed**: coverage < 50% still returns the answer with a caveat. The pending Rule 1.1/3.3 amendments push toward stronger verification.
 - **Confidentiality UI is effectively absent**: warnings live in README only — no first-run modal, no consent checkbox, no in-app anonymization guidance, no "this sends data to [vendor]" disclosure.
 - **`COMPLIANCE_ANALYSIS.md` is stale** — written ~Dec 2024 against the 2023-era guidance. Must be rewritten against the 2026 guidance.
@@ -158,7 +158,7 @@ Per the codebase map (current `main` branch). Every external leg that can receiv
 | Leg | V3 target | Why | Confidence |
 |---|---|---|---|
 | **LLM (generator + verifier + research)** | **Direct `api.anthropic.com`** under the firm's **ZDR-enabled Commercial org key** | Activates the ZDR asset the firm bought; single contracted counterparty; DPA auto-incorporated [V] | [V] mechanism; [P] that the firm's specific org has ZDR enabled — **verify in Console** |
-| **Models** | `claude-opus-4-8` (generate/accuracy), `claude-sonnet-4-6` (generate/speed + verify), `claude-haiku-4-5` (research/claim-check) — **all ZDR-eligible** [V] | **`claude-fable-5` is EXCLUDED**: suspended for all customers since 2026-06-12 **and** non-ZDR-eligible [V] (this consciously overrides the global "default to Fable 5" instruction, because ZDR is mandatory here) | [V] |
+| **Models** | `claude-opus-5` (generate/accuracy), `claude-sonnet-5` (generate/speed + verify), `claude-haiku-4-5` (research/claim-check) — **all ZDR-eligible** [V] | **`claude-fable-5` is EXCLUDED**: suspended for all customers since 2026-06-12 **and** non-ZDR-eligible [V] (this consciously overrides the global "default to Fable 5" instruction, because ZDR is mandatory here) | [V] |
 | **Query embeddings** | **OpenAI native API with ZDR enabled + signed DPA** (`/v1/embeddings` is ZDR-eligible [V]); **or** local embedding model in Protected mode | Fixable in place; no training already [V]; ZDR removes 30-day retention [V] | [V] |
 | **Vector store (client/query data)** | **Standard mode:** hardened Upstash for *non-Restricted* data only. **Protected mode:** self-hosted (pgvector / Qdrant / LanceDB) in firm infra | Upstash DPA **forbids Restricted Data** [V]; Vector not SOC 2/HIPAA-scoped [V] | [V] |
 | **Vector store (CEB reference)** | Keep on Upstash | Published, non-confidential content (no client data) | [V] |
@@ -231,7 +231,7 @@ A request carrying client text **must hard-fail** (not silently downgrade) if an
 
 ### Data posture (FR-D)
 - **FR-D1.** Route all Claude calls **directly to `api.anthropic.com`** with the firm's ZDR-enabled Commercial org key; remove OpenRouter from any client-data path. (Reuse/extend `api/anthropic-chat.ts`.)
-- **FR-D2.** Restrict models to `claude-opus-4-8` / `claude-sonnet-4-6` / `claude-haiku-4-5`. Block `claude-fable-5` and any non-ZDR-eligible model/feature (Files API, Batch API, Managed Agents, MCP connector, code execution) on client-data paths. [V]
+- **FR-D2.** Restrict models to `claude-opus-5` / `claude-sonnet-5` / `claude-haiku-4-5`. Block `claude-fable-5` and any non-ZDR-eligible model/feature (Files API, Batch API, Managed Agents, MCP connector, code execution) on client-data paths. [V]
 - **FR-D3.** Enable **ZDR + execute the DPA** for the OpenAI embeddings org (Standard mode); implement a **local embedding** path (Protected mode).
 - **FR-D4.** Standard-mode Upstash: enforce **TLS + AES-256 at rest + US region pin**; store **only opaque IDs** in metadata for any client-derived vectors; **never** store client document text or query facts as Upstash metadata.
 - **FR-D5.** Implement **Protected-Matter mode**: self-hosted vector store + local embeddings + tool-gating + per-matter scoping.

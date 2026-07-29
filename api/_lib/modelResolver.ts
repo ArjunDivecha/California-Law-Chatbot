@@ -37,8 +37,8 @@ import Anthropic from '@anthropic-ai/sdk';
 
 export const KNOWN_GOOD = {
   primary: 'claude-fable-5',
-  fallback: 'claude-opus-4-8',
-  fast: 'claude-sonnet-4-6',
+  fallback: 'claude-opus-5',
+  fast: 'claude-sonnet-5',
 } as const;
 
 const FAMILY_PREFIX = {

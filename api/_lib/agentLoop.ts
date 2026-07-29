@@ -435,7 +435,7 @@ export interface RunTurnOptions {
     redactions_count: number;
     by_category: Record<string, number>;
   };
-  /** Optional model override (defaults to claude-sonnet-4-6). */
+  /** Optional model override (defaults to claude-sonnet-5). */
   model?: string;
   /** Optional system prompt. Defaults to the V2 CA legal-research prompt. */
   system_prompt?: string;

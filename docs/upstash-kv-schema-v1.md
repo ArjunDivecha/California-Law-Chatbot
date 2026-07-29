@@ -63,7 +63,7 @@
   "created_at": "2026-05-12T19:00:00.000Z",
   "last_active_at": "2026-05-12T20:00:00.000Z",
   "schema_version": 1,
-  "model": "claude-sonnet-4-6",             // resolved at session start
+  "model": "claude-sonnet-5",             // resolved at session start
   "system_prompt_sha256": "ab12…",          // pinned per §H
   "agent_config_sha256": "cd34…",           // tool list + temp + max_tokens snapshot
   "title": "…",                             // user-visible session title (sanitized)

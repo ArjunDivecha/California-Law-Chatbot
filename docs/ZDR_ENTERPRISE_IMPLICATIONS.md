@@ -182,7 +182,7 @@ The chatbot should not use these for confidential or protected material unless a
 Current V2 code defaults research/draft workflows to:
 
 - `V2_PRIMARY_MODEL` or `claude-fable-5`
-- fallback `claude-opus-4-8`
+- fallback `claude-opus-5`
 - quick/verifier paths on Sonnet 4.6
 
 Anthropic's current API retention docs say Claude Fable 5 and Claude Mythos 5 require 30-day retention and are not available under ZDR. F&F has decided not to use Fable for the chatbot and to use Opus instead. That resolves the biggest model-retention conflict, but the code/config still needs to enforce the decision so a future default or fallback cannot silently reintroduce a non-ZDR model.

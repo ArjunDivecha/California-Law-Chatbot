@@ -180,7 +180,7 @@ F&F accepts paying Opus 4.7 per-token pricing for every turn. No session cap, no
 
 Consequences:
 - Plan §Cost-impact (fifth addendum) Options A (session cap) and B (tier-route) are now **NOT IMPLEMENTED**. No `agentProxy.ts` routing logic needed.
-- Default model stays `claude-opus-4-7` for both chat and drafting (agent.json `model` field). Sonnet 4.6 still used for the verifier sub-agent (cheaper + adequate for structured-output verification — keep this carve-out).
+- Default model stays `claude-opus-5` for both chat and drafting (agent.json `model` field). Sonnet 4.6 still used for the verifier sub-agent (cheaper + adequate for structured-output verification — keep this carve-out).
 - Phase 4.5 shadow run starts billing real attorney usage at Opus 4.7 rates from day one. No additional gates.
 - Rationale: legal-reasoning quality is the value driver; the latency win (Opus 4.7 8.2s p50 vs Sonnet 4.6 11.7s p50 per Phase 1 baseline) means Opus is also the better UX. Cost is accepted as the price of quality.
 
@@ -220,7 +220,7 @@ The 2026-05-12 fourth addendum (immediately below) handled the Managed-Agents im
 
 | Item | Verdict | Phase | Notes |
 |---|---|---|---|
-| Default model → `claude-opus-4-7` | **Adopt** | Phase 1 | Anthropic positions Opus 4.7 as legal-reasoning flagship (90.9% on Harvey's BigLaw Bench). Current default is `claude-sonnet-4-6`. Cost increase is real — see cost-impact note below. |
+| Default model → `claude-opus-5` | **Adopt** | Phase 1 | Anthropic positions Opus 4.7 as legal-reasoning flagship (90.9% on Harvey's BigLaw Bench). Current default is `claude-sonnet-5`. Cost increase is real — see cost-impact note below. |
 | MCP toolset support in `agentLoop.ts` | **Adopt** | Phase 1 | Add `mcp_servers` parameter + `mcp-client-2025-11-20` beta header to `messages.create()`; handle `mcp_tool_use` / `mcp_tool_result` content block types. Privilege gating extends to MCP toolsets (omit when `privileged=true`). |
 | Free Law Project CourtListener MCP | **Adopt (additive)** | Phase 1 | Keep in-process `courtlistener_search` for audit-fidelity. Add MCP as alternative path for cases where PACER / judge profiles / oral arguments are useful and audit-trail-at-our-wire is not required. |
 | Inlined Skill content from `anthropics/claude-for-legal` (Apache-2.0) | **Adopt** | Phase 1 | Specifically: `litigation-legal/skills/{matter-intake,claim-chart,legal-hold,privilege-log-review}/SKILL.md` as system-prompt augmentation. This is the V2 portability principle (fourth addendum) cashing in. |
@@ -238,7 +238,7 @@ The 2026-05-12 fourth addendum (immediately below) handled the Managed-Agents im
 **Phase 1 (Spike) — REVISED deliverables.** Adds to the existing Phase 1 deliverable list (per §A and the plan ground truth):
 
 - **(0) Tool-result sanitization wrapper** — *prerequisite to MCP and to any expansion of the tool surface.* The 2026-05-10 second addendum and `docs/sanitization-audit-2026-05-10.md` §8 item #8 both require: "every `tool_result` block runs through the same sanitizer before being appended to `messages`." Current `api/_lib/agentLoop.ts` `dispatchWithCache` returns raw tool content directly into the next `tool_result` block — the 100-trap gate didn't catch this because the runner tests `analyze(simulated_tool_result)` directly, not the agent loop's integration. **Fix before any tool-surface expansion** (the audit explicitly bound MCP/W5 wrapper as Step 3 of the V2 build plan). Implementation: run `analyze()` on each tool's content before constructing the `tool_result` block, tokenize any HIGH_RISK spans, attach a `tool_output_sanitization` attestation to the audit record. Smoke: re-author W5 traps in `tests/traps/manifest-v1.json` to exercise the AGENT LOOP path end-to-end (not just `analyze()`); verify all redactions fire at the loop's wire, not just the sanitizer's.
-- Default model → `claude-opus-4-7` in `api/_lib/agentLoop.ts` (`DEFAULT_MODEL`). Re-run latency baseline + smoke after the bump.
+- Default model → `claude-opus-5` in `api/_lib/agentLoop.ts` (`DEFAULT_MODEL`). Re-run latency baseline + smoke after the bump.
 - Extract `DEFAULT_SYSTEM_PROMPT` from `agentLoop.ts` into `agents/california-legal/skills/*.md` matching the `anthropics/claude-for-legal` Skill frontmatter shape (per fourth addendum portability principle, open item #12). **Load by workflow / intent, not concatenation.** A workflow-aware loader picks Skills relevant to the current turn (matter-intake when starting a matter, claim-chart when building one) rather than concatenating every Skill into every system prompt — which would bloat context, dilute the model's task focus, and waste Opus 4.7 tokens.
 - Define `source` block schema for tool results — per fourth addendum portability principle (open item #14).
 - **MCP toolset support** in `agentLoop.ts` and `agentProxy.ts`. **Implementation detail:** MCP is on Anthropic's beta surface (`client.beta.messages.create` / `client.beta.messages.stream` with `betas: ["mcp-client-2025-11-20"]`), not on the stable `client.messages.create` we currently call. Build a thin beta-call wrapper that the agent loop dispatches to ONLY when at least one MCP toolset is in the tools array; stable inference-only calls keep the current code path unchanged. Handle `mcp_tool_use` / `mcp_tool_result` content block types alongside the existing `tool_use` / `tool_result` types in the streaming loop. Privilege gating in `buildToolsArray(privileged)` extends to MCP toolsets (omit when `privileged=true`, per the §E gating extension below). Add a feature flag (env var `V2_MCP_ENABLED=true`) so the new code path can be rolled out independently of model bump and prompt extraction.
@@ -249,7 +249,7 @@ The 2026-05-12 fourth addendum (immediately below) handled the Managed-Agents im
 The deliverables above must land in this order — each gates the next:
 
 1. **Tool-result sanitization wrapper** (closes the existing audit/code gap; required by the 2026-05-10 second addendum's "inputs AND tool outputs" scope; required by `docs/sanitization-audit-2026-05-10.md` §8 item #8). Adding MCP before this is done would expand the tool-output leak surface before the current in-process path is compliant with the addendum it claims to implement.
-2. **Default model bump → `claude-opus-4-7`** and re-run latency baseline + smoke. Quick win; validates the model the 2026-05-12 announcement cites; baseline numbers feed the cost-impact decision (below).
+2. **Default model bump → `claude-opus-5`** and re-run latency baseline + smoke. Quick win; validates the model the 2026-05-12 announcement cites; baseline numbers feed the cost-impact decision (below).
 3. **System prompt → Skill markdown + workflow-aware loader.** Per fourth addendum portability principle. Workflow-intent dispatch, not concatenation.
 4. **MCP plumbing behind a feature flag + privilege gating + beta-call wrapper.** Implement against a deterministic public MCP server first.
 5. **Free Law Project CourtListener MCP pilot** once the official endpoint + auth shape are confirmed. Keep in-process `courtlistener_search` running as the audit-fidelity path.

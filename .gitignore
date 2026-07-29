@@ -57,3 +57,10 @@ Proposal Move the Femme & Femme Research Assistant to Anthropic's Managed Platfo
 # Playwright CLI scratch output (snapshots/screenshots/logs from manual verification runs)
 .playwright-cli/
 installer-pkg/dist/
+
+# Worktrees are separate checkouts, never content of this repo
+.claude/worktrees/
+
+# Desktop build artifacts: staged .app bundles and installer zips embed live API keys
+installer-pkg/stage-*/
+installer-pkg/*.zip
