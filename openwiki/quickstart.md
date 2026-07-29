@@ -46,7 +46,7 @@ The repo also contains a large body of legal/compliance research in `docs/`, but
 - Changing confidentiality rules or matter modes: start in `api/_lib/compliance/policyEngine.ts` and `api/matter-context.ts`, then follow the UI selector in `components/v2/MatterModeSelector.tsx`.
 - Changing sanitization/tokenization: start in `services/sanitization/detectionPipeline.ts`, `services/sanitization/realSanitizer.ts`, and `hooks/useSanitizer.tsx`.
 - Changing export behavior: inspect `api/export-document.ts` and the drafting/export components together.
-- Changing citation or statute verification: inspect `api/_lib/tools/citationVerify.ts`, `api/_lib/tools/statuteVerify.ts`, `api/_lib/tools/courtlistenerSearch.ts`, and the verify page.
+- Changing citation or statute verification: inspect `api/_lib/tools/citationVerify.ts` (batched CiteLaw identity gate + CourtListener fallback), `api/_lib/tools/statuteVerify.ts`, `api/_lib/tools/courtlistenerSearch.ts`, and the verify page.
 
 ## Repo map
 

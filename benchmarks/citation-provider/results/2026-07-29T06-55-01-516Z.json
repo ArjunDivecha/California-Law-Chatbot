@@ -1,0 +1,432 @@
+{
+  "schema_version": 1,
+  "suite": "citation-provider-shadow-v1",
+  "run_id": "2026-07-29T06-55-01-516Z",
+  "started_at": "2026-07-29T06:55:01.516Z",
+  "completed_at": "2026-07-29T06:55:05.482Z",
+  "fixture": {
+    "path": "tests/citation-eval-set.json",
+    "version": 1,
+    "entry_count": 30,
+    "truth_counts": {
+      "real": 20,
+      "fake": 10
+    }
+  },
+  "privacy": {
+    "payload": "Public case names and reporter citations only; no client facts or documents."
+  },
+  "providers": {
+    "current": {
+      "provider": "current",
+      "status": "completed",
+      "elapsed_ms": 3866,
+      "summary": {
+        "entry_count": 30,
+        "truth_counts": {
+          "real": 20,
+          "fake": 10
+        },
+        "confusion_matrix": {
+          "TP": 17,
+          "TN": 0,
+          "FP": 0,
+          "FN": 0
+        },
+        "abstain": 13,
+        "error": 0,
+        "coverage": 0.5667,
+        "strict_accuracy": 0.5667,
+        "resolved_accuracy": 1,
+        "precision": 1,
+        "real_recall": 0.85,
+        "f1": 0.9189,
+        "fake_caught_rate": 0,
+        "false_positive_rate": 0
+      },
+      "endpoint": "https://www.courtlistener.com/api/rest/v4/search/",
+      "mode": "production citationVerify() batch",
+      "provider_elapsed_ms": 3860,
+      "results": [
+        {
+          "id": "real-1",
+          "truth": "real",
+          "input": "Navellier v. Sletten (2002) 29 Cal.4th 82",
+          "expected_reporter": "29 Cal.4th 82",
+          "verdict": "real",
+          "provider_status": "verified",
+          "match": {
+            "id": "2519770",
+            "title": "Navellier v. Sletten",
+            "court": "California Supreme Court",
+            "decision_date": "2002-08-29",
+            "url": "https://www.courtlistener.com/opinion/2519770/navellier-v-sletten/"
+          }
+        },
+        {
+          "id": "real-2",
+          "truth": "real",
+          "input": "Taus v. Loftus (2007) 40 Cal.4th 683",
+          "expected_reporter": "40 Cal.4th 683",
+          "verdict": "real",
+          "provider_status": "verified",
+          "match": {
+            "id": "2638169",
+            "title": "Taus v. Loftus",
+            "court": "California Supreme Court",
+            "decision_date": "2007-02-26",
+            "url": "https://www.courtlistener.com/opinion/2638169/taus-v-loftus/"
+          }
+        },
+        {
+          "id": "real-3",
+          "truth": "real",
+          "input": "Geiser v. Kuhns (2022) 13 Cal.5th 1238",
+          "expected_reporter": "13 Cal.5th 1238",
+          "verdict": "abstain",
+          "provider_status": "unconfirmed",
+          "possible_match": {
+            "id": "9489371",
+            "title": "Gazal v. Echeverry",
+            "court": "California Court of Appeal",
+            "decision_date": "2024-03-29",
+            "url": "https://www.courtlistener.com/opinion/9489371/gazal-v-echeverry/"
+          }
+        },
+        {
+          "id": "real-4",
+          "truth": "real",
+          "input": "Williams v. Superior Court (2017) 3 Cal.5th 531",
+          "expected_reporter": "3 Cal.5th 531",
+          "verdict": "real",
+          "provider_status": "verified",
+          "match": {
+            "id": "4408734",
+            "title": "Williams v. Superior Court of L. A. Cnty.",
+            "court": "California Supreme Court",
+            "decision_date": "2017-07-13",
+            "url": "https://www.courtlistener.com/opinion/4408734/williams-v-superior-court-of-l-a-cnty/"
+          }
+        },
+        {
+          "id": "real-5",
+          "truth": "real",
+          "input": "Coy v. Superior Court (1962) 58 Cal.2d 210",
+          "expected_reporter": "58 Cal.2d 210",
+          "verdict": "real",
+          "provider_status": "verified",
+          "match": {
+            "id": "5607266",
+            "title": "Coy v. Superior Court",
+            "court": "California Supreme Court",
+            "decision_date": "1962-07-19",
+            "url": "https://www.courtlistener.com/opinion/5607266/coy-v-superior-court/"
+          }
+        },
+        {
+          "id": "real-6",
+          "truth": "real",
+          "input": "Stewart v. Colonial Western Agency, Inc. (2001) 87 Cal.App.4th 1006",
+          "expected_reporter": "87 Cal.App.4th 1006",
+          "verdict": "real",
+          "provider_status": "verified",
+          "match": {
+            "id": "5808646",
+            "title": "Stewart v. Colonial Western Agency, Inc.",
+            "court": "California Court of Appeal",
+            "decision_date": "2001-03-14",
+            "url": "https://www.courtlistener.com/opinion/5808646/stewart-v-colonial-western-agency-inc/"
+          }
+        },
+        {
+          "id": "real-7",
+          "truth": "real",
+          "input": "Costco Wholesale Corp. v. Superior Court (2009) 47 Cal.4th 725",
+          "expected_reporter": "47 Cal.4th 725",
+          "verdict": "real",
+          "provider_status": "verified",
+          "match": {
+            "id": "5608098",
+            "title": "Costco Wholesale Corp. v. Superior Court",
+            "court": "California Supreme Court",
+            "decision_date": "2009-11-30",
+            "url": "https://www.courtlistener.com/opinion/5608098/costco-wholesale-corp-v-superior-court/"
+          }
+        },
+        {
+          "id": "real-8",
+          "truth": "real",
+          "input": "Cembrook v. Superior Court (1961) 56 Cal.2d 423",
+          "expected_reporter": "56 Cal.2d 423",
+          "verdict": "real",
+          "provider_status": "verified",
+          "match": {
+            "id": "1156481",
+            "title": "Cembrook v. Superior Court",
+            "court": "California Supreme Court",
+            "decision_date": "1961-08-03",
+            "url": "https://www.courtlistener.com/opinion/1156481/cembrook-v-superior-court/"
+          }
+        },
+        {
+          "id": "real-9",
+          "truth": "real",
+          "input": "West Pico Furniture Co. v. Superior Court (1961) 56 Cal.2d 407",
+          "expected_reporter": "56 Cal.2d 407",
+          "verdict": "real",
+          "provider_status": "verified",
+          "match": {
+            "id": "1156339",
+            "title": "West Pico Furniture Co. v. Superior Court",
+            "court": "California Supreme Court",
+            "decision_date": "1961-08-03",
+            "url": "https://www.courtlistener.com/opinion/1156339/west-pico-furniture-co-v-superior-court/"
+          }
+        },
+        {
+          "id": "real-10",
+          "truth": "real",
+          "input": "Bridgestone/Firestone, Inc. v. Superior Court (1992) 7 Cal.App.4th 1384",
+          "expected_reporter": "7 Cal.App.4th 1384",
+          "verdict": "abstain",
+          "provider_status": "unavailable"
+        },
+        {
+          "id": "real-11",
+          "truth": "real",
+          "input": "Estate of Williams (1968) 269 Cal.App.2d 671",
+          "expected_reporter": "269 Cal.App.2d 671",
+          "verdict": "abstain",
+          "provider_status": "unconfirmed",
+          "possible_match": {
+            "id": "4300853",
+            "title": "Susan England v. Janice Kolbe, as Guardian of the Estate of Edna Moon",
+            "court": "Texas Court of Appeals, 3rd District (Austin)",
+            "decision_date": "2015-11-30",
+            "url": "https://www.courtlistener.com/opinion/4300853/susan-england-v-janice-kolbe-as-guardian-of-the-estate-of-edna-moon/"
+          }
+        },
+        {
+          "id": "real-12",
+          "truth": "real",
+          "input": "In re Marriage of Lippel (1990) 51 Cal.3d 1160",
+          "expected_reporter": "51 Cal.3d 1160",
+          "verdict": "real",
+          "provider_status": "verified",
+          "match": {
+            "id": "1442248",
+            "title": "In Re Marriage of Lippel",
+            "court": "California Supreme Court",
+            "decision_date": "1990-12-17",
+            "url": "https://www.courtlistener.com/opinion/1442248/in-re-marriage-of-lippel/"
+          }
+        },
+        {
+          "id": "real-13",
+          "truth": "real",
+          "input": "Briggs v. Eden Council for Hope & Opportunity (1999) 19 Cal.4th 1106",
+          "expected_reporter": "19 Cal.4th 1106",
+          "verdict": "real",
+          "provider_status": "verified",
+          "match": {
+            "id": "1404828",
+            "title": "Briggs v. Eden Council for Hope & Opportunity",
+            "court": "California Supreme Court",
+            "decision_date": "1999-01-21",
+            "url": "https://www.courtlistener.com/opinion/1404828/briggs-v-eden-council-for-hope-opportunity/"
+          }
+        },
+        {
+          "id": "real-14",
+          "truth": "real",
+          "input": "Equilon Enterprises v. Consumer Cause, Inc. (2002) 29 Cal.4th 53",
+          "expected_reporter": "29 Cal.4th 53",
+          "verdict": "real",
+          "provider_status": "verified",
+          "match": {
+            "id": "2519835",
+            "title": "Equilon Enterprises v. Consumer Cause, Inc.",
+            "court": "California Supreme Court",
+            "decision_date": "2002-08-29",
+            "url": "https://www.courtlistener.com/opinion/2519835/equilon-enterprises-v-consumer-cause-inc/"
+          }
+        },
+        {
+          "id": "real-15",
+          "truth": "real",
+          "input": "Wilson v. Cable News Network, Inc. (2019) 7 Cal.5th 871",
+          "expected_reporter": "7 Cal.5th 871",
+          "verdict": "real",
+          "provider_status": "verified",
+          "match": {
+            "id": "4641588",
+            "title": "Wilson v. Cable News Network, Inc.",
+            "court": "California Supreme Court",
+            "decision_date": "2019-07-22",
+            "url": "https://www.courtlistener.com/opinion/4641588/wilson-v-cable-news-network-inc/"
+          }
+        },
+        {
+          "id": "real-16",
+          "truth": "real",
+          "input": "Sargon Enterprises, Inc. v. University of Southern California (2012) 55 Cal.4th 747",
+          "expected_reporter": "55 Cal.4th 747",
+          "verdict": "real",
+          "provider_status": "verified",
+          "match": {
+            "id": "821525",
+            "title": "Sargon Enterprises, Inc. v. University of Southern California",
+            "court": "California Supreme Court",
+            "decision_date": "2012-11-26",
+            "url": "https://www.courtlistener.com/opinion/821525/sargon-enterprises-inc-v-university-of-southern-california/"
+          }
+        },
+        {
+          "id": "real-17",
+          "truth": "real",
+          "input": "City of Cotati v. Cashman (2002) 29 Cal.4th 69",
+          "expected_reporter": "29 Cal.4th 69",
+          "verdict": "real",
+          "provider_status": "verified",
+          "match": {
+            "id": "2519876",
+            "title": "City of Cotati v. Cashman",
+            "court": "California Supreme Court",
+            "decision_date": "2002-08-29",
+            "url": "https://www.courtlistener.com/opinion/2519876/city-of-cotati-v-cashman/"
+          }
+        },
+        {
+          "id": "real-18",
+          "truth": "real",
+          "input": "FilmOn.com Inc. v. DoubleVerify Inc. (2019) 7 Cal.5th 133",
+          "expected_reporter": "7 Cal.5th 133",
+          "verdict": "real",
+          "provider_status": "verified",
+          "match": {
+            "id": "4616996",
+            "title": "Filmon.Com. Inc. v. Doubleverify Inc.",
+            "court": "California Supreme Court",
+            "decision_date": "2019-05-06",
+            "url": "https://www.courtlistener.com/opinion/4616996/filmoncom-inc-v-doubleverify-inc/"
+          }
+        },
+        {
+          "id": "real-19",
+          "truth": "real",
+          "input": "Baral v. Schnitt (2016) 1 Cal.5th 376",
+          "expected_reporter": "1 Cal.5th 376",
+          "verdict": "real",
+          "provider_status": "verified",
+          "match": {
+            "id": "4243150",
+            "title": "Baral v. Schnitt",
+            "court": "California Supreme Court",
+            "decision_date": "2016-08-01",
+            "url": "https://www.courtlistener.com/opinion/4243150/baral-v-schnitt/"
+          }
+        },
+        {
+          "id": "real-20",
+          "truth": "real",
+          "input": "People v. Anderson (1968) 70 Cal.2d 15",
+          "expected_reporter": "70 Cal.2d 15",
+          "verdict": "real",
+          "provider_status": "verified",
+          "match": {
+            "id": "1312544",
+            "title": "People v. Anderson",
+            "court": "California Supreme Court",
+            "decision_date": "1968-12-23",
+            "url": "https://www.courtlistener.com/opinion/1312544/people-v-anderson/"
+          }
+        },
+        {
+          "id": "fake-1",
+          "truth": "fake",
+          "input": "Hendricks v. California Probate Bureau (2019) 7 Cal.5th 904",
+          "expected_reporter": "7 Cal.5th 904",
+          "verdict": "abstain",
+          "provider_status": "unavailable"
+        },
+        {
+          "id": "fake-2",
+          "truth": "fake",
+          "input": "Foster v. State Bar (1987) 43 Cal.3d 421",
+          "expected_reporter": "43 Cal.3d 421",
+          "verdict": "abstain",
+          "provider_status": "unavailable"
+        },
+        {
+          "id": "fake-3",
+          "truth": "fake",
+          "input": "In re Estate of Markham (2014) 228 Cal.App.4th 1399",
+          "expected_reporter": "228 Cal.App.4th 1399",
+          "verdict": "abstain",
+          "provider_status": "unavailable"
+        },
+        {
+          "id": "fake-4",
+          "truth": "fake",
+          "input": "Reyes v. Quincy Investment Group, LLC (2021) 65 Cal.App.5th 778",
+          "expected_reporter": "65 Cal.App.5th 778",
+          "verdict": "abstain",
+          "provider_status": "unavailable"
+        },
+        {
+          "id": "fake-5",
+          "truth": "fake",
+          "input": "Hernandez v. California Coastal Commission (1998) 18 Cal.4th 1107",
+          "expected_reporter": "18 Cal.4th 1107",
+          "verdict": "abstain",
+          "provider_status": "unavailable"
+        },
+        {
+          "id": "fake-6",
+          "truth": "fake",
+          "input": "In re Marriage of Aspen (2011) 195 Cal.App.4th 542",
+          "expected_reporter": "195 Cal.App.4th 542",
+          "verdict": "abstain",
+          "provider_status": "unavailable"
+        },
+        {
+          "id": "fake-7",
+          "truth": "fake",
+          "input": "Volk v. San Diego Trust Co. (1994) 8 Cal.4th 217",
+          "expected_reporter": "8 Cal.4th 217",
+          "verdict": "abstain",
+          "provider_status": "unavailable"
+        },
+        {
+          "id": "fake-8",
+          "truth": "fake",
+          "input": "Goldman v. Department of Industrial Relations (2008) 159 Cal.App.4th 1281",
+          "expected_reporter": "159 Cal.App.4th 1281",
+          "verdict": "abstain",
+          "provider_status": "unavailable"
+        },
+        {
+          "id": "fake-9",
+          "truth": "fake",
+          "input": "Bell v. Bayside Restaurant Group (2017) 11 Cal.5th 332",
+          "expected_reporter": "11 Cal.5th 332",
+          "verdict": "abstain",
+          "provider_status": "unavailable"
+        },
+        {
+          "id": "fake-10",
+          "truth": "fake",
+          "input": "Patel v. Mendocino County (2005) 134 Cal.App.4th 88",
+          "expected_reporter": "134 Cal.App.4th 88",
+          "verdict": "abstain",
+          "provider_status": "unavailable"
+        }
+      ]
+    },
+    "courtlistener": {
+      "provider": "courtlistener",
+      "status": "failed",
+      "error": "CourtListener Citation Lookup HTTP 429: Request was throttled. Rate limit exceeded: 20/min. Expected available in 57 seconds."
+    }
+  }
+}

@@ -9,7 +9,8 @@
  *   - Invokes anthropic.messages.create with a NEW conversation (no session
  *     state, no shared history with the main workbench).
  *   - System prompt is the verification-specific Skill below.
- *   - Tools: citation_verify, courtlistener_search, statute_verify.
+ *   - Tools: citation_verify (CiteLaw + CourtListener identity gate),
+ *     courtlistener_search, statute_verify.
  *     web_search is omitted — verification must rely on deterministic
  *     case-law sources, never on general web content. ceb_search was
  *     retired 2026-07-03 (CEB ToS prohibits AI/database ingestion of
@@ -26,9 +27,9 @@
  *     string matching breaks on parallel reporters and party-name
  *     reorderings. The model can read both citations and decide.
  *   - The verifier needs to be defensible in deposition — "an LLM with
- *     verification-specific instructions and read-only access to
- *     CourtListener confirmed each citation" is a clearer story
- *     than "we ran a regex against CourtListener's search API."
+ *     verification-specific instructions and read-only access to CiteLaw
+ *     plus CourtListener confirmed each citation" is a clearer story than
+ *     "we trusted one provider's relevance-ranked search hit."
  *
  * Used by:
  *   - scripts/phase3-eval.mjs (evaluation harness)
@@ -109,10 +110,11 @@ CRITICAL RULES — read carefully:
 1. **Ground every conclusion in tool results.** Do NOT rely on your memorized knowledge of cases. Your training data has gaps and errors; the tools are the ground truth. If a tool returns a hit, trust it. If your memory tells you the cite is "actually 69 Cal.2d 59" but the tool returns a different match, GO WITH THE TOOL.
 
 2. **Search BOTH ways.** Always run both:
-   - citation_verify on the full citation text (uses CourtListener search-by-citation)
+   - citation_verify on the full citation text (runs the structured CiteLaw
+     identity gate plus CourtListener search-by-citation)
    - courtlistener_search by the CASE-NAME alone (extracts "Name v. Name" from the citation; broader recall)
    Either tool returning a matching case is sufficient evidence.
-   citation_verify statuses: 'verified' is positive evidence (the hit's own citation list bears the exact cite). 'unconfirmed' means candidates were found but the exact cite was NOT confirmed — inspect possible_match and the case-name search yourself; 'unconfirmed' alone is NOT positive evidence. 'unavailable' means the verifier errored — never treat as evidence of fabrication.
+   citation_verify statuses: 'verified' is positive evidence and means no CiteLaw identity conflict was found. 'unconfirmed' means a provider returned a near-match, title/year mismatch, or candidates without sufficient identity confirmation — inspect citation_verify.citelaw, possible_match, and the case-name search yourself; 'unconfirmed' alone is NOT positive evidence. 'not_found' remains a corpus miss, not standalone proof of fabrication. 'unavailable' means verification errored — never treat it as evidence of fabrication.
 
 3. **A match counts when**:
    - The party names in the matched record are essentially the same as the citation's party names (allow for caption variations: "Estate of X" ≈ "In re Estate of X"; "Marriage of X" ≈ "In re Marriage of X"; surname-only matches OK if uncommon).
@@ -121,7 +123,7 @@ CRITICAL RULES — read carefully:
 
 4. **Pick exactly ONE status:**
    - \`real\` — Positive evidence in at least one tool. A matching CourtListener record. Confidence ≥ 0.7.
-   - \`fake\` — Contradictory evidence. CourtListener returned a hit at the cited reporter but the party names are clearly unrelated, OR returned hits whose dates contradict the cited year, OR the reporter doesn't exist (e.g. "99 Cal.5th" when Cal.5th's max volume is much lower). Confidence ≥ 0.75.
+   - \`fake\` — Contradictory evidence. CiteLaw reports no_match because the cited reporter resolves to a different authority/title, CourtListener returns a hit at the cited reporter but the party names are clearly unrelated, hits' dates contradict the cited year, OR the reporter doesn't exist (e.g. "99 Cal.5th" when Cal.5th's max volume is much lower). A bare corpus miss without contradictory identity evidence stays ambiguous. Confidence ≥ 0.75.
    - \`ambiguous\` — No evidence either way. All tools returned empty (zero hits) OR were unavailable (rate-limited, errored). You CANNOT distinguish a fabricated cite from a genuine old/uncommon opinion missing from CL's index. Confidence 0.3-0.6.
 
 5. **DO NOT collapse ambiguity into fake.** When all tools return empty (no hits AND no contradictory hits), the correct status is \`ambiguous\`, not \`fake\`. The attorney needs to verify against Westlaw/Lexis. Calling these "fake" is a false-positive-fake which costs the attorney trust in the tool.

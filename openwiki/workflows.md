@@ -58,6 +58,13 @@ Primary surface: `components/v2/V2VerifyPage.tsx`.
 
 The verification page is a focused workflow for pasting legal text and checking citations against the verification sub-agent. It exposes per-citation verdicts and summary counts.
 
+Case verification uses a two-provider identity gate:
+
+- CiteLaw receives only the public reporter citation, case caption, and decision year in one batch. Its `confirmed`, `possible_match`, and `no_match` result is preserved in the tool output.
+- CourtListener supplies independent search and opinion-record evidence.
+- A CiteLaw near-match or identity conflict prevents a CourtListener-only hit from receiving a green verified status. Provider outages fail back to CourtListener and remain visible as unavailable, not fabricated.
+- The verify-stream route prefetches CiteLaw once for all case citations and caches the structured results for the per-citation sub-agents. The final summary reports credits charged and remaining.
+
 Useful source files:
 
 - `components/v2/V2VerifyPage.tsx`

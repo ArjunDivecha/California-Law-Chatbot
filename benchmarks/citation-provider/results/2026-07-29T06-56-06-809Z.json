@@ -1,0 +1,1632 @@
+{
+  "schema_version": 1,
+  "suite": "citation-provider-shadow-v1",
+  "run_id": "2026-07-29T06-56-06-809Z",
+  "started_at": "2026-07-29T06:56:06.809Z",
+  "completed_at": "2026-07-29T06:56:09.924Z",
+  "fixture": {
+    "path": "tests/citation-eval-set.json",
+    "version": 1,
+    "entry_count": 30,
+    "truth_counts": {
+      "real": 20,
+      "fake": 10
+    }
+  },
+  "privacy": {
+    "payload": "Public case names and reporter citations only; no client facts or documents."
+  },
+  "providers": {
+    "courtlistener": {
+      "provider": "courtlistener",
+      "status": "completed",
+      "elapsed_ms": 3113,
+      "summary": {
+        "entry_count": 30,
+        "truth_counts": {
+          "real": 20,
+          "fake": 10
+        },
+        "confusion_matrix": {
+          "TP": 17,
+          "TN": 4,
+          "FP": 6,
+          "FN": 1
+        },
+        "abstain": 2,
+        "error": 0,
+        "coverage": 0.9333,
+        "strict_accuracy": 0.7,
+        "resolved_accuracy": 0.75,
+        "precision": 0.7391,
+        "real_recall": 0.85,
+        "f1": 0.7907,
+        "fake_caught_rate": 0.4,
+        "false_positive_rate": 0.6
+      },
+      "endpoint": "https://www.courtlistener.com/api/rest/v4/citation-lookup/",
+      "mode": "single batched text request",
+      "provider_elapsed_ms": 3113,
+      "citations_returned": 30,
+      "results": [
+        {
+          "id": "real-1",
+          "truth": "real",
+          "input": "Navellier v. Sletten (2002) 29 Cal.4th 82",
+          "expected_reporter": "29 Cal.4th 82",
+          "verdict": "real",
+          "provider_status": 200,
+          "normalized_citations": [
+            "29 Cal. 4th 82"
+          ],
+          "matches": [
+            {
+              "id": 2519770,
+              "title": "Navellier v. Sletten",
+              "citation": [
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "52",
+                  "reporter": "P.3d",
+                  "page": "703",
+                  "type": 3
+                },
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "124",
+                  "reporter": "Cal. Rptr. 2d",
+                  "page": "530",
+                  "type": 2
+                },
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "29",
+                  "reporter": "Cal. 4th",
+                  "page": "82",
+                  "type": 2
+                },
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "2002",
+                  "reporter": "Daily Journal DAR",
+                  "page": "9954",
+                  "type": 2
+                },
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "2002",
+                  "reporter": "Cal. Daily Op. Serv.",
+                  "page": "7964",
+                  "type": 6
+                },
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "2002",
+                  "reporter": "Cal. LEXIS",
+                  "page": "5700",
+                  "type": 2
+                }
+              ],
+              "decision_date": "2002-08-29",
+              "precedential_status": "Published",
+              "url": "/opinion/2519770/navellier-v-sletten/"
+            }
+          ]
+        },
+        {
+          "id": "real-2",
+          "truth": "real",
+          "input": "Taus v. Loftus (2007) 40 Cal.4th 683",
+          "expected_reporter": "40 Cal.4th 683",
+          "verdict": "real",
+          "provider_status": 200,
+          "normalized_citations": [
+            "40 Cal. 4th 683"
+          ],
+          "matches": [
+            {
+              "id": 2638169,
+              "title": "Taus v. Loftus",
+              "citation": [
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "151",
+                  "reporter": "P.3d",
+                  "page": "1185",
+                  "type": 3
+                },
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "54",
+                  "reporter": "Cal. Rptr. 3d",
+                  "page": "775",
+                  "type": 2
+                },
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "40",
+                  "reporter": "Cal. 4th",
+                  "page": "683",
+                  "type": 2
+                },
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "2007",
+                  "reporter": "Cal. Daily Op. Serv.",
+                  "page": "2008",
+                  "type": 6
+                },
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "2007",
+                  "reporter": "Daily Journal DAR",
+                  "page": "2512",
+                  "type": 2
+                },
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "35",
+                  "reporter": "Media L. Rep. (BNA)",
+                  "page": "1657",
+                  "type": 4
+                },
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "2007",
+                  "reporter": "Cal. LEXIS",
+                  "page": "1896",
+                  "type": 2
+                }
+              ],
+              "decision_date": "2007-02-26",
+              "precedential_status": "Published",
+              "url": "/opinion/2638169/taus-v-loftus/"
+            }
+          ]
+        },
+        {
+          "id": "real-3",
+          "truth": "real",
+          "input": "Geiser v. Kuhns (2022) 13 Cal.5th 1238",
+          "expected_reporter": "13 Cal.5th 1238",
+          "verdict": "fake",
+          "provider_status": 404,
+          "normalized_citations": [
+            "13 Cal. 5th 1238"
+          ],
+          "error_message": "Citation not found: '13 Cal.5th 1238'",
+          "matches": []
+        },
+        {
+          "id": "real-4",
+          "truth": "real",
+          "input": "Williams v. Superior Court (2017) 3 Cal.5th 531",
+          "expected_reporter": "3 Cal.5th 531",
+          "verdict": "real",
+          "provider_status": 200,
+          "normalized_citations": [
+            "3 Cal. 5th 531"
+          ],
+          "matches": [
+            {
+              "id": 4408734,
+              "title": "Williams v. Superior Court of L. A. Cnty.",
+              "citation": [
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "220",
+                  "reporter": "Cal. Rptr. 3d",
+                  "page": "472",
+                  "type": 2
+                },
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "3",
+                  "reporter": "Cal. 5th",
+                  "page": "531",
+                  "type": 2
+                },
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "398",
+                  "reporter": "P.3d",
+                  "page": "69",
+                  "type": 3
+                },
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "17",
+                  "reporter": "Cal. Daily Op. Serv.",
+                  "page": "6837",
+                  "type": 6
+                },
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "27",
+                  "reporter": "Wage & Hour Cas. (BNA)",
+                  "page": "687",
+                  "type": 4
+                },
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "2017",
+                  "reporter": "WL",
+                  "page": "2980258",
+                  "type": 7
+                },
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "2017",
+                  "reporter": "Cal. LEXIS",
+                  "page": "5124",
+                  "type": 2
+                }
+              ],
+              "decision_date": "2017-07-13",
+              "precedential_status": "Published",
+              "url": "/opinion/4408734/williams-v-superior-court-of-l-a-cnty/"
+            }
+          ]
+        },
+        {
+          "id": "real-5",
+          "truth": "real",
+          "input": "Coy v. Superior Court (1962) 58 Cal.2d 210",
+          "expected_reporter": "58 Cal.2d 210",
+          "verdict": "real",
+          "provider_status": 200,
+          "normalized_citations": [
+            "58 Cal. 2d 210"
+          ],
+          "matches": [
+            {
+              "id": 5607266,
+              "title": "Coy v. Superior Court",
+              "citation": [
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "58",
+                  "reporter": "Cal. 2d",
+                  "page": "210",
+                  "type": 2
+                },
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "373",
+                  "reporter": "P.2d",
+                  "page": "457",
+                  "type": 3
+                },
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "23",
+                  "reporter": "Cal. Rptr.",
+                  "page": "393",
+                  "type": 2
+                },
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "9",
+                  "reporter": "A.L.R. 3d",
+                  "page": "678",
+                  "type": 4
+                },
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "1962",
+                  "reporter": "Cal. LEXIS",
+                  "page": "254",
+                  "type": 2
+                }
+              ],
+              "decision_date": "1962-07-19",
+              "precedential_status": "Published",
+              "url": "/opinion/5607266/coy-v-superior-court/"
+            }
+          ]
+        },
+        {
+          "id": "real-6",
+          "truth": "real",
+          "input": "Stewart v. Colonial Western Agency, Inc. (2001) 87 Cal.App.4th 1006",
+          "expected_reporter": "87 Cal.App.4th 1006",
+          "verdict": "real",
+          "provider_status": 200,
+          "normalized_citations": [
+            "87 Cal. App. 4th 1006"
+          ],
+          "matches": [
+            {
+              "id": 5808646,
+              "title": "Stewart v. Colonial Western Agency, Inc.",
+              "citation": [
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "87",
+                  "reporter": "Cal. App. 4th",
+                  "page": "1006",
+                  "type": 2
+                },
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "105",
+                  "reporter": "Cal. Rptr. 2d",
+                  "page": "115",
+                  "type": 2
+                },
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "2001",
+                  "reporter": "Daily Journal DAR",
+                  "page": "2663",
+                  "type": 2
+                },
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "2001",
+                  "reporter": "Cal. Daily Op. Serv.",
+                  "page": "2090",
+                  "type": 6
+                },
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "2001",
+                  "reporter": "Cal. App. LEXIS",
+                  "page": "197",
+                  "type": 2
+                }
+              ],
+              "decision_date": "2001-03-14",
+              "precedential_status": "Published",
+              "url": "/opinion/5808646/stewart-v-colonial-western-agency-inc/"
+            }
+          ]
+        },
+        {
+          "id": "real-7",
+          "truth": "real",
+          "input": "Costco Wholesale Corp. v. Superior Court (2009) 47 Cal.4th 725",
+          "expected_reporter": "47 Cal.4th 725",
+          "verdict": "real",
+          "provider_status": 200,
+          "normalized_citations": [
+            "47 Cal. 4th 725"
+          ],
+          "matches": [
+            {
+              "id": 5608098,
+              "title": "Costco Wholesale Corp. v. Superior Court",
+              "citation": [
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "47",
+                  "reporter": "Cal. 4th",
+                  "page": "725",
+                  "type": 2
+                },
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "219",
+                  "reporter": "P.3d",
+                  "page": "736",
+                  "type": 3
+                },
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "101",
+                  "reporter": "Cal. Rptr. 3d",
+                  "page": "758",
+                  "type": 2
+                },
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "2009",
+                  "reporter": "Cal. LEXIS",
+                  "page": "12375",
+                  "type": 2
+                }
+              ],
+              "decision_date": "2009-11-30",
+              "precedential_status": "Published",
+              "url": "/opinion/5608098/costco-wholesale-corp-v-superior-court/"
+            }
+          ]
+        },
+        {
+          "id": "real-8",
+          "truth": "real",
+          "input": "Cembrook v. Superior Court (1961) 56 Cal.2d 423",
+          "expected_reporter": "56 Cal.2d 423",
+          "verdict": "real",
+          "provider_status": 200,
+          "normalized_citations": [
+            "56 Cal. 2d 423"
+          ],
+          "matches": [
+            {
+              "id": 1156481,
+              "title": "Cembrook v. Superior Court",
+              "citation": [
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "56",
+                  "reporter": "Cal. 2d",
+                  "page": "423",
+                  "type": 2
+                },
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "364",
+                  "reporter": "P.2d",
+                  "page": "303",
+                  "type": 3
+                },
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "15",
+                  "reporter": "Cal. Rptr.",
+                  "page": "127",
+                  "type": 2
+                },
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "1961",
+                  "reporter": "Cal. LEXIS",
+                  "page": "305",
+                  "type": 2
+                }
+              ],
+              "decision_date": "1961-08-03",
+              "precedential_status": "Published",
+              "url": "/opinion/1156481/cembrook-v-superior-court/"
+            }
+          ]
+        },
+        {
+          "id": "real-9",
+          "truth": "real",
+          "input": "West Pico Furniture Co. v. Superior Court (1961) 56 Cal.2d 407",
+          "expected_reporter": "56 Cal.2d 407",
+          "verdict": "real",
+          "provider_status": 200,
+          "normalized_citations": [
+            "56 Cal. 2d 407"
+          ],
+          "matches": [
+            {
+              "id": 1156339,
+              "title": "West Pico Furniture Co. v. Superior Court",
+              "citation": [
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "56",
+                  "reporter": "Cal. 2d",
+                  "page": "407",
+                  "type": 2
+                },
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "364",
+                  "reporter": "P.2d",
+                  "page": "295",
+                  "type": 3
+                },
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "15",
+                  "reporter": "Cal. Rptr.",
+                  "page": "119",
+                  "type": 2
+                },
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "1961",
+                  "reporter": "Cal. LEXIS",
+                  "page": "304",
+                  "type": 2
+                }
+              ],
+              "decision_date": "1961-08-03",
+              "precedential_status": "Published",
+              "url": "/opinion/1156339/west-pico-furniture-co-v-superior-court/"
+            }
+          ]
+        },
+        {
+          "id": "real-10",
+          "truth": "real",
+          "input": "Bridgestone/Firestone, Inc. v. Superior Court (1992) 7 Cal.App.4th 1384",
+          "expected_reporter": "7 Cal.App.4th 1384",
+          "verdict": "real",
+          "provider_status": 200,
+          "normalized_citations": [
+            "7 Cal. App. 4th 1384"
+          ],
+          "matches": [
+            {
+              "id": 2279020,
+              "title": "Bridgestone/Firestone, Inc. v. Superior Court",
+              "citation": [
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "7",
+                  "reporter": "Cal. App. 4th",
+                  "page": "1384",
+                  "type": 2
+                },
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "9",
+                  "reporter": "Cal. Rptr. 2d",
+                  "page": "709",
+                  "type": 2
+                },
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "92",
+                  "reporter": "Daily Journal DAR",
+                  "page": "8763",
+                  "type": 2
+                },
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "92",
+                  "reporter": "Cal. Daily Op. Serv.",
+                  "page": "5610",
+                  "type": 6
+                },
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "1992",
+                  "reporter": "Cal. App. LEXIS",
+                  "page": "815",
+                  "type": 2
+                }
+              ],
+              "decision_date": "1992-06-24",
+              "precedential_status": "Published",
+              "url": "/opinion/2279020/bridgestonefirestone-inc-v-superior-court/"
+            }
+          ]
+        },
+        {
+          "id": "real-11",
+          "truth": "real",
+          "input": "Estate of Williams (1968) 269 Cal.App.2d 671",
+          "expected_reporter": "269 Cal.App.2d 671",
+          "verdict": "real",
+          "provider_status": 200,
+          "normalized_citations": [
+            "269 Cal. App. 2d 671"
+          ],
+          "matches": [
+            {
+              "id": 5805265,
+              "title": "People v. Timmons",
+              "citation": [
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "269",
+                  "reporter": "Cal. App. 2d",
+                  "page": "671",
+                  "type": 2
+                },
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "75",
+                  "reporter": "Cal. Rptr.",
+                  "page": "212",
+                  "type": 2
+                },
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "1969",
+                  "reporter": "Cal. App. LEXIS",
+                  "page": "1688",
+                  "type": 2
+                }
+              ],
+              "decision_date": "1969-02-14",
+              "precedential_status": "Published",
+              "url": "/opinion/5805265/people-v-timmons/"
+            }
+          ]
+        },
+        {
+          "id": "real-12",
+          "truth": "real",
+          "input": "In re Marriage of Lippel (1990) 51 Cal.3d 1160",
+          "expected_reporter": "51 Cal.3d 1160",
+          "verdict": "abstain",
+          "provider_status": 300,
+          "normalized_citations": [
+            "51 Cal. 3d 1160"
+          ],
+          "matches": [
+            {
+              "id": 5607937,
+              "title": "Lippel v. San Francisco",
+              "citation": [
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "51",
+                  "reporter": "Cal. 3d",
+                  "page": "1160",
+                  "type": 2
+                },
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "276",
+                  "reporter": "Cal. Rptr.",
+                  "page": "290",
+                  "type": 2
+                },
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "801",
+                  "reporter": "P.2d",
+                  "page": "1041",
+                  "type": 3
+                },
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "5",
+                  "reporter": "A.L.R. 5th",
+                  "page": "1156",
+                  "type": 4
+                },
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "90",
+                  "reporter": "Cal. Daily Op. Serv.",
+                  "page": "9132",
+                  "type": 6
+                },
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "90",
+                  "reporter": "Daily Journal DAR",
+                  "page": "14274",
+                  "type": 2
+                },
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "1990",
+                  "reporter": "Cal. LEXIS",
+                  "page": "5468",
+                  "type": 2
+                }
+              ],
+              "decision_date": "1990-12-17",
+              "precedential_status": "Published",
+              "url": "/opinion/5607937/lippel-v-san-francisco/"
+            },
+            {
+              "id": 1442248,
+              "title": "In Re Marriage of Lippel",
+              "citation": [
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "801",
+                  "reporter": "P.2d",
+                  "page": "1041",
+                  "type": 3
+                },
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "51",
+                  "reporter": "Cal. 3d",
+                  "page": "1160",
+                  "type": 2
+                },
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "276",
+                  "reporter": "Cal. Rptr.",
+                  "page": "290",
+                  "type": 2
+                }
+              ],
+              "decision_date": "1990-12-17",
+              "precedential_status": "Published",
+              "url": "/opinion/1442248/in-re-marriage-of-lippel/"
+            }
+          ]
+        },
+        {
+          "id": "real-13",
+          "truth": "real",
+          "input": "Briggs v. Eden Council for Hope & Opportunity (1999) 19 Cal.4th 1106",
+          "expected_reporter": "19 Cal.4th 1106",
+          "verdict": "real",
+          "provider_status": 200,
+          "normalized_citations": [
+            "19 Cal. 4th 1106"
+          ],
+          "matches": [
+            {
+              "id": 1404828,
+              "title": "Briggs v. Eden Council for Hope & Opportunity",
+              "citation": [
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "969",
+                  "reporter": "P.2d",
+                  "page": "564",
+                  "type": 3
+                },
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "81",
+                  "reporter": "Cal. Rptr. 2d",
+                  "page": "471",
+                  "type": 2
+                },
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "19",
+                  "reporter": "Cal. 4th",
+                  "page": "1106",
+                  "type": 2
+                },
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "99",
+                  "reporter": "Daily Journal DAR",
+                  "page": "687",
+                  "type": 2
+                },
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "99",
+                  "reporter": "Cal. Daily Op. Serv.",
+                  "page": "554",
+                  "type": 6
+                },
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "1999",
+                  "reporter": "Cal. LEXIS",
+                  "page": "7",
+                  "type": 2
+                }
+              ],
+              "decision_date": "1999-01-21",
+              "precedential_status": "Published",
+              "url": "/opinion/1404828/briggs-v-eden-council-for-hope-opportunity/"
+            }
+          ]
+        },
+        {
+          "id": "real-14",
+          "truth": "real",
+          "input": "Equilon Enterprises v. Consumer Cause, Inc. (2002) 29 Cal.4th 53",
+          "expected_reporter": "29 Cal.4th 53",
+          "verdict": "abstain",
+          "provider_status": 300,
+          "normalized_citations": [
+            "29 Cal. 4th 53"
+          ],
+          "matches": [
+            {
+              "id": 5607989,
+              "title": "Equilon Enterprises, LLC v. Consumer Cause, Inc.",
+              "citation": [
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "29",
+                  "reporter": "Cal. 4th",
+                  "page": "53",
+                  "type": 2
+                },
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "52",
+                  "reporter": "P.3d",
+                  "page": "685",
+                  "type": 3
+                },
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "2002",
+                  "reporter": "Cal. Daily Op. Serv.",
+                  "page": "7960",
+                  "type": 6
+                },
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "124",
+                  "reporter": "Cal. Rptr. 2d",
+                  "page": "507",
+                  "type": 2
+                },
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "2002",
+                  "reporter": "Daily Journal DAR",
+                  "page": "9945",
+                  "type": 2
+                },
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "2002",
+                  "reporter": "Cal. LEXIS",
+                  "page": "5701",
+                  "type": 2
+                }
+              ],
+              "decision_date": "2002-08-29",
+              "precedential_status": "Published",
+              "url": "/opinion/5607989/equilon-enterprises-llc-v-consumer-cause-inc/"
+            },
+            {
+              "id": 2519835,
+              "title": "Equilon Enterprises v. Consumer Cause, Inc.",
+              "citation": [
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "52",
+                  "reporter": "P.3d",
+                  "page": "685",
+                  "type": 3
+                },
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "124",
+                  "reporter": "Cal. Rptr. 2d",
+                  "page": "507",
+                  "type": 2
+                },
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "29",
+                  "reporter": "Cal. 4th",
+                  "page": "53",
+                  "type": 2
+                }
+              ],
+              "decision_date": "2002-08-29",
+              "precedential_status": "Published",
+              "url": "/opinion/2519835/equilon-enterprises-v-consumer-cause-inc/"
+            }
+          ]
+        },
+        {
+          "id": "real-15",
+          "truth": "real",
+          "input": "Wilson v. Cable News Network, Inc. (2019) 7 Cal.5th 871",
+          "expected_reporter": "7 Cal.5th 871",
+          "verdict": "real",
+          "provider_status": 200,
+          "normalized_citations": [
+            "7 Cal. 5th 871"
+          ],
+          "matches": [
+            {
+              "id": 4641588,
+              "title": "Wilson v. Cable News Network, Inc.",
+              "citation": [
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "249",
+                  "reporter": "Cal. Rptr. 3d",
+                  "page": "569",
+                  "type": 2
+                },
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "444",
+                  "reporter": "P.3d",
+                  "page": "706",
+                  "type": 3
+                },
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "7",
+                  "reporter": "Cal. 5th",
+                  "page": "871",
+                  "type": 2
+                }
+              ],
+              "decision_date": "2019-07-22",
+              "precedential_status": "Published",
+              "url": "/opinion/4641588/wilson-v-cable-news-network-inc/"
+            }
+          ]
+        },
+        {
+          "id": "real-16",
+          "truth": "real",
+          "input": "Sargon Enterprises, Inc. v. University of Southern California (2012) 55 Cal.4th 747",
+          "expected_reporter": "55 Cal.4th 747",
+          "verdict": "real",
+          "provider_status": 200,
+          "normalized_citations": [
+            "55 Cal. 4th 747"
+          ],
+          "matches": [
+            {
+              "id": 821525,
+              "title": "Sargon Enterprises, Inc. v. University of Southern California",
+              "citation": [
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "55",
+                  "reporter": "Cal. 4th",
+                  "page": "747",
+                  "type": 2
+                },
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "288",
+                  "reporter": "P.3d",
+                  "page": "1237",
+                  "type": 3
+                },
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "149",
+                  "reporter": "Cal. Rptr. 3d",
+                  "page": "614",
+                  "type": 2
+                },
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "2012",
+                  "reporter": "Cal. LEXIS",
+                  "page": "10713",
+                  "type": 2
+                }
+              ],
+              "decision_date": "2012-11-26",
+              "precedential_status": "Published",
+              "url": "/opinion/821525/sargon-enterprises-inc-v-university-of-southern-california/"
+            }
+          ]
+        },
+        {
+          "id": "real-17",
+          "truth": "real",
+          "input": "City of Cotati v. Cashman (2002) 29 Cal.4th 69",
+          "expected_reporter": "29 Cal.4th 69",
+          "verdict": "real",
+          "provider_status": 200,
+          "normalized_citations": [
+            "29 Cal. 4th 69"
+          ],
+          "matches": [
+            {
+              "id": 2519876,
+              "title": "City of Cotati v. Cashman",
+              "citation": [
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "52",
+                  "reporter": "P.3d",
+                  "page": "695",
+                  "type": 3
+                },
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "124",
+                  "reporter": "Cal. Rptr. 2d",
+                  "page": "519",
+                  "type": 2
+                },
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "29",
+                  "reporter": "Cal. 4th",
+                  "page": "69",
+                  "type": 2
+                },
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "2002",
+                  "reporter": "Daily Journal DAR",
+                  "page": "9950",
+                  "type": 2
+                },
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "2002",
+                  "reporter": "Cal. Daily Op. Serv.",
+                  "page": "7957",
+                  "type": 6
+                },
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "2002",
+                  "reporter": "Cal. LEXIS",
+                  "page": "5702",
+                  "type": 2
+                }
+              ],
+              "decision_date": "2002-08-29",
+              "precedential_status": "Published",
+              "url": "/opinion/2519876/city-of-cotati-v-cashman/"
+            }
+          ]
+        },
+        {
+          "id": "real-18",
+          "truth": "real",
+          "input": "FilmOn.com Inc. v. DoubleVerify Inc. (2019) 7 Cal.5th 133",
+          "expected_reporter": "7 Cal.5th 133",
+          "verdict": "real",
+          "provider_status": 200,
+          "normalized_citations": [
+            "7 Cal. 5th 133"
+          ],
+          "matches": [
+            {
+              "id": 4616996,
+              "title": "Filmon.Com. Inc. v. Doubleverify Inc.",
+              "citation": [
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "246",
+                  "reporter": "Cal. Rptr. 3d",
+                  "page": "591",
+                  "type": 2
+                },
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "7",
+                  "reporter": "Cal. 5th",
+                  "page": "133",
+                  "type": 2
+                },
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "439",
+                  "reporter": "P.3d",
+                  "page": "1156",
+                  "type": 3
+                }
+              ],
+              "decision_date": "2019-05-06",
+              "precedential_status": "Published",
+              "url": "/opinion/4616996/filmoncom-inc-v-doubleverify-inc/"
+            }
+          ]
+        },
+        {
+          "id": "real-19",
+          "truth": "real",
+          "input": "Baral v. Schnitt (2016) 1 Cal.5th 376",
+          "expected_reporter": "1 Cal.5th 376",
+          "verdict": "real",
+          "provider_status": 200,
+          "normalized_citations": [
+            "1 Cal. 5th 376"
+          ],
+          "matches": [
+            {
+              "id": 4243150,
+              "title": "Baral v. Schnitt",
+              "citation": [
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "1",
+                  "reporter": "Cal. 5th",
+                  "page": "376",
+                  "type": 2
+                },
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "376",
+                  "reporter": "P.3d",
+                  "page": "604",
+                  "type": 3
+                },
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "205",
+                  "reporter": "Cal. Rptr. 3d",
+                  "page": "475",
+                  "type": 2
+                },
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "2016",
+                  "reporter": "Cal. LEXIS",
+                  "page": "6383",
+                  "type": 2
+                }
+              ],
+              "decision_date": "2016-08-01",
+              "precedential_status": "Published",
+              "url": "/opinion/4243150/baral-v-schnitt/"
+            }
+          ]
+        },
+        {
+          "id": "real-20",
+          "truth": "real",
+          "input": "People v. Anderson (1968) 70 Cal.2d 15",
+          "expected_reporter": "70 Cal.2d 15",
+          "verdict": "real",
+          "provider_status": 200,
+          "normalized_citations": [
+            "70 Cal. 2d 15"
+          ],
+          "matches": [
+            {
+              "id": 1312544,
+              "title": "People v. Anderson",
+              "citation": [
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "447",
+                  "reporter": "P.2d",
+                  "page": "942",
+                  "type": 3
+                },
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "70",
+                  "reporter": "Cal. 2d",
+                  "page": "15",
+                  "type": 2
+                },
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "73",
+                  "reporter": "Cal. Rptr.",
+                  "page": "550",
+                  "type": 2
+                },
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "1968",
+                  "reporter": "Cal. LEXIS",
+                  "page": "216",
+                  "type": 2
+                }
+              ],
+              "decision_date": "1968-12-23",
+              "precedential_status": "Published",
+              "url": "/opinion/1312544/people-v-anderson/"
+            }
+          ]
+        },
+        {
+          "id": "fake-1",
+          "truth": "fake",
+          "input": "Hendricks v. California Probate Bureau (2019) 7 Cal.5th 904",
+          "expected_reporter": "7 Cal.5th 904",
+          "verdict": "real",
+          "provider_status": 200,
+          "normalized_citations": [
+            "7 Cal. 5th 904"
+          ],
+          "matches": [
+            {
+              "id": 4641588,
+              "title": "Wilson v. Cable News Network, Inc.",
+              "citation": [
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "249",
+                  "reporter": "Cal. Rptr. 3d",
+                  "page": "569",
+                  "type": 2
+                },
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "444",
+                  "reporter": "P.3d",
+                  "page": "706",
+                  "type": 3
+                },
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "7",
+                  "reporter": "Cal. 5th",
+                  "page": "871",
+                  "type": 2
+                }
+              ],
+              "decision_date": "2019-07-22",
+              "precedential_status": "Published",
+              "url": "/opinion/4641588/wilson-v-cable-news-network-inc/"
+            }
+          ]
+        },
+        {
+          "id": "fake-2",
+          "truth": "fake",
+          "input": "Foster v. State Bar (1987) 43 Cal.3d 421",
+          "expected_reporter": "43 Cal.3d 421",
+          "verdict": "fake",
+          "provider_status": 404,
+          "normalized_citations": [
+            "43 Cal. 3d 421"
+          ],
+          "error_message": "Citation not found: '43 Cal.3d 421'",
+          "matches": []
+        },
+        {
+          "id": "fake-3",
+          "truth": "fake",
+          "input": "In re Estate of Markham (2014) 228 Cal.App.4th 1399",
+          "expected_reporter": "228 Cal.App.4th 1399",
+          "verdict": "real",
+          "provider_status": 200,
+          "normalized_citations": [
+            "228 Cal. App. 4th 1399"
+          ],
+          "matches": [
+            {
+              "id": 2718883,
+              "title": "People v. J.C.",
+              "citation": [
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "228",
+                  "reporter": "Cal. App. 4th",
+                  "page": "1394",
+                  "type": 2
+                },
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "176",
+                  "reporter": "Cal. Rptr. 3d",
+                  "page": "503",
+                  "type": 2
+                },
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "2014",
+                  "reporter": "WL",
+                  "page": "4075998",
+                  "type": 7
+                },
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "2014",
+                  "reporter": "Cal. App. LEXIS",
+                  "page": "747",
+                  "type": 2
+                }
+              ],
+              "decision_date": "2014-08-19",
+              "precedential_status": "Published",
+              "url": "/opinion/2718883/people-v-jc/"
+            }
+          ]
+        },
+        {
+          "id": "fake-4",
+          "truth": "fake",
+          "input": "Reyes v. Quincy Investment Group, LLC (2021) 65 Cal.App.5th 778",
+          "expected_reporter": "65 Cal.App.5th 778",
+          "verdict": "fake",
+          "provider_status": 404,
+          "normalized_citations": [
+            "65 Cal. App. 5th 778"
+          ],
+          "error_message": "Citation not found: '65 Cal.App.5th 778'",
+          "matches": []
+        },
+        {
+          "id": "fake-5",
+          "truth": "fake",
+          "input": "Hernandez v. California Coastal Commission (1998) 18 Cal.4th 1107",
+          "expected_reporter": "18 Cal.4th 1107",
+          "verdict": "real",
+          "provider_status": 200,
+          "normalized_citations": [
+            "18 Cal. 4th 1107"
+          ],
+          "matches": [
+            {
+              "id": 1176098,
+              "title": "Broadman v. Commission on Judical Performance",
+              "citation": [
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "959",
+                  "reporter": "P.2d",
+                  "page": "715",
+                  "type": 3
+                },
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "77",
+                  "reporter": "Cal. Rptr. 2d",
+                  "page": "408",
+                  "type": 2
+                },
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "18",
+                  "reporter": "Cal. 4th",
+                  "page": "1079",
+                  "type": 2
+                }
+              ],
+              "decision_date": "1998-09-02",
+              "precedential_status": "Published",
+              "url": "/opinion/1176098/broadman-v-commission-on-judical-performance/"
+            }
+          ]
+        },
+        {
+          "id": "fake-6",
+          "truth": "fake",
+          "input": "In re Marriage of Aspen (2011) 195 Cal.App.4th 542",
+          "expected_reporter": "195 Cal.App.4th 542",
+          "verdict": "real",
+          "provider_status": 200,
+          "normalized_citations": [
+            "195 Cal. App. 4th 542"
+          ],
+          "matches": [
+            {
+              "id": 5810246,
+              "title": "Haro v. City of Solana Beach",
+              "citation": [
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "195",
+                  "reporter": "Cal. App. 4th",
+                  "page": "542",
+                  "type": 2
+                },
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "124",
+                  "reporter": "Cal. Rptr. 3d",
+                  "page": "615",
+                  "type": 2
+                },
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "2011",
+                  "reporter": "Cal. App. LEXIS",
+                  "page": "575",
+                  "type": 2
+                }
+              ],
+              "decision_date": "2011-05-12",
+              "precedential_status": "Published",
+              "url": "/opinion/5810246/haro-v-city-of-solana-beach/"
+            }
+          ]
+        },
+        {
+          "id": "fake-7",
+          "truth": "fake",
+          "input": "Volk v. San Diego Trust Co. (1994) 8 Cal.4th 217",
+          "expected_reporter": "8 Cal.4th 217",
+          "verdict": "fake",
+          "provider_status": 404,
+          "normalized_citations": [
+            "8 Cal. 4th 217"
+          ],
+          "error_message": "Citation not found: '8 Cal.4th 217'",
+          "matches": []
+        },
+        {
+          "id": "fake-8",
+          "truth": "fake",
+          "input": "Goldman v. Department of Industrial Relations (2008) 159 Cal.App.4th 1281",
+          "expected_reporter": "159 Cal.App.4th 1281",
+          "verdict": "real",
+          "provider_status": 200,
+          "normalized_citations": [
+            "159 Cal. App. 4th 1281"
+          ],
+          "matches": [
+            {
+              "id": 2303016,
+              "title": "City of Los Angeles v. 2000 JEEP CHEROKEE",
+              "citation": [
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "72",
+                  "reporter": "Cal. Rptr. 3d",
+                  "page": "252",
+                  "type": 2
+                },
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "159",
+                  "reporter": "Cal. App. 4th",
+                  "page": "1272",
+                  "type": 2
+                },
+                {
+                  "date_created": "2025-09-25T21:50:34.120042-07:00",
+                  "date_modified": "2025-09-25T21:50:34.139566-07:00",
+                  "volume": "2008",
+                  "reporter": "Cal. App. LEXIS",
+                  "page": "207",
+                  "type": 2
+                }
+              ],
+              "decision_date": "2008-02-07",
+              "precedential_status": "Published",
+              "url": "/opinion/2303016/city-of-los-angeles-v-2000-jeep-cherokee/"
+            }
+          ]
+        },
+        {
+          "id": "fake-9",
+          "truth": "fake",
+          "input": "Bell v. Bayside Restaurant Group (2017) 11 Cal.5th 332",
+          "expected_reporter": "11 Cal.5th 332",
+          "verdict": "real",
+          "provider_status": 200,
+          "normalized_citations": [
+            "11 Cal. 5th 332"
+          ],
+          "matches": [
+            {
+              "id": 4878620,
+              "title": "People v. Steskal",
+              "citation": [
+                {
+                  "date_created": "2025-11-13T11:48:00.594829-08:00",
+                  "date_modified": "2025-11-13T11:48:00.594842-08:00",
+                  "volume": "11",
+                  "reporter": "Cal. 5th",
+                  "page": "332",
+                  "type": 2
+                },
+                {
+                  "date_created": "2025-11-13T11:48:00.647322-08:00",
+                  "date_modified": "2025-11-13T11:48:00.647332-08:00",
+                  "volume": "485",
+                  "reporter": "P.3d",
+                  "page": "1",
+                  "type": 3
+                },
+                {
+                  "date_created": "2025-11-13T11:48:00.684107-08:00",
+                  "date_modified": "2025-11-13T11:48:00.684125-08:00",
+                  "volume": "277",
+                  "reporter": "Cal. Rptr. 3d",
+                  "page": "604",
+                  "type": 2
+                }
+              ],
+              "decision_date": "2021-04-29",
+              "precedential_status": "Published",
+              "url": "/opinion/4878620/people-v-steskal/"
+            }
+          ]
+        },
+        {
+          "id": "fake-10",
+          "truth": "fake",
+          "input": "Patel v. Mendocino County (2005) 134 Cal.App.4th 88",
+          "expected_reporter": "134 Cal.App.4th 88",
+          "verdict": "fake",
+          "provider_status": 404,
+          "normalized_citations": [
+            "134 Cal. App. 4th 88"
+          ],
+          "error_message": "Citation not found: '134 Cal.App.4th 88'",
+          "matches": []
+        }
+      ]
+    }
+  }
+}

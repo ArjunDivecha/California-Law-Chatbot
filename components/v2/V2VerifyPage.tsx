@@ -18,9 +18,9 @@ export const V2VerifyPage: React.FC = () => {
   const { state, verify, reset } = useV2VerifyStream();
   const placeholder =
     'Paste any passage of legal text here (a memo, draft, brief — anything) and click Verify. ' +
-    'Every case citation is checked against CourtListener, and every statute/regulation cite ' +
+    'Every case citation is identity-checked against CiteLaw and CourtListener, and every statute/regulation cite ' +
     '(CA codes, U.S.C., C.F.R.) against the official code, by an adversarial sub-agent; ' +
-    'each verdict is real / fake with the model\'s reasoning.';
+    'each verdict is real / fake / ambiguous with the model\'s reasoning.';
 
   const onVerify = useCallback(() => {
     if (!text.trim()) return;
@@ -111,13 +111,30 @@ export const V2VerifyPage: React.FC = () => {
                 </div>
               )}
               {state.done && (
-                <div className="mt-3 rounded-lg bg-gray-50 border border-gray-200 px-3 py-2 text-xs text-gray-700 flex items-center justify-between">
-                  <div>
-                    <strong>{state.done.verified}</strong> verified ·{' '}
-                    <strong>{state.done.fake}</strong> not verified ·{' '}
-                    <strong>{state.done.total}</strong> total
+                <div className="mt-3 rounded-lg bg-gray-50 border border-gray-200 px-3 py-2 text-xs text-gray-700">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <strong>{state.done.verified}</strong> verified ·{' '}
+                      <strong>{state.done.fake}</strong> contradicted ·{' '}
+                      <strong>{state.done.ambiguous}</strong> manual review ·{' '}
+                      <strong>{state.done.total}</strong> total
+                    </div>
+                    <div className="text-gray-400">{Math.round(state.done.elapsed_ms / 1000)}s</div>
                   </div>
-                  <div className="text-gray-400">{Math.round(state.done.elapsed_ms / 1000)}s</div>
+                  {state.done.citelaw && (
+                    <div className="mt-1 text-[10px] text-gray-500">
+                      CiteLaw:{' '}
+                      {state.done.citelaw.status === 'not_configured'
+                        ? 'not configured'
+                        : state.done.citelaw.status === 'unavailable'
+                          ? 'temporarily unavailable'
+                          : `${state.done.citelaw.billing?.credits_charged ?? 0} credits charged`}
+                      {typeof state.done.citelaw.billing?.credits_remaining === 'number' &&
+                        ` · ${state.done.citelaw.billing.credits_remaining} remaining`}
+                      {state.done.citelaw.cache_hits > 0 &&
+                        ` · ${state.done.citelaw.cache_hits} cached`}
+                    </div>
+                  )}
                 </div>
               )}
               {state.error && (
@@ -180,7 +197,7 @@ const VerdictRow: React.FC<{ verdict: V2Verdict }> = ({ verdict }) => {
                   ? 'bg-indigo-100 text-indigo-700'
                   : 'bg-slate-100 text-slate-600'
               }`}
-              title={verdict.citation_type === 'statute' ? 'Statute / regulation — checked against the official code' : 'Case — checked against CourtListener'}
+              title={verdict.citation_type === 'statute' ? 'Statute / regulation — checked against the official code' : 'Case — identity-checked against CiteLaw and CourtListener'}
             >
               {verdict.citation_type}
             </span>

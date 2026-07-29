@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "suite": "citation-provider-shadow-v1",
+  "run_id": "2026-07-29T06-55-58-814Z",
+  "started_at": "2026-07-29T06:55:58.814Z",
+  "completed_at": "2026-07-29T06:55:59.013Z",
+  "fixture": {
+    "path": "tests/citation-eval-set.json",
+    "version": 1,
+    "entry_count": 30,
+    "truth_counts": {
+      "real": 20,
+      "fake": 10
+    }
+  },
+  "privacy": {
+    "payload": "Public case names and reporter citations only; no client facts or documents."
+  },
+  "providers": {
+    "courtlistener": {
+      "provider": "courtlistener",
+      "status": "failed",
+      "error": "CourtListener Citation Lookup HTTP 429: Request was throttled. Rate limit exceeded: 20/min. Expected available in 3 seconds."
+    }
+  }
+}

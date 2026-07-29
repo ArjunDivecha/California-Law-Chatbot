@@ -2,16 +2,16 @@
 schema_version: 1
 artifact_type: repo_agent_context
 surface: claude_code
-repo_name: tauri-spike
+repo_name: California-Law-Chatbot
 github_repo: ArjunDivecha/California-Law-Chatbot
 session_id: dcfa3b4c-a3f4-42b5-99e1-e69ab4b2204e
 source_file: dcfa3b4c-a3f4-42b5-99e1-e69ab4b2204e.jsonl
-exported_at: 2026-07-24T22:09:20.020829+00:00
-export_base_commit_sha: 914669d290c65b4217e56875a521188648a679c6
+exported_at: 2026-07-28T22:35:34.231231+00:00
+export_base_commit_sha: 662c004de85bae414aabce1877c5b994efb7ac27
 redacted: true
 ---
 
-# Repo Agent Context: tauri-spike
+# Repo Agent Context: California-Law-Chatbot
 
 _Surface:_ `claude_code`  
 _Session:_ `dcfa3b4c-a3f4-42b5-99e1-e69ab4b2204e`

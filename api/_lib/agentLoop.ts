@@ -213,12 +213,31 @@ function summarizeToolOutputForSources(toolName: string, raw: string): ToolSourc
     const cits = (body as { citations?: Array<Record<string, unknown>> }).citations ?? [];
     for (const c of cits.slice(0, LIMIT)) {
       const m = (c.courtlistener_match ?? {}) as Record<string, unknown>;
+      const citeLaw = (c.citelaw ?? {}) as Record<string, unknown>;
+      const citeLawMatch = (citeLaw.match ?? {}) as Record<string, unknown>;
+      const providerDetail = [
+        citeLaw.status ? `CiteLaw ${String(citeLaw.status)}` : '',
+        c.courtlistener_status
+          ? `CourtListener ${String(c.courtlistener_status)}`
+          : '',
+      ]
+        .filter(Boolean)
+        .join(' · ');
       out.push({
         tool_name: toolName,
         source_type: 'citation_verify',
         title: String(c.text ?? 'citation'),
-        detail: String(m.case_name ?? '') || undefined,
-        url: typeof m.url === 'string' ? m.url : undefined,
+        detail:
+          [citeLawMatch.title, m.case_name, providerDetail]
+            .filter(Boolean)
+            .map(String)
+            .join(' · ') || undefined,
+        url:
+          typeof citeLawMatch.url === 'string'
+            ? citeLawMatch.url
+            : typeof m.url === 'string'
+              ? m.url
+              : undefined,
         status: String(c.status ?? ''),
       });
     }
