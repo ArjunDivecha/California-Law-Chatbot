@@ -24,8 +24,8 @@ export interface V2Verdict {
   index: number;
   citation: string;
   /**
-   * `real` — positive evidence (matching CourtListener hit)
-   * `fake` — contradictory evidence (different case at the cite, etc.)
+   * `real` — positive evidence with no CiteLaw identity conflict
+   * `fake` — contradictory provider evidence (different case at the cite, etc.)
    * `ambiguous` — tools returned no evidence either way; manual verify needed
    * `pending` — in-flight (UI placeholder)
    * `error` — sub-agent crashed / network failure
@@ -48,6 +48,19 @@ export interface V2VerifyDoneSummary {
   ambiguous: number;
   total: number;
   elapsed_ms: number;
+  citelaw?: {
+    status: 'completed' | 'cached' | 'not_configured' | 'unavailable';
+    requested: number;
+    submitted: number;
+    cache_hits: number;
+    skipped: number;
+    billing?: {
+      citations_verified: number;
+      credits_charged: number;
+      credits_remaining?: number;
+    };
+    error?: string;
+  };
 }
 
 export interface V2VerifyState {
@@ -253,6 +266,15 @@ function handleEvent(raw: string, setState: React.Dispatch<React.SetStateAction<
       break;
     }
     case 'done':
+      {
+        const rawCiteLaw =
+          data.citelaw && typeof data.citelaw === 'object'
+            ? (data.citelaw as Record<string, unknown>)
+            : undefined;
+        const rawBilling =
+          rawCiteLaw?.billing && typeof rawCiteLaw.billing === 'object'
+            ? (rawCiteLaw.billing as Record<string, unknown>)
+            : undefined;
       setState((s) => ({
         ...s,
         done: {
@@ -261,10 +283,38 @@ function handleEvent(raw: string, setState: React.Dispatch<React.SetStateAction<
           ambiguous: Number(data.ambiguous ?? 0),
           total: Number(data.total ?? 0),
           elapsed_ms: Number(data.elapsed_ms ?? 0),
+          citelaw: rawCiteLaw
+            ? {
+                status: (
+                  ['completed', 'cached', 'not_configured', 'unavailable'].includes(
+                    String(rawCiteLaw.status),
+                  )
+                    ? rawCiteLaw.status
+                    : 'unavailable'
+                ) as NonNullable<V2VerifyDoneSummary['citelaw']>['status'],
+                requested: Number(rawCiteLaw.requested ?? 0),
+                submitted: Number(rawCiteLaw.submitted ?? 0),
+                cache_hits: Number(rawCiteLaw.cache_hits ?? 0),
+                skipped: Number(rawCiteLaw.skipped ?? 0),
+                billing: rawBilling
+                  ? {
+                      citations_verified: Number(rawBilling.citations_verified ?? 0),
+                      credits_charged: Number(rawBilling.credits_charged ?? 0),
+                      credits_remaining:
+                        typeof rawBilling.credits_remaining === 'number'
+                          ? rawBilling.credits_remaining
+                          : undefined,
+                    }
+                  : undefined,
+                error:
+                  typeof rawCiteLaw.error === 'string' ? rawCiteLaw.error : undefined,
+              }
+            : undefined,
         },
         isStreaming: false,
       }));
       break;
+      }
     case 'error':
       setState((s) => ({
         ...s,

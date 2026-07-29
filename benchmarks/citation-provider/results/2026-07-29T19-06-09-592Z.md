@@ -1,0 +1,53 @@
+# Citation Provider Benchmark
+
+- Run: `2026-07-29T19-06-09-592Z`
+- Started: 2026-07-29T19:06:09.592Z
+- Fixture: `tests/citation-eval-set.json` (30 entries)
+- Privacy scope: Public case names and reporter citations only; no client facts or documents.
+
+| Provider | Status | Strict accuracy | Coverage | Real recall | Fake caught | False positives | Wall time |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| courtlistener | completed | 70.0% | 93.3% | 85.0% | 40.0% | 6 | 1715 ms |
+| citelaw | completed | 73.3% | 73.3% | 90.0% | 40.0% | 0 | 3873 ms |
+| current | completed | 50.0% | 50.0% | 75.0% | 0.0% | 0 | 3946 ms |
+
+## Non-correct outcomes
+
+- **courtlistener / real-3:** truth=real, verdict=fake, provider_status=404 — Geiser v. Kuhns (2022) 13 Cal.5th 1238
+- **courtlistener / real-12:** truth=real, verdict=abstain, provider_status=300 — In re Marriage of Lippel (1990) 51 Cal.3d 1160
+- **courtlistener / real-14:** truth=real, verdict=abstain, provider_status=300 — Equilon Enterprises v. Consumer Cause, Inc. (2002) 29 Cal.4th 53
+- **courtlistener / fake-1:** truth=fake, verdict=real, provider_status=200 — Hendricks v. California Probate Bureau (2019) 7 Cal.5th 904
+- **courtlistener / fake-3:** truth=fake, verdict=real, provider_status=200 — In re Estate of Markham (2014) 228 Cal.App.4th 1399
+- **courtlistener / fake-5:** truth=fake, verdict=real, provider_status=200 — Hernandez v. California Coastal Commission (1998) 18 Cal.4th 1107
+- **courtlistener / fake-6:** truth=fake, verdict=real, provider_status=200 — In re Marriage of Aspen (2011) 195 Cal.App.4th 542
+- **courtlistener / fake-8:** truth=fake, verdict=real, provider_status=200 — Goldman v. Department of Industrial Relations (2008) 159 Cal.App.4th 1281
+- **courtlistener / fake-9:** truth=fake, verdict=real, provider_status=200 — Bell v. Bayside Restaurant Group (2017) 11 Cal.5th 332
+- **citelaw / real-3:** truth=real, verdict=abstain, provider_status=possible_match — Geiser v. Kuhns (2022) 13 Cal.5th 1238
+- **citelaw / real-11:** truth=real, verdict=abstain, provider_status=possible_match — Estate of Williams (1968) 269 Cal.App.2d 671
+- **citelaw / fake-2:** truth=fake, verdict=abstain, provider_status=possible_match — Foster v. State Bar (1987) 43 Cal.3d 421
+- **citelaw / fake-3:** truth=fake, verdict=abstain, provider_status=possible_match — In re Estate of Markham (2014) 228 Cal.App.4th 1399
+- **citelaw / fake-4:** truth=fake, verdict=abstain, provider_status=possible_match — Reyes v. Quincy Investment Group, LLC (2021) 65 Cal.App.5th 778
+- **citelaw / fake-5:** truth=fake, verdict=abstain, provider_status=possible_match — Hernandez v. California Coastal Commission (1998) 18 Cal.4th 1107
+- **citelaw / fake-7:** truth=fake, verdict=abstain, provider_status=possible_match — Volk v. San Diego Trust Co. (1994) 8 Cal.4th 217
+- **citelaw / fake-10:** truth=fake, verdict=abstain, provider_status=possible_match — Patel v. Mendocino County (2005) 134 Cal.App.4th 88
+- **current / real-3:** truth=real, verdict=abstain, provider_status=unconfirmed — Geiser v. Kuhns (2022) 13 Cal.5th 1238
+- **current / real-10:** truth=real, verdict=abstain, provider_status=unavailable — Bridgestone/Firestone, Inc. v. Superior Court (1992) 7 Cal.App.4th 1384
+- **current / real-11:** truth=real, verdict=abstain, provider_status=unconfirmed — Estate of Williams (1968) 269 Cal.App.2d 671
+- **current / real-19:** truth=real, verdict=abstain, provider_status=unavailable — Baral v. Schnitt (2016) 1 Cal.5th 376
+- **current / real-20:** truth=real, verdict=abstain, provider_status=unavailable — People v. Anderson (1968) 70 Cal.2d 15
+- **current / fake-1:** truth=fake, verdict=abstain, provider_status=unavailable — Hendricks v. California Probate Bureau (2019) 7 Cal.5th 904
+- **current / fake-2:** truth=fake, verdict=abstain, provider_status=unavailable — Foster v. State Bar (1987) 43 Cal.3d 421
+- **current / fake-3:** truth=fake, verdict=abstain, provider_status=unavailable — In re Estate of Markham (2014) 228 Cal.App.4th 1399
+- **current / fake-4:** truth=fake, verdict=abstain, provider_status=unavailable — Reyes v. Quincy Investment Group, LLC (2021) 65 Cal.App.5th 778
+- **current / fake-5:** truth=fake, verdict=abstain, provider_status=unavailable — Hernandez v. California Coastal Commission (1998) 18 Cal.4th 1107
+- **current / fake-6:** truth=fake, verdict=abstain, provider_status=unavailable — In re Marriage of Aspen (2011) 195 Cal.App.4th 542
+- **current / fake-7:** truth=fake, verdict=abstain, provider_status=unavailable — Volk v. San Diego Trust Co. (1994) 8 Cal.4th 217
+- **current / fake-8:** truth=fake, verdict=abstain, provider_status=unavailable — Goldman v. Department of Industrial Relations (2008) 159 Cal.App.4th 1281
+- **current / fake-9:** truth=fake, verdict=abstain, provider_status=unavailable — Bell v. Bayside Restaurant Group (2017) 11 Cal.5th 332
+- **current / fake-10:** truth=fake, verdict=abstain, provider_status=unavailable — Patel v. Mendocino County (2005) 134 Cal.App.4th 88
+
+## Interpretation boundary
+
+This benchmark measures citation identity/existence only. It does not measure proposition
+support, quote or pincite accuracy, treatment, California citability, or current good-law
+status. An authority marked real still requires those additional checks.

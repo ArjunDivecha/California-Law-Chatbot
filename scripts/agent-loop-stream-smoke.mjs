@@ -30,6 +30,7 @@ function loadEnvFallback() {
     'UPSTASH_REDIS_REST_URL',
     'UPSTASH_REDIS_REST_TOKEN',
     'COURTLISTENER_API_KEY',
+    'CITELAW_API_KEY',
   ];
   if (required.every((k) => process.env[k])) return;
   const text = readFileSync('/Users/arjundivecha/Dropbox/AAA Backup/.env.txt', 'utf8');

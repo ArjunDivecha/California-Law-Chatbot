@@ -47,7 +47,12 @@ dotenv.config({ path: '.env.local', override: true });
 dotenv.config({ path: join(NEW_DIR, '.env') });
 
 (function loadFallbackEnv() {
-  const required = ['ANTHROPIC_API_KEY', 'OPENAI_API_KEY', 'COURTLISTENER_API_KEY'];
+  const required = [
+    'ANTHROPIC_API_KEY',
+    'OPENAI_API_KEY',
+    'COURTLISTENER_API_KEY',
+    'CITELAW_API_KEY',
+  ];
   if (required.every((k) => process.env[k])) return;
   let text;
   try {

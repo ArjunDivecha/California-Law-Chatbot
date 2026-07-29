@@ -15,7 +15,10 @@
     "build": "vite build",
     "preview": "vite preview",
     "test:sanitization": "tsx tests/sanitization.test.mjs",
+    "test:citation-verify": "tsx tests/citation-verify.test.mjs",
     "test:traps": "tsx tests/traps/runTraps.mjs",
+    "benchmark:citations": "tsx scripts/citation-provider-benchmark.mjs",
+    "smoke:citelaw": "tsx scripts/citelaw-integration-smoke.mjs",
     "latency:baseline": "node scripts/latency-baseline.mjs",
     "agent:smoke": "tsx scripts/agent-loop-smoke.mjs",
     "agent:smoke-stream": "tsx scripts/agent-loop-stream-smoke.mjs"

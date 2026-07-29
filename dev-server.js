@@ -27,6 +27,7 @@ dotenv.config({ path: '.env.local', override: true }); // loads .env.local (over
     'UPSTASH_REDIS_REST_URL',
     'UPSTASH_REDIS_REST_TOKEN',
     'COURTLISTENER_API_KEY',
+    'CITELAW_API_KEY',
     // V2 session endpoints + V1 chats endpoint verify Clerk JWTs server-
     // side. Without CLERK_SECRET_KEY the sidebar fetches 401.
     'CLERK_SECRET_KEY',
@@ -153,6 +154,7 @@ app.listen(PORT, () => {
   console.log('  ANTHROPIC_API_KEY:', process.env.ANTHROPIC_API_KEY ? '✅ Set' : '❌ Missing');
   console.log('  UPSTASH_VECTOR_REST_URL:', process.env.UPSTASH_VECTOR_REST_URL ? '✅ Set' : '❌ Missing');
   console.log('  COURTLISTENER_API_KEY:', process.env.COURTLISTENER_API_KEY ? '✅ Set' : '❌ Missing');
+  console.log('  CITELAW_API_KEY:', process.env.CITELAW_API_KEY ? '✅ Set' : 'ℹ️ Not set (CourtListener fallback only)');
   console.log('');
   console.log('Now run "npm run dev" in another terminal.');
   console.log('='.repeat(60));

@@ -29,7 +29,11 @@
  */
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { extractCitations } from '../_lib/tools/citationVerify.js';
+import {
+  extractCitations,
+  prefetchCiteLawVerification,
+  type CiteLawRunSummary,
+} from '../_lib/tools/citationVerify.js';
 import { extractStatuteCitations } from '../_lib/tools/statuteVerify.js';
 import { verifyCitationViaSubAgent } from '../_lib/verifierSubAgent.js';
 import {
@@ -157,6 +161,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         ambiguous: 0,
         total: 0,
         elapsed_ms: 0,
+        citelaw: {
+          status: process.env.CITELAW_API_KEY ? 'completed' : 'not_configured',
+          requested: 0,
+          submitted: 0,
+          cache_hits: 0,
+          skipped: 0,
+        },
       });
       res.end();
       return;
@@ -166,6 +177,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     let verifiedCount = 0;
     let fakeCount = 0;
     let ambiguousCount = 0;
+    // One paid CiteLaw batch primes the short-lived cache before the endpoint
+    // launches one sub-agent per citation. Without this, the provider's
+    // one-credit minimum would be charged independently for every row.
+    let citeLawSummary: CiteLawRunSummary;
+    try {
+      citeLawSummary = await prefetchCiteLawVerification(
+        extracted.filter((citation) => citation.type === 'case').map((citation) => citation.query),
+      );
+    } catch (error) {
+      citeLawSummary = {
+        status: 'unavailable',
+        requested: extracted.filter((citation) => citation.type === 'case').length,
+        submitted: 0,
+        cache_hits: 0,
+        skipped: 0,
+        error: scrubMessage(error instanceof Error ? error.message : String(error)),
+      };
+    }
 
     for (let i = 0; i < extracted.length; i += 1) {
       const c = extracted[i];
@@ -207,6 +236,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       ambiguous: ambiguousCount,
       total: extracted.length,
       skipped: skippedCount,
+      citelaw: citeLawSummary,
       elapsed_ms: Math.round(performance.now() - t0),
     });
   } catch (err) {

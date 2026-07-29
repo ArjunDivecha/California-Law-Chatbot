@@ -15,15 +15,16 @@
  *   3. INSTALL-INSTRUCTIONS.md          — attorney-facing steps (right-click
  *      → Open pattern, same as the earlier FFLP-Sanitizer install doc).
  *
- * ⚠️ THE ZIP CONTAINS LIVE API KEYS (Anthropic, CourtListener, OpenStates,
- * LegiScan) read from the repo .env at build time. Never commit it (output
+ * ⚠️ THE ZIP CONTAINS LIVE API KEYS (Anthropic, CourtListener, CiteLaw,
+ * OpenStates, LegiScan) read from the repo .env at build time. Never commit it (output
  * dir is gitignored); share only via a private channel (Dropbox link to the
  * recipients). Keys can be rotated at the providers at any time.
  *
  * INPUT FILES (repo-root relative):
  * - src-tauri/target/release/bundle/macos/AskPauli.app
  *   (must already be notarized — run `yarn desktop:app` first)
- * - .env — source of ANTHROPIC_API_KEY, COURTLISTENER_API_KEY,
+ * - .env, then /Users/arjundivecha/Dropbox/AAA Backup/.env.txt as fallback —
+ *   source of ANTHROPIC_API_KEY, COURTLISTENER_API_KEY, CITELAW_API_KEY,
  *   OPENSTATES_API_KEY, LEGISCAN_API_KEY (fails loudly if any is missing)
  *
  * OUTPUT FILES:
@@ -40,20 +41,32 @@ import { join } from 'node:path';
 const ROOT = process.cwd();
 const APP = join(ROOT, 'src-tauri', 'target', 'release', 'bundle', 'macos', 'AskPauli.app');
 const OUT_DIR = join(ROOT, 'installer-pkg', 'dist');
-const KEYS = ['ANTHROPIC_API_KEY', 'COURTLISTENER_API_KEY', 'OPENSTATES_API_KEY', 'LEGISCAN_API_KEY'];
+const KEYS = [
+  'ANTHROPIC_API_KEY',
+  'COURTLISTENER_API_KEY',
+  'CITELAW_API_KEY',
+  'OPENSTATES_API_KEY',
+  'LEGISCAN_API_KEY',
+];
 
 if (!existsSync(APP)) {
   console.error('❌ notarized .app not found — run `yarn desktop:app` first.');
   process.exit(1);
 }
 
-// Read keys from the repo .env (no dotenv dependency games — parse directly).
-const envText = readFileSync(join(ROOT, '.env'), 'utf8');
 const env = {};
-for (const line of envText.split('\n')) {
-  const m = line.match(/^\s*([A-Z][A-Z_0-9]*)\s*=\s*"?([^"#\s]+)"?/);
-  if (m) env[m[1]] = m[2];
+function mergeEnvFile(path) {
+  if (!existsSync(path)) return;
+  const envText = readFileSync(path, 'utf8');
+  for (const line of envText.split('\n')) {
+    const m = line.match(/^\s*([A-Z][A-Z_0-9]*)\s*=\s*"?([^"#\s]+)"?/);
+    if (m && !env[m[1]]) env[m[1]] = m[2];
+  }
 }
+// Repo-local values win; the standard global file fills newly added keys
+// such as CITELAW_API_KEY without requiring plaintext duplication.
+mergeEnvFile(join(ROOT, '.env'));
+mergeEnvFile('/Users/arjundivecha/Dropbox/AAA Backup/.env.txt');
 const missing = KEYS.filter((k) => !env[k]);
 if (missing.length) {
   console.error(`❌ missing in .env: ${missing.join(', ')}`);
