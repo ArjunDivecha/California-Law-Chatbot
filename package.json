@@ -12,10 +12,12 @@
     "desktop:app": "tauri build --config src-tauri/tauri.desktop.conf.json --bundles app && node scripts/notarize-desktop-app.mjs",
     "dev:api": "tsx dev-server.js",
     "dev:full": "tsx dev-server.js & sleep 2 && vite",
-    "build": "vite build",
+    "build": "yarn validate:workflows && vite build",
     "preview": "vite preview",
     "test:sanitization": "tsx tests/sanitization.test.mjs",
     "test:citation-verify": "tsx tests/citation-verify.test.mjs",
+    "test:workflows": "tsx tests/workflow-validation.test.mjs",
+    "validate:workflows": "tsx scripts/validate-workflows.mjs",
     "test:traps": "tsx tests/traps/runTraps.mjs",
     "benchmark:citations": "tsx scripts/citation-provider-benchmark.mjs",
     "smoke:citelaw": "tsx scripts/citelaw-integration-smoke.mjs",
@@ -43,7 +45,8 @@
     "react-markdown": "^9.0.1",
     "react-router-dom": "^7.14.0",
     "remark-gfm": "^4.0.0",
-    "sqlite-vec": "^0.1.9"
+    "sqlite-vec": "^0.1.9",
+    "yaml": "^2.9.0"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.11.4",

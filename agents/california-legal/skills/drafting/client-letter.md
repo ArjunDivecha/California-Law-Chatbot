@@ -1,6 +1,9 @@
 ---
 name: drafting-client-letter
-description: Draft a Client Advisory Letter that explains a legal matter to the client in accessible terms, presents options with pros/cons, recommends a path forward, and outlines next steps. Loaded when /api/agent/draft-stream is called with template_id="client_letter". Produces all 7 sections — Letterhead (template-filled), Introduction, Summary of Facts, Legal Analysis, Options and Recommendations, Next Steps, Closing.
+description: >-
+  Draft a Client Advisory Letter that explains a legal matter in accessible
+  terms, presents options, recommends a path forward, and outlines next steps.
+  Loaded for the client_letter drafting template.
 user-invocable: false
 ---
 

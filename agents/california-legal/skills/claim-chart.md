@@ -1,6 +1,9 @@
 ---
 name: claim-chart
-description: Build or review an element-by-element claim chart — civil (cause of action or defense) or patent (infringement, invalidity, review). Every cell pin-cited to the source; gap detection (what evidence is missing) is the priority output. Triggered by phrases the upstream skill lists: "claim chart", "element chart", "proof chart", "infringement contention", "invalidity contention", "element-by-element mapping", "what are we missing to prove [claim]".
+description: >-
+  Build or review an element-by-element claim chart — civil (cause of action
+  or defense) or patent (infringement, invalidity, review). Every cell is
+  pin-cited to the source; gap detection is the priority output.
 user-invocable: false
 argument-hint: '[civil | patent] [infringement | invalidity | review]'
 ---

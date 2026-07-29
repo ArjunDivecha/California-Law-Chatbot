@@ -27,6 +27,13 @@
 import { readFileSync, existsSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import {
+  assertSafeSkillReference,
+  parseSkillMarkdown,
+  validateAgentConfig,
+  type AgentConfig,
+  type ParsedSkill,
+} from './workflowValidation.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -34,26 +41,6 @@ const __dirname = dirname(__filename);
 const AGENT_DIR = resolve(__dirname, '..', '..', 'agents', 'california-legal');
 const SKILLS_DIR = join(AGENT_DIR, 'skills');
 const AGENT_CONFIG_PATH = join(AGENT_DIR, 'agent.json');
-
-interface AgentConfig {
-  name: string;
-  description: string;
-  model: string;
-  max_tokens: number;
-  max_iterations: number;
-  core_skill: string;
-  intent_skills: Record<string, string>;
-  drafting_skills?: Record<string, string>;
-  schema_version: number;
-}
-
-interface ParsedSkill {
-  name: string;
-  description: string;
-  user_invocable: boolean;
-  argument_hint?: string;
-  body: string;
-}
 
 // ---------------------------------------------------------------------------
 // Fallback (used only if the agents/ tree isn't on disk)
@@ -95,42 +82,20 @@ function loadAgentConfig(): AgentConfig {
   }
   try {
     const raw = readFileSync(AGENT_CONFIG_PATH, 'utf8');
-    cachedConfig = JSON.parse(raw) as AgentConfig;
+    cachedConfig = validateAgentConfig(JSON.parse(raw), AGENT_CONFIG_PATH);
     return cachedConfig;
-  } catch {
-    cachedConfig = FALLBACK_CONFIG;
-    return cachedConfig;
+  } catch (error) {
+    throw new Error(
+      `Invalid California legal agent config: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+    );
   }
-}
-
-function parseSkillMarkdown(text: string): ParsedSkill {
-  const match = text.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/);
-  if (!match) {
-    return {
-      name: 'unparsed',
-      description: '',
-      user_invocable: false,
-      body: text.trim(),
-    };
-  }
-  const [, frontmatter, body] = match;
-  const fields: Record<string, string> = {};
-  for (const line of frontmatter.split('\n')) {
-    const m = line.match(/^([A-Za-z][\w-]*)\s*:\s*(.*)$/);
-    if (!m) continue;
-    fields[m[1]] = m[2].trim();
-  }
-  return {
-    name: fields.name ?? 'unnamed',
-    description: fields.description ?? '',
-    user_invocable: fields['user-invocable'] === 'true',
-    argument_hint: fields['argument-hint'],
-    body: body.trim(),
-  };
 }
 
 function loadSkillByName(name: string): ParsedSkill | null {
   if (skillCache.has(name)) return skillCache.get(name) ?? null;
+  assertSafeSkillReference(name, AGENT_CONFIG_PATH);
   // Support nested skill names like "drafting/legal-memo" — used by
   // drafting_skills mapping in agent.json. The name maps directly to a
   // subdirectory under SKILLS_DIR.
@@ -138,11 +103,15 @@ function loadSkillByName(name: string): ParsedSkill | null {
   if (!existsSync(filepath)) return null;
   try {
     const raw = readFileSync(filepath, 'utf8');
-    const skill = parseSkillMarkdown(raw);
+    const skill = parseSkillMarkdown(raw, filepath);
     skillCache.set(name, skill);
     return skill;
-  } catch {
-    return null;
+  } catch (error) {
+    throw new Error(
+      `Invalid California legal skill "${name}": ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+    );
   }
 }
 

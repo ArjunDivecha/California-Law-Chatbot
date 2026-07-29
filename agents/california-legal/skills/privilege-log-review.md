@@ -1,6 +1,8 @@
 ---
 name: privilege-log-review
-description: First-pass review of a privilege log — make the obvious privilege calls, leave the close ones for attorney review without deciding them. Triggered by phrases the upstream skill lists — "review the privilege log", "priv log", "check privilege on these docs", "QA the privilege log before production".
+description: >-
+  First-pass review of a privilege log. Make the obvious privilege calls and
+  leave close questions for attorney review without deciding them.
 user-invocable: false
 argument-hint: "[log file or document set]"
 ---

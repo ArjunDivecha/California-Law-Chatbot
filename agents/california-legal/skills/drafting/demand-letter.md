@@ -1,6 +1,9 @@
 ---
 name: drafting-demand-letter
-description: Draft a formal Demand Letter (payment, breach, cease-and-desist, return-of-property, or specific performance) under California law. Loaded when /api/agent/draft-stream is called with template_id="demand_letter". Produces all 7 sections — Letterhead (template-filled), Introduction, Factual Background, Legal Basis, Specific Demand, Consequences of Non-Compliance, Closing.
+description: >-
+  Draft a formal California Demand Letter for payment, breach,
+  cease-and-desist, return of property, or specific performance. Loaded for
+  the demand_letter drafting template.
 user-invocable: false
 ---
 

@@ -1,6 +1,9 @@
 ---
 name: matter-intake
-description: Run a uniform matter-intake interview when the attorney is opening a new matter — covers identification, conflicts clearance, source, risk triage, materiality, outside counsel, internal owners, legal hold, key dates, and initial posture. Produces a matter-record draft the attorney saves into their matter-management system. Trigger phrases the upstream skill lists — "new matter", "intake this matter", "client intake", "open a matter", "onboard" — fire this in V2.
+description: >-
+  Run a uniform matter-intake interview covering identification, conflicts,
+  source, risk, materiality, outside counsel, internal owners, legal hold, key
+  dates, and initial posture. Produces a matter-record draft for the attorney.
 user-invocable: false
 argument-hint: "[optional matter name]"
 ---

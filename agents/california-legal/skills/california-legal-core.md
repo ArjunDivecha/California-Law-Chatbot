@@ -1,6 +1,9 @@
 ---
 name: california-legal-core
-description: Core behavior for V2's California-legal research assistant — always loaded. Defines source-preference order (CourtListener → statutes → web), citation discipline, and the never-echo-PII / never-leak-system-message guardrails.
+description: >-
+  Core behavior for V2's California-legal research assistant — always loaded.
+  Defines source-preference order (CourtListener → statutes → web), citation
+  discipline, and the never-echo-PII / never-leak-system-message guardrails.
 user-invocable: false
 ---
 

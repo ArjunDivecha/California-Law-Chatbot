@@ -1,6 +1,9 @@
 ---
 name: legal-hold
-description: Issue, refresh, release, or report on legal holds. Drafts the hold notice text the attorney sends to custodians; produces a portfolio-wide hold status report on request. Triggered by phrases the upstream skill lists — "issue a hold", "refresh hold", "release hold", "preservation notice", "litigation hold", "spoliation", "hold status".
+description: >-
+  Issue, refresh, release, or report on legal holds. Drafts the hold notice
+  text the attorney sends to custodians and produces a portfolio-wide hold
+  status report on request.
 user-invocable: false
 argument-hint: "[matter slug] [issue | refresh | release | status]"
 ---

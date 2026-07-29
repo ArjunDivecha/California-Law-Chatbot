@@ -1,6 +1,8 @@
 ---
 name: drafting-legal-memo
-description: Draft a Legal Research Memorandum (internal IRAC/CREAC analysis of a discrete legal question). Loaded when /api/agent/draft-stream is called with template_id="legal_memo". Produces all 6 sections in one streamed pass — Header (template-filled), Question Presented, Brief Answer, Statement of Facts, Analysis, Conclusion.
+description: >-
+  Draft an internal IRAC/CREAC Legal Research Memorandum addressing a discrete
+  legal question. Loaded for the legal_memo drafting template.
 user-invocable: false
 ---
 

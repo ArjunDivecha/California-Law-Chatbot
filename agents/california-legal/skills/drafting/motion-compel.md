@@ -1,6 +1,9 @@
 ---
 name: drafting-motion-compel
-description: Draft a Motion to Compel Further Discovery Responses under California Code of Civil Procedure §§ 2030.300 (interrogatories), 2031.310 (RFPDs), or 2033.290 (RFAs). Loaded when /api/agent/draft-stream is called with template_id="motion_compel". Produces all 10 sections — caption, notice of motion, memorandum of points and authorities (introduction, statement of facts, argument with elements analysis, prayer), declaration in support, and separate statement reference.
+description: >-
+  Draft a Motion to Compel Further Discovery Responses under California Code
+  of Civil Procedure sections 2030.300, 2031.310, or 2033.290. Loaded for the
+  motion_compel drafting template.
 user-invocable: false
 ---
 
