@@ -1,10 +1,12 @@
 ---
 type: "Reference"
 title: "Domain model"
-description: "Core domain concepts of the California Law Chatbot: sessions, matter modes, client AI consent, sanitized text and token maps, turn manifests, tool registry, and chat/document types."
+description: "Core domain concepts of AskPauli: sessions, matter modes, client AI consent, sanitized text and token maps, turn manifests, tool registry, model-family resolver and approved-model guard, two-provider citation identity gate, and chat/document types."
 ---
 
 # Domain model
+
+This page covers the AskPauli (formerly California Law Chatbot) domain. The product serves California solo and small firms (Femme & Femme LLP) with research, drafting, and citation-verification workflows under a confidentiality-first posture.
 
 ## Core application concepts
 
@@ -83,6 +85,20 @@ Source files:
 - `api/_lib/compliance/policyEngine.ts`
 - `api/_lib/compliance/toolQueryGuard.ts`
 
+### Model family, resolver, and approved-model guard
+
+The active model is not pinned to a single id. The domain has three roles — primary research (Fable), unavailability failover (Opus), and quick mode plus citation verifier (Sonnet) — each auto-tracked to the newest approved id, with a fail-closed family guard.
+
+- The model resolver keeps a cached newest id per role; getters are synchronous and fall back to pinned `KNOWN_GOOD` defaults so a Models-API outage never blocks a turn.
+- The approved-model guard fails closed before any client-content request if the resolved id is outside `claude-(fable|opus|sonnet|haiku)-*` or is a preview/mythos surface. Adding a model is a compliance event requiring counsel sign-off and disclosure-copy review, not a code-only change.
+
+Source files:
+
+- `api/_lib/modelResolver.ts`
+- `api/_lib/approvedModels.ts`
+- `api/_lib/agentLoop.ts` (`resolveModel`, `assertApprovedModel` call sites)
+- `api/_lib/verifierSubAgent.ts` (verifier model via `latestFast`)
+
 ### Chat message and document types
 
 Shared TypeScript types define the main shapes used across the repo:
@@ -96,6 +112,17 @@ Shared TypeScript types define the main shapes used across the repo:
 Source file:
 
 - `types.ts`
+
+### Citation verification and the two-provider identity gate
+
+Case-citation verification cross-checks two independent public providers before any citation is stamped `verified`. CiteLaw supplies a structured identity check (reporter citation + case title + year) with `confirmed` / `possible_match` / `no_match` results; CourtListener supplies independent search/opinion evidence. The gated status (`verified`, `unconfirmed`, `not_found`, `unverified`, `unavailable`) records which providers supplied positive evidence (`verification_source`). A CiteLaw near-match or identity conflict blocks a CourtListener-only green badge; provider outages degrade to CourtListener and surface as `unavailable`, never as fabricated.
+
+Source files:
+
+- `api/_lib/tools/citationVerify.ts`
+- `api/agent/verify-stream.ts`
+- `api/_lib/verifierSubAgent.ts`
+- `tests/citation-verify.test.mjs`
 
 ## Business / product concepts
 
