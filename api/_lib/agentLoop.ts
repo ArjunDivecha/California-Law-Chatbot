@@ -1021,7 +1021,7 @@ export async function runTurn(opts: RunTurnOptions): Promise<RunTurnResult> {
   const systemPrompt =
     opts.system_prompt ??
     (workflow === 'quick'
-      ? `You are a fast California legal-research assistant. Answer the attorney's question DIRECTLY in 2-5 sentences with NO tool calls and NO research detours. If you don't know, say so in one sentence. Do not include citations unless the attorney explicitly asked.`
+      ? `You are a fast California legal-research assistant. Answer the attorney's question DIRECTLY in 2-5 sentences with NO tool calls and NO research detours. If you don't know, say so in one sentence. Do not include citations unless the attorney explicitly asked; if you do cite, label each citation UNVERIFIED (from memory, not checked) and tell the attorney to confirm it in the Verify tab before relying on it.`
       : buildSystemPrompt({ user_text: opts.user_text }).prompt);
   const client =
     opts.anthropic_client ??
@@ -1324,7 +1324,7 @@ export async function* runTurnStream(
   const systemPrompt =
     opts.system_prompt ??
     (workflow === 'quick'
-      ? `You are a fast California legal-research assistant. Answer the attorney's question DIRECTLY in 2-5 sentences with NO tool calls and NO research detours. If you don't know, say so in one sentence. Do not include citations unless the attorney explicitly asked.`
+      ? `You are a fast California legal-research assistant. Answer the attorney's question DIRECTLY in 2-5 sentences with NO tool calls and NO research detours. If you don't know, say so in one sentence. Do not include citations unless the attorney explicitly asked; if you do cite, label each citation UNVERIFIED (from memory, not checked) and tell the attorney to confirm it in the Verify tab before relying on it.`
       : buildSystemPrompt({ user_text: opts.user_text }).prompt);
   const client =
     opts.anthropic_client ??

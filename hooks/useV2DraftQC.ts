@@ -42,6 +42,9 @@ export type QcSectionStatus =
   | 'verifying'
   | 'clean'
   | 'flagged'
+  /** Some citations were never adjudicated (over the per-run cap or verifier
+   *  errors) — the section must not present itself as verified. */
+  | 'partial'
   | 'no_citations';
 
 export interface QcSectionResult {
@@ -49,6 +52,8 @@ export interface QcSectionResult {
   citation_count: number;
   verdicts_in: number;
   issues: QcIssue[];
+  /** Citations in this section that received no verdict (capped or errored). */
+  unchecked_count?: number;
 }
 
 export interface QcSummary {
@@ -258,7 +263,12 @@ export function useV2DraftQC() {
               });
             } else if (kind === 'summary') {
               const sectionStatuses =
-                (data.sections as Array<{ section_id: string; status: string; issue_count: number }>) ?? [];
+                (data.sections as Array<{
+                  section_id: string;
+                  status: string;
+                  issue_count: number;
+                  unchecked_count?: number;
+                }>) ?? [];
               setState((s) => {
                 const per = { ...s.perSection };
                 for (const sec of sectionStatuses) {
@@ -267,6 +277,7 @@ export function useV2DraftQC() {
                   per[sec.section_id] = {
                     ...cur,
                     status: (sec.status as QcSectionStatus) ?? cur.status,
+                    unchecked_count: Number(sec.unchecked_count ?? 0),
                   };
                 }
                 return {

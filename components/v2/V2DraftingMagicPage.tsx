@@ -2732,6 +2732,14 @@ export const V2DraftingMagicPage: React.FC = () => {
                                     </span>
                                   );
                                 }
+                                if (qc.status === 'partial') {
+                                  return (
+                                    <span className="inline-flex items-center gap-1 rounded-md border border-amber-300 bg-amber-50 px-2 py-1 text-[11px] font-semibold leading-none text-amber-800">
+                                      <AlertTriangle size={11} /> Partially checked — {qc.unchecked_count ?? 0} citation
+                                      {(qc.unchecked_count ?? 0) === 1 ? '' : 's'} unverified
+                                    </span>
+                                  );
+                                }
                                 return null;
                               })()}
                             </div>

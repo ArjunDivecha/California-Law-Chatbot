@@ -26,6 +26,8 @@ export interface V2GuardrailResult {
   uncited_in_sources: string[];
 }
 
+import { hasCitationLikeText } from '../utils/citationHeuristic.ts';
+
 const CASE_NAME_RE = /\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\s+v\.\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\b/g;
 
 export function checkAnswer(answerText: string, sources: V2GuardrailSource[]): V2GuardrailResult {
@@ -63,6 +65,17 @@ export function checkAnswer(answerText: string, sources: V2GuardrailSource[]): V
     if (!sourceBlob.includes(norm)) {
       uncitedInSources.push(c);
     }
+  }
+
+  // Reporter/statute citations with no sources attached: the "X v. Y" check
+  // above misses bare reporter cites ("123 Cal.App.4th 456") and statutes
+  // ("Fam. Code § 2030"). If the answer contains citation-shaped text and no
+  // verification ran at all, say so — an unchecked citation must never render
+  // indistinguishable from a checked one.
+  if (sourceBlob.length === 0 && warnings.length === 0 && hasCitationLikeText(answerText)) {
+    warnings.push(
+      'Answer contains legal citations but no automatic verification ran on this response. Treat every authority as unverified — check it in Verify or Westlaw/Lexis.',
+    );
   }
 
   if (uncitedInSources.length > 0) {

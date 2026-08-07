@@ -1390,8 +1390,22 @@ const SourcesPanel: React.FC<{ sources: V2SourceSummary[] }> = ({ sources }) => 
                   <span>{s.title}</span>
                 )}
                 {s.status && (
-                  <span className={`ml-2 inline-block rounded px-1 text-[9px] ${s.status === 'verified' ? 'bg-emerald-100 text-emerald-700' : s.status === 'not_found' ? 'bg-amber-100 text-amber-700' : 'bg-gray-200 text-gray-600'}`}>
-                    {s.status}
+                  <span
+                    className={`ml-2 inline-block rounded px-1 text-[9px] ${
+                      s.status === 'verified'
+                        ? 'bg-emerald-100 text-emerald-700'
+                        : s.status === 'not_found'
+                          ? 'bg-red-100 text-red-700'
+                          : // unconfirmed / unverified / unavailable: the verifier
+                            // abstained — never let an abstention blend into gray.
+                            'bg-amber-100 text-amber-800'
+                    }`}
+                  >
+                    {s.status === 'verified'
+                      ? 'verified'
+                      : s.status === 'not_found'
+                        ? 'not found'
+                        : `${s.status} — verify manually`}
                   </span>
                 )}
                 {s.detail && <span className="text-gray-500"> — {s.detail}</span>}

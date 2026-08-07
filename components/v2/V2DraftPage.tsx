@@ -40,6 +40,7 @@ import { useSanitizer } from '../../hooks/useSanitizer';
 import { addToUserAllowlist } from '../../services/sanitization/userAllowlist.ts';
 import { useV2SanitizationPreview } from '../../hooks/useV2SanitizationPreview.ts';
 import { extractTextFromFile } from '../draftingMagic/fileTextExtraction';
+import { hasCitationLikeText } from '../../utils/citationHeuristic.ts';
 
 function newSessionId(): string {
   return `v2d_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
@@ -418,6 +419,17 @@ export const V2DraftPage: React.FC = () => {
               </div>
             </div>
             <div className="flex-1 overflow-y-auto px-8 py-6">
+              {hasCitationLikeText(documentText) && (
+                <div className="max-w-3xl mx-auto mb-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-2.5 text-xs text-amber-900">
+                  <span className="font-semibold">Citations in this document are not verified.</span>{' '}
+                  This editor runs no citation check — confirm every authority against Westlaw/Lexis, or
+                  paste the passage into{' '}
+                  <Link to="/v2/verify" className="font-semibold underline hover:text-amber-700">
+                    Verify
+                  </Link>{' '}
+                  before filing.
+                </div>
+              )}
               <article className="v2-md max-w-3xl mx-auto text-[15px] leading-relaxed text-gray-900">
                 <ReactMarkdown remarkPlugins={[remarkGfm]}>{documentText}</ReactMarkdown>
               </article>

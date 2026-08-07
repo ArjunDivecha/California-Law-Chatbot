@@ -16,6 +16,7 @@
     "preview": "vite preview",
     "test:sanitization": "tsx tests/sanitization.test.mjs",
     "test:citation-verify": "tsx tests/citation-verify.test.mjs",
+    "test:citation-visibility": "tsx tests/unverified-citation-visibility.test.mjs",
     "test:traps": "tsx tests/traps/runTraps.mjs",
     "benchmark:citations": "tsx scripts/citation-provider-benchmark.mjs",
     "smoke:citelaw": "tsx scripts/citelaw-integration-smoke.mjs",

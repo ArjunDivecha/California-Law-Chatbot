@@ -207,6 +207,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const extracted = allExtracted.slice(0, MAX_CITATIONS);
     const skipped = allExtracted.length - extracted.length;
+    // Citations actually submitted for verification, per section. Anything
+    // past MAX_CITATIONS was never checked, and its section must not be
+    // allowed to render as "clean" (that would be a false verification claim).
+    const checkedCount = new Map<string, number>();
+    for (const c of extracted) {
+      checkedCount.set(c.section_id, (checkedCount.get(c.section_id) ?? 0) + 1);
+    }
     writeEvent('manifest', {
       kind: 'manifest',
       sections: perSectionCounts,
@@ -221,6 +228,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     let ambiguous = 0;
     let errors = 0;
     const issueCount = new Map<string, number>();
+    const errorCount = new Map<string, number>();
 
     for (let i = 0; i < extracted.length; i += 1) {
       const c = extracted[i];
@@ -252,6 +260,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         // attorney sees "unverified", never a silent pass. (No deterministic
         // fallback by policy: FAIL IS FAIL.)
         errors += 1;
+        errorCount.set(c.section_id, (errorCount.get(c.section_id) ?? 0) + 1);
         writeEvent('verdict', {
           kind: 'verdict',
           index: i,
@@ -266,16 +275,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     writeEvent('summary', {
       kind: 'summary',
-      sections: perSectionCounts.map((s) => ({
-        section_id: s.section_id,
-        status:
-          s.citation_count === 0
-            ? 'no_citations'
-            : (issueCount.get(s.section_id) ?? 0) > 0
-              ? 'flagged'
-              : 'clean',
-        issue_count: issueCount.get(s.section_id) ?? 0,
-      })),
+      sections: perSectionCounts.map((s) => {
+        const issues = issueCount.get(s.section_id) ?? 0;
+        const checked = checkedCount.get(s.section_id) ?? 0;
+        const errored = errorCount.get(s.section_id) ?? 0;
+        // 'partial' = some citations were never adjudicated (over the per-run
+        // cap, or the verifier errored). Only fully-adjudicated, issue-free
+        // sections may claim 'clean'.
+        const unchecked = s.citation_count - checked + errored;
+        return {
+          section_id: s.section_id,
+          status:
+            s.citation_count === 0
+              ? 'no_citations'
+              : issues > 0
+                ? 'flagged'
+                : unchecked > 0
+                  ? 'partial'
+                  : 'clean',
+          issue_count: issues,
+          unchecked_count: unchecked,
+        };
+      }),
       verified,
       fake,
       ambiguous,
