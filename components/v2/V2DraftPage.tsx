@@ -1032,14 +1032,14 @@ const VersionsPanel: React.FC<{
   onRestore: (meta: DraftVersionMeta) => void;
 }> = ({ versions, viewing, onView, onCloseView, onRestore }) => {
   return (
-    <div className="w-[300px] shrink-0 border-b border-gray-100 bg-gray-50/70 flex flex-col border-r border-gray-200">
-      <div className="px-4 py-2 border-b border-gray-200">
+    <div className="shrink-0 border-b border-gray-200 bg-gray-50/70">
+      <div className="px-6 py-2 border-b border-gray-200 flex items-baseline gap-3">
         <h3 className="text-sm font-semibold text-gray-900">Version history</h3>
         <p className="text-[11px] text-gray-500">Saved on this device. Restoring never deletes a version.</p>
       </div>
-      <div className="flex-1 overflow-y-auto px-3 py-2 space-y-2">
+      <div className="max-h-72 overflow-y-auto px-6 py-3 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2">
         {versions.length === 0 && (
-          <p className="text-xs text-gray-500 px-1 py-2">
+          <p className="text-xs text-gray-500 px-1 py-2 col-span-full">
             No versions yet. One is saved automatically when you load a document and each time
             you apply proposals — or use “Save version” for a named checkpoint.
           </p>
