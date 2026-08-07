@@ -89,7 +89,8 @@ The important boundary is inside `api/_lib/`.
 - `api/_lib/tools/index.ts` builds the tool registry and dispatches tool use blocks.
 - `api/_lib/compliance/toolQueryGuard.ts` and the policy engine prevent tool misuse and exfiltration.
 - `api/_lib/compliance/turnManifest.ts` records a structured per-turn compliance manifest.
-- `api/_lib/tools/citationVerify.ts` implements the two-provider case-citation identity gate (CiteLaw structured check plus CourtListener search evidence); `api/_lib/tools/statuteVerify.ts` verifies statutory/regulatory citations against official sources. The verification SSE route (`api/agent/verify-stream.ts`) prefetches CiteLaw once for all case citations, caches results for six hours, then runs one verifier sub-agent per citation. See [workflows](workflows.md) for the user-facing flow and status semantics.
+- `api/_lib/tools/citationVerify.ts` implements the two-provider case-citation identity gate (CiteLaw structured check plus CourtListener search evidence); `api/_lib/tools/statuteVerify.ts` verifies statutory/regulatory citations against official sources. The verification SSE route (`api/agent/verify-stream.ts`) prefetches CiteLaw once for all case citations, caches results for six hours, then runs one verifier sub-agent per citation. The Drafting Magic QC route (`api/agent/draft-qc.ts`) runs the same verifier section-by-section with a 15-citation/run cap and emits a `partial` status for over-cap/errored sections. See [workflows](workflows.md) for the user-facing flow and status semantics.
+- Citation verification is mandated by the core skill (`agents/california-legal/skills/california-legal-core.md`): before any case citation appears in a final answer the agent must run `citation_verify` in that turn; if the tool abstains or errors, the citation must be omitted or explicitly labeled UNVERIFIED. Quick mode (`agentLoop.ts` quick-mode prompt) runs no tools and must label every memory citation UNVERIFIED, pointing the attorney to the Verify tab.
 
 ### Compliance layer
 
@@ -136,6 +137,16 @@ The key design choice is fail-closed tokenization for wire traffic. If sanitizat
 - `/v2/magic` — Drafting Magic packet workflow
 
 `components/v2/V2Sidebar.tsx` provides navigation. The V2 pages are intentionally separate so each workflow can evolve independently while sharing the same sanitizer and agent stream infrastructure.
+
+### Unverified-citation visibility invariant
+
+An unchecked citation must never render indistinguishable from a checked one. This invariant is enforced across all four surfaces through a shared client heuristic and per-surface render rules:
+
+- `utils/citationHeuristic.ts` exports `hasCitationLikeText(text)` — a deliberately permissive regex detector for California case reporters (`123 Cal.App.4th 456`, `550 U.S. 544`, `98 Cal.Rptr.3d 22`, …) and statutes (`Fam. Code § 2030`, `Code Civ. Proc. § 128.5`, `Cal. Rules of Court, rule 5.92`). It is a disclosure gate only and must never be used for verification; the server-side `extractCitations`/`extractStatuteCitations` own parsing.
+- `services/guardrailsServiceV2.ts` `checkAnswer(answerText, sources)` runs pre-render on every completed assistant bubble. It warns when a case caption (`X v. Y`) is absent from the source summaries, and now also warns when the answer contains bare reporter/statute cites with zero attached sources (gated by `hasCitationLikeText`). The warning renders as an amber chip below the bubble; it is informational, not a hard gate.
+- The chat sources panel (`SourcesPanel` in `V2ChatPage.tsx`) colors per-source status: `verified` → green, `not_found` → red, and abstentions (`unconfirmed`/`unverified`/`unavailable`) → amber "verify manually" — an abstention must never collapse into gray.
+- The Draft editor (`V2DraftPage.tsx`) shows a standing amber banner linking to `/v2/verify` whenever the document body matches `hasCitationLikeText`, because that surface runs no verification itself.
+- Drafting Magic QC (`api/agent/draft-qc.ts` + `hooks/useV2DraftQC.ts`) adds a `partial` per-section status for sections with unchecked citations (over the 15-per-run cap or verifier errors), rendered as an amber "Partially checked — N unverified" badge instead of the green "Citations verified" shield. See [workflows](workflows.md) for the per-surface flows.
 
 ## Data and storage
 

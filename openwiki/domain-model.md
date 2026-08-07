@@ -115,14 +115,28 @@ Source file:
 
 ### Citation verification and the two-provider identity gate
 
-Case-citation verification cross-checks two independent public providers before any citation is stamped `verified`. CiteLaw supplies a structured identity check (reporter citation + case title + year) with `confirmed` / `possible_match` / `no_match` results; CourtListener supplies independent search/opinion evidence. The gated status (`verified`, `unconfirmed`, `not_found`, `unverified`, `unavailable`) records which providers supplied positive evidence (`verification_source`). A CiteLaw near-match or identity conflict blocks a CourtListener-only green badge; provider outages degrade to CourtListener and surface as `unavailable`, never as fabricated.
+Case-citation verification cross-checks two independent public providers before any citation is stamped `verified`. CiteLaw supplies a structured identity check (reporter citation + case title + year) with `confirmed` / `possible_match` / `no_match` results; CourtListener supplies independent search/opinion evidence. The gated status set (`verified`, `unconfirmed`, `not_found`, `unverified`, `unavailable`) records which providers supplied positive evidence (`verification_source`). A CiteLaw near-match or identity conflict blocks a CourtListener-only green badge; provider outages degrade to CourtListener and surface as `unavailable`, never as fabricated.
+
+The same status set drives unverified-citation visibility across all surfaces. A `partial` status extends it for the Drafting Magic QC loop (`api/agent/draft-qc.ts`): a section whose citations were never fully adjudicated — over the 15-per-run cap, or the verifier errored — must not present as `clean`. The chat sources panel renders abstentions (`unconfirmed`/`unverified`/`unavailable`) as amber "verify manually" and `not_found` as red; only `verified` is green. The Draft editor shows a standing amber banner whenever the document contains citation-shaped text (`hasCitationLikeText`), because that surface runs no verification at all.
+
+Two client helpers underpin these disclosures:
+
+- `utils/citationHeuristic.ts` `hasCitationLikeText(text)` — a permissive regex detector for California reporters and statutes, used only to gate disclosure banners/chips. It is not a parser and must never be used for verification.
+- `services/guardrailsServiceV2.ts` `checkAnswer(answerText, sources)` — a pre-render guardrail that warns when a completed assistant answer cites case captions or citation-shaped text with no attached sources.
+
+The core skill (`agents/california-legal/skills/california-legal-core.md`) makes `citation_verify` mandatory before any case citation appears in a final answer; an abstain/error/unavailable result must be omitted or explicitly labeled UNVERIFIED. Quick mode (no tools) must label every memory citation UNVERIFIED and point to the Verify tab.
 
 Source files:
 
 - `api/_lib/tools/citationVerify.ts`
 - `api/agent/verify-stream.ts`
+- `api/agent/draft-qc.ts` (Drafting Magic QC, `partial` status)
+- `utils/citationHeuristic.ts`
+- `services/guardrailsServiceV2.ts`
 - `api/_lib/verifierSubAgent.ts`
+- `agents/california-legal/skills/california-legal-core.md`
 - `tests/citation-verify.test.mjs`
+- `tests/unverified-citation-visibility.test.mjs`
 
 ## Business / product concepts
 

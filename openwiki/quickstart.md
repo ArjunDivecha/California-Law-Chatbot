@@ -51,6 +51,7 @@ The repo also contains a large body of legal/compliance research in `docs/`, but
 - Changing sanitization/tokenization: start in `services/sanitization/detectionPipeline.ts`, `services/sanitization/realSanitizer.ts`, and `hooks/useSanitizer.tsx`.
 - Changing export behavior: inspect `api/export-document.ts` and the drafting/export components together.
 - Changing citation or statute verification: inspect `api/_lib/tools/citationVerify.ts` (CiteLaw identity gate + CourtListener fallback), `api/agent/verify-stream.ts` (batch prefetch + per-citation sub-agent), `api/_lib/verifierSubAgent.ts`, `api/_lib/tools/statuteVerify.ts`, and `api/_lib/tools/courtlistenerSearch.ts`.
+- Changing unverified-citation visibility (chat sources badges, Draft banner, Drafting Magic QC status): start in `services/guardrailsServiceV2.ts` (`checkAnswer`), `utils/citationHeuristic.ts` (`hasCitationLikeText`), `api/agent/draft-qc.ts` + `hooks/useV2DraftQC.ts` (per-section `partial` status), and the three V2 page render blocks; the regression suite is `yarn test:citation-visibility`.
 - Changing the desktop build: start in `desktop-server.mjs` and `desktop-env.mjs` (import order matters), then `api/_lib/desktop/sqliteKv.ts` and `src-tauri/tauri.conf.json`.
 
 ## Repo map
@@ -77,6 +78,7 @@ yarn desktop            # desktop sidecar dev (loopback :8477 + native window)
 yarn desktop:app        # build → sign → notarize AskPauli.app
 yarn test:sanitization  # tests/sanitization.test.mjs
 yarn test:citation-verify  # tests/citation-verify.test.mjs (CiteLaw identity-gate matrix)
+yarn test:citation-visibility  # tests/unverified-citation-visibility.test.mjs (heuristic + guardrail + draft-qc partial-status matrix)
 yarn test:traps         # tests/traps/runTraps.mjs
 yarn agent:smoke        # scripts/agent-loop-smoke.mjs
 yarn agent:smoke-stream # scripts/agent-loop-stream-smoke.mjs
