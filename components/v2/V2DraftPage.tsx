@@ -42,6 +42,15 @@ import { useV2SanitizationPreview } from '../../hooks/useV2SanitizationPreview.t
 import { extractTextFromFile } from '../draftingMagic/fileTextExtraction';
 import { hasCitationLikeText } from '../../utils/citationHeuristic.ts';
 import { parseChangesJson, salvageChanges } from '../../utils/draftProposals.ts';
+import {
+  saveDraftSession,
+  loadDraftSession,
+  listDraftSessions,
+  deleteDraftSession,
+  latestDraftSessionId,
+  draftTitle,
+  type DraftSessionIndexEntry,
+} from '../../utils/draftSessionStore.ts';
 
 function newSessionId(): string {
   return `v2d_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
@@ -152,7 +161,7 @@ function applyChange(doc: string, find: string, replace: string): string | null 
 export const V2DraftPage: React.FC = () => {
   const { user } = useUser();
   const userId = user?.id ?? null;
-  const [sessionId] = useState(() => newSessionId());
+  const [sessionId, setSessionId] = useState(() => newSessionId());
   const { state, send, reset } = useV2AgentStream();
 
   // Source-loading state (before any document is loaded).
@@ -166,6 +175,56 @@ export const V2DraftPage: React.FC = () => {
   const [documentText, setDocumentText] = useState<string | null>(null);
   const [instruction, setInstruction] = useState('');
   const [history, setHistory] = useState<ChatTurn[]>([]);
+
+  // ----- Session persistence (device-local, encrypted at rest) -----
+  // Navigating away used to destroy the document and every proposal.
+  // Sessions now auto-save to localStorage (AES-GCM via workspaceCrypto,
+  // same precedent as Drafting Magic — documents never go to cloud KV)
+  // and the most recent one auto-restores on return.
+  const [restoreReady, setRestoreReady] = useState(false);
+  const [recentDrafts, setRecentDrafts] = useState<DraftSessionIndexEntry[]>([]);
+
+  const restoreSession = useCallback(async (id: string) => {
+    const snap = await loadDraftSession(id);
+    if (!snap) return false;
+    setSessionId(snap.id);
+    setDocumentText(snap.documentText);
+    setHistory(snap.history as ChatTurn[]);
+    setUploadedName(snap.uploadedName);
+    setInstruction('');
+    return true;
+  }, []);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      setRecentDrafts(listDraftSessions());
+      const latest = latestDraftSessionId();
+      if (latest && !cancelled) await restoreSession(latest);
+      if (!cancelled) setRestoreReady(true);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [restoreSession]);
+
+  // Debounced auto-save on every meaningful change (post-restore only, so
+  // the initial empty state can't clobber a saved session).
+  React.useEffect(() => {
+    if (!restoreReady || documentText === null) return;
+    const t = window.setTimeout(() => {
+      void saveDraftSession({
+        version: 1,
+        id: sessionId,
+        savedAt: new Date().toISOString(),
+        title: draftTitle(documentText, uploadedName),
+        documentText,
+        history,
+        uploadedName,
+      }).then(() => setRecentDrafts(listDraftSessions()));
+    }, 800);
+    return () => window.clearTimeout(t);
+  }, [restoreReady, sessionId, documentText, history, uploadedName]);
 
   // ----- Source loading -----
   const onUploadClick = useCallback(() => fileInputRef.current?.click(), []);
@@ -347,15 +406,31 @@ export const V2DraftPage: React.FC = () => {
     [documentText],
   );
 
+  // Start a NEW draft session. The previous session stays saved and
+  // reachable from the "Recent drafts" list — this must never delete work.
   const onStartOver = useCallback(() => {
+    setSessionId(newSessionId());
     setDocumentText(null);
     setPasteText('');
     setUploadedName(null);
     setUploadError(null);
     setHistory([]);
     setInstruction('');
+    setRecentDrafts(listDraftSessions());
     reset();
   }, [reset]);
+
+  const onOpenRecent = useCallback(
+    (id: string) => {
+      void restoreSession(id);
+    },
+    [restoreSession],
+  );
+
+  const onDeleteRecent = useCallback((id: string) => {
+    deleteDraftSession(id);
+    setRecentDrafts(listDraftSessions());
+  }, []);
 
   // -------------------------------------------------------------------------
   // Render — load screen vs editor
@@ -389,6 +464,9 @@ export const V2DraftPage: React.FC = () => {
           onFileChosen={onFileChosen}
           onFileDropped={onFileDropped}
           onLoadDocument={onLoadDocument}
+          recentDrafts={recentDrafts}
+          onOpenRecent={onOpenRecent}
+          onDeleteRecent={onDeleteRecent}
         />
       ) : (
         <div className="flex-1 min-h-0 flex">
@@ -679,9 +757,13 @@ const LoadScreen: React.FC<{
   onFileChosen: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onFileDropped: (file: File) => void;
   onLoadDocument: () => void;
+  recentDrafts: DraftSessionIndexEntry[];
+  onOpenRecent: (id: string) => void;
+  onDeleteRecent: (id: string) => void;
 }> = ({
   pasteText, setPasteText, uploadBusy, uploadError, uploadedName,
   fileInputRef, onUploadClick, onFileChosen, onFileDropped, onLoadDocument,
+  recentDrafts, onOpenRecent, onDeleteRecent,
 }) => {
   const { preview } = useV2SanitizationPreview(pasteText);
   const detectionCount = preview.tokens.length;
@@ -716,6 +798,43 @@ const LoadScreen: React.FC<{
           proposes edits and you approve each one. Private details are replaced with
           placeholders before anything is sent.
         </p>
+
+        {recentDrafts.length > 0 && (
+          <div className="mb-6 rounded-xl border border-gray-200 bg-gray-50/60 px-4 py-3">
+            <h3 className="text-sm font-semibold text-gray-900 mb-2">Recent drafts</h3>
+            <ul className="space-y-1">
+              {recentDrafts.map((d) => (
+                <li key={d.id} className="flex items-center justify-between gap-2">
+                  <button
+                    type="button"
+                    onClick={() => onOpenRecent(d.id)}
+                    className="flex-1 min-w-0 truncate text-left text-sm text-pink-600 hover:text-pink-700 hover:underline"
+                    title={d.title}
+                  >
+                    {d.title}
+                  </button>
+                  <span className="shrink-0 text-[11px] text-gray-500">
+                    {new Date(d.savedAt).toLocaleString(undefined, {
+                      month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
+                    })}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => onDeleteRecent(d.id)}
+                    className="shrink-0 rounded px-1.5 py-0.5 text-[11px] text-gray-400 hover:bg-gray-200 hover:text-gray-700"
+                    aria-label={`Delete draft ${d.title}`}
+                  >
+                    ✕
+                  </button>
+                </li>
+              ))}
+            </ul>
+            <p className="mt-2 text-[11px] text-gray-500">
+              Saved on this device only, encrypted at rest. Your latest draft reopens
+              automatically.
+            </p>
+          </div>
+        )}
 
         <div className="flex items-center gap-3 mb-3">
           <button
