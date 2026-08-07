@@ -41,6 +41,7 @@ import { addToUserAllowlist } from '../../services/sanitization/userAllowlist.ts
 import { useV2SanitizationPreview } from '../../hooks/useV2SanitizationPreview.ts';
 import { extractTextFromFile } from '../draftingMagic/fileTextExtraction';
 import { hasCitationLikeText } from '../../utils/citationHeuristic.ts';
+import { parseChangesJson, salvageChanges } from '../../utils/draftProposals.ts';
 
 function newSessionId(): string {
   return `v2d_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
@@ -69,6 +70,7 @@ RULES:
 - Keep each change small and atomic — one idea per change. Prefer several small changes over one large one.
 - Placeholder tokens like CLIENT_001, ADDRESS_002, AMOUNT_003 stand in for redacted private info. Preserve them EXACTLY in both "find" and "replace"; never expand, rename, or invent values.
 - If the user asked a question ("what would you change?"), still answer as a list of proposed changes.
+- Propose AT MOST 10 changes per reply, most important first — the user can always ask for more. A reply that gets cut off mid-JSON helps no one.
 - If nothing should change, return {"changes":[]}.`;
 
 function buildEditRequest(documentText: string, instruction: string): string {
@@ -96,33 +98,6 @@ interface ChatTurn {
   proposals: Proposal[];
   /** Set when the model returned something we could not parse as changes. */
   rawNote?: string;
-}
-
-// Extract the first JSON object from a model reply (handles ```json fences
-// and incidental prose around it).
-function parseChangesJson(text: string): Array<Omit<Proposal, 'id' | 'status'>> | null {
-  if (!text) return null;
-  let body = text.trim();
-  const fence = body.match(/```(?:json)?\s*([\s\S]*?)```/i);
-  if (fence) body = fence[1].trim();
-  const start = body.indexOf('{');
-  const end = body.lastIndexOf('}');
-  if (start === -1 || end === -1 || end <= start) return null;
-  try {
-    const obj = JSON.parse(body.slice(start, end + 1));
-    if (!obj || !Array.isArray(obj.changes)) return null;
-    return obj.changes
-      .filter((c: unknown) => c && typeof c === 'object')
-      .map((c: Record<string, unknown>) => ({
-        section: String(c.section ?? 'Change'),
-        description: String(c.description ?? ''),
-        rationale: String(c.rationale ?? ''),
-        find: String(c.find ?? ''),
-        replace: String(c.replace ?? ''),
-      }));
-  } catch {
-    return null;
-  }
 }
 
 // Structured-output schema for the propose flow (output_config.format on the
@@ -269,7 +244,14 @@ export const V2DraftPage: React.FC = () => {
     if (state.done && state.done !== lastDoneRef.current) {
       lastDoneRef.current = state.done;
       const reply = (state.done.final_text || state.tokens || '').trim();
-      const parsed = parseChangesJson(reply);
+      const wasTruncated = state.done.stop_reason === 'max_tokens';
+      let parsed = parseChangesJson(reply);
+      // Truncated reply → strict parse fails; recover every complete proposal
+      // instead of dumping raw JSON at the attorney.
+      if (!parsed && reply) {
+        const salvaged = salvageChanges(reply);
+        if (salvaged.length > 0) parsed = salvaged;
+      }
       setHistory((h) => {
         if (h.length === 0) return h;
         const next = [...h];
@@ -280,10 +262,17 @@ export const V2DraftPage: React.FC = () => {
             id: `${Date.now()}_${i}`,
             status: 'pending' as const,
           }));
+          if (wasTruncated) {
+            turn.rawNote = `The reply hit the length limit, so this list is incomplete — showing the ${parsed.length} complete proposal${parsed.length === 1 ? '' : 's'} that came through. Apply or reject these, then ask again for further changes.`;
+          }
         } else if (parsed && parsed.length === 0) {
           turn.rawNote = 'No changes suggested.';
+        } else if (wasTruncated) {
+          turn.rawNote =
+            'The reply was cut off by the length limit before any complete proposal came through. Try again with a narrower instruction (e.g. one section at a time, or "propose your 5 most important changes").';
         } else {
-          turn.rawNote = reply.slice(0, 600);
+          turn.rawNote =
+            'The reply could not be read as a list of changes. Try rephrasing the instruction, or ask for fewer changes at once.';
         }
         next[next.length - 1] = turn;
         return next;
