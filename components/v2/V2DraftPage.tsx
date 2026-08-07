@@ -59,6 +59,7 @@ import {
   type DraftVersionMeta,
   type VersionAttribution,
 } from '../../utils/draftVersionStore.ts';
+import { computeRedline, type RedlineOp, type RedlineStats } from '../../utils/draftRedline.ts';
 
 function newSessionId(): string {
   return `v2d_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
@@ -268,6 +269,24 @@ export const V2DraftPage: React.FC = () => {
       if (full) setViewingVersion({ meta, text: full.documentText });
     },
     [sessionId],
+  );
+
+  // Redline compare: selected version → current document.
+  const [comparing, setComparing] = useState<{
+    meta: DraftVersionMeta;
+    ops: RedlineOp[];
+    stats: RedlineStats;
+  } | null>(null);
+
+  const onCompareVersion = useCallback(
+    async (meta: DraftVersionMeta) => {
+      if (documentText === null) return;
+      const full = await loadVersion(sessionId, meta.version);
+      if (!full) return;
+      const { ops, stats } = computeRedline(full.documentText, documentText);
+      setComparing({ meta, ops, stats });
+    },
+    [sessionId, documentText],
   );
 
   // Restore = copy the old version forward as a NEW version. Never destroys.
@@ -604,6 +623,15 @@ export const V2DraftPage: React.FC = () => {
                 onView={onViewVersion}
                 onCloseView={() => setViewingVersion(null)}
                 onRestore={onRestoreVersion}
+                onCompare={onCompareVersion}
+              />
+            )}
+            {comparing && (
+              <RedlineModal
+                meta={comparing.meta}
+                ops={comparing.ops}
+                stats={comparing.stats}
+                onClose={() => setComparing(null)}
               />
             )}
             <div className="flex-1 overflow-y-auto px-8 py-6">
@@ -1030,7 +1058,8 @@ const VersionsPanel: React.FC<{
   onView: (meta: DraftVersionMeta) => void;
   onCloseView: () => void;
   onRestore: (meta: DraftVersionMeta) => void;
-}> = ({ versions, viewing, onView, onCloseView, onRestore }) => {
+  onCompare: (meta: DraftVersionMeta) => void;
+}> = ({ versions, viewing, onView, onCloseView, onRestore, onCompare }) => {
   return (
     <div className="shrink-0 border-b border-gray-200 bg-gray-50/70">
       <div className="px-6 py-2 border-b border-gray-200 flex items-baseline gap-3">
@@ -1083,6 +1112,14 @@ const VersionsPanel: React.FC<{
               </button>
               <button
                 type="button"
+                onClick={() => onCompare(v)}
+                className="text-[11px] font-semibold text-gray-600 hover:text-gray-900 hover:underline"
+                title="Redline: this version vs the current document"
+              >
+                Compare
+              </button>
+              <button
+                type="button"
                 onClick={() => onRestore(v)}
                 className="text-[11px] font-semibold text-pink-600 hover:text-pink-700 hover:underline"
               >
@@ -1131,6 +1168,72 @@ const VersionsPanel: React.FC<{
           </div>
         </div>
       )}
+    </div>
+  );
+};
+
+// ---------------------------------------------------------------------------
+// Redline modal (phase 2): word-level compare of a version vs the current
+// document. Insertions blue underline, deletions red strikethrough — light
+// mode, print-friendly.
+// ---------------------------------------------------------------------------
+const RedlineModal: React.FC<{
+  meta: DraftVersionMeta;
+  ops: RedlineOp[];
+  stats: RedlineStats;
+  onClose: () => void;
+}> = ({ meta, ops, stats, onClose }) => {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-8" onClick={onClose}>
+      <div
+        className="max-h-full w-full max-w-4xl overflow-hidden rounded-xl bg-white shadow-xl flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between border-b border-gray-200 px-5 py-3">
+          <div>
+            <h4 className="text-sm font-semibold text-gray-900">
+              Redline: v{meta.version} → current document
+            </h4>
+            <p className="text-[11px] text-gray-500">
+              {stats.identical ? (
+                'No differences — the current document is identical to this version.'
+              ) : (
+                <>
+                  <span className="text-sky-700 font-semibold">{stats.insertedWords} inserted</span>
+                  {' · '}
+                  <span className="text-red-700 font-semibold">{stats.deletedWords} deleted</span>
+                  {' words vs '}
+                  {new Date(meta.savedAt).toLocaleString()}
+                </>
+              )}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-full bg-gray-100 hover:bg-gray-200 px-3 py-1.5 text-xs text-gray-700"
+          >
+            Close
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto px-6 py-4">
+          <div className="whitespace-pre-wrap text-[14px] leading-relaxed text-gray-900 font-serif">
+            {ops.map((op, i) =>
+              op.type === 'equal' ? (
+                <span key={i}>{op.text}</span>
+              ) : op.type === 'ins' ? (
+                <ins key={i} className="bg-sky-50 text-sky-800 underline decoration-sky-600 no-underline-offset">
+                  {op.text}
+                </ins>
+              ) : (
+                <del key={i} className="bg-red-50 text-red-700 line-through decoration-red-500">
+                  {op.text}
+                </del>
+              ),
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   );
 };

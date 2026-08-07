@@ -19,6 +19,7 @@
     "test:citation-visibility": "tsx tests/unverified-citation-visibility.test.mjs",
     "test:draft-proposals": "tsx tests/draft-proposal-parsing.test.mjs",
     "test:draft-versions": "tsx tests/draft-version-store.test.mjs",
+    "test:draft-redline": "tsx tests/draft-redline.test.mjs",
     "test:traps": "tsx tests/traps/runTraps.mjs",
     "benchmark:citations": "tsx scripts/citation-provider-benchmark.mjs",
     "smoke:citelaw": "tsx scripts/citelaw-integration-smoke.mjs",
@@ -34,6 +35,7 @@
     "@vercel/blob": "^2.3.3",
     "@vercel/functions": "^3.6.0",
     "better-sqlite3": "^12.11.1",
+    "diff-match-patch": "^1.0.5",
     "docx": "^9.5.1",
     "dotenv": "^17.2.3",
     "gliner": "^0.0.19",
@@ -50,6 +52,7 @@
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.11.4",
+    "@types/diff-match-patch": "^1.0.36",
     "@types/node": "^22.14.0",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
