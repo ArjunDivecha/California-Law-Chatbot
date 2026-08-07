@@ -18,6 +18,7 @@
     "test:citation-verify": "tsx tests/citation-verify.test.mjs",
     "test:citation-visibility": "tsx tests/unverified-citation-visibility.test.mjs",
     "test:draft-proposals": "tsx tests/draft-proposal-parsing.test.mjs",
+    "test:draft-versions": "tsx tests/draft-version-store.test.mjs",
     "test:traps": "tsx tests/traps/runTraps.mjs",
     "benchmark:citations": "tsx scripts/citation-provider-benchmark.mjs",
     "smoke:citelaw": "tsx scripts/citelaw-integration-smoke.mjs",

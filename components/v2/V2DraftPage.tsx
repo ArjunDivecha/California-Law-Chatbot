@@ -51,6 +51,14 @@ import {
   draftTitle,
   type DraftSessionIndexEntry,
 } from '../../utils/draftSessionStore.ts';
+import {
+  appendVersion,
+  listVersions,
+  loadVersion,
+  deleteVersionsForSession,
+  type DraftVersionMeta,
+  type VersionAttribution,
+} from '../../utils/draftVersionStore.ts';
 
 function newSessionId(): string {
   return `v2d_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
@@ -192,6 +200,7 @@ export const V2DraftPage: React.FC = () => {
     setHistory(snap.history as ChatTurn[]);
     setUploadedName(snap.uploadedName);
     setInstruction('');
+    void listVersions(id).then(setVersions);
     return true;
   }, []);
 
@@ -207,6 +216,78 @@ export const V2DraftPage: React.FC = () => {
       cancelled = true;
     };
   }, [restoreSession]);
+
+  // ----- Version history (phase 1: chain + panel + restore) -----
+  // Proposals applied since the last version cut, drained into the next
+  // auto version's attribution list.
+  const pendingAttributionRef = useRef<VersionAttribution[]>([]);
+  const [versions, setVersions] = useState<DraftVersionMeta[]>([]);
+  const [showVersions, setShowVersions] = useState(false);
+  const [viewingVersion, setViewingVersion] = useState<{ meta: DraftVersionMeta; text: string } | null>(null);
+
+  const refreshVersions = useCallback(async (id: string) => {
+    setVersions(await listVersions(id));
+  }, []);
+
+  // Debounced auto-version: cut a version 2s after the document settles
+  // following applied proposals. appendVersion dedupes identical text, so
+  // session restores and no-op saves never create empty versions.
+  React.useEffect(() => {
+    if (!restoreReady || documentText === null) return;
+    const t = window.setTimeout(() => {
+      const attribution = pendingAttributionRef.current;
+      if (attribution.length === 0) return; // only proposal applies cut auto versions
+      pendingAttributionRef.current = [];
+      void appendVersion({
+        session_id: sessionId,
+        kind: 'auto',
+        documentText,
+        proposals: attribution,
+      }).then(() => refreshVersions(sessionId));
+    }, 2000);
+    return () => window.clearTimeout(t);
+  }, [restoreReady, sessionId, documentText, refreshVersions]);
+
+  const onSaveVersion = useCallback(() => {
+    if (documentText === null) return;
+    const label = window.prompt('Label this version (optional):') ?? undefined;
+    const attribution = pendingAttributionRef.current;
+    pendingAttributionRef.current = [];
+    void appendVersion({
+      session_id: sessionId,
+      kind: 'manual',
+      documentText,
+      proposals: attribution,
+      label: label && label.trim() ? label.trim() : undefined,
+    }).then(() => refreshVersions(sessionId));
+  }, [documentText, sessionId, refreshVersions]);
+
+  const onViewVersion = useCallback(
+    async (meta: DraftVersionMeta) => {
+      const full = await loadVersion(sessionId, meta.version);
+      if (full) setViewingVersion({ meta, text: full.documentText });
+    },
+    [sessionId],
+  );
+
+  // Restore = copy the old version forward as a NEW version. Never destroys.
+  const onRestoreVersion = useCallback(
+    async (meta: DraftVersionMeta) => {
+      const full = await loadVersion(sessionId, meta.version);
+      if (!full) return;
+      pendingAttributionRef.current = [];
+      await appendVersion({
+        session_id: sessionId,
+        kind: 'restore',
+        documentText: full.documentText,
+        restoredFrom: meta.version,
+      });
+      setDocumentText(full.documentText);
+      setViewingVersion(null);
+      void refreshVersions(sessionId);
+    },
+    [sessionId, refreshVersions],
+  );
 
   // Debounced auto-save on every meaningful change (post-restore only, so
   // the initial empty state can't clobber a saved session).
@@ -275,7 +356,11 @@ export const V2DraftPage: React.FC = () => {
     const text = pasteText.trim();
     if (text.length < 10) return;
     setDocumentText(text);
-  }, [pasteText]);
+    // First version in the chain: the document as loaded.
+    void appendVersion({ session_id: sessionId, kind: 'initial', documentText: text }).then(() =>
+      refreshVersions(sessionId),
+    );
+  }, [pasteText, sessionId, refreshVersions]);
 
   // ----- Instruction → proposals -----
   const onSubmitInstruction = useCallback(() => {
@@ -375,6 +460,11 @@ export const V2DraftPage: React.FC = () => {
           return next;
         });
         setDocumentText(updated);
+        // Attribution for the next auto version cut.
+        pendingAttributionRef.current = [
+          ...pendingAttributionRef.current,
+          { section: prop.section, description: prop.description },
+        ];
       }
     },
     [documentText, setProposalStatus],
@@ -396,6 +486,10 @@ export const V2DraftPage: React.FC = () => {
           const updated = applyChange(doc, p.find, p.replace);
           if (updated === null) return { ...p, status: 'unmatched' as const };
           doc = updated;
+          pendingAttributionRef.current = [
+            ...pendingAttributionRef.current,
+            { section: p.section, description: p.description },
+          ];
           return { ...p, status: 'applied' as const };
         });
         next[turnIdx] = turn;
@@ -429,6 +523,7 @@ export const V2DraftPage: React.FC = () => {
 
   const onDeleteRecent = useCallback((id: string) => {
     deleteDraftSession(id);
+    void deleteVersionsForSession(id);
     setRecentDrafts(listDraftSessions());
   }, []);
 
@@ -478,6 +573,23 @@ export const V2DraftPage: React.FC = () => {
                 <ExportButtons documentText={documentText} disabled={state.isStreaming} />
                 <button
                   type="button"
+                  onClick={onSaveVersion}
+                  className="text-xs rounded-full bg-gray-100 hover:bg-gray-200 px-3 py-1.5 text-gray-600"
+                  title="Save a named checkpoint of the current document"
+                >
+                  Save version
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowVersions((s) => !s)}
+                  className={`text-xs rounded-full px-3 py-1.5 ${
+                    showVersions ? 'bg-pink-100 text-pink-700' : 'bg-gray-100 hover:bg-gray-200 text-gray-600'
+                  }`}
+                >
+                  Versions{versions.length > 0 ? ` (${versions.length})` : ''}
+                </button>
+                <button
+                  type="button"
                   onClick={onStartOver}
                   className="text-xs rounded-full bg-gray-100 hover:bg-gray-200 px-3 py-1.5 text-gray-600"
                 >
@@ -485,6 +597,15 @@ export const V2DraftPage: React.FC = () => {
                 </button>
               </div>
             </div>
+            {showVersions && (
+              <VersionsPanel
+                versions={versions}
+                viewing={viewingVersion}
+                onView={onViewVersion}
+                onCloseView={() => setViewingVersion(null)}
+                onRestore={onRestoreVersion}
+              />
+            )}
             <div className="flex-1 overflow-y-auto px-8 py-6">
               {hasCitationLikeText(documentText) && (
                 <div className="max-w-3xl mx-auto mb-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-2.5 text-xs text-amber-900">
@@ -892,6 +1013,128 @@ const LoadScreen: React.FC<{
 // Instruction sanitization chips (with "not private" dismiss). Scrollable so
 // every detection in a long document is reviewable.
 // ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// Versions panel (phase 1 of draft versioning): list / view / restore.
+// Restore copies the old version forward as a new version — never destroys.
+// ---------------------------------------------------------------------------
+const VERSION_KIND_LABEL: Record<string, string> = {
+  initial: 'Document loaded',
+  auto: 'Changes applied',
+  manual: 'Saved checkpoint',
+  restore: 'Restored',
+};
+
+const VersionsPanel: React.FC<{
+  versions: DraftVersionMeta[];
+  viewing: { meta: DraftVersionMeta; text: string } | null;
+  onView: (meta: DraftVersionMeta) => void;
+  onCloseView: () => void;
+  onRestore: (meta: DraftVersionMeta) => void;
+}> = ({ versions, viewing, onView, onCloseView, onRestore }) => {
+  return (
+    <div className="w-[300px] shrink-0 border-b border-gray-100 bg-gray-50/70 flex flex-col border-r border-gray-200">
+      <div className="px-4 py-2 border-b border-gray-200">
+        <h3 className="text-sm font-semibold text-gray-900">Version history</h3>
+        <p className="text-[11px] text-gray-500">Saved on this device. Restoring never deletes a version.</p>
+      </div>
+      <div className="flex-1 overflow-y-auto px-3 py-2 space-y-2">
+        {versions.length === 0 && (
+          <p className="text-xs text-gray-500 px-1 py-2">
+            No versions yet. One is saved automatically when you load a document and each time
+            you apply proposals — or use “Save version” for a named checkpoint.
+          </p>
+        )}
+        {versions.map((v) => (
+          <div key={v.version} className="rounded-lg border border-gray-200 bg-white px-3 py-2">
+            <div className="flex items-baseline justify-between gap-2">
+              <span className="text-xs font-semibold text-gray-900">
+                v{v.version} · {VERSION_KIND_LABEL[v.kind] ?? v.kind}
+                {v.kind === 'restore' && v.restoredFrom ? ` v${v.restoredFrom}` : ''}
+              </span>
+              <span className="shrink-0 text-[10px] text-gray-500">
+                {new Date(v.savedAt).toLocaleString(undefined, {
+                  month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
+                })}
+              </span>
+            </div>
+            {v.label && <div className="mt-0.5 text-xs text-pink-700 font-medium truncate" title={v.label}>“{v.label}”</div>}
+            {v.proposals.length > 0 && (
+              <ul className="mt-1 space-y-0.5">
+                {v.proposals.slice(0, 3).map((p, i) => (
+                  <li key={i} className="text-[11px] text-gray-600 truncate" title={`${p.section}: ${p.description}`}>
+                    • {p.description || p.section}
+                  </li>
+                ))}
+                {v.proposals.length > 3 && (
+                  <li className="text-[11px] text-gray-400">…and {v.proposals.length - 3} more</li>
+                )}
+              </ul>
+            )}
+            <div className="mt-1.5 flex items-center gap-2">
+              <span className={`text-[10px] ${v.wordDelta >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>
+                {v.wordDelta >= 0 ? `+${v.wordDelta}` : v.wordDelta} words
+              </span>
+              <button
+                type="button"
+                onClick={() => onView(v)}
+                className="text-[11px] font-semibold text-gray-600 hover:text-gray-900 hover:underline"
+              >
+                View
+              </button>
+              <button
+                type="button"
+                onClick={() => onRestore(v)}
+                className="text-[11px] font-semibold text-pink-600 hover:text-pink-700 hover:underline"
+              >
+                Restore
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+      {viewing && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-8" onClick={onCloseView}>
+          <div
+            className="max-h-full w-full max-w-3xl overflow-hidden rounded-xl bg-white shadow-xl flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-gray-200 px-5 py-3">
+              <div>
+                <h4 className="text-sm font-semibold text-gray-900">
+                  Version {viewing.meta.version} · {VERSION_KIND_LABEL[viewing.meta.kind] ?? viewing.meta.kind}
+                  {viewing.meta.label ? ` — “${viewing.meta.label}”` : ''}
+                </h4>
+                <p className="text-[11px] text-gray-500">{new Date(viewing.meta.savedAt).toLocaleString()}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => onRestore(viewing.meta)}
+                  className="rounded-full bg-pink-500 hover:bg-pink-600 px-3 py-1.5 text-xs font-semibold text-white"
+                >
+                  Restore this version
+                </button>
+                <button
+                  type="button"
+                  onClick={onCloseView}
+                  className="rounded-full bg-gray-100 hover:bg-gray-200 px-3 py-1.5 text-xs text-gray-700"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+            <div className="flex-1 overflow-y-auto px-6 py-4">
+              <article className="v2-md text-[14px] leading-relaxed text-gray-900">
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>{viewing.text}</ReactMarkdown>
+              </article>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 const InstructionSanitizationChips: React.FC<{ combinedText: string }> = ({ combinedText }) => {
   const { preview, hasDetections } = useV2SanitizationPreview(combinedText);
   if (!hasDetections) {
