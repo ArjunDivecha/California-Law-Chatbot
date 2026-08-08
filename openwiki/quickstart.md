@@ -13,6 +13,7 @@ Start here if you are new to the repo:
 1. Read the [architecture overview](architecture.md) to understand the runtime split between the React app, Vercel functions, session storage, and sanitization pipeline.
 2. Read the [workflows guide](workflows.md) to understand the user-facing paths and how the V2 pages fit together.
 3. Read the [domain model](domain-model.md) for the core concepts and shared types.
+4. Read [draft versioning and redline](draft-versioning.md) for the V2 Draft page's version history, word-level redline compare, and device-local session persistence.
 
 ## What this repository does
 
@@ -50,6 +51,7 @@ The repo also contains a large body of legal/compliance research in `docs/`, but
 - Changing confidentiality rules or matter modes: start in `api/_lib/compliance/policyEngine.ts` and `api/matter-context.ts`, then follow the UI selector in `components/v2/MatterModeSelector.tsx`.
 - Changing sanitization/tokenization: start in `services/sanitization/detectionPipeline.ts`, `services/sanitization/realSanitizer.ts`, and `hooks/useSanitizer.tsx`.
 - Changing export behavior: inspect `api/export-document.ts` and the drafting/export components together.
+- Changing draft version history, redline compare, or draft session persistence: start in `utils/draftVersionStore.ts` (version chain + `planPrune` retention), `utils/draftRedline.ts` (`computeRedline` + `snapToWordBoundaries`), and `utils/draftSessionStore.ts` (encrypted localStorage sessions); the UI handlers and `VersionsPanel`/`RedlineModal` are in `components/v2/V2DraftPage.tsx`. See [draft versioning and redline](draft-versioning.md) for invariants and focused tests.
 - Changing citation or statute verification: inspect `api/_lib/tools/citationVerify.ts` (CiteLaw identity gate + CourtListener fallback), `api/agent/verify-stream.ts` (batch prefetch + per-citation sub-agent), `api/_lib/verifierSubAgent.ts`, `api/_lib/tools/statuteVerify.ts`, and `api/_lib/tools/courtlistenerSearch.ts`.
 - Changing unverified-citation visibility (chat sources badges, Draft banner, Drafting Magic QC status): start in `services/guardrailsServiceV2.ts` (`checkAnswer`), `utils/citationHeuristic.ts` (`hasCitationLikeText`), `api/agent/draft-qc.ts` + `hooks/useV2DraftQC.ts` (per-section `partial` status), and the three V2 page render blocks; the regression suite is `yarn test:citation-visibility`.
 - Changing the desktop build: start in `desktop-server.mjs` and `desktop-env.mjs` (import order matters), then `api/_lib/desktop/sqliteKv.ts` and `src-tauri/tauri.conf.json`.
@@ -77,6 +79,9 @@ yarn build              # vite build → dist/
 yarn desktop            # desktop sidecar dev (loopback :8477 + native window)
 yarn desktop:app        # build → sign → notarize AskPauli.app
 yarn test:sanitization  # tests/sanitization.test.mjs
+yarn test:draft-versions    # tests/draft-version-store.test.mjs (planPrune + numbering + wordDelta)
+yarn test:draft-redline     # tests/draft-redline.test.mjs (reconstruction + word-boundary invariants)
+yarn test:draft-proposals   # tests/draft-proposal-parsing.test.mjs (parse + truncation salvage)
 yarn test:citation-verify  # tests/citation-verify.test.mjs (CiteLaw identity-gate matrix)
 yarn test:citation-visibility  # tests/unverified-citation-visibility.test.mjs (heuristic + guardrail + draft-qc partial-status matrix)
 yarn test:traps         # tests/traps/runTraps.mjs

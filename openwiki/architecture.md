@@ -153,6 +153,7 @@ An unchecked citation must never render indistinguishable from a checked one. Th
 State is spread across stores that differ by surface:
 
 - browser storage / IndexedDB for sanitization token maps and local UX state (both surfaces)
+- browser `localStorage` + IndexedDB for V2 Draft sessions and version chains: draft session snapshots (`utils/draftSessionStore.ts`) and the immutable per-session version chain (`utils/draftVersionStore.ts`) are AES-GCM encrypted at rest via `services/workspaceCrypto.ts` and never sent to cloud KV. See [draft versioning and redline](draft-versioning.md).
 - web: Upstash Redis for sessions, metadata, locks, idempotency caches, rate-limit counters, and audit-related state; optional blob storage for chat payload persistence in `api/chats.ts`
 - desktop: per-user SQLite at `~/Library/Application Support/AskPauli/sessions.db` (`api/_lib/desktop/sqliteKv.ts`), injected via `setSessionRedis`/`setAuditSink` at sidecar boot so `sessionStore.ts` and its callers are unchanged. The legacy `/api/chats` Blob route is not mounted on desktop; the V2 UI persists chats in IndexedDB instead.
 

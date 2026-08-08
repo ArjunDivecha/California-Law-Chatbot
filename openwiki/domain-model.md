@@ -113,6 +113,20 @@ Source file:
 
 - `types.ts`
 
+### Draft version, redline, and proposal concepts
+
+The V2 Draft page has its own device-local domain for version history and redline compare, distinct from the cloud chat session model. An immutable per-session version chain (`DraftVersion`, keyed by `session_id` + `version`) accumulates in encrypted IndexedDB; each version records its `kind` (`'initial'` / `'auto'` / `'manual'` / `'restore'`), applied-proposal attribution, word-count delta, and (for restores) the source version. A redline compare produces a flat `RedlineOp` list (`'equal'` / `'ins'` / `'del'`) with a reconstruction invariant: equal+del rebuilds the old text, equal+ins rebuilds the new. Proposal parsing (`ProposedChange`) turns the model's `{"changes":[…]}` reply into reviewable edits, with `salvageChanges` recovering complete proposals from `max_tokens`-truncated replies. Draft sessions (`DraftSessionSnapshot`) persist the document, edit history, and uploaded filename to encrypted `localStorage` and auto-restore on return. All three stores share the non-extractable device-local AES-GCM key from `services/workspaceCrypto.ts` and never send client documents to cloud KV.
+
+The full data model, lifecycle, invariants, and change guidance are documented in [draft versioning and redline](draft-versioning.md).
+
+Source files:
+
+- `utils/draftVersionStore.ts` (`DraftVersion`, `DraftVersionKind`, `planPrune`, `appendVersion`)
+- `utils/draftRedline.ts` (`RedlineOp`, `computeRedline`, `snapToWordBoundaries`)
+- `utils/draftProposals.ts` (`ProposedChange`, `parseChangesJson`, `salvageChanges`)
+- `utils/draftSessionStore.ts` (`DraftSessionSnapshot`, `saveDraftSession`)
+- `services/workspaceCrypto.ts` (shared device-local encryption key)
+
 ### Citation verification and the two-provider identity gate
 
 Case-citation verification cross-checks two independent public providers before any citation is stamped `verified`. CiteLaw supplies a structured identity check (reporter citation + case title + year) with `confirmed` / `possible_match` / `no_match` results; CourtListener supplies independent search/opinion evidence. The gated status set (`verified`, `unconfirmed`, `not_found`, `unverified`, `unavailable`) records which providers supplied positive evidence (`verification_source`). A CiteLaw near-match or identity conflict blocks a CourtListener-only green badge; provider outages degrade to CourtListener and surface as `unavailable`, never as fabricated.

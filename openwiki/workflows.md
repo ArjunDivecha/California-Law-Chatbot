@@ -50,15 +50,25 @@ Useful source files:
 - `hooks/useV2AgentStream.ts`
 - `services/sanitization/chatAdapter.ts`
 - `services/sanitization/wireGuard.ts`
+- `utils/draftVersionStore.ts`, `utils/draftRedline.ts`, `utils/draftProposals.ts`, `utils/draftSessionStore.ts` (see [draft versioning and redline](draft-versioning.md))
 - `components/v2/V2DraftingMagicPage.tsx` for the higher-complexity drafting flow
 
 Watch-outs:
 
-- The prompt contract expects structured JSON output with atomic changes.
+- The prompt contract expects structured JSON output with atomic changes. Parsing is handled by `utils/draftProposals.ts`: `parseChangesJson` for complete replies, `salvageChanges` for `max_tokens`-truncated replies (recovers every complete proposal; drops proposals without a usable `find`). See [draft versioning and redline](draft-versioning.md).
 - File ingestion happens in-browser. The Draft page has its own drop zone that reads dropped files via the same path as the upload button; a window-level guard in `App.tsx` prevents drops outside that zone from navigating the browser away from the SPA.
 - Sanitization applies to the full payload before it leaves the device.
 - Draft/export behavior is split between browser generation and server export, so confirm which path a change uses.
 - This editor runs no citation verification at all. Whenever the document body contains citation-shaped text (`hasCitationLikeText` in `utils/citationHeuristic.ts`), the page shows a standing amber banner — "Citations in this document are not verified" — linking to `/v2/verify`. An unchecked citation must never render indistinguishable from a checked one on this surface.
+
+### Version history, redline, and session persistence
+
+The Draft page keeps a Word-style version history and a lawyer-readable redline compare. These were added in two phases at commit `ed1209b`; the full data model, lifecycle, invariants, and change guidance live in [draft versioning and redline](draft-versioning.md).
+
+- **Version chain** — every document load, applied-proposal settle, manual checkpoint, and restore appends an immutable version to a per-session chain in encrypted IndexedDB (`utils/draftVersionStore.ts`). The `VersionsPanel` lists versions (newest first) with kind labels (`Document loaded`, `Changes applied`, `Saved checkpoint`, `Restored`), word-count deltas, and View / Compare / Restore actions. Retention caps at 50 versions per session; only oldest `'auto'` versions are pruned.
+- **Redline compare** — `Compare` on any version opens a `RedlineModal` showing a word-level diff of that version versus the current document, computed by `computeRedline` in `utils/draftRedline.ts` (diff-match-patch + word-boundary snap). Insertions render as blue underline, deletions as red strikethrough, with inserted/deleted word counts. The reconstruction invariant guarantees the diff faithfully represents both documents.
+- **Restore** — restoring a version copies its text forward as a new `'restore'` version; history is never destroyed.
+- **Session persistence** — the document, edit history, and uploaded filename auto-save to encrypted `localStorage` (`utils/draftSessionStore.ts`) on an 800ms debounce and auto-restore on return, so navigating away no longer loses work. The session store is deliberately separate from the cloud `sessionStore.ts` used by chat — client documents never sit in cloud KV.
 
 ## 3. Citation verification workflow
 
