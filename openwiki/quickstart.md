@@ -46,7 +46,7 @@ The repo also contains a large body of legal/compliance research in `docs/`, but
 
 ## Common tasks for future agents
 
-- Changing the chat loop or tool behavior: start in `api/_lib/agentLoop.ts`, then inspect `api/_lib/tools/index.ts`, `api/_lib/compliance/policyEngine.ts`, and the V2 hooks.
+- Changing the chat loop or tool behavior: start in `api/_lib/agentLoop.ts`, then inspect `api/_lib/tools/index.ts` (six in-process tools + `web_search` + MCP toolsets), `api/_lib/compliance/policyEngine.ts` (`ALL_TOOLS` and `allowedTools` gating), and the V2 hooks. The full tool registry maps `courtlistener_search`, `legiscan_search`, `openstates_search`, `citation_verify`, `california_code_lookup`, `statute_verify`, `web_search`, and MCP toolsets to policy ids; see [architecture](architecture.md) and [domain model](domain-model.md).
 - Changing model selection or the approved-model guard: start in `api/_lib/modelResolver.ts` (auto-tracking + pinned `KNOWN_GOOD` defaults) and `api/_lib/approvedModels.ts` (fail-closed `assertApprovedModel`); `agentLoop.ts` `resolveModel` is the only path that swaps in the fallback on an unavailability error.
 - Changing confidentiality rules or matter modes: start in `api/_lib/compliance/policyEngine.ts` and `api/matter-context.ts`, then follow the UI selector in `components/v2/MatterModeSelector.tsx`.
 - Changing sanitization/tokenization: start in `services/sanitization/detectionPipeline.ts`, `services/sanitization/realSanitizer.ts`, and `hooks/useSanitizer.tsx`.

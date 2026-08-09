@@ -86,7 +86,16 @@ The important boundary is inside `api/_lib/`.
 ### Agent loop and tool execution
 
 - `api/_lib/agentLoop.ts` is the core turn engine and the only code path that talks to Anthropic Messages directly.
-- `api/_lib/tools/index.ts` builds the tool registry and dispatches tool use blocks.
+- `api/_lib/tools/index.ts` builds the tool registry and dispatches tool use blocks. The registry registers six in-process custom tools plus Anthropic's server-side `web_search` and optional MCP toolsets:
+  - `courtlistener_search` (`api/_lib/tools/courtlistenerSearch.ts`) — CourtListener case-law search (policy id `courtlistener`).
+  - `legiscan_search` (`api/_lib/tools/legiscanSearch.ts`) — LegiScan California bill search, requires `LEGISCAN_API_KEY` (policy id `legiscan`).
+  - `openstates_search` (`api/_lib/tools/openstatesSearch.ts`) — OpenStates v3 bill search, requires `OPENSTATES_API_KEY` (policy id `openstates`).
+  - `citation_verify` (`api/_lib/tools/citationVerify.ts`) — two-provider case-citation identity gate (policy id `citation_verify`).
+  - `california_code_lookup` (`api/_lib/tools/californiaCodeLookupTool.ts`) — pure local parsing of CA statutory cites into code/section + leginfo URL, no network call (policy id `ca_code`).
+  - `statute_verify` (`api/_lib/tools/statuteVerify.ts`) — statutory/regulatory citation verification against official sources (shares policy id `citation_verify`).
+  - `web_search` — Anthropic-native server-side tool (`web_search_20250305`, max 3 uses), resolved server-side and never reaches the in-process dispatcher.
+  - MCP toolsets (`api/_lib/tools/mcpRegistry.ts`) — optional per-server MCP integrations gated by `V2_MCP_ENABLED` plus a per-server enable flag; privilege-gated servers are omitted for confidential input (policy id `mcp`). The registry currently catalogs the Free Law Project CourtListener MCP server (`V2_MCP_FREE_LAW_PROJECT`), whose transport path was unconfirmed as of 2026-05-12 and stays disabled until verified.
+- `buildToolsForPolicy` in `tools/index.ts` is the policy-driven tools-array builder: a tool is included only if its policy `ToolId` is in `decision.allowedTools`. This is how `web_search` and MCP are omitted in `client_confidential` / `protected_discovery` modes. `toolQueryGuard.ts` re-checks the policy id at dispatch time as defense-in-depth.
 - `api/_lib/compliance/toolQueryGuard.ts` and the policy engine prevent tool misuse and exfiltration.
 - `api/_lib/compliance/turnManifest.ts` records a structured per-turn compliance manifest.
 - `api/_lib/tools/citationVerify.ts` implements the two-provider case-citation identity gate (CiteLaw structured check plus CourtListener search evidence); `api/_lib/tools/statuteVerify.ts` verifies statutory/regulatory citations against official sources. The verification SSE route (`api/agent/verify-stream.ts`) prefetches CiteLaw once for all case citations, caches results for six hours, then runs one verifier sub-agent per citation. The Drafting Magic QC route (`api/agent/draft-qc.ts`) runs the same verifier section-by-section with a 15-citation/run cap and emits a `partial` status for over-cap/errored sections. See [workflows](workflows.md) for the user-facing flow and status semantics.
@@ -162,4 +171,3 @@ State is spread across stores that differ by surface:
 ## Historical context
 
 The repository history shows a deliberate migration from an older OpenRouter/Gemini-era app to a single Anthropic-direct V2/V4 line. Several deleted files and historical docs in `README.md` and `docs/archive-v1/` are now reference-only.
-e-v1/` are now reference-only.

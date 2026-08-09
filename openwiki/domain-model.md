@@ -79,11 +79,25 @@ Source files:
 
 The agent loop works with a logical tool registry. Policy decisions are mapped to allowed tool ids, and dispatch is split into a controlled registry rather than ad hoc calls.
 
+The policy engine's `ALL_TOOLS` defines seven logical ids: `web_search`, `courtlistener`, `legiscan`, `openstates`, `citation_verify`, `ca_code`, and `mcp`. The tools registry (`api/_lib/tools/index.ts`) maps each Anthropic-registered tool name to its policy `ToolId` via `TOOL_POLICY_ID`, then `buildToolsForPolicy` includes a tool only when its id is in `decision.allowedTools`. `statute_verify` shares the `citation_verify` policy id because both verify public citations/statutes with no client-fact leakage.
+
+| Anthropic tool name | Policy ToolId | Handler | Notes |
+|---|---|---|---|
+| `web_search` | `web_search` | Anthropic server-side | `web_search_20250305`, max 3 uses; never reaches in-process dispatcher |
+| `courtlistener_search` | `courtlistener` | `courtlistenerSearch.ts` | CourtListener case-law search |
+| `legiscan_search` | `legiscan` | `legiscanSearch.ts` | LegiScan CA bill search (`LEGISCAN_API_KEY`) |
+| `openstates_search` | `openstates` | `openstatesSearch.ts` | OpenStates v3 bill search (`OPENSTATES_API_KEY`) |
+| `citation_verify` | `citation_verify` | `citationVerify.ts` | Two-provider case-citation identity gate |
+| `california_code_lookup` | `ca_code` | `californiaCodeLookupTool.ts` | Pure local parse of CA statutory cites → leginfo URL, no network |
+| `statute_verify` | `citation_verify` | `statuteVerify.ts` | Statutory/regulatory citation verification |
+| MCP toolsets | `mcp` | `mcpRegistry.ts` | Per-server MCP integrations (`V2_MCP_ENABLED` + per-server flag); privilege-gated |
+
 Source files:
 
-- `api/_lib/tools/index.ts`
-- `api/_lib/compliance/policyEngine.ts`
-- `api/_lib/compliance/toolQueryGuard.ts`
+- `api/_lib/tools/index.ts` (registry, `TOOL_POLICY_ID`, `buildToolsForPolicy`, `dispatchTool`)
+- `api/_lib/tools/mcpRegistry.ts` (MCP server registry, `activeServers`, `buildMcpServerSpec`)
+- `api/_lib/compliance/policyEngine.ts` (`ALL_TOOLS`, `ToolId`, `PolicyDecision.allowedTools`)
+- `api/_lib/compliance/toolQueryGuard.ts` (dispatch-time re-check)
 
 ### Model family, resolver, and approved-model guard
 

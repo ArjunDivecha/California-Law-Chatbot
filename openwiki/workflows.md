@@ -27,7 +27,8 @@ Useful source files:
 - `hooks/useV2AgentStream.ts`
 - `services/guardrailsServiceV2.ts` (`checkAnswer` pre-render guardrail)
 - `utils/citationHeuristic.ts` (`hasCitationLikeText` disclosure gate)
-- `api/agent/turn-stream.ts`
+- `api/agent/turn-stream.ts` (streaming turn endpoint); `api/agent/turn.ts` (non-streaming variant for headless integrations)
+- `api/agent/session.ts` / `api/agent/sessions.ts` (single-session detail and user session list for the sidebar)
 - `api/_lib/agentLoop.ts`
 - `api/_lib/tools/index.ts`
 
@@ -50,6 +51,7 @@ Useful source files:
 - `hooks/useV2AgentStream.ts`
 - `services/sanitization/chatAdapter.ts`
 - `services/sanitization/wireGuard.ts`
+- `api/agent/draft-stream.ts` (SSE drafting endpoint for template-driven document generation); `api/agent/revise-section.ts` (per-section revision endpoint scoped to a single section)
 - `utils/draftVersionStore.ts`, `utils/draftRedline.ts`, `utils/draftProposals.ts`, `utils/draftSessionStore.ts` (see [draft versioning and redline](draft-versioning.md))
 - `components/v2/V2DraftingMagicPage.tsx` for the higher-complexity drafting flow
 
@@ -152,6 +154,7 @@ Useful source files:
 
 - `components/v2/V2DraftingMagicPage.tsx`
 - `hooks/useV2DraftingMagicStream.ts`
+- `api/agent/drafting-magic.ts` (V2-adapted packet drafting endpoint: sanitizes packet text, runs the V2 agent loop with a Drafting-Magic system prompt, streams extraction + drafting steps via SSE)
 - `api/agent/draft-qc.ts` + `hooks/useV2DraftQC.ts` (citation-QC loop)
 - `services/sanitization/chatAdapter.ts`
 - `services/workspaceCrypto.ts`
