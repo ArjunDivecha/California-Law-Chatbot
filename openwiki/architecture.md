@@ -113,7 +113,7 @@ The important boundary is inside `api/_lib/`.
 - required review gates
 - evidence sinks and blocking reasons
 
-Related modules refine that policy with governance, conflict checks, billing, review gates, and storage rules.
+The surrounding compliance modules refine, enforce, or evidence that decision across PRD phases P3–P7: the outbound tool-query exfiltration guard, the per-turn manifest, the evidence-backed provider registry, storage policy + the firm-controlled store, attestations, lawyer review gates, conflicts, billing, bias review, and governance. See [compliance and storage layer](compliance.md) for the full phase map, per-module wiring status, invariants, and focused tests.
 
 ### Model selection and the approved-model guard
 

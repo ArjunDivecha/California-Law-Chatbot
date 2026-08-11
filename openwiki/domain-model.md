@@ -190,7 +190,7 @@ Source files:
 
 ### Compliance posture
 
-The documentation and code treat compliance as a first-class product constraint rather than a deployment footnote. The policy engine, sanitized wire path, matter mode, consent, and per-turn manifest are all part of that posture.
+The documentation and code treat compliance as a first-class product constraint rather than a deployment footnote. The policy engine, sanitized wire path, matter mode, consent, and per-turn manifest are all part of that posture. The full module-by-module breakdown (provider registry, storage policy + firm-controlled store, attestations, review gates, conflicts, billing, bias review, governance), per-module wiring status, invariants, and focused tests live in [compliance and storage layer](compliance.md).
 
 Source files:
 

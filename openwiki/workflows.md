@@ -187,6 +187,7 @@ Watch-outs:
 - protected discovery is treated as a locked state with downgrade protection.
 - consent is not just a UI toggle; it is persisted and used by policy decisions.
 - the selector is coupled to session ownership checks.
+- the server-side consent/attestation recording and the locked-protected-flag transition logic are documented in [compliance and storage layer](compliance.md#p6--attestations-review-gates-conflicts-matter-transitions).
 
 ## 6. Chat storage and export
 

@@ -14,6 +14,7 @@ Start here if you are new to the repo:
 2. Read the [workflows guide](workflows.md) to understand the user-facing paths and how the V2 pages fit together.
 3. Read the [domain model](domain-model.md) for the core concepts and shared types.
 4. Read [draft versioning and redline](draft-versioning.md) for the V2 Draft page's version history, word-level redline compare, and device-local session persistence.
+5. Read [compliance and storage layer](compliance.md) for the server-authoritative policy engine, provider registry, storage policy + firm-controlled store, attestations, review gates, conflicts, billing, bias review, and governance.
 
 ## What this repository does
 
@@ -39,6 +40,7 @@ The repo also contains a large body of legal/compliance research in `docs/`, but
 - Agent loop: `api/_lib/agentLoop.ts`
 - Model resolution + allowlist: `api/_lib/modelResolver.ts` and `api/_lib/approvedModels.ts`
 - Compliance policy: `api/_lib/compliance/policyEngine.ts`
+- Compliance/storage layer: `api/_lib/compliance/` (see [compliance and storage layer](compliance.md))
 - Session store (web): `api/_lib/sessionStore.ts`; desktop SQLite adapter: `api/_lib/desktop/sqliteKv.ts`
 - Sanitization: `services/sanitization/detectionPipeline.ts` and `services/sanitization/realSanitizer.ts`
 - Citation verification: `api/_lib/tools/citationVerify.ts` (CiteLaw identity gate + CourtListener), `api/agent/verify-stream.ts`
@@ -49,6 +51,7 @@ The repo also contains a large body of legal/compliance research in `docs/`, but
 - Changing the chat loop or tool behavior: start in `api/_lib/agentLoop.ts`, then inspect `api/_lib/tools/index.ts` (six in-process tools + `web_search` + MCP toolsets), `api/_lib/compliance/policyEngine.ts` (`ALL_TOOLS` and `allowedTools` gating), and the V2 hooks. The full tool registry maps `courtlistener_search`, `legiscan_search`, `openstates_search`, `citation_verify`, `california_code_lookup`, `statute_verify`, `web_search`, and MCP toolsets to policy ids; see [architecture](architecture.md) and [domain model](domain-model.md).
 - Changing model selection or the approved-model guard: start in `api/_lib/modelResolver.ts` (auto-tracking + pinned `KNOWN_GOOD` defaults) and `api/_lib/approvedModels.ts` (fail-closed `assertApprovedModel`); `agentLoop.ts` `resolveModel` is the only path that swaps in the fallback on an unavailability error.
 - Changing confidentiality rules or matter modes: start in `api/_lib/compliance/policyEngine.ts` and `api/matter-context.ts`, then follow the UI selector in `components/v2/MatterModeSelector.tsx`.
+- Changing the compliance/storage layer (provider approval, firm-controlled store, review gates, billing/bias/governance): start in `api/_lib/compliance/` — see [compliance and storage layer](compliance.md) for the phase map, per-module wiring status, invariants, and focused tests.
 - Changing sanitization/tokenization: start in `services/sanitization/detectionPipeline.ts`, `services/sanitization/realSanitizer.ts`, and `hooks/useSanitizer.tsx`.
 - Changing export behavior: inspect `api/export-document.ts` and the drafting/export components together.
 - Changing draft version history, redline compare, or draft session persistence: start in `utils/draftVersionStore.ts` (version chain + `planPrune` retention), `utils/draftRedline.ts` (`computeRedline` + `snapToWordBoundaries`), and `utils/draftSessionStore.ts` (encrypted localStorage sessions); the UI handlers and `VersionsPanel`/`RedlineModal` are in `components/v2/V2DraftPage.tsx`. See [draft versioning and redline](draft-versioning.md) for invariants and focused tests.
@@ -93,6 +96,8 @@ yarn smoke:citelaw      # live CiteLaw batch smoke (1 credit, public cites only)
 ```
 
 The repo also uses Vercel functions, so route/security changes should be checked against the API handlers and any relevant tests under `tests/`.
+
+Several compliance tests have **no npm script** and run directly with `./node_modules/.bin/tsx tests/<file>` — `tests/toolGating.test.mjs` (P3), `tests/turnPolicy.test.mjs` (P3b), `tests/providerRegistry.test.mjs` (P4), `tests/storagePolicy.test.mjs` / `tests/sqliteVecStore.test.mjs` / `tests/localEmbeddings.test.mjs` (P5), `tests/p6Compliance.test.mjs` (P6), `tests/p7Compliance.test.mjs` (P7), `tests/approvedModels.test.mjs`, `tests/routeSecurity.test.mjs`, `tests/matterContext.test.mjs` — see [compliance and storage layer](compliance.md) for the phase→test map.
 
 ## Source docs worth keeping in mind
 
