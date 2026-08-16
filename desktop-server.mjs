@@ -60,6 +60,13 @@ import agentVerifyStream from './api/agent/verify-stream.ts';
 import agentDraftQc from './api/agent/draft-qc.ts';
 import agentSessions from './api/agent/sessions.ts';
 import agentSession from './api/agent/session.ts';
+import boxAuthStart from './api/box/auth-start.ts';
+import boxCallback from './api/box/callback.ts';
+import boxStatus from './api/box/status.ts';
+import boxDisconnect from './api/box/disconnect.ts';
+import boxList from './api/box/list.ts';
+import boxDownload from './api/box/download.ts';
+import boxUpload from './api/box/upload.ts';
 
 const kv = new SqliteKv();
 setSessionRedis(kv);
@@ -80,6 +87,13 @@ const ROUTES = {
   '/api/agent/draft-qc': agentDraftQc,
   '/api/agent/sessions': agentSessions,
   '/api/agent/session': agentSession,
+  '/api/box/auth-start': boxAuthStart,
+  '/api/box/callback': boxCallback,
+  '/api/box/status': boxStatus,
+  '/api/box/disconnect': boxDisconnect,
+  '/api/box/list': boxList,
+  '/api/box/download': boxDownload,
+  '/api/box/upload': boxUpload,
 };
 for (const [route, handler] of Object.entries(ROUTES)) {
   app.all(route, (req, res) => handler(req, res));

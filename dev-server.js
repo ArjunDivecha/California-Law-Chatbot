@@ -28,6 +28,8 @@ dotenv.config({ path: '.env.local', override: true }); // loads .env.local (over
     'UPSTASH_REDIS_REST_TOKEN',
     'COURTLISTENER_API_KEY',
     'CITELAW_API_KEY',
+    'BOX_CLIENT_ID',
+    'BOX_CLIENT_SECRET',
     // V2 session endpoints + V1 chats endpoint verify Clerk JWTs server-
     // side. Without CLERK_SECRET_KEY the sidebar fetches 401.
     'CLERK_SECRET_KEY',
@@ -91,6 +93,14 @@ app.all('/api/matter-context', async (req, res) => {
   const handler = await loadHandler('./api/matter-context.ts');
   await handler(req, res);
 });
+
+// Box integration (OAuth + folder browse + byte-passthrough download + upload)
+for (const r of ['auth-start', 'callback', 'status', 'disconnect', 'list', 'download', 'upload']) {
+  app.all(`/api/box/${r}`, async (req, res) => {
+    const handler = await loadHandler(`./api/box/${r}.ts`);
+    await handler(req, res);
+  });
+}
 
 // V2 agent loop — non-streaming + streaming endpoints
 app.all('/api/agent/turn', async (req, res) => {

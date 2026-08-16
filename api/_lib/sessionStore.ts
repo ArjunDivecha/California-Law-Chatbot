@@ -59,6 +59,13 @@ export function setSessionRedis(redis: SessionRedis | null): void {
   cached = null;
 }
 
+/** The active KV store (injected SQLite on desktop, Upstash on web). For
+ *  modules that need generic get/set outside the session key families —
+ *  e.g. api/_lib/box.ts per-user OAuth tokens. */
+export function getRedis(): SessionRedis {
+  return resolveRedis();
+}
+
 function resolveRedis(): SessionRedis {
   if (injected) return injected;
   if (cached) return cached;

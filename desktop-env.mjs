@@ -52,6 +52,8 @@ dotenv.config({ path: join(NEW_DIR, '.env') });
     'OPENAI_API_KEY',
     'COURTLISTENER_API_KEY',
     'CITELAW_API_KEY',
+    'BOX_CLIENT_ID',
+    'BOX_CLIENT_SECRET',
   ];
   if (required.every((k) => process.env[k])) return;
   let text;

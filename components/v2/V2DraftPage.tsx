@@ -32,7 +32,7 @@
 
 import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useUser } from '@clerk/clerk-react';
+import { useUser, useAuth } from '@clerk/clerk-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useV2AgentStream } from '../../hooks/useV2AgentStream.ts';
@@ -60,6 +60,16 @@ import {
   type VersionAttribution,
 } from '../../utils/draftVersionStore.ts';
 import { computeRedline, type RedlineOp, type RedlineStats } from '../../utils/draftRedline.ts';
+import {
+  boxStatus as fetchBoxStatus,
+  connectBox,
+  listBoxFolder,
+  downloadBoxFile,
+  uploadToBox,
+  type BoxItem,
+  type BoxListing,
+  type BoxStatus,
+} from '../../services/boxClient.ts';
 
 function newSessionId(): string {
   return `v2d_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
@@ -169,6 +179,7 @@ function applyChange(doc: string, find: string, replace: string): string | null 
 
 export const V2DraftPage: React.FC = () => {
   const { user } = useUser();
+  const { getToken } = useAuth();
   const userId = user?.id ?? null;
   const [sessionId, setSessionId] = useState(() => newSessionId());
   const { state, send, reset } = useV2AgentStream();
@@ -185,6 +196,21 @@ export const V2DraftPage: React.FC = () => {
   const [instruction, setInstruction] = useState('');
   const [history, setHistory] = useState<ChatTurn[]>([]);
 
+  // ----- Box integration (load from / save to the firm's Box) -----
+  const [boxState, setBoxState] = useState<BoxStatus>({ configured: false, connected: false });
+  const [boxBusy, setBoxBusy] = useState(false);
+  const [boxError, setBoxError] = useState<string | null>(null);
+  /** null = closed; 'file' = pick a document to load; 'folder' = pick a save destination. */
+  const [boxBrowseMode, setBoxBrowseMode] = useState<'file' | 'folder' | null>(null);
+  /** Box file this draft came from (enables save-as-new-version). */
+  const [boxFileId, setBoxFileId] = useState<string | null>(null);
+  const [boxFileName, setBoxFileName] = useState<string | null>(null);
+  const [boxSavedNote, setBoxSavedNote] = useState<string | null>(null);
+
+  React.useEffect(() => {
+    void fetchBoxStatus(getToken).then(setBoxState);
+  }, [getToken]);
+
   // ----- Session persistence (device-local, encrypted at rest) -----
   // Navigating away used to destroy the document and every proposal.
   // Sessions now auto-save to localStorage (AES-GCM via workspaceCrypto,
@@ -200,6 +226,8 @@ export const V2DraftPage: React.FC = () => {
     setDocumentText(snap.documentText);
     setHistory(snap.history as ChatTurn[]);
     setUploadedName(snap.uploadedName);
+    setBoxFileId(snap.boxFileId ?? null);
+    setBoxFileName(snap.boxFileName ?? null);
     setInstruction('');
     void listVersions(id).then(setVersions);
     return true;
@@ -321,10 +349,12 @@ export const V2DraftPage: React.FC = () => {
         documentText,
         history,
         uploadedName,
+        boxFileId,
+        boxFileName,
       }).then(() => setRecentDrafts(listDraftSessions()));
     }, 800);
     return () => window.clearTimeout(t);
-  }, [restoreReady, sessionId, documentText, history, uploadedName]);
+  }, [restoreReady, sessionId, documentText, history, uploadedName, boxFileId, boxFileName]);
 
   // ----- Source loading -----
   const onUploadClick = useCallback(() => fileInputRef.current?.click(), []);
@@ -370,6 +400,100 @@ export const V2DraftPage: React.FC = () => {
     },
     [handleFile],
   );
+
+  // ----- Box actions -----
+
+  const onBoxLoadClick = useCallback(async () => {
+    setBoxError(null);
+    if (!boxState.connected) {
+      setBoxBusy(true);
+      const ok = await connectBox(getToken);
+      setBoxBusy(false);
+      if (!ok) {
+        setBoxError('Box sign-in did not complete. Try again.');
+        return;
+      }
+      setBoxState(await fetchBoxStatus(getToken));
+    }
+    setBoxBrowseMode('file');
+  }, [boxState.connected, getToken]);
+
+  const onBoxFilePicked = useCallback(
+    async (item: BoxItem) => {
+      setBoxBrowseMode(null);
+      setBoxBusy(true);
+      setBoxError(null);
+      try {
+        // Bytes land in the browser and enter the SAME funnel as an upload:
+        // extractTextFromFile → on-device PII tokenization → only then wire.
+        const file = await downloadBoxFile(getToken, item);
+        await handleFile(file);
+        setBoxFileId(item.id);
+        setBoxFileName(item.name);
+      } catch (err) {
+        setBoxError(`Could not load from Box: ${(err as Error).message}`);
+      } finally {
+        setBoxBusy(false);
+      }
+    },
+    [getToken, handleFile],
+  );
+
+  const doBoxSave = useCallback(
+    async (folderId?: string) => {
+      if (documentText === null) return;
+      setBoxBusy(true);
+      setBoxError(null);
+      try {
+        const blob = await buildDocxBlob(documentText);
+        const name = boxFileName
+          ? boxFileName.replace(/\.(docx|doc|pdf|txt|md)$/i, '') + '.docx'
+          : `${draftTitle(documentText, uploadedName).replace(/[^\w\- ]+/g, '').slice(0, 60) || 'AskPauli draft'}.docx`;
+        const result = boxFileId
+          ? await uploadToBox(getToken, blob, name, { fileId: boxFileId })
+          : await uploadToBox(getToken, blob, name, { folderId: folderId ?? '0' });
+        setBoxFileId(result.id);
+        setBoxFileName(result.name);
+        setBoxSavedNote(
+          boxFileId ? `Saved to Box as a new version of ${result.name}` : `Saved to Box as ${result.name}`,
+        );
+        window.setTimeout(() => setBoxSavedNote(null), 6000);
+      } catch (err) {
+        setBoxError(`Could not save to Box: ${(err as Error).message}`);
+      } finally {
+        setBoxBusy(false);
+      }
+    },
+    [documentText, boxFileId, boxFileName, uploadedName, getToken],
+  );
+
+  const onBoxSaveClick = useCallback(async () => {
+    setBoxError(null);
+    if (!boxState.connected) {
+      setBoxBusy(true);
+      const ok = await connectBox(getToken);
+      setBoxBusy(false);
+      if (!ok) {
+        setBoxError('Box sign-in did not complete. Try again.');
+        return;
+      }
+      setBoxState(await fetchBoxStatus(getToken));
+    }
+    if (boxFileId) {
+      await doBoxSave();
+    } else {
+      setBoxBrowseMode('folder'); // pick destination folder first
+    }
+  }, [boxState.connected, boxFileId, doBoxSave, getToken]);
+
+  const onBoxFolderPicked = useCallback(
+    async (folderId: string) => {
+      setBoxBrowseMode(null);
+      await doBoxSave(folderId);
+    },
+    [doBoxSave],
+  );
+
 
   const onLoadDocument = useCallback(() => {
     const text = pasteText.trim();
@@ -527,6 +651,9 @@ export const V2DraftPage: React.FC = () => {
     setPasteText('');
     setUploadedName(null);
     setUploadError(null);
+    setBoxFileId(null);
+    setBoxFileName(null);
+    setBoxError(null);
     setHistory([]);
     setInstruction('');
     setRecentDrafts(listDraftSessions());
@@ -566,6 +693,25 @@ export const V2DraftPage: React.FC = () => {
         </Link>
       </header>
 
+      {boxBrowseMode && (
+        <BoxBrowserModal
+          mode={boxBrowseMode}
+          getToken={getToken}
+          onPickFile={(item) => void onBoxFilePicked(item)}
+          onPickFolder={(id) => void onBoxFolderPicked(id)}
+          onClose={() => setBoxBrowseMode(null)}
+        />
+      )}
+      {boxSavedNote && (
+        <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-full bg-gray-900 px-4 py-2 text-xs text-white shadow-lg">
+          {boxSavedNote}
+        </div>
+      )}
+      {boxError && documentText !== null && (
+        <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-full bg-red-600 px-4 py-2 text-xs text-white shadow-lg">
+          {boxError}
+        </div>
+      )}
       {!documentText ? (
         <LoadScreen
           pasteText={pasteText}
@@ -581,6 +727,11 @@ export const V2DraftPage: React.FC = () => {
           recentDrafts={recentDrafts}
           onOpenRecent={onOpenRecent}
           onDeleteRecent={onDeleteRecent}
+          boxConfigured={boxState.configured}
+          boxConnectedLogin={boxState.login ?? null}
+          boxBusy={boxBusy}
+          boxError={boxError}
+          onBoxLoad={() => void onBoxLoadClick()}
         />
       ) : (
         <div className="flex-1 min-h-0 flex">
@@ -590,6 +741,17 @@ export const V2DraftPage: React.FC = () => {
               <h2 className="text-sm font-semibold text-gray-900">Document</h2>
               <div className="flex items-center gap-2">
                 <ExportButtons documentText={documentText} disabled={state.isStreaming} />
+                {boxState.configured && (
+                  <button
+                    type="button"
+                    onClick={() => void onBoxSaveClick()}
+                    disabled={state.isStreaming || boxBusy}
+                    className="whitespace-nowrap text-xs rounded-full bg-[#0061d5]/10 hover:bg-[#0061d5]/20 disabled:opacity-60 px-3 py-1.5 text-[#0061d5] font-semibold"
+                    title={boxFileId ? `Save as a new version of ${boxFileName ?? 'the Box file'}` : 'Save this document to a Box folder'}
+                  >
+                    {boxBusy ? 'Box…' : boxFileId ? 'Save to Box ↺' : 'Save to Box'}
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={onSaveVersion}
@@ -909,10 +1071,16 @@ const LoadScreen: React.FC<{
   recentDrafts: DraftSessionIndexEntry[];
   onOpenRecent: (id: string) => void;
   onDeleteRecent: (id: string) => void;
+  boxConfigured: boolean;
+  boxConnectedLogin: string | null;
+  boxBusy: boolean;
+  boxError: string | null;
+  onBoxLoad: () => void;
 }> = ({
   pasteText, setPasteText, uploadBusy, uploadError, uploadedName,
   fileInputRef, onUploadClick, onFileChosen, onFileDropped, onLoadDocument,
   recentDrafts, onOpenRecent, onDeleteRecent,
+  boxConfigured, boxConnectedLogin, boxBusy, boxError, onBoxLoad,
 }) => {
   const { preview } = useV2SanitizationPreview(pasteText);
   const detectionCount = preview.tokens.length;
@@ -994,6 +1162,18 @@ const LoadScreen: React.FC<{
           >
             {uploadBusy ? 'Reading file…' : '⬆ Upload a file'}
           </button>
+          {boxConfigured && (
+            <button
+              type="button"
+              onClick={onBoxLoad}
+              disabled={uploadBusy || boxBusy}
+              className="rounded-full bg-[#0061d5]/10 hover:bg-[#0061d5]/20 disabled:opacity-60 text-[#0061d5] text-sm font-semibold px-4 py-2"
+              title={boxConnectedLogin ? `Box: ${boxConnectedLogin}` : 'Sign in with Box, then browse your folders'}
+            >
+              {boxBusy ? 'Box…' : '📦 Load from Box'}
+            </button>
+          )}
+          {boxError && <span className="text-xs text-red-600">{boxError}</span>}
           <input
             ref={fileInputRef}
             type="file"
@@ -1173,6 +1353,128 @@ const VersionsPanel: React.FC<{
 };
 
 // ---------------------------------------------------------------------------
+// Box browser modal: navigate folders; pick a file (mode 'file') or choose
+// the current folder as a save destination (mode 'folder'). Metadata only —
+// file bytes flow through onPickFile → downloadBoxFile → handleFile.
+// ---------------------------------------------------------------------------
+const LOADABLE_EXT = /\.(docx|doc|pdf|txt|md)$/i;
+
+const BoxBrowserModal: React.FC<{
+  mode: 'file' | 'folder';
+  getToken: () => Promise<string | null>;
+  onPickFile: (item: BoxItem) => void;
+  onPickFolder: (folderId: string) => void;
+  onClose: () => void;
+}> = ({ mode, getToken, onPickFile, onPickFolder, onClose }) => {
+  const [trail, setTrail] = useState<Array<{ id: string; name: string }>>([{ id: '0', name: 'All files' }]);
+  const [listing, setListing] = useState<BoxListing | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const current = trail[trail.length - 1];
+
+  React.useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+    listBoxFolder(getToken, current.id)
+      .then((l) => {
+        if (!cancelled) setListing(l);
+      })
+      .catch((e) => {
+        if (!cancelled) setError((e as Error).message);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [current.id, getToken]);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-8" onClick={onClose}>
+      <div
+        className="max-h-[80vh] w-full max-w-xl overflow-hidden rounded-xl bg-white shadow-xl flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="border-b border-gray-200 px-5 py-3">
+          <div className="flex items-center justify-between">
+            <h4 className="text-sm font-semibold text-gray-900">
+              {mode === 'file' ? 'Load a document from Box' : 'Choose a Box folder to save into'}
+            </h4>
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-full bg-gray-100 hover:bg-gray-200 px-3 py-1.5 text-xs text-gray-700"
+            >
+              Cancel
+            </button>
+          </div>
+          <div className="mt-1 flex flex-wrap items-center gap-1 text-[12px] text-gray-600">
+            {trail.map((t, i) => (
+              <React.Fragment key={t.id}>
+                {i > 0 && <span className="text-gray-400">/</span>}
+                <button
+                  type="button"
+                  className={i === trail.length - 1 ? 'font-semibold text-gray-900' : 'hover:underline text-[#0061d5]'}
+                  onClick={() => setTrail(trail.slice(0, i + 1))}
+                >
+                  {t.name}
+                </button>
+              </React.Fragment>
+            ))}
+          </div>
+        </div>
+        <div className="flex-1 overflow-y-auto px-2 py-2">
+          {loading && <p className="px-3 py-2 text-xs text-gray-500">Loading…</p>}
+          {error && <p className="px-3 py-2 text-xs text-red-600">{error}</p>}
+          {!loading && !error && listing && listing.items.length === 0 && (
+            <p className="px-3 py-2 text-xs text-gray-500">This folder is empty.</p>
+          )}
+          {!loading &&
+            !error &&
+            listing?.items.map((item) => {
+              const loadable = item.type === 'file' && LOADABLE_EXT.test(item.name);
+              const clickable = item.type === 'folder' || (mode === 'file' && loadable);
+              return (
+                <button
+                  key={`${item.type}-${item.id}`}
+                  type="button"
+                  disabled={!clickable}
+                  onClick={() => {
+                    if (item.type === 'folder') setTrail([...trail, { id: item.id, name: item.name }]);
+                    else if (mode === 'file' && loadable) onPickFile(item);
+                  }}
+                  className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-[13px] ${
+                    clickable ? 'hover:bg-gray-50 text-gray-900' : 'text-gray-400 cursor-default'
+                  }`}
+                >
+                  <span>{item.type === 'folder' ? '📁' : '📄'}</span>
+                  <span className="flex-1 truncate">{item.name}</span>
+                  {item.type === 'file' && item.size !== undefined && (
+                    <span className="shrink-0 text-[11px] text-gray-400">{Math.max(1, Math.round(item.size / 1024))} KB</span>
+                  )}
+                </button>
+              );
+            })}
+        </div>
+        {mode === 'folder' && (
+          <div className="border-t border-gray-200 px-5 py-3 flex justify-end">
+            <button
+              type="button"
+              onClick={() => onPickFolder(current.id)}
+              className="rounded-full bg-[#0061d5] hover:bg-[#004fb0] px-4 py-2 text-xs font-semibold text-white"
+            >
+              Save into “{current.name}”
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// ---------------------------------------------------------------------------
 // Redline modal (phase 2): word-level compare of a version vs the current
 // document. Insertions blue underline, deletions red strikethrough — light
 // mode, print-friendly.
@@ -1335,7 +1637,8 @@ function parseBlocks(text: string): Array<{ kind: 'heading' | 'paragraph'; level
     });
 }
 
-async function exportDocx(documentText: string): Promise<void> {
+/** Build the DOCX blob (shared by download-export and Save-to-Box). */
+async function buildDocxBlob(documentText: string): Promise<Blob> {
   const docx = await import('docx');
   const { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } = docx;
   const HEADINGS = [
@@ -1374,7 +1677,11 @@ async function exportDocx(documentText: string): Promise<void> {
     description: 'Browser-side export of the edited document. Generated locally; not sent to any server.',
     sections: [{ properties: {}, children }],
   });
-  const blob = await Packer.toBlob(doc);
+  return Packer.toBlob(doc);
+}
+
+async function exportDocx(documentText: string): Promise<void> {
+  const blob = await buildDocxBlob(documentText);
   downloadClientBlob(blob, `document-${Date.now()}.docx`);
 }
 

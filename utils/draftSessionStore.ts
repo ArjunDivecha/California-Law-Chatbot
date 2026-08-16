@@ -43,6 +43,9 @@ export interface DraftSessionSnapshot {
   documentText: string;
   history: DraftSessionTurnSnapshot[];
   uploadedName: string | null;
+  /** Box linkage (when the document was loaded from / saved to Box). */
+  boxFileId?: string | null;
+  boxFileName?: string | null;
 }
 
 export interface DraftSessionIndexEntry {
