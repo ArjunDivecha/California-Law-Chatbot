@@ -42,6 +42,7 @@ import { useV2SanitizationPreview } from '../../hooks/useV2SanitizationPreview.t
 import { extractTextFromFile } from '../draftingMagic/fileTextExtraction';
 import { hasCitationLikeText } from '../../utils/citationHeuristic.ts';
 import { editDocxInPlace } from '../../utils/docxSurgery.ts';
+import { saveOriginalDoc, loadOriginalDoc, deleteOriginalDoc } from '../../utils/originalDocStore.ts';
 import { parseChangesJson, salvageChanges } from '../../utils/draftProposals.ts';
 import {
   saveDraftSession,
@@ -242,6 +243,12 @@ export const V2DraftPage: React.FC = () => {
     setBoxFileId(snap.boxFileId ?? null);
     setBoxFileName(snap.boxFileName ?? null);
     setInstruction('');
+    setOriginalDocx(null);
+    void loadOriginalDoc(snap.id)
+      .then((doc) => {
+        if (doc) setOriginalDocx(doc);
+      })
+      .catch(() => {});
     void listVersions(id).then(setVersions);
     return true;
   }, []);
@@ -377,11 +384,13 @@ export const V2DraftPage: React.FC = () => {
   // through to the browser default (navigate to file:///…, replacing the
   // whole app). A window-level guard in App.tsx now blocks that; this
   // handler makes the drop actually useful.
-  // Original file bytes for in-place editing (.docx only). Kept in a ref —
-  // never in the session snapshot (too large for localStorage) — so a save
-  // can rewrite the ORIGINAL document instead of regenerating one from
-  // plain text, which destroyed styles/numbering/letterhead (2026-08-17).
-  const originalDocxRef = useRef<{ name: string; bytes: ArrayBuffer } | null>(null);
+  // Original file bytes for in-place editing (.docx only), so a save can
+  // rewrite the ORIGINAL document instead of regenerating one from plain
+  // text (which destroys styles/numbering/letterhead). The ref alone was
+  // not enough: quitting the app and restoring the session lost the bytes
+  // and silently degraded saves (2026-08-17) — so they are also persisted
+  // to device-local IndexedDB keyed by session and reloaded on restore.
+  const [originalDocx, setOriginalDocx] = useState<{ name: string; bytes: ArrayBuffer } | null>(null);
 
   const handleFile = useCallback(async (file: File) => {
     setUploadBusy(true);
@@ -389,9 +398,12 @@ export const V2DraftPage: React.FC = () => {
     setOcrStatus(null);
     try {
       if (/\.docx$/i.test(file.name)) {
-        originalDocxRef.current = { name: file.name, bytes: await file.arrayBuffer() };
+        const bytes = await file.arrayBuffer();
+        setOriginalDocx({ name: file.name, bytes });
+        void saveOriginalDoc(sessionId, { name: file.name, bytes }).catch(() => {});
       } else {
-        originalDocxRef.current = null;
+        setOriginalDocx(null);
+        void deleteOriginalDoc(sessionId).catch(() => {});
       }
       const extracted = await extractTextFromFile(file, {
         onOcrProgress: (done, total) =>
@@ -414,7 +426,7 @@ export const V2DraftPage: React.FC = () => {
       setOcrStatus(null);
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
-  }, []);
+  }, [sessionId]);
 
   const onFileChosen = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -497,7 +509,7 @@ export const V2DraftPage: React.FC = () => {
         // source wasn't .docx or an edit can't be located in the original.
         let blob: Blob;
         let fidelityNote: string | null = null;
-        const original = originalDocxRef.current;
+        const original = originalDocx;
         if (original && appliedEdits.length > 0) {
           try {
             const result = editDocxInPlace(original.bytes, appliedEdits);
@@ -546,7 +558,7 @@ export const V2DraftPage: React.FC = () => {
         setBoxBusy(false);
       }
     },
-    [documentText, boxFileId, boxFileName, uploadedName, getToken, appliedEdits],
+    [documentText, boxFileId, boxFileName, uploadedName, getToken, appliedEdits, originalDocx],
   );
 
   const onBoxSaveClick = useCallback(async () => {
@@ -740,7 +752,7 @@ export const V2DraftPage: React.FC = () => {
     setBoxFileId(null);
     setBoxFileName(null);
     setBoxError(null);
-    originalDocxRef.current = null;
+    setOriginalDocx(null);
     setHistory([]);
     setInstruction('');
     setRecentDrafts(listDraftSessions());
@@ -757,6 +769,7 @@ export const V2DraftPage: React.FC = () => {
   const onDeleteRecent = useCallback((id: string) => {
     deleteDraftSession(id);
     void deleteVersionsForSession(id);
+    void deleteOriginalDoc(id).catch(() => {});
     setRecentDrafts(listDraftSessions());
   }, []);
 
@@ -831,8 +844,12 @@ export const V2DraftPage: React.FC = () => {
                 <ExportButtons
                   documentText={documentText}
                   disabled={state.isStreaming}
-                  originalDocx={originalDocxRef.current}
+                  originalDocx={originalDocx}
                   appliedEdits={appliedEdits}
+                  onFidelityNote={(note) => {
+                    setBoxSavedNote(note);
+                    if (note) window.setTimeout(() => setBoxSavedNote(null), 12000);
+                  }}
                 />
                 {boxState.configured && (
                   <button
@@ -1771,7 +1788,10 @@ const ExportButtons: React.FC<{
    *  firm's formatting survives (same engine as Save to Box). */
   originalDocx?: { name: string; bytes: ArrayBuffer } | null;
   appliedEdits?: Array<{ find: string; replace: string }>;
-}> = ({ documentText, disabled, originalDocx, appliedEdits }) => {
+  /** Called when DOCX export could NOT preserve the original formatting —
+   *  the fallback must be loud, never silent (2026-08-17). */
+  onFidelityNote?: (note: string | null) => void;
+}> = ({ documentText, disabled, originalDocx, appliedEdits, onFidelityNote }) => {
   const [busy, setBusy] = useState<null | 'docx' | 'pdf' | 'html'>(null);
   const [error, setError] = useState<string | null>(null);
   const onExport = useCallback(
@@ -1782,6 +1802,7 @@ const ExportButtons: React.FC<{
         if (format === 'docx') {
           const edits = appliedEdits ?? [];
           let done = false;
+          let note: string | null = null;
           if (originalDocx) {
             try {
               const result = editDocxInPlace(originalDocx.bytes, edits);
@@ -1793,12 +1814,18 @@ const ExportButtons: React.FC<{
                   originalDocx.name.replace(/\.docx$/i, '') + '-edited.docx',
                 );
                 done = true;
+                note = `Exported ${originalDocx.name.replace(/\.docx$/i, '')}-edited.docx with the original formatting preserved.`;
+              } else {
+                note = `${result.unmatched.length} change${result.unmatched.length === 1 ? '' : 's'} could not be located in the original file — exported a reformatted copy instead.`;
               }
             } catch {
-              /* fall through to regenerated export */
+              note = 'The original file could not be edited in place — exported a reformatted copy instead.';
             }
+          } else {
+            note = 'No original Word file is attached to this draft — exported a reformatted copy (original page formatting not preserved).';
           }
           if (!done) await exportDocx(documentText);
+          onFidelityNote?.(note);
         }
         else if (format === 'pdf') await exportPdf(documentText);
         else exportHtml(documentText);
