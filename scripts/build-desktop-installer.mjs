@@ -137,11 +137,50 @@ Takes about 2 minutes, once.
 4. Sign in with the same account you use on the website. That's it —
    from now on, open it from Applications or Launchpad like any app.
 
+**Already have AskPauli installed?** Same steps — the installer replaces
+the old version in place. Your chats, drafts, and settings are kept.
+
 **What's different from the website?** Everything you type and every
 document you draft stays on YOUR Mac (a local database in your Library
 folder). Nothing is stored in the cloud — the only thing that leaves your
 machine is the anonymized text sent to Anthropic to generate answers,
 under the firm's data-protection agreement.
+
+---
+
+# What's new in this version (August 2026)
+
+**Box, connected.** AskPauli now links directly to the firm's Box.
+- **Draft a document → 📦 Load from Box** — browse your Box folders and
+  open a document straight into the editor. First time, a browser window
+  asks you to sign in to Box and grant access (once per computer).
+- **Save to Box** — saves your edited document back to Box. If it came
+  FROM Box, it saves as a **new version of the same file**, so Box stays
+  the one true home of the document with its full version history.
+
+**Scanned PDFs now work.** A PDF that's just a scan (no selectable text)
+is read with OCR — on your Mac, page by page, with a progress bar. Review
+the recovered text before using it; scans of poor copies can have errors.
+
+**Attach documents in Chat.** The 📎 (your Mac) and 📦 (Box) buttons next
+to the chat box attach a document to your question — "what does this
+filing say about custody?" now works directly. The chip above the box
+shows how many private items will be protected before anything is sent.
+
+**Version history & redlining (Draft page).** The **Versions** button
+keeps automatic snapshots of your document as you apply changes, plus
+named checkpoints (**+ Save checkpoint** inside the panel). **Compare**
+shows a lawyer-style redline — insertions underlined, deletions struck
+through — against any earlier version. **Restore** never deletes history.
+
+**Stronger privacy protection.** Protected client names now stay
+protected even when documents mangle them — ALL-CAPS scans, middle names,
+and file names like "First Last_Case.pdf" are all caught. After each
+message you'll see exactly how many items were anonymized on your Mac and
+confirmation that nothing raw reached the server.
+
+**Tidier Draft toolbar.** One **Export** menu (Word / PDF / web page)
+instead of a row of buttons.
 `,
 );
 
