@@ -63,6 +63,7 @@ import { computeRedline, type RedlineOp, type RedlineStats } from '../../utils/d
 import {
   boxStatus as fetchBoxStatus,
   connectBox,
+  openBoxPopup,
   listBoxFolder,
   downloadBoxFile,
   uploadToBox,
@@ -406,8 +407,12 @@ export const V2DraftPage: React.FC = () => {
   const onBoxLoadClick = useCallback(async () => {
     setBoxError(null);
     if (!boxState.connected) {
+      // Popup MUST open synchronously inside the click gesture (popup
+      // blockers; the desktop webview can't open one at all — connectBox
+      // falls back to same-window navigation there).
+      const popup = openBoxPopup();
       setBoxBusy(true);
-      const ok = await connectBox(getToken);
+      const ok = await connectBox(getToken, popup);
       setBoxBusy(false);
       if (!ok) {
         setBoxError('Box sign-in did not complete. Try again.');
@@ -470,8 +475,9 @@ export const V2DraftPage: React.FC = () => {
   const onBoxSaveClick = useCallback(async () => {
     setBoxError(null);
     if (!boxState.connected) {
+      const popup = openBoxPopup();
       setBoxBusy(true);
-      const ok = await connectBox(getToken);
+      const ok = await connectBox(getToken, popup);
       setBoxBusy(false);
       if (!ok) {
         setBoxError('Box sign-in did not complete. Try again.');

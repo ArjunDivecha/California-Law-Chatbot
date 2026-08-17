@@ -48,15 +48,55 @@ export async function boxStatus(getToken: GetToken): Promise<BoxStatus> {
   return (await r.json()) as BoxStatus;
 }
 
-/** Begin the OAuth flow: opens Box sign-in in a new window. Resolves true
- *  once the callback page posts 'askpauli-box-connected' (or the user's
- *  connection shows up on a status poll), false on timeout/cancel. */
-export async function connectBox(getToken: GetToken, timeoutMs = 120_000): Promise<boolean> {
+/** Open the OAuth popup synchronously, INSIDE the click handler, before any
+ *  await — popup blockers only allow window.open during a user gesture, and
+ *  the Tauri (desktop) webview returns null from window.open entirely. Pass
+ *  the result to connectBox; null triggers the same-window fallback. */
+export function openBoxPopup(): Window | null {
+  try {
+    return window.open('', 'askpauli-box-oauth', 'width=560,height=720');
+  } catch {
+    return null;
+  }
+}
+
+/** Begin the OAuth flow: navigates the pre-opened popup to Box sign-in.
+ *  Resolves true once the callback page posts 'askpauli-box-connected' (or
+ *  the connection shows up on a status poll), false on timeout/cancel.
+ *  When no popup is available (Tauri webview, popup blocker), navigates the
+ *  CURRENT window to Box instead — the callback page bounces back to
+ *  /v2/draft and the draft session auto-restores. */
+export async function connectBox(
+  getToken: GetToken,
+  popup?: Window | null,
+  timeoutMs = 120_000,
+): Promise<boolean> {
   const r = await authed(getToken, '/api/box/auth-start');
-  if (!r.ok) return false;
+  if (!r.ok) {
+    popup?.close();
+    return false;
+  }
   const { url } = (await r.json()) as { url?: string };
-  if (!url) return false;
-  const w = window.open(url, 'askpauli-box-oauth', 'width=560,height=720');
+  if (!url) {
+    popup?.close();
+    return false;
+  }
+  let w = popup ?? null;
+  if (w && !w.closed) {
+    try {
+      w.location.href = url;
+    } catch {
+      w = null;
+    }
+  } else {
+    // No pre-opened popup (or the user closed it) — try a direct open, and
+    // if that's blocked too, take over the current window.
+    w = window.open(url, 'askpauli-box-oauth', 'width=560,height=720');
+  }
+  if (!w) {
+    window.location.assign(url);
+    return new Promise<boolean>(() => {}); // navigation takes over
+  }
   return new Promise<boolean>((resolve) => {
     let settled = false;
     const finish = (ok: boolean) => {
