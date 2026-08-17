@@ -89,13 +89,21 @@ export async function connectBox(
       w = null;
     }
   } else {
-    // No pre-opened popup (or the user closed it) — try a direct open, and
-    // if that's blocked too, take over the current window.
+    // No pre-opened popup (or the user closed it) — try a direct open.
     w = window.open(url, 'askpauli-box-oauth', 'width=560,height=720');
   }
   if (!w) {
-    window.location.assign(url);
-    return new Promise<boolean>(() => {}); // navigation takes over
+    // Desktop app (Tauri webview): popups are impossible and external
+    // top-level navigation is blocked, so ask the local sidecar to open the
+    // sign-in in the user's default browser; we then poll status below.
+    const opened = await authed(getToken, '/api/box/auth-start-open', { method: 'POST' })
+      .then((resp) => resp.ok)
+      .catch(() => false);
+    if (!opened) {
+      // Web with a popup blocker: take over the current window instead.
+      window.location.assign(url);
+      return new Promise<boolean>(() => {}); // navigation takes over
+    }
   }
   return new Promise<boolean>((resolve) => {
     let settled = false;

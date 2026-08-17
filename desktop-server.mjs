@@ -61,6 +61,7 @@ import agentDraftQc from './api/agent/draft-qc.ts';
 import agentSessions from './api/agent/sessions.ts';
 import agentSession from './api/agent/session.ts';
 import boxAuthStart from './api/box/auth-start.ts';
+import boxAuthStartOpen from './api/box/auth-start-open.ts';
 import boxCallback from './api/box/callback.ts';
 import boxStatus from './api/box/status.ts';
 import boxDisconnect from './api/box/disconnect.ts';
@@ -88,6 +89,7 @@ const ROUTES = {
   '/api/agent/sessions': agentSessions,
   '/api/agent/session': agentSession,
   '/api/box/auth-start': boxAuthStart,
+  '/api/box/auth-start-open': boxAuthStartOpen,
   '/api/box/callback': boxCallback,
   '/api/box/status': boxStatus,
   '/api/box/disconnect': boxDisconnect,

@@ -95,7 +95,7 @@ app.all('/api/matter-context', async (req, res) => {
 });
 
 // Box integration (OAuth + folder browse + byte-passthrough download + upload)
-for (const r of ['auth-start', 'callback', 'status', 'disconnect', 'list', 'download', 'upload']) {
+for (const r of ['auth-start', 'auth-start-open', 'callback', 'status', 'disconnect', 'list', 'download', 'upload']) {
   app.all(`/api/box/${r}`, async (req, res) => {
     const handler = await loadHandler(`./api/box/${r}.ts`);
     await handler(req, res);
