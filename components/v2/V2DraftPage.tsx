@@ -514,9 +514,12 @@ export const V2DraftPage: React.FC = () => {
           try {
             const result = editDocxInPlace(original.bytes, appliedEdits);
             if (result.unmatched.length > 0) {
+              const misses = result.unmatched
+                .map((u) => `"${u.find.length > 60 ? u.find.slice(0, 60) + '…' : u.find}"`)
+                .join('; ');
               fidelityNote = `${result.unmatched.length} of ${appliedEdits.length} change${
                 appliedEdits.length === 1 ? '' : 's'
-              } could not be located in the original file, so a reformatted copy was saved instead.`;
+              } could not be located in the original file, so a reformatted copy was saved instead. Could not locate: ${misses}`;
               blob = await buildDocxBlob(documentText);
             } else {
               blob = new Blob([new Uint8Array(result.bytes)], {
@@ -1816,7 +1819,10 @@ const ExportButtons: React.FC<{
                 done = true;
                 note = `Exported ${originalDocx.name.replace(/\.docx$/i, '')}-edited.docx with the original formatting preserved.`;
               } else {
-                note = `${result.unmatched.length} change${result.unmatched.length === 1 ? '' : 's'} could not be located in the original file — exported a reformatted copy instead.`;
+                const misses = result.unmatched
+                  .map((u) => `"${u.find.length > 60 ? u.find.slice(0, 60) + '…' : u.find}"`)
+                  .join('; ');
+                note = `${result.unmatched.length} change${result.unmatched.length === 1 ? '' : 's'} could not be located in the original file — exported a reformatted copy instead. Could not locate: ${misses}`;
               }
             } catch {
               note = 'The original file could not be edited in place — exported a reformatted copy instead.';

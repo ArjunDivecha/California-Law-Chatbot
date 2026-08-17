@@ -134,6 +134,23 @@ const mkPara = (...runs) =>
   check('ws-fallback: whitespace-only find rejected', replaceInParagraph(mkPara('a  b'), '   ', 'x') === null);
 }
 
+// ---------- 5c. tabs and curly quotes (2026-08-17 "3 changes could not be located") ----------
+// Word stores tabs as <w:tab/> elements (extracted text shows a space) and
+// auto-curls quotes/dashes; find strings from the model use plain chars.
+{
+  const tabPara = '<w:p><w:r><w:t>5.1</w:t></w:r><w:r><w:tab/></w:r><w:r><w:t xml:space="preserve">The Trustee shall account annually.</w:t></w:r></w:p>';
+  const out1 = replaceInParagraph(tabPara, '5.1 The Trustee shall account annually.', '5.1 The Trustee shall account quarterly.');
+  check('tab element matches a space in find', out1 !== null && textOf(out1).includes('quarterly'), out1 === null ? 'no match' : textOf(out1));
+  check('tab element preserved in XML', out1 !== null && out1.includes('<w:tab/>'));
+
+  const curlyPara = mkPara('femme &amp; femme LLP (“the firm”) has agreed — subject to Ms. O’Brien’s consent.');
+  const out2 = replaceInParagraph(curlyPara, 'femme & femme LLP ("the firm") has agreed - subject to Ms. O\'Brien\'s consent.', 'femme & femme LLP ("the firm") has agreed.');
+  check('curly quotes/em-dash match straight chars', out2 !== null && textOf(out2).includes('has agreed.'), out2 === null ? 'no match' : textOf(out2));
+
+  const out3 = replaceInParagraph(mkPara('Dear Clients:'), 'Dear Clients:', 'Dear Arjun and Diana:');
+  check('non-breaking space matches plain space', out3 !== null && textOf(out3).includes('Dear Arjun and Diana:'));
+}
+
 // ---------- 6. paragraph-level helper ----------
 const para = '<w:p><w:r><w:t>Hello </w:t></w:r><w:r><w:t>world</w:t></w:r></w:p>';
 check('replaceInParagraph handles split text', (replaceInParagraph(para, 'Hello world', 'Goodbye world') ?? '').includes('Goodbye world'));

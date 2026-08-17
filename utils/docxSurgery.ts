@@ -50,6 +50,25 @@ function normalizeWs(s: string): string {
   return s.replace(/ /g, ' ').replace(/\s+/g, ' ');
 }
 
+/** Canonicalize typographic characters Word substitutes automatically —
+ *  curly quotes, en/em dashes, non-breaking hyphens, NBSP — so a find
+ *  string written with straight quotes still matches the document. The
+ *  mapping is strictly 1 char → 1 char, so indices are preserved. */
+function canonChar(c: string): string {
+  switch (c) {
+    case '‘': case '’': case 'ʼ': return "'";
+    case '“': case '”': return '"';
+    case '–': case '—': case '‑': case '−': return '-';
+    case ' ': return ' ';
+    default: return c;
+  }
+}
+function canonicalize(s: string): string {
+  let out = '';
+  for (const c of s) out += canonChar(c);
+  return out;
+}
+
 function escapeXml(s: string): string {
   return s
     .replace(/&/g, '&amp;')
@@ -71,28 +90,39 @@ interface RunSlot {
   start: number;
   /** Index just past the text content. */
   end: number;
-  /** Decoded text of the run. */
+  /** Decoded text of the run (a single ' ' for tab/break markers). */
   text: string;
   /** True when the <w:t> carries xml:space="preserve". */
   preserved: boolean;
+  /** False for <w:tab/>/<w:br/>/<w:cr/> markers: they render as whitespace
+   *  (so they participate in matching) but their XML is never rewritten. */
+  editable: boolean;
 }
 
-/** Find every <w:t>…</w:t> text slot in a chunk of document XML. */
+/** Find every text slot in a chunk of document XML, in document order:
+ *  <w:t> runs (editable) plus tab/line-break markers (whitespace-only).
+ *  Extracted plain text renders <w:tab/> as a space, so a find string
+ *  taken from it contains ' ' where the XML has a tab element — without
+ *  these pseudo-slots such finds could never match (2026-08-17). */
 function findRunSlots(xml: string): RunSlot[] {
   const slots: RunSlot[] = [];
-  // Matches <w:t> and <w:t xml:space="preserve">, plus self-closing <w:t/>.
-  const re = /<w:t(\s[^>]*)?>([\s\S]*?)<\/w:t>/g;
+  const re = /<w:t(\s[^>]*)?>([\s\S]*?)<\/w:t>|<w:(?:tab|br|cr)\s*\/>/g;
   let m: RegExpExecArray | null;
   while ((m = re.exec(xml)) !== null) {
-    const attrs = m[1] ?? '';
-    const inner = m[2] ?? '';
-    const innerStart = m.index + m[0].length - inner.length - '</w:t>'.length;
-    slots.push({
-      start: innerStart,
-      end: innerStart + inner.length,
-      text: decodeXmlText(inner),
-      preserved: /xml:space\s*=\s*"preserve"/.test(attrs),
-    });
+    if (m[2] !== undefined) {
+      const attrs = m[1] ?? '';
+      const inner = m[2];
+      const innerStart = m.index + m[0].length - inner.length - '</w:t>'.length;
+      slots.push({
+        start: innerStart,
+        end: innerStart + inner.length,
+        text: decodeXmlText(inner),
+        preserved: /xml:space\s*=\s*"preserve"/.test(attrs),
+        editable: true,
+      });
+    } else {
+      slots.push({ start: m.index, end: m.index + m[0].length, text: ' ', preserved: false, editable: false });
+    }
   }
   return slots;
 }
@@ -124,9 +154,15 @@ export function replaceInParagraph(paraXml: string, find: string, replace: strin
     concat += s.text;
   });
 
-  // Exact match first; fall back to whitespace-tolerant match.
+  // Exact match first, then exact-after-canonicalization (curly quotes,
+  // dashes, NBSP — 1:1 char mapping so indices carry over), then the
+  // whitespace-tolerant fallback.
   let matchStart = concat.indexOf(find);
   let matchLen = find.length;
+  if (matchStart === -1) {
+    matchStart = canonicalize(concat).indexOf(canonicalize(find));
+    // matchLen stays find.length — canonicalization is 1 char → 1 char.
+  }
   if (matchStart === -1) {
     // Build the normalized string together with an exact position map:
     // normStart[i] / normEnd[i] are the original-string [start, end) span
@@ -147,13 +183,13 @@ export function replaceInParagraph(paraXml: string, find: string, replace: strin
         normEnd.push(j);
         i = j;
       } else {
-        norm += concat[i];
+        norm += canonChar(concat[i]);
         normStart.push(i);
         normEnd.push(i + 1);
         i += 1;
       }
     }
-    const nFind = normalizeWs(find).trim();
+    const nFind = normalizeWs(canonicalize(find)).trim();
     if (nFind.length === 0) return null;
     const nIdx = norm.indexOf(nFind);
     if (nIdx === -1) return null;
@@ -166,7 +202,10 @@ export function replaceInParagraph(paraXml: string, find: string, replace: strin
   const matchEnd = matchStart + matchLen;
 
   // Rewrite affected slots from last to first so earlier indices stay valid.
-  const touched = offsets.filter((o) => o.to > matchStart && o.from < matchEnd);
+  // Tab/break pseudo-slots inside the match are left untouched: their XML
+  // stays, and the replacement lands in the first EDITABLE slot, so a match
+  // spanning "5.1<tab>Text" keeps the tab and types over the text.
+  const touched = offsets.filter((o) => o.to > matchStart && o.from < matchEnd && slots[o.slot].editable);
   if (touched.length === 0) return null;
   let out = paraXml;
   for (let i = touched.length - 1; i >= 0; i -= 1) {
