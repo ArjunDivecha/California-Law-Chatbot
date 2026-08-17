@@ -41,6 +41,7 @@ import { addToUserAllowlist } from '../../services/sanitization/userAllowlist.ts
 import { useV2SanitizationPreview } from '../../hooks/useV2SanitizationPreview.ts';
 import { extractTextFromFile } from '../draftingMagic/fileTextExtraction';
 import { hasCitationLikeText } from '../../utils/citationHeuristic.ts';
+import { editDocxInPlace } from '../../utils/docxSurgery.ts';
 import { parseChangesJson, salvageChanges } from '../../utils/draftProposals.ts';
 import {
   saveDraftSession,
@@ -367,11 +368,22 @@ export const V2DraftPage: React.FC = () => {
   // through to the browser default (navigate to file:///…, replacing the
   // whole app). A window-level guard in App.tsx now blocks that; this
   // handler makes the drop actually useful.
+  // Original file bytes for in-place editing (.docx only). Kept in a ref —
+  // never in the session snapshot (too large for localStorage) — so a save
+  // can rewrite the ORIGINAL document instead of regenerating one from
+  // plain text, which destroyed styles/numbering/letterhead (2026-08-17).
+  const originalDocxRef = useRef<{ name: string; bytes: ArrayBuffer } | null>(null);
+
   const handleFile = useCallback(async (file: File) => {
     setUploadBusy(true);
     setUploadError(null);
     setOcrStatus(null);
     try {
+      if (/\.docx$/i.test(file.name)) {
+        originalDocxRef.current = { name: file.name, bytes: await file.arrayBuffer() };
+      } else {
+        originalDocxRef.current = null;
+      }
       const extracted = await extractTextFromFile(file, {
         onOcrProgress: (done, total) =>
           setOcrStatus(`Reading scanned page ${done} of ${total}… (OCR runs on this device)`),
@@ -453,13 +465,59 @@ export const V2DraftPage: React.FC = () => {
     [getToken, handleFile],
   );
 
+  /** Every proposal the attorney approved, in order — the edit list applied
+   *  to the ORIGINAL .docx when one is available. */
+  const appliedEdits = useMemo(
+    () =>
+      history.flatMap((t) =>
+        t.proposals
+          .filter((pr) => pr.status === 'applied')
+          .map((pr) => ({ find: pr.find, replace: pr.replace })),
+      ),
+    [history],
+  );
+
   const doBoxSave = useCallback(
     async (folderId?: string) => {
       if (documentText === null) return;
       setBoxBusy(true);
       setBoxError(null);
       try {
-        const blob = await buildDocxBlob(documentText);
+        // Preferred path: rewrite the original .docx in place so the firm's
+        // formatting survives. Falls back to a generated document when the
+        // source wasn't .docx or an edit can't be located in the original.
+        let blob: Blob;
+        let fidelityNote: string | null = null;
+        const original = originalDocxRef.current;
+        if (original && appliedEdits.length > 0) {
+          try {
+            const result = editDocxInPlace(original.bytes, appliedEdits);
+            if (result.unmatched.length > 0) {
+              fidelityNote = `${result.unmatched.length} of ${appliedEdits.length} change${
+                appliedEdits.length === 1 ? '' : 's'
+              } could not be located in the original file, so a reformatted copy was saved instead.`;
+              blob = await buildDocxBlob(documentText);
+            } else {
+              blob = new Blob([new Uint8Array(result.bytes)], {
+                type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+              });
+            }
+          } catch {
+            fidelityNote = 'The original file could not be edited in place, so a reformatted copy was saved.';
+            blob = await buildDocxBlob(documentText);
+          }
+        } else if (original && appliedEdits.length === 0) {
+          // Nothing approved yet — save the original untouched.
+          blob = new Blob([new Uint8Array(new Uint8Array(original.bytes))], {
+            type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+          });
+        } else {
+          blob = await buildDocxBlob(documentText);
+          if (documentText.length > 0) {
+            fidelityNote =
+              'Saved as a new Word document — the source was not a .docx, so original page formatting could not be preserved.';
+          }
+        }
         const name = boxFileName
           ? boxFileName.replace(/\.(docx|doc|pdf|txt|md)$/i, '') + '.docx'
           : `${draftTitle(documentText, uploadedName).replace(/[^\w\- ]+/g, '').slice(0, 60) || 'AskPauli draft'}.docx`;
@@ -468,17 +526,18 @@ export const V2DraftPage: React.FC = () => {
           : await uploadToBox(getToken, blob, name, { folderId: folderId ?? '0' });
         setBoxFileId(result.id);
         setBoxFileName(result.name);
-        setBoxSavedNote(
-          boxFileId ? `Saved to Box as a new version of ${result.name}` : `Saved to Box as ${result.name}`,
-        );
-        window.setTimeout(() => setBoxSavedNote(null), 6000);
+        const base = boxFileId
+          ? `Saved to Box as a new version of ${result.name}`
+          : `Saved to Box as ${result.name}`;
+        setBoxSavedNote(fidelityNote ? `${base} — ${fidelityNote}` : `${base} (original formatting preserved)`);
+        window.setTimeout(() => setBoxSavedNote(null), fidelityNote ? 12000 : 6000);
       } catch (err) {
         setBoxError(`Could not save to Box: ${(err as Error).message}`);
       } finally {
         setBoxBusy(false);
       }
     },
-    [documentText, boxFileId, boxFileName, uploadedName, getToken],
+    [documentText, boxFileId, boxFileName, uploadedName, getToken, appliedEdits],
   );
 
   const onBoxSaveClick = useCallback(async () => {
@@ -669,6 +728,7 @@ export const V2DraftPage: React.FC = () => {
     setBoxFileId(null);
     setBoxFileName(null);
     setBoxError(null);
+    originalDocxRef.current = null;
     setHistory([]);
     setInstruction('');
     setRecentDrafts(listDraftSessions());
@@ -756,7 +816,12 @@ export const V2DraftPage: React.FC = () => {
             <div className="flex items-center justify-between px-6 py-2 border-b border-gray-100 bg-white">
               <h2 className="text-sm font-semibold text-gray-900">Document</h2>
               <div className="flex items-center gap-2">
-                <ExportButtons documentText={documentText} disabled={state.isStreaming} />
+                <ExportButtons
+                  documentText={documentText}
+                  disabled={state.isStreaming}
+                  originalDocx={originalDocxRef.current}
+                  appliedEdits={appliedEdits}
+                />
                 {boxState.configured && (
                   <button
                     type="button"
@@ -1672,7 +1737,14 @@ function downloadClientBlob(blob: Blob, filename: string): void {
   URL.revokeObjectURL(url);
 }
 
-const ExportButtons: React.FC<{ documentText: string; disabled?: boolean }> = ({ documentText, disabled }) => {
+const ExportButtons: React.FC<{
+  documentText: string;
+  disabled?: boolean;
+  /** When present, DOCX export rewrites the ORIGINAL file in place so the
+   *  firm's formatting survives (same engine as Save to Box). */
+  originalDocx?: { name: string; bytes: ArrayBuffer } | null;
+  appliedEdits?: Array<{ find: string; replace: string }>;
+}> = ({ documentText, disabled, originalDocx, appliedEdits }) => {
   const [busy, setBusy] = useState<null | 'docx' | 'pdf' | 'html'>(null);
   const [error, setError] = useState<string | null>(null);
   const onExport = useCallback(
@@ -1680,7 +1752,27 @@ const ExportButtons: React.FC<{ documentText: string; disabled?: boolean }> = ({
       setBusy(format);
       setError(null);
       try {
-        if (format === 'docx') await exportDocx(documentText);
+        if (format === 'docx') {
+          const edits = appliedEdits ?? [];
+          let done = false;
+          if (originalDocx) {
+            try {
+              const result = editDocxInPlace(originalDocx.bytes, edits);
+              if (result.unmatched.length === 0) {
+                downloadClientBlob(
+                  new Blob([new Uint8Array(result.bytes)], {
+                    type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                  }),
+                  originalDocx.name.replace(/\.docx$/i, '') + '-edited.docx',
+                );
+                done = true;
+              }
+            } catch {
+              /* fall through to regenerated export */
+            }
+          }
+          if (!done) await exportDocx(documentText);
+        }
         else if (format === 'pdf') await exportPdf(documentText);
         else exportHtml(documentText);
       } catch (err) {
