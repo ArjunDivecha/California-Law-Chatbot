@@ -22,6 +22,7 @@
     "test:draft-redline": "tsx tests/draft-redline.test.mjs",
     "test:box": "tsx tests/box-integration.test.mjs",
     "test:denylist": "tsx tests/denylist-variants.test.mjs",
+    "test:rehydrate": "tsx tests/rehydrate-json.test.mjs",
     "test:traps": "tsx tests/traps/runTraps.mjs",
     "benchmark:citations": "tsx scripts/citation-provider-benchmark.mjs",
     "smoke:citelaw": "tsx scripts/citelaw-integration-smoke.mjs",

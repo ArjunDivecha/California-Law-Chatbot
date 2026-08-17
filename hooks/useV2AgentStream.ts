@@ -83,6 +83,40 @@ export interface V2Refusal {
   explanation?: string;
 }
 
+/** Rehydrate a model payload safely. Plain text: substitute directly. JSON
+ *  (structured output): parse, rehydrate every string leaf, re-serialize —
+ *  so raw values containing quotes/newlines can't corrupt the JSON. */
+function rehydrateMaybeJson(
+  sanitizer: { rehydrateMessage(text: string): string },
+  text: string,
+): string {
+  const trimmed = text.trim();
+  if (!trimmed.startsWith('{') && !trimmed.startsWith('[')) {
+    return sanitizer.rehydrateMessage(text);
+  }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(trimmed);
+  } catch {
+    return sanitizer.rehydrateMessage(text); // not valid JSON after all
+  }
+  const walk = (v: unknown): unknown => {
+    if (typeof v === 'string') return sanitizer.rehydrateMessage(v);
+    if (Array.isArray(v)) return v.map(walk);
+    if (v && typeof v === 'object') {
+      const out: Record<string, unknown> = {};
+      for (const [k, val] of Object.entries(v as Record<string, unknown>)) out[k] = walk(val);
+      return out;
+    }
+    return v;
+  };
+  try {
+    return JSON.stringify(walk(parsed));
+  } catch {
+    return sanitizer.rehydrateMessage(text);
+  }
+}
+
 export interface V2TurnState {
   /** Count of private items tokenized ON-DEVICE for the last send (diff of
    *  token-shaped placeholders before/after tokenizeForWire). Distinct from
@@ -425,10 +459,18 @@ function handleSseEvent(
     case 'done': {
       const sanitizer = getChatSanitizer();
       const result = data.result as V2DoneSummary | undefined;
+      // Rehydration substitutes RAW values into the text. When the turn used
+      // a structured-output schema the text is JSON, and a raw value
+      // containing a quote or newline (e.g. a trust named
+      //   Divecha Revocable Trust dated ... ("the Trust")
+      // ) corrupts it — the Draft page then reports "the reply could not be
+      // read as a list of changes" for a perfectly good response
+      // (2026-08-17 bug). So for JSON payloads, parse FIRST and rehydrate
+      // each string value inside the parsed object, then re-serialize.
       const rehydratedResult = result
         ? {
             ...result,
-            final_text: sanitizer.rehydrateMessage(result.final_text ?? ''),
+            final_text: rehydrateMaybeJson(sanitizer, result.final_text ?? ''),
           }
         : undefined;
       setState((s) => ({
