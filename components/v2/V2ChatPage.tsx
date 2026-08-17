@@ -53,6 +53,16 @@ import { fetchSessionWithCache, invalidateSession } from '../../utils/chatStoreV
 import { getChatSanitizer, findInventedTokensInText } from '../../services/sanitization/chatAdapter';
 import { DETECTOR_UNSUPPORTED_ON_DEVICE } from '../../services/sanitization/opfClient';
 import { useSanitizer } from '../../hooks/useSanitizer';
+import { extractTextFromFile } from '../draftingMagic/fileTextExtraction';
+import {
+  boxStatus as fetchBoxStatus,
+  connectBox,
+  openBoxPopup,
+  downloadBoxFile,
+  type BoxItem,
+  type BoxStatus,
+} from '../../services/boxClient.ts';
+import { BoxBrowserModal } from './BoxBrowserModal.tsx';
 
 // Warn when a model response references sanitization tokens that do NOT
 // exist in the local token map — a potential hallucination of an entity not
@@ -335,11 +345,87 @@ export const V2ChatPage: React.FC = () => {
     };
   }, [urlSessionId, getToken]);
 
+  // ----- Attachments (local file or Box) -----
+  // The attached document's TEXT is composed into user_text on send, so it
+  // flows through the exact same on-device PII tokenization as typed text.
+  const [attachedDoc, setAttachedDoc] = useState<{ name: string; text: string } | null>(null);
+  const [attachBusy, setAttachBusy] = useState(false);
+  const [attachError, setAttachError] = useState<string | null>(null);
+  const [attachOcrStatus, setAttachOcrStatus] = useState<string | null>(null);
+  const [chatBoxState, setChatBoxState] = useState<BoxStatus>({ configured: false, connected: false });
+  const [chatBoxBrowse, setChatBoxBrowse] = useState(false);
+  const attachInputRef = useRef<HTMLInputElement>(null);
+  const MAX_ATTACH_CHARS = 400_000;
+
+  useEffect(() => {
+    void fetchBoxStatus(getToken).then(setChatBoxState);
+  }, [getToken]);
+
+  const attachFile = useCallback(async (file: File) => {
+    setAttachBusy(true);
+    setAttachError(null);
+    setAttachOcrStatus(null);
+    try {
+      const extracted = await extractTextFromFile(file, {
+        onOcrProgress: (done, total) =>
+          setAttachOcrStatus(`Reading scanned page ${done} of ${total}… (OCR runs on this device)`),
+      });
+      const text = extracted.text.trim();
+      if (!text) {
+        setAttachError(extracted.warning ?? 'No readable text found in that file.');
+      } else if (text.length > MAX_ATTACH_CHARS) {
+        setAttachError(`That document is too large to attach (${Math.round(text.length / 1000)}k characters; limit ${MAX_ATTACH_CHARS / 1000}k). Use the Draft page for long documents.`);
+      } else {
+        setAttachedDoc({ name: file.name, text });
+        if (extracted.warning) setAttachError(extracted.warning);
+      }
+    } catch (err) {
+      setAttachError(`Could not read file: ${(err as Error).message}`);
+    } finally {
+      setAttachBusy(false);
+      setAttachOcrStatus(null);
+      if (attachInputRef.current) attachInputRef.current.value = '';
+    }
+  }, []);
+
+  const onAttachBoxClick = useCallback(async () => {
+    setAttachError(null);
+    if (!chatBoxState.connected) {
+      const popup = openBoxPopup();
+      setAttachBusy(true);
+      const ok = await connectBox(getToken, popup);
+      setAttachBusy(false);
+      if (!ok) {
+        setAttachError('Box sign-in did not complete. Try again.');
+        return;
+      }
+      setChatBoxState(await fetchBoxStatus(getToken));
+    }
+    setChatBoxBrowse(true);
+  }, [chatBoxState.connected, getToken]);
+
+  const onAttachBoxPicked = useCallback(
+    async (item: BoxItem) => {
+      setChatBoxBrowse(false);
+      setAttachBusy(true);
+      setAttachError(null);
+      try {
+        const file = await downloadBoxFile(getToken, item);
+        await attachFile(file);
+      } catch (err) {
+        setAttachError(`Could not load from Box: ${(err as Error).message}`);
+      } finally {
+        setAttachBusy(false);
+      }
+    },
+    [getToken, attachFile],
+  );
+
   const onSubmit = useCallback(
     (e: React.FormEvent) => {
       e.preventDefault();
       const text = draft.trim();
-      if (!text || state.isStreaming) return;
+      if ((!text && !attachedDoc) || state.isStreaming) return;
       // Fail-closed on devices without the on-device privacy filter (PRD
       // §5.6a — detection recall is safety-critical for client matters):
       // public research is fine (server regex backstop still guards), but
@@ -351,11 +437,20 @@ export const V2ChatPage: React.FC = () => {
         return;
       }
       setMobileGateNotice(null);
-      // Add the user message to the visible list immediately.
+      // Compose the wire text: attached document first (labeled), then the
+      // user's message. Both are tokenized on-device by send().
+      const question = text || 'Please review the attached document.';
+      const wireText = attachedDoc
+        ? `ATTACHED DOCUMENT: ${attachedDoc.name}\n"""\n${attachedDoc.text}\n"""\n\n${question}`
+        : text;
+      // Add the user message to the visible list immediately (attachment
+      // shown as a chip line, not the full document body).
+      const visibleText = attachedDoc ? `📎 ${attachedDoc.name}\n\n${question}` : text;
       setMessages((prev) => [
         ...prev,
-        { id: `u_${Date.now()}`, role: 'user', text },
+        { id: `u_${Date.now()}`, role: 'user', text: visibleText },
       ]);
+      setAttachedDoc(null);
       setDraft('');
       // Clear the persisted draft — message has flown.
       try {
@@ -368,7 +463,7 @@ export const V2ChatPage: React.FC = () => {
       streamingSessionRef.current = sessionId;
       void send({
         session_id: sessionId,
-        user_text: text,
+        user_text: wireText,
         user_id: userId,
         workflow,
       });
@@ -376,7 +471,7 @@ export const V2ChatPage: React.FC = () => {
     // `workflow` and `urlSessionId` were missing here (2026-07-04 review
     // fix): toggling Quick↔Research without retyping sent the PREVIOUS
     // workflow from the stale closure.
-    [draft, state.isStreaming, send, sessionId, userId, matterMode, workflow, urlSessionId],
+    [draft, attachedDoc, state.isStreaming, send, sessionId, userId, matterMode, workflow, urlSessionId],
   );
 
   // When `done` fires, fold the streamed tokens into a permanent assistant
@@ -608,6 +703,15 @@ export const V2ChatPage: React.FC = () => {
             )}
           </div>
 
+          {chatBoxBrowse && (
+            <BoxBrowserModal
+              mode="file"
+              getToken={getToken}
+              onPickFile={(item) => void onAttachBoxPicked(item)}
+              onPickFolder={() => setChatBoxBrowse(false)}
+              onClose={() => setChatBoxBrowse(false)}
+            />
+          )}
           <form onSubmit={onSubmit} className="border-t border-gray-100 bg-white px-6 py-4">
             {mobileGateNotice && (
               <div className="mb-3 rounded border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900">
@@ -615,7 +719,57 @@ export const V2ChatPage: React.FC = () => {
                 {mobileGateNotice}
               </div>
             )}
+            {(attachedDoc || attachError || attachOcrStatus) && (
+              <div className="mb-2 flex flex-wrap items-center gap-2 text-xs">
+                {attachedDoc && (
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-gray-300 bg-gray-50 px-3 py-1 text-gray-800">
+                    📎 <span className="max-w-[280px] truncate font-medium">{attachedDoc.name}</span>
+                    <span className="text-gray-500">({Math.max(1, Math.round(attachedDoc.text.length / 1000))}k chars)</span>
+                    <button
+                      type="button"
+                      onClick={() => setAttachedDoc(null)}
+                      className="ml-1 rounded px-1 text-gray-400 hover:bg-gray-200 hover:text-gray-700"
+                      aria-label="Remove attachment"
+                    >
+                      ✕
+                    </button>
+                  </span>
+                )}
+                {attachOcrStatus && <span className="text-sky-700">{attachOcrStatus}</span>}
+                {attachError && <span className="text-amber-700">{attachError}</span>}
+              </div>
+            )}
             <div className="flex items-end gap-3">
+              <input
+                ref={attachInputRef}
+                type="file"
+                accept=".txt,.md,.doc,.docx,.pdf"
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) void attachFile(f);
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => attachInputRef.current?.click()}
+                disabled={state.isStreaming || attachBusy}
+                title="Attach a document from this Mac (.txt, .doc, .docx, .pdf — scanned PDFs are OCR'd on-device)"
+                className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-600 shadow-sm hover:bg-gray-50 disabled:opacity-50"
+              >
+                {attachBusy ? '…' : '📎'}
+              </button>
+              {chatBoxState.configured && (
+                <button
+                  type="button"
+                  onClick={() => void onAttachBoxClick()}
+                  disabled={state.isStreaming || attachBusy}
+                  title="Attach a document from Box"
+                  className="rounded-lg border border-[#0061d5]/30 bg-[#0061d5]/5 px-3 py-2 text-sm text-[#0061d5] shadow-sm hover:bg-[#0061d5]/10 disabled:opacity-50"
+                >
+                  📦
+                </button>
+              )}
               <HighlightedDraftInput
                 value={draft}
                 onChange={setDraft}
@@ -641,7 +795,7 @@ export const V2ChatPage: React.FC = () => {
               ) : (
                 <button
                   type="submit"
-                  disabled={!draft.trim()}
+                  disabled={!draft.trim() && !attachedDoc}
                   className="rounded-lg bg-pink-500 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-pink-600 disabled:cursor-not-allowed disabled:bg-gray-300"
                 >
                   Send
