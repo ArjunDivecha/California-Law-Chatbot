@@ -21,7 +21,6 @@
     "test:draft-versions": "tsx tests/draft-version-store.test.mjs",
     "test:draft-redline": "tsx tests/draft-redline.test.mjs",
     "test:box": "tsx tests/box-integration.test.mjs",
-    "test:box": "tsx tests/box-integration.test.mjs",
     "test:traps": "tsx tests/traps/runTraps.mjs",
     "benchmark:citations": "tsx scripts/citation-provider-benchmark.mjs",
     "smoke:citelaw": "tsx scripts/citelaw-integration-smoke.mjs",
@@ -50,7 +49,8 @@
     "react-markdown": "^9.0.1",
     "react-router-dom": "^7.14.0",
     "remark-gfm": "^4.0.0",
-    "sqlite-vec": "^0.1.9"
+    "sqlite-vec": "^0.1.9",
+    "tesseract.js": "^7.0.0"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.11.4",

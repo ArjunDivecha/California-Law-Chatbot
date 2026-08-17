@@ -190,6 +190,7 @@ export const V2DraftPage: React.FC = () => {
   const [uploadBusy, setUploadBusy] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploadedName, setUploadedName] = useState<string | null>(null);
+  const [ocrStatus, setOcrStatus] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Editing state (after a document is loaded).
@@ -368,8 +369,12 @@ export const V2DraftPage: React.FC = () => {
   const handleFile = useCallback(async (file: File) => {
     setUploadBusy(true);
     setUploadError(null);
+    setOcrStatus(null);
     try {
-      const extracted = await extractTextFromFile(file);
+      const extracted = await extractTextFromFile(file, {
+        onOcrProgress: (done, total) =>
+          setOcrStatus(`Reading scanned page ${done} of ${total}… (OCR runs on this device)`),
+      });
       const text = extracted.text.trim();
       if (!text) {
         // Prefer the extractor's diagnosis (e.g. scanned PDF, unsupported
@@ -384,6 +389,7 @@ export const V2DraftPage: React.FC = () => {
       setUploadError(`Could not read file: ${(err as Error).message}`);
     } finally {
       setUploadBusy(false);
+      setOcrStatus(null);
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
   }, []);
@@ -740,6 +746,7 @@ export const V2DraftPage: React.FC = () => {
           boxBusy={boxBusy}
           boxError={boxError}
           onBoxLoad={() => void onBoxLoadClick()}
+          ocrStatus={ocrStatus}
         />
       ) : (
         <div className="flex-1 min-h-0 flex">
@@ -1084,11 +1091,12 @@ const LoadScreen: React.FC<{
   boxBusy: boolean;
   boxError: string | null;
   onBoxLoad: () => void;
+  ocrStatus: string | null;
 }> = ({
   pasteText, setPasteText, uploadBusy, uploadError, uploadedName,
   fileInputRef, onUploadClick, onFileChosen, onFileDropped, onLoadDocument,
   recentDrafts, onOpenRecent, onDeleteRecent,
-  boxConfigured, boxConnectedLogin, boxBusy, boxError, onBoxLoad,
+  boxConfigured, boxConnectedLogin, boxBusy, boxError, onBoxLoad, ocrStatus,
 }) => {
   const { preview } = useV2SanitizationPreview(pasteText);
   const detectionCount = preview.tokens.length;
@@ -1182,6 +1190,7 @@ const LoadScreen: React.FC<{
             </button>
           )}
           {boxError && <span className="text-xs text-red-600">{boxError}</span>}
+          {ocrStatus && <span className="text-xs text-sky-700">{ocrStatus}</span>}
           <input
             ref={fileInputRef}
             type="file"
