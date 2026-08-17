@@ -123,6 +123,9 @@ export interface V2TurnState {
    *  the server-side `sanitization` event, which reports the backstop's
    *  scan of the already-tokenized wire text. */
   wireRedactions: number | null;
+  /** The exact TOKENIZED text sent for the last turn. Safe to share for
+   *  debugging — client identities are already CLIENT_xxx placeholders. */
+  lastWireText: string | null;
   sanitization: V2Sanitization | null;
   tokens: string;
   toolEvents: V2ToolEvent[];
@@ -144,6 +147,7 @@ export interface V2TurnState {
 const INITIAL_STATE: V2TurnState = {
   sanitization: null,
   wireRedactions: null,
+  lastWireText: null,
   tokens: '',
   toolEvents: [],
   sources: [],
@@ -245,7 +249,7 @@ export function useV2AgentStream() {
     // pattern survival. Defense in depth on top of tokenizeForWire.
     try {
       assertNoRawPii(wireBody);
-      setState((s) => ({ ...s, wireRedactions }));
+      setState((s) => ({ ...s, wireRedactions, lastWireText: wireText }));
     } catch (err) {
       setState((s) => ({
         ...s,

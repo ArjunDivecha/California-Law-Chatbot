@@ -100,6 +100,8 @@ RULES:
 - "find" MUST be an exact verbatim substring of the current document so the change can be applied automatically. If a change is an INSERTION, set "find" to the existing sentence it should follow and include that sentence at the start of "replace".
 - Keep each change small and atomic — one idea per change. Prefer several small changes over one large one.
 - Placeholder tokens like CLIENT_001, ADDRESS_002, AMOUNT_003 stand in for redacted private info. Preserve them EXACTLY in both "find" and "replace"; never expand, rename, or invent values.
+- Informal references map to tokens: "client 1", "client one", "the first client", "party 1" all mean CLIENT_001; "client 2" means CLIENT_002, and so on. Resolve them that way and proceed — do NOT return an empty list because a reference was informal.
+- A rename between two tokens is a normal, valid edit: "change client 1 to CLIENT_007" means replace every CLIENT_001 with CLIENT_007. Only return {"changes":[]} when the document genuinely already satisfies the request; if the instruction is ambiguous, make your best reasonable interpretation and say so in the rationale rather than returning nothing.
 - If the user asked a question ("what would you change?"), still answer as a list of proposed changes.
 - Propose AT MOST 10 changes per reply, most important first — the user can always ask for more. A reply that gets cut off mid-JSON helps no one.
 - If nothing should change, return {"changes":[]}.`;
@@ -127,6 +129,10 @@ interface Proposal {
 interface ChatTurn {
   instruction: string;
   proposals: Proposal[];
+  /** Raw model reply + the tokenized wire text, kept when a turn yields no
+   *  usable proposals so failures can be diagnosed from real data instead
+   *  of guesswork (2026-08-17). Tokenized — contains no raw client text. */
+  diagnostic?: { wire: string; reply: string };
   /** Set when the model returned something we could not parse as changes. */
   rawNote?: string;
 }
@@ -627,20 +633,23 @@ export const V2DraftPage: React.FC = () => {
             turn.rawNote = `The reply hit the length limit, so this list is incomplete — showing the ${parsed.length} complete proposal${parsed.length === 1 ? '' : 's'} that came through. Apply or reject these, then ask again for further changes.`;
           }
         } else if (parsed && parsed.length === 0) {
-          turn.rawNote = 'No changes suggested.';
+          turn.rawNote =
+            'No changes suggested. If you expected changes, use "Copy diagnostic" below and send it to Arjun — it captures exactly what the assistant saw.';
+          turn.diagnostic = { wire: state.lastWireText ?? '', reply };
         } else if (wasTruncated) {
           turn.rawNote =
             'The reply was cut off by the length limit before any complete proposal came through. Try again with a narrower instruction (e.g. one section at a time, or "propose your 5 most important changes").';
         } else {
           turn.rawNote =
             'The reply could not be read as a list of changes. Try rephrasing the instruction, or ask for fewer changes at once.';
+          turn.diagnostic = { wire: state.lastWireText ?? '', reply };
         }
         next[next.length - 1] = turn;
         return next;
       });
       reset();
     }
-  }, [state.done, state.tokens, reset]);
+  }, [state.done, state.tokens, state.lastWireText, reset]);
 
   // ----- Approve / reject a proposal -----
   const setProposalStatus = useCallback(
@@ -913,6 +922,21 @@ export const V2DraftPage: React.FC = () => {
                   {turn.rawNote && (
                     <div className="text-[12px] text-gray-600 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 whitespace-pre-wrap">
                       {turn.rawNote}
+                      {turn.diagnostic && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const d = turn.diagnostic!;
+                            void navigator.clipboard.writeText(
+                              `--- INSTRUCTION ---\n${turn.instruction}\n\n--- WIRE TEXT SENT (tokenized) ---\n${d.wire}\n\n--- RAW MODEL REPLY ---\n${d.reply}`,
+                            );
+                          }}
+                          className="mt-2 block rounded border border-gray-300 bg-white px-2 py-1 text-[11px] font-semibold text-gray-700 hover:bg-gray-100"
+                          title="Copies the tokenized text that was sent plus the raw reply — no raw client names — so this can be diagnosed"
+                        >
+                          Copy diagnostic
+                        </button>
+                      )}
                     </div>
                   )}
 
