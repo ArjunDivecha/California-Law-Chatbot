@@ -84,6 +84,11 @@ export interface V2Refusal {
 }
 
 export interface V2TurnState {
+  /** Count of private items tokenized ON-DEVICE for the last send (diff of
+   *  token-shaped placeholders before/after tokenizeForWire). Distinct from
+   *  the server-side `sanitization` event, which reports the backstop's
+   *  scan of the already-tokenized wire text. */
+  wireRedactions: number | null;
   sanitization: V2Sanitization | null;
   tokens: string;
   toolEvents: V2ToolEvent[];
@@ -104,6 +109,7 @@ export interface V2TurnState {
 
 const INITIAL_STATE: V2TurnState = {
   sanitization: null,
+  wireRedactions: null,
   tokens: '',
   toolEvents: [],
   sources: [],
@@ -164,9 +170,16 @@ export function useV2AgentStream() {
     // never leaves the laptop. If the sanitizer is unavailable we fail
     // closed here rather than send raw to the server.
     let wireText: string;
+    let wireRedactions = 0;
     try {
       const wire = await tokenizeForWire(opts.user_text);
       wireText = wire.sanitized;
+      // On-device protection count for the UI: token-shaped placeholders
+      // added by tokenization (net of any the user typed themselves).
+      const TOKEN_LIKE = /\b[A-Z]{2,12}_\d{2,4}\b/g;
+      const before = (opts.user_text.match(TOKEN_LIKE) ?? []).length;
+      const after = (wireText.match(TOKEN_LIKE) ?? []).length;
+      wireRedactions = Math.max(0, after - before);
     } catch (err) {
       setState((s) => ({
         ...s,
@@ -198,6 +211,7 @@ export function useV2AgentStream() {
     // pattern survival. Defense in depth on top of tokenizeForWire.
     try {
       assertNoRawPii(wireBody);
+      setState((s) => ({ ...s, wireRedactions }));
     } catch (err) {
       setState((s) => ({
         ...s,

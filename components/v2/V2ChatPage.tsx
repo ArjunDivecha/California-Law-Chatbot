@@ -518,28 +518,45 @@ export const V2ChatPage: React.FC = () => {
   const privilegedBadge = useMemo(() => {
     if (!state.sanitization) return null;
     const { privileged, compound_risk_buckets, redactions_count } = state.sanitization;
-    // Informational only — sanitization still detects spans + compound
-    // risk, but as of the 7th addendum the privileged flag no longer
-    // gates web_search. The chip surfaces what was detected so the
-    // attorney can SEE the assessment, but the model has access to all
-    // tools either way.
+    // TWO meters, both shown (2026-08-17 fix — showing only the server's
+    // scan read as "nothing was detected" right after the attachment chip
+    // said 34 items would be protected; both were true):
+    //   1. on-device tokenization count (state.wireRedactions — what the
+    //      browser replaced with CLIENT_xxx placeholders BEFORE sending)
+    //   2. the server backstop's scan of the already-tokenized wire text.
+    // Informational only — the privileged flag no longer gates web_search.
+    const clientCount = state.wireRedactions ?? 0;
+    const clientChip =
+      clientCount > 0 ? (
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-sky-100 px-3 py-1 text-xs font-semibold text-sky-800">
+          🔒 {clientCount} private item{clientCount === 1 ? '' : 's'} tokenized on this device before sending
+        </span>
+      ) : null;
     if (privileged) {
       const reasons: string[] = [];
       if (compound_risk_buckets > 0) reasons.push(`compound risk ×${compound_risk_buckets}`);
       if (redactions_count > 0) reasons.push(`${redactions_count} redaction${redactions_count > 1 ? 's' : ''}`);
       return (
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800">
-          ⚠️ Privileged content detected
-          {reasons.length > 0 && <span className="text-amber-700/80">({reasons.join(' · ')})</span>}
+        <span className="inline-flex flex-wrap items-center gap-1.5">
+          {clientChip}
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800">
+            ⚠️ Server backstop flagged privileged content
+            {reasons.length > 0 && <span className="text-amber-700/80">({reasons.join(' · ')})</span>}
+          </span>
         </span>
       );
     }
     return (
-      <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">
-        🌐 No privileged content detected
+      <span className="inline-flex flex-wrap items-center gap-1.5">
+        {clientChip}
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">
+          {clientCount > 0
+            ? '✓ Server backstop clean — no raw private data reached the server'
+            : '🌐 Nothing needed protection — no private items found on-device; server backstop clean'}
+        </span>
       </span>
     );
-  }, [state.sanitization]);
+  }, [state.sanitization, state.wireRedactions]);
 
   return (
     <div
