@@ -151,6 +151,54 @@ const mkPara = (...runs) =>
   check('non-breaking space matches plain space', out3 !== null && textOf(out3).includes('Dear Arjun and Diana:'));
 }
 
+// ---------- 5d. cross-paragraph matches (2026-08-17 engagement-letter misses) ----------
+// The real letter produced finds spanning paragraph boundaries: the Re:
+// line + salutation, and the multi-line signature block. Pin those shapes.
+{
+  const letter = new Document({
+    sections: [{
+      children: [
+        new Paragraph({ children: [new TextRun({ text: 'Re: Attorney Client Engagement Agreement', bold: true })] }),
+        new Paragraph({ children: [new TextRun('Dear [NAMES]')] }),
+        new Paragraph({ children: [new TextRun('Body of the letter stays put.')] }),
+        new Paragraph({ children: [new TextRun('By: Date: [CLIENT]')] }),
+        new Paragraph({ children: [new TextRun('By: Date: [CLIENT]')] }),
+      ],
+    }],
+  });
+  const src = await Packer.toBuffer(letter);
+  const beforeXml = bodyOf(new Uint8Array(src));
+  const boldCount = (beforeXml.match(/<w:b\/>|<w:b /g) ?? []).length;
+  const paraCount = (beforeXml.match(/<w:p[ >]/g) ?? []).length;
+
+  // Miss #1 shape: Re: line + salutation, replacement mirrors the two lines.
+  let res = editDocxInPlace(src.buffer ?? src, [
+    { find: 'Re: Attorney Client Engagement Agreement\nDear [NAMES]', replace: 'Re: Attorney Client Engagement Agreement\nDear Arjun Divecha and Diana Divecha' },
+  ]);
+  let xml = bodyOf(res.bytes);
+  check('cross-para: Re/Dear matched', res.applied.length === 1, JSON.stringify(res.unmatched));
+  check('cross-para: salutation replaced', textOf(xml).includes('Dear Arjun Divecha and Diana Divecha'));
+  check('cross-para: Re line intact', textOf(xml).includes('Re: Attorney Client Engagement Agreement'));
+  check('cross-para: body untouched', textOf(xml).includes('Body of the letter stays put.'));
+  check('cross-para: paragraph count preserved', (xml.match(/<w:p[ >]/g) ?? []).length === paraCount);
+  check('cross-para: bold formatting preserved', (xml.match(/<w:b\/>|<w:b /g) ?? []).length === boldCount);
+
+  // Miss #2 shape: multi-line signature block (space-joined find, as the
+  // model sometimes flattens newlines to spaces).
+  res = editDocxInPlace(src.buffer ?? src, [
+    { find: 'By: Date: [CLIENT] By: Date: [CLIENT]', replace: 'By: Date: Arjun Divecha\nBy: Date: Diana Divecha' },
+  ]);
+  xml = bodyOf(res.bytes);
+  check('cross-para: signature block matched', res.applied.length === 1, JSON.stringify(res.unmatched));
+  check('cross-para: first signer line', textOf(xml).includes('By: Date: Arjun Divecha'));
+  check('cross-para: second signer line', textOf(xml).includes('By: Date: Diana Divecha'));
+  check('cross-para: no stale [CLIENT] left', !textOf(xml).includes('[CLIENT]'));
+
+  // Guard: a find matching nowhere still reports unmatched.
+  res = editDocxInPlace(src.buffer ?? src, [{ find: 'totally absent text', replace: 'x' }]);
+  check('cross-para: absent find still unmatched', res.unmatched.length === 1);
+}
+
 // ---------- 6. paragraph-level helper ----------
 const para = '<w:p><w:r><w:t>Hello </w:t></w:r><w:r><w:t>world</w:t></w:r></w:p>';
 check('replaceInParagraph handles split text', (replaceInParagraph(para, 'Hello world', 'Goodbye world') ?? '').includes('Goodbye world'));

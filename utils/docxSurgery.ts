@@ -20,9 +20,11 @@
  *   Every other byte of the archive is passed through untouched.
  *
  * WHAT IT DOES NOT DO
- *   No formatting changes, no structural edits, no support for text that
- *   spans paragraphs. Replacements that cannot be located are reported to
- *   the caller (never silently dropped) so the UI can fall back or warn.
+ *   No formatting changes and no structural edits. Text spanning paragraph
+ *   boundaries is handled by a second, cross-paragraph pass that preserves
+ *   the paragraph structure (see replaceAcrossParagraphs). Replacements
+ *   that cannot be located are reported to the caller (never silently
+ *   dropped) so the UI can fall back or warn.
  *
  * No file I/O (operates on ArrayBuffers in the browser).
  */
@@ -106,7 +108,7 @@ interface RunSlot {
  *  these pseudo-slots such finds could never match (2026-08-17). */
 function findRunSlots(xml: string): RunSlot[] {
   const slots: RunSlot[] = [];
-  const re = /<w:t(\s[^>]*)?>([\s\S]*?)<\/w:t>|<w:(?:tab|br|cr)\s*\/>/g;
+  const re = /<w:t(\s[^>]*)?>([\s\S]*?)<\/w:t>|<w:(?:tab|br|cr)\s*\/>|<\/w:p>/g;
   let m: RegExpExecArray | null;
   while ((m = re.exec(xml)) !== null) {
     if (m[2] !== undefined) {
@@ -121,10 +123,48 @@ function findRunSlots(xml: string): RunSlot[] {
         editable: true,
       });
     } else {
-      slots.push({ start: m.index, end: m.index + m[0].length, text: ' ', preserved: false, editable: false });
+      // Paragraph ends render as a newline in extracted text; tabs/breaks
+      // as a space. Both are matchable whitespace, never rewritten.
+      const text = m[0] === '</w:p>' ? '\n' : ' ';
+      slots.push({ start: m.index, end: m.index + m[0].length, text, preserved: false, editable: false });
     }
   }
   return slots;
+}
+
+/** Locate `find` in the concatenated slot text: exact, then canonicalized
+ *  (curly quotes/dashes/NBSP), then whitespace-tolerant with an exact
+ *  position map. Returns the matched [start, len) span, or null. */
+function locateMatch(concat: string, find: string): { start: number; len: number } | null {
+  let matchStart = concat.indexOf(find);
+  if (matchStart !== -1) return { start: matchStart, len: find.length };
+  matchStart = canonicalize(concat).indexOf(canonicalize(find));
+  if (matchStart !== -1) return { start: matchStart, len: find.length };
+  let norm = '';
+  const normStart: number[] = [];
+  const normEnd: number[] = [];
+  let i = 0;
+  while (i < concat.length) {
+    if (/[\s ]/.test(concat[i])) {
+      let j = i;
+      while (j < concat.length && /[\s ]/.test(concat[j])) j += 1;
+      norm += ' ';
+      normStart.push(i);
+      normEnd.push(j);
+      i = j;
+    } else {
+      norm += canonChar(concat[i]);
+      normStart.push(i);
+      normEnd.push(i + 1);
+      i += 1;
+    }
+  }
+  const nFind = normalizeWs(canonicalize(find)).trim();
+  if (nFind.length === 0) return null;
+  const nIdx = norm.indexOf(nFind);
+  if (nIdx === -1) return null;
+  const start = normStart[nIdx];
+  return { start, len: normEnd[nIdx + nFind.length - 1] - start };
 }
 
 /** Split the body XML into paragraph chunks so matching stays in-paragraph. */
@@ -154,52 +194,10 @@ export function replaceInParagraph(paraXml: string, find: string, replace: strin
     concat += s.text;
   });
 
-  // Exact match first, then exact-after-canonicalization (curly quotes,
-  // dashes, NBSP — 1:1 char mapping so indices carry over), then the
-  // whitespace-tolerant fallback.
-  let matchStart = concat.indexOf(find);
-  let matchLen = find.length;
-  if (matchStart === -1) {
-    matchStart = canonicalize(concat).indexOf(canonicalize(find));
-    // matchLen stays find.length — canonicalization is 1 char → 1 char.
-  }
-  if (matchStart === -1) {
-    // Build the normalized string together with an exact position map:
-    // normStart[i] / normEnd[i] are the original-string [start, end) span
-    // that produced normalized character i. Any whitespace run (of any
-    // length, including NBSP) becomes one ' ' mapped to the whole run.
-    // The previous approximate walk misaligned matches that followed a
-    // multi-space gap and silently corrupted the text (caught 2026-08-17).
-    let norm = '';
-    const normStart: number[] = [];
-    const normEnd: number[] = [];
-    let i = 0;
-    while (i < concat.length) {
-      if (/[\s ]/.test(concat[i])) {
-        let j = i;
-        while (j < concat.length && /[\s ]/.test(concat[j])) j += 1;
-        norm += ' ';
-        normStart.push(i);
-        normEnd.push(j);
-        i = j;
-      } else {
-        norm += canonChar(concat[i]);
-        normStart.push(i);
-        normEnd.push(i + 1);
-        i += 1;
-      }
-    }
-    const nFind = normalizeWs(canonicalize(find)).trim();
-    if (nFind.length === 0) return null;
-    const nIdx = norm.indexOf(nFind);
-    if (nIdx === -1) return null;
-    matchStart = normStart[nIdx];
-    matchLen = normEnd[nIdx + nFind.length - 1] - matchStart;
-    // A match that starts on a collapsed whitespace run begins at the run's
-    // first character; since nFind is trimmed its first char is non-space,
-    // so normStart[nIdx] is always the true character position.
-  }
-  const matchEnd = matchStart + matchLen;
+  const located = locateMatch(concat, find);
+  if (!located) return null;
+  const matchStart = located.start;
+  const matchEnd = matchStart + located.len;
 
   // Rewrite affected slots from last to first so earlier indices stay valid.
   // Tab/break pseudo-slots inside the match are left untouched: their XML
@@ -216,6 +214,83 @@ export function replaceInParagraph(paraXml: string, find: string, replace: strin
     const isFirst = i === 0;
     const newText =
       slot.text.slice(0, localStart) + (isFirst ? replace : '') + slot.text.slice(localEnd);
+    out = out.slice(0, slot.start) + escapeXml(newText) + out.slice(slot.end);
+  }
+  return out;
+}
+
+/**
+ * Apply one replacement across paragraph boundaries. Used only when no
+ * single paragraph contains the find text (2026-08-17: real engagement
+ * letters produced finds like "Re: … Agreement\nDear [NAMES]" and
+ * multi-line signature blocks, which the per-paragraph pass can never
+ * match). Paragraph structure is preserved: the replacement is split on
+ * newlines and distributed across the matched paragraphs in order — the
+ * k-th replacement line lands in the k-th matched paragraph's first
+ * touched run, surplus document text in the span is blanked, and surplus
+ * replacement lines are appended to the last paragraph's text.
+ * Returns the new body XML, or null when the find isn't present at all.
+ */
+export function replaceAcrossParagraphs(xml: string, find: string, replace: string): string | null {
+  const slots = findRunSlots(xml);
+  if (slots.length === 0) return null;
+
+  let concat = '';
+  const offsets: Array<{ slot: number; from: number; to: number }> = [];
+  slots.forEach((s, i) => {
+    offsets.push({ slot: i, from: concat.length, to: concat.length + s.text.length });
+    concat += s.text;
+  });
+
+  const located = locateMatch(concat, find);
+  if (!located) return null;
+  const matchStart = located.start;
+  const matchEnd = matchStart + located.len;
+
+  const touched = offsets.filter((o) => o.to > matchStart && o.from < matchEnd && slots[o.slot].editable);
+  if (touched.length === 0) return null;
+
+  // Paragraph index for each slot = number of </w:p> pseudo-slots before it.
+  const paraIndexOfSlot: number[] = [];
+  let paraCounter = 0;
+  slots.forEach((s, i) => {
+    paraIndexOfSlot[i] = paraCounter;
+    if (!s.editable && s.text === '\n') paraCounter += 1;
+  });
+
+  // Distribute the replacement lines over the matched paragraphs in order.
+  const paraOrder: number[] = [];
+  for (const o of touched) {
+    const pi = paraIndexOfSlot[o.slot];
+    if (paraOrder[paraOrder.length - 1] !== pi) paraOrder.push(pi);
+  }
+  const lines = replace.split(/\n+/);
+  if (lines.length > paraOrder.length) {
+    // Surplus lines: merge the tail into the last available paragraph.
+    const head = lines.slice(0, paraOrder.length - 1);
+    const tail = lines.slice(paraOrder.length - 1).join(' ');
+    lines.length = 0;
+    lines.push(...head, tail);
+  }
+  const lineForPara = new Map<number, string>();
+  paraOrder.forEach((pi, k) => lineForPara.set(pi, lines[k] ?? ''));
+
+  // First touched slot per paragraph receives that paragraph's line; every
+  // other touched slot's matched span is blanked. Rewrite last → first.
+  const firstSlotForPara = new Map<number, number>();
+  for (const o of touched) {
+    const pi = paraIndexOfSlot[o.slot];
+    if (!firstSlotForPara.has(pi)) firstSlotForPara.set(pi, o.slot);
+  }
+  let out = xml;
+  for (let i = touched.length - 1; i >= 0; i -= 1) {
+    const o = touched[i];
+    const slot = slots[o.slot];
+    const localStart = Math.max(0, matchStart - o.from);
+    const localEnd = Math.min(slot.text.length, matchEnd - o.from);
+    const pi = paraIndexOfSlot[o.slot];
+    const insert = firstSlotForPara.get(pi) === o.slot ? (lineForPara.get(pi) ?? '') : '';
+    const newText = slot.text.slice(0, localStart) + insert + slot.text.slice(localEnd);
     out = out.slice(0, slot.start) + escapeXml(newText) + out.slice(slot.end);
   }
   return out;
@@ -245,6 +320,15 @@ export function applyReplacementsToXml(
         applied.push(rep);
         done = true;
         break; // first occurrence only — mirrors the editor's applyChange
+      }
+    }
+    if (!done) {
+      // Cross-paragraph pass — only when no single paragraph matched.
+      const next = replaceAcrossParagraphs(current, rep.find, rep.replace);
+      if (next !== null) {
+        current = next;
+        applied.push(rep);
+        done = true;
       }
     }
     if (!done) unmatched.push(rep);
