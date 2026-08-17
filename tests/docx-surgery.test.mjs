@@ -17,7 +17,7 @@
  * Usage:        ./node_modules/.bin/tsx tests/docx-surgery.test.mjs
  */
 
-import { Document, Packer, Paragraph, TextRun, HeadingLevel } from 'docx';
+import { Document, Packer, Paragraph, TextRun, HeadingLevel, ImageRun, Header } from 'docx';
 import { unzipSync, strFromU8 } from 'fflate';
 import { editDocxInPlace, replaceInParagraph } from '../utils/docxSurgery.ts';
 
@@ -138,6 +138,43 @@ const mkPara = (...runs) =>
 const para = '<w:p><w:r><w:t>Hello </w:t></w:r><w:r><w:t>world</w:t></w:r></w:p>';
 check('replaceInParagraph handles split text', (replaceInParagraph(para, 'Hello world', 'Goodbye world') ?? '').includes('Goodbye world'));
 check('replaceInParagraph returns null when absent', replaceInParagraph(para, 'nothing here', 'x') === null);
+
+// ---------- 7. letterhead logo in the header survives byte-for-byte ----------
+// The firm's engagement letters carry a logo in word/header*.xml +
+// word/media/*. The surgery only rewrites word/document.xml, so these must
+// pass through untouched (asked 2026-08-17 about Femme's letterhead).
+{
+  const png = Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+    'base64',
+  );
+  const letter = new Document({
+    sections: [{
+      headers: {
+        default: new Header({
+          children: [new Paragraph({ children: [new ImageRun({ type: 'png', data: png, transformation: { width: 40, height: 40 } })] })],
+        }),
+      },
+      children: [new Paragraph({ children: [new TextRun('Dear CLIENT 1 and CLIENT 2:')] })],
+    }],
+  });
+  const src = await Packer.toBuffer(letter);
+  const before = unzipSync(new Uint8Array(src));
+  const mediaKeys = Object.keys(before).filter((k) => k.startsWith('word/media/'));
+  const headerKeys = Object.keys(before).filter((k) => /word\/header\d*\.xml$/.test(k));
+  check('logo fixture has media + header parts', mediaKeys.length > 0 && headerKeys.length > 0,
+    `media=${mediaKeys.length} header=${headerKeys.length}`);
+  const edited = editDocxInPlace(src.buffer ?? src, [
+    { find: 'Dear CLIENT 1 and CLIENT 2:', replace: 'Dear Arjun Divecha and Diana Divecha:' },
+  ]);
+  const after = unzipSync(edited.bytes);
+  const identical = (k) => after[k] && Buffer.compare(Buffer.from(before[k]), Buffer.from(after[k])) === 0;
+  check('logo edit applied', edited.applied.length === 1 && edited.unmatched.length === 0);
+  check('logo image bytes identical', mediaKeys.every(identical));
+  check('header XML identical', headerKeys.every(identical));
+  check('no parts lost', Object.keys(before).length === Object.keys(after).length);
+  check('body text replaced under logo', textOf(bodyOf(edited.bytes)).includes('Dear Arjun Divecha and Diana Divecha:'));
+}
 
 console.log(`\nDOCX surgery: ${passed} passed, ${failed} failed`);
 process.exit(failed === 0 ? 0 : 1);
