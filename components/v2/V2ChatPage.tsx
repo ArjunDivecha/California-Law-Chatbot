@@ -356,6 +356,9 @@ export const V2ChatPage: React.FC = () => {
   const [chatBoxBrowse, setChatBoxBrowse] = useState(false);
   const attachInputRef = useRef<HTMLInputElement>(null);
   const MAX_ATTACH_CHARS = 400_000;
+  const attachPreviewText = attachedDoc ? attachedDoc.text.slice(0, 60_000) : '';
+  const { preview: attachPreview, hasDetections: attachHasDetections } =
+    useV2SanitizationPreview(attachPreviewText);
 
   useEffect(() => {
     void fetchBoxStatus(getToken).then(setChatBoxState);
@@ -725,6 +728,15 @@ export const V2ChatPage: React.FC = () => {
                   <span className="inline-flex items-center gap-1.5 rounded-full border border-gray-300 bg-gray-50 px-3 py-1 text-gray-800">
                     📎 <span className="max-w-[280px] truncate font-medium">{attachedDoc.name}</span>
                     <span className="text-gray-500">({Math.max(1, Math.round(attachedDoc.text.length / 1000))}k chars)</span>
+                    {attachHasDetections ? (
+                      <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800">
+                        🔒 {attachPreview.tokens.length} item{attachPreview.tokens.length === 1 ? '' : 's'} will be protected
+                      </span>
+                    ) : (
+                      <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-500">
+                        no private items detected — mark any missed name via select → redact
+                      </span>
+                    )}
                     <button
                       type="button"
                       onClick={() => setAttachedDoc(null)}

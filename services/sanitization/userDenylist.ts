@@ -124,6 +124,33 @@ export function subscribeToUserDenylist(handler: () => void): () => void {
  */
 const WORDLIKE = /[A-Za-z0-9À-ÖØ-öø-ÿ]/;
 
+const REGEX_ESCAPE = /[.*+?^${}()|[\]\\]/g;
+
+/**
+ * Variant-tolerant matcher for a multi-word denylist term. Built so that a
+ * protected name keeps matching when documents mangle it (2026-08-17 fix —
+ * a client's share certificate leaked because "First Last" in the denylist
+ * did not match "FIRST MIDDLE LAST" in OCR text or "First_Last" in a
+ * filename):
+ *   - words may be separated by spaces, dots, underscores, or hyphens
+ *   - up to one extra word (middle name / initial) may sit between each
+ *     pair of term words
+ *   - case-insensitive (covers OCR ALL-CAPS)
+ * Over-matching redacts too much rather than too little — the correct
+ * failure direction for privileged terms.
+ */
+function variantRegexFor(term: string): RegExp | null {
+  const words = term
+    .trim()
+    .split(/[\s._-]+/)
+    .filter(Boolean)
+    .map((w) => w.replace(REGEX_ESCAPE, '\\$&'));
+  if (words.length < 2) return null;
+  const sep = "[\\s._-]+(?:[A-Za-z\\u00C0-\\u024F'.]{1,25}[\\s._-]+)?";
+  const body = words.join(sep);
+  return new RegExp(`(?<![A-Za-z0-9\\u00C0-\\u024F])${body}(?![A-Za-z0-9\\u00C0-\\u024F])`, 'gi');
+}
+
 export function findUserDenylistSpans(text: string): Span[] {
   if (!text) return [];
   const out: Span[] = [];
@@ -131,6 +158,23 @@ export function findUserDenylistSpans(text: string): Span[] {
   for (const term of readRaw()) {
     const needle = term.trim().toLowerCase();
     if (!needle) continue;
+    // Multi-word terms: variant-tolerant regex (separators, middle name,
+    // any case). Single-word terms keep the exact boundary match below.
+    const variant = variantRegexFor(term);
+    if (variant) {
+      let m: RegExpExecArray | null;
+      while ((m = variant.exec(text)) !== null) {
+        out.push({
+          start: m.index,
+          end: m.index + m[0].length,
+          category: 'name',
+          raw: m[0],
+          label: 'user-denylist',
+        });
+        if (m.index === variant.lastIndex) variant.lastIndex += 1;
+      }
+      continue;
+    }
     let from = 0;
     let idx: number;
     while ((idx = lowerText.indexOf(needle, from)) !== -1) {
