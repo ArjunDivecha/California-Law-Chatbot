@@ -67,7 +67,9 @@ export const extractTextFromFile = async (file: File): Promise<FileTextExtractio
     return {
       text,
       format: 'PDF',
-      warning: text ? undefined : 'No selectable text was extracted. This may be a scanned PDF.',
+      warning: text
+        ? undefined
+        : 'This PDF has no text layer — it is likely a scanned image (try selecting text in Preview to confirm). OCR is not supported yet: use the original Word file if one exists, or export a searchable PDF from your scanner software.',
     };
   }
 

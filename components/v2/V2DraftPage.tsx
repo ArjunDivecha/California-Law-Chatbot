@@ -372,7 +372,9 @@ export const V2DraftPage: React.FC = () => {
       const extracted = await extractTextFromFile(file);
       const text = extracted.text.trim();
       if (!text) {
-        setUploadError('No readable text found in that file.');
+        // Prefer the extractor's diagnosis (e.g. scanned PDF, unsupported
+        // type) over a generic message.
+        setUploadError(extracted.warning ?? 'No readable text found in that file.');
       } else {
         setPasteText(text);
         setUploadedName(file.name);
