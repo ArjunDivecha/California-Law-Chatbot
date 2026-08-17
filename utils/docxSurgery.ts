@@ -128,29 +128,40 @@ export function replaceInParagraph(paraXml: string, find: string, replace: strin
   let matchStart = concat.indexOf(find);
   let matchLen = find.length;
   if (matchStart === -1) {
-    const nConcat = normalizeWs(concat);
-    const nFind = normalizeWs(find);
-    const nIdx = nConcat.indexOf(nFind);
-    if (nIdx === -1) return null;
-    // Map the normalized index back by walking the original string.
-    let seen = 0;
-    let origIdx = -1;
-    for (let i = 0; i < concat.length; i += 1) {
-      const nSlice = normalizeWs(concat.slice(0, i));
-      if (nSlice.length >= nIdx && origIdx === -1) {
-        origIdx = i;
-        break;
+    // Build the normalized string together with an exact position map:
+    // normStart[i] / normEnd[i] are the original-string [start, end) span
+    // that produced normalized character i. Any whitespace run (of any
+    // length, including NBSP) becomes one ' ' mapped to the whole run.
+    // The previous approximate walk misaligned matches that followed a
+    // multi-space gap and silently corrupted the text (caught 2026-08-17).
+    let norm = '';
+    const normStart: number[] = [];
+    const normEnd: number[] = [];
+    let i = 0;
+    while (i < concat.length) {
+      if (/[\s ]/.test(concat[i])) {
+        let j = i;
+        while (j < concat.length && /[\s ]/.test(concat[j])) j += 1;
+        norm += ' ';
+        normStart.push(i);
+        normEnd.push(j);
+        i = j;
+      } else {
+        norm += concat[i];
+        normStart.push(i);
+        normEnd.push(i + 1);
+        i += 1;
       }
-      seen = i;
     }
-    if (origIdx === -1) return null;
-    matchStart = origIdx;
-    // Extend to cover the same normalized length.
-    let end = matchStart;
-    while (end < concat.length && normalizeWs(concat.slice(matchStart, end)).length < nFind.length) {
-      end += 1;
-    }
-    matchLen = end - matchStart;
+    const nFind = normalizeWs(find).trim();
+    if (nFind.length === 0) return null;
+    const nIdx = norm.indexOf(nFind);
+    if (nIdx === -1) return null;
+    matchStart = normStart[nIdx];
+    matchLen = normEnd[nIdx + nFind.length - 1] - matchStart;
+    // A match that starts on a collapsed whitespace run begins at the run's
+    // first character; since nFind is trimmed its first char is non-space,
+    // so normStart[nIdx] is always the true character position.
   }
   const matchEnd = matchStart + matchLen;
 

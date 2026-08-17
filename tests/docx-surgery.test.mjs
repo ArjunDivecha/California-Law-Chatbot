@@ -113,6 +113,27 @@ xml = bodyOf(res.bytes);
 check('special chars escaped in XML', xml.includes('Smith &amp; Jones &lt;Trustees&gt;'));
 check('document still parses as text', textOf(xml).includes('Smith & Jones <Trustees> "the Trust"'));
 
+// ---------- 5b. whitespace-fallback alignment (2026-08-17 corruption bug) ----------
+// The old approximate index-mapping misaligned any match that followed a
+// multi-space gap, fusing stray characters onto the replacement ("Trusteee",
+// "quarterly..") and silently corrupting saved documents. These pin the fix.
+const mkPara = (...runs) =>
+  '<w:p>' + runs.map((r) => `<w:r><w:t xml:space="preserve">${r}</w:t></w:r>`).join('') + '</w:p>';
+{
+  const cases = [
+    { name: 'match after multi-space gap', para: mkPara('Name:     John Roe, Trustee'), find: 'John  Roe, Trustee', replace: 'Jane Doe, Trustee', want: 'Name:     Jane Doe, Trustee' },
+    { name: 'numbered clause after gap', para: mkPara('5.1    The Trustee shall account annually.'), find: 'The  Trustee shall account annually.', replace: 'The Trustee shall account quarterly.', want: '5.1    The Trustee shall account quarterly.' },
+    { name: 'single char after gap', para: mkPara('A   B'), find: 'B', replace: 'C', want: 'A   C' },
+    { name: 'gap inside doc, single space in find', para: mkPara('The  Trustee shall distribute.'), find: 'The Trustee shall distribute.', replace: 'The Trustee may distribute.', want: 'The Trustee may distribute.' },
+  ];
+  for (const c of cases) {
+    const out = replaceInParagraph(c.para, c.find, c.replace);
+    check(`ws-fallback exact: ${c.name}`, out !== null && textOf(out) === c.want,
+      out === null ? 'no match' : JSON.stringify(textOf(out)));
+  }
+  check('ws-fallback: whitespace-only find rejected', replaceInParagraph(mkPara('a  b'), '   ', 'x') === null);
+}
+
 // ---------- 6. paragraph-level helper ----------
 const para = '<w:p><w:r><w:t>Hello </w:t></w:r><w:r><w:t>world</w:t></w:r></w:p>';
 check('replaceInParagraph handles split text', (replaceInParagraph(para, 'Hello world', 'Goodbye world') ?? '').includes('Goodbye world'));
