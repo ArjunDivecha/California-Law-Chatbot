@@ -28,8 +28,12 @@ const SignInPage: React.FC = () => {
           </div>
           <div className="de-rule mt-5 max-w-[400px]" />
           <p className="text-[15px] leading-relaxed text-white/75 max-w-[400px] mt-5">
-            Research, drafting, and citation verification for California attorneys — with
-            client information protected on your device before anything is sent.
+            Research, drafting, and citation verification for California attorneys.{' '}
+            <span className="font-semibold text-white">
+              Confidential client information never leaves your computer
+            </span>{' '}
+            — names, addresses, and case numbers are replaced with anonymous tokens on
+            your device, and only the tokenized text is ever sent.
           </p>
         </div>
         <div className="text-xs text-white/75">Every citation checked against the official record.</div>
