@@ -13,24 +13,26 @@ import { SignIn } from '@clerk/clerk-react';
 const SignInPage: React.FC = () => {
   return (
     <div className="min-h-screen flex">
-      {/* Left brand panel — dark plum, sign-in/marketing only per design tokens. */}
-      <div className="hidden lg:flex lg:w-[44%] shrink-0 bg-plum flex-col justify-between p-14">
+      {/* Left brand panel — violet gradient matching the logo background
+          (#3B2B6E -> #6847E8, Arjun 2026-08-18); sign-in/marketing only. */}
+      <div className="hidden lg:flex lg:w-[44%] shrink-0 bg-gradient-to-b from-[#3B2B6E] to-[#6847E8] flex-col justify-between p-14">
         <div className="flex items-center gap-3">
           <img src="/dancingelephant.png" alt="DancingElephant" className="w-11 h-11 rounded-[12px]" />
           <span className="font-display text-xl font-semibold text-plum-text">DancingElephant</span>
         </div>
         <div>
-          <img src="/dancingelephant.png" alt="" className="w-[300px] h-[300px] rounded-[32px] block mb-9" />
+          {/* ring keeps the tile visible against the matching gradient panel */}
+          <img src="/dancingelephant.png" alt="" className="w-[300px] h-[300px] rounded-[32px] block mb-9 ring-1 ring-white/25" />
           <div className="font-display text-[44px] font-semibold leading-[1.15] text-plum-text max-w-[420px]">
             Legal AI that never forgets to check.
           </div>
           <div className="de-rule mt-5 max-w-[400px]" />
-          <p className="text-[15px] leading-relaxed text-plum-muted max-w-[400px] mt-5">
+          <p className="text-[15px] leading-relaxed text-white/75 max-w-[400px] mt-5">
             Research, drafting, and citation verification for California attorneys — with
             client information protected on your device before anything is sent.
           </p>
         </div>
-        <div className="text-xs text-plum-muted">Every citation checked against the official record.</div>
+        <div className="text-xs text-white/75">Every citation checked against the official record.</div>
       </div>
 
       {/* Right side — Clerk sign-in card. */}
