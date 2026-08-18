@@ -4,11 +4,13 @@ import {
   ArrowRight,
   Check,
   CheckCircle2,
+  ChevronDown,
   ChevronRight,
   ClipboardCheck,
+  Clock,
+  Columns2,
   Download,
   FileCheck2,
-  FilePlus2,
   FileText,
   GitCompareArrows,
   Highlighter,
@@ -17,8 +19,9 @@ import {
   ListChecks,
   PanelRight,
   PencilLine,
-  RefreshCw,
+  Plus,
   RotateCcw,
+  RotateCw,
   Scale,
   ShieldCheck,
   Sparkles,
@@ -828,24 +831,24 @@ const initialComplianceItems: ComplianceItem[] = [
 ];
 
 const statusColors: Record<string, string> = {
-  Ready: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-  'Needs review': 'bg-amber-50 text-amber-700 border-amber-200',
-  Extracting: 'bg-sky-50 text-sky-700 border-sky-200',
-  Satisfied: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-  Partial: 'bg-amber-50 text-amber-700 border-amber-200',
-  Reviewed: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-  Generated: 'bg-sky-50 text-sky-700 border-sky-200',
+  Ready: 'bg-deteal-bg text-deteal-text border-deteal-line',
+  'Needs review': 'bg-deamber-bg text-deamber-text border-deamber-line',
+  Extracting: 'bg-brand-tint text-brand-deep border-brand-line',
+  Satisfied: 'bg-deteal-bg text-deteal-text border-deteal-line',
+  Partial: 'bg-deamber-bg text-deamber-text border-deamber-line',
+  Reviewed: 'bg-deteal-bg text-deteal-text border-deteal-line',
+  Generated: 'bg-brand-tint text-brand-deep border-brand-line',
 };
 
 function Badge({ children, tone = 'neutral' }: { children: React.ReactNode; tone?: 'neutral' | 'success' | 'warn' | 'info' }) {
   const tones = {
-    neutral: 'bg-gray-50 text-gray-700 border-gray-200',
-    success: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-    warn: 'bg-amber-50 text-amber-700 border-amber-200',
-    info: 'bg-sky-50 text-sky-700 border-sky-200',
+    neutral: 'bg-surface-pill text-ink-muted border-surface-pillline',
+    success: 'bg-deteal-bg text-deteal-text border-deteal-line',
+    warn: 'bg-deamber-bg text-deamber-text border-deamber-line',
+    info: 'bg-brand-tint text-brand-deep border-brand-line',
   };
   return (
-    <span className={`inline-flex items-center rounded-md border px-2 py-1 text-[11px] font-semibold leading-none ${tones[tone]}`}>
+    <span className={`inline-flex items-center rounded-lg border px-2 py-1 text-[11px] font-semibold leading-none ${tones[tone]}`}>
       {children}
     </span>
   );
@@ -853,12 +856,12 @@ function Badge({ children, tone = 'neutral' }: { children: React.ReactNode; tone
 
 function SectionHeader({ icon, title, meta }: { icon: React.ReactNode; title: string; meta?: string }) {
   return (
-    <div className="flex items-center justify-between gap-3 border-b border-gray-100 px-4 py-3">
+    <div className="flex items-center justify-between gap-3 border-b border-surface-line2 px-4 py-3">
       <div className="flex min-w-0 items-center gap-2">
-        <span className="flex h-7 w-7 items-center justify-center rounded-md border border-gray-200 bg-white text-gray-700">{icon}</span>
-        <h2 className="truncate text-sm font-semibold text-gray-900">{title}</h2>
+        <span className="flex h-7 w-7 items-center justify-center rounded-lg border border-surface-line bg-white text-brand">{icon}</span>
+        <h2 className="truncate text-xs font-semibold uppercase tracking-[.05em] text-ink-muted">{title}</h2>
       </div>
-      {meta && <span className="shrink-0 text-xs text-gray-500">{meta}</span>}
+      {meta && <span className="shrink-0 text-[11px] text-ink-faint">{meta}</span>}
     </div>
   );
 }
@@ -874,14 +877,14 @@ function FileUploadControl({
 }) {
   return (
     <div className="min-w-0">
-      <div className="mb-1 flex items-center gap-1.5 text-[11px] font-semibold text-gray-600">
-        <Upload size={iconSize} />
+      <div className="mb-1 flex items-center gap-1.5 text-[11px] font-semibold text-ink-muted">
+        <Upload size={iconSize} strokeWidth={1.5} />
         {label}
       </div>
       <input
         type="file"
         aria-label={label}
-        className="block w-full cursor-pointer rounded-md border border-gray-200 bg-white text-[11px] text-gray-700 file:mr-2 file:cursor-pointer file:border-0 file:bg-gray-950 file:px-2 file:py-1.5 file:text-[11px] file:font-semibold file:text-white hover:border-pink-300"
+        className="block w-full cursor-pointer rounded-lg border border-surface-ctl bg-white text-[11px] text-ink-secondary transition file:mr-2 file:cursor-pointer file:border-0 file:bg-brand file:px-2 file:py-1.5 file:text-[11px] file:font-semibold file:text-white hover:border-brand-hover"
         accept=".txt,.md,.doc,.docx,.pdf"
         onChange={(event) => {
           const file = event.currentTarget.files?.[0];
@@ -1810,40 +1813,55 @@ export const V2DraftingMagicPage: React.FC = () => {
     : 'Not saved yet';
 
   return (
-    <div className="min-h-full overflow-y-auto bg-[#f7f6f2] text-gray-900 lg:h-full lg:overflow-hidden">
+    <div className="min-h-full overflow-y-auto bg-surface-app font-sans text-ink lg:h-full lg:overflow-hidden">
       <div className="flex min-h-full flex-col lg:h-full lg:min-h-0">
-        <div className="border-b border-gray-200 bg-white px-5 py-3">
+        <div className="border-b border-surface-line2 bg-white px-7 py-3.5">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2">
-                <h1 className="text-xl font-semibold tracking-normal text-gray-950">Drafting Magic</h1>
-                <Badge tone="success">Workbench prototype</Badge>
-                <Badge tone="info">{currentPacketTemplate.label}</Badge>
+            <div className="flex min-w-0 items-center gap-3">
+              <img src="/dancingelephant.png" alt="" className="h-[30px] w-[30px] shrink-0 rounded-lg" />
+              <div className="min-w-0">
+                <h1 className="truncate text-[15px] font-semibold text-ink">
+                  Drafting Magic · {currentPacketTemplate.label}
+                </h1>
+                <p className="truncate text-xs text-ink-muted">{currentPacketTemplate.description}</p>
               </div>
-              <p className="mt-1 max-w-3xl text-sm text-gray-600">
-                Compare source documents, resolve inconsistencies, and generate a traceable new draft for the selected practice pathway.
-              </p>
             </div>
-            <div className="flex flex-wrap items-center gap-2">
-              {workflowSummary.map((item) => (
-                <div key={item.label} className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-right">
-                  <div className="text-[11px] font-medium text-gray-500">{item.label}</div>
-                  <div className="text-sm font-semibold text-gray-950">{item.value}</div>
-                </div>
-              ))}
+            <div className="flex flex-wrap items-center gap-3.5">
+              <span className="inline-flex items-center gap-1.5 text-xs text-ink-faint">
+                <Clock size={13} strokeWidth={1.8} />
+                {lastSavedAt ? `Autosaved ${lastSavedLabel}` : 'Not saved yet'}
+              </span>
+              <button
+                type="button"
+                onClick={() => void exportDraftDocx()}
+                disabled={isExportingDocx}
+                className="inline-flex items-center gap-2 rounded-[9px] bg-brand px-4 py-2.5 text-[12.5px] font-semibold text-white transition hover:bg-brand-deep disabled:cursor-not-allowed disabled:bg-surface-disabled disabled:text-ink-faint"
+              >
+                {isExportingDocx ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} strokeWidth={1.8} />}
+                {isExportingDocx ? 'Exporting packet' : 'Export packet'}
+              </button>
             </div>
           </div>
 
-          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
-            <div className="flex min-w-0 flex-wrap items-center gap-2 text-xs text-gray-600">
-              <span className="inline-flex items-center gap-1 font-semibold text-gray-800">
-                <Lock size={14} />
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            {workflowSummary.map((item) => (
+              <div key={item.label} className="rounded-[10px] border border-surface-line bg-white px-3 py-2 text-right">
+                <div className="text-[11px] font-medium text-ink-faint">{item.label}</div>
+                <div className="text-sm font-semibold text-ink">{item.value}</div>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-surface-line bg-surface-app px-3 py-2">
+            <div className="flex min-w-0 flex-wrap items-center gap-2 text-xs text-ink-muted">
+              <span className="inline-flex items-center gap-1.5 font-semibold text-ink-secondary">
+                <Lock size={14} strokeWidth={1.5} />
                 Browser workspace
               </span>
               <Badge tone={saveError ? 'warn' : 'success'}>{saveError || `Saved locally ${lastSavedLabel}`}</Badge>
-              <span className="text-gray-500">Cloud drafting receives tokenized packet text; rehydration stays in this browser.</span>
+              <span className="text-ink-faint">Drafting sends tokenized packet text; rehydration stays on this device.</span>
               <Badge tone={privacyFilterReady ? 'success' : 'warn'}>
-                {privacyFilterReady ? 'Privacy filter connected' : 'Cloud draft blocked until privacy filter connects'}
+                {privacyFilterReady ? 'Privacy shield connected' : 'Drafting paused until the privacy shield connects'}
               </Badge>
               {lastDraftedLabel && <Badge tone="info">Cloud draft {lastDraftedLabel}</Badge>}
               {lastDraftMethod && <Badge tone={lastDraftMethod === 'opf' ? 'success' : 'warn'}>{lastDraftMethod.toUpperCase()} sanitized</Badge>}
@@ -1854,30 +1872,30 @@ export const V2DraftingMagicPage: React.FC = () => {
               <button
                 type="button"
                 onClick={exportWorkspace}
-                className="inline-flex items-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50"
+                className="inline-flex items-center gap-2 rounded-lg border border-surface-ctl bg-white px-3 py-1.5 text-xs font-semibold text-ink-secondary transition hover:border-brand-hover hover:bg-surface-pill"
               >
-                <Download size={14} />
+                <Download size={14} strokeWidth={1.5} />
                 Export workspace
               </button>
               <button
                 type="button"
                 onClick={resetWorkspace}
-                className="inline-flex items-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50"
+                className="inline-flex items-center gap-2 rounded-lg border border-surface-ctl bg-white px-3 py-1.5 text-xs font-semibold text-ink-secondary transition hover:border-brand-hover hover:bg-surface-pill"
               >
-                <RotateCcw size={14} />
+                <RotateCcw size={14} strokeWidth={1.5} />
                 Reset
               </button>
             </div>
           </div>
 
-          <div className="mt-3 flex flex-wrap items-center gap-1 rounded-lg border border-gray-200 bg-gray-50 p-1">
+          <div className="mt-3 flex w-fit flex-wrap items-center overflow-hidden rounded-[9px] border border-surface-line3">
             {tabs.map((tab) => (
               <button
                 key={tab.id}
                 type="button"
                 onClick={() => setActiveTab(tab.id)}
-                className={`rounded-md px-3 py-1.5 text-xs font-semibold transition ${
-                  activeTab === tab.id ? 'bg-gray-950 text-white shadow-sm' : 'text-gray-600 hover:bg-white hover:text-gray-950'
+                className={`px-3.5 py-[7px] text-xs font-semibold transition ${
+                  activeTab === tab.id ? 'bg-brand text-white' : 'bg-white text-ink-muted hover:bg-surface-pill hover:text-ink'
                 }`}
               >
                 {tab.label}
@@ -1887,33 +1905,57 @@ export const V2DraftingMagicPage: React.FC = () => {
         </div>
 
         <div className="grid flex-none grid-cols-1 gap-0 overflow-visible lg:min-h-0 lg:flex-1 lg:grid-cols-[288px_minmax(0,1fr)_380px] lg:overflow-hidden">
-          <aside className="order-2 overflow-visible border-r border-gray-200 bg-white lg:order-none lg:min-h-0 lg:overflow-y-auto">
-            <SectionHeader icon={<FileText size={15} />} title="Source Library" meta={`${sources.length} items`} />
-            <div className="space-y-3 p-3">
+          <aside className="order-2 overflow-visible border-r border-surface-line bg-white lg:order-none lg:min-h-0 lg:overflow-y-auto">
+            <SectionHeader icon={<FileText size={15} strokeWidth={1.5} />} title="Source documents" meta={`${sources.length} items`} />
+            <div className="space-y-2.5 p-3">
               <button
                 type="button"
                 onClick={() => setActiveTab('inputs')}
-                className="flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-gray-300 bg-gray-50 px-3 py-3 text-sm font-semibold text-gray-700 hover:border-pink-300 hover:bg-pink-50 hover:text-pink-700"
+                className="flex w-full items-center justify-center gap-2 rounded-[10px] border border-dashed border-brand-hover bg-[#FBFAFE] px-3 py-3 text-[12.5px] font-semibold text-brand transition hover:bg-brand-tint"
               >
-                <FilePlus2 size={16} />
-                Manage packet
+                <Plus size={14} strokeWidth={2} />
+                Add document
               </button>
 
               {sources.map((source) => (
                 <div
                   key={source.id}
-                  className={`rounded-lg border bg-white p-3 shadow-sm transition ${
+                  className={`rounded-[10px] border bg-white px-3.5 py-3 shadow-card transition ${
                     source.id === activeSourceId
-                      ? 'border-pink-300 ring-2 ring-pink-100'
+                      ? 'border-brand ring-2 ring-brand-tint'
                       : source.included
-                        ? 'border-gray-200'
-                        : 'border-gray-100 opacity-60'
+                        ? 'border-surface-line'
+                        : 'border-surface-line2 opacity-60'
                   }`}
                 >
                   <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <div className="truncate text-sm font-semibold text-gray-950">{getSourceDisplayName(source)}</div>
-                      <div className="mt-1 flex flex-wrap items-center gap-1">
+                    <div className="flex min-w-0 gap-2.5">
+                      <FileText
+                        size={16}
+                        strokeWidth={1.5}
+                        className={`mt-0.5 shrink-0 ${source.status === 'Ready' ? 'text-brand' : 'text-ink-faint'}`}
+                      />
+                      <div className="min-w-0">
+                      <div className="truncate text-[12.5px] font-semibold text-ink">{getSourceDisplayName(source)}</div>
+                      <div className="mt-1 flex items-center gap-1.5 text-[11px]">
+                        {source.status === 'Extracting' ? (
+                          <>
+                            <span className="de-spinner" />
+                            <span className="text-ink-muted">Extracting…</span>
+                          </>
+                        ) : source.status === 'Ready' ? (
+                          <>
+                            <Check size={10} strokeWidth={2.4} className="text-deteal-icon2" />
+                            <span className="text-deteal-text">Extracted · {source.sections} sections</span>
+                          </>
+                        ) : (
+                          <>
+                            <AlertTriangle size={10} strokeWidth={2} className="text-deamber-icon" />
+                            <span className="text-deamber-text">Needs review · {source.sections} sections</span>
+                          </>
+                        )}
+                      </div>
+                      <div className="mt-1.5 flex flex-wrap items-center gap-1">
                         <Badge>{source.role}</Badge>
                         {source.base && <Badge tone="info">Base</Badge>}
                         {source.inputMode !== 'sample' && (
@@ -1922,12 +1964,13 @@ export const V2DraftingMagicPage: React.FC = () => {
                           </Badge>
                         )}
                       </div>
+                      </div>
                     </div>
                     <button
                       type="button"
                       onClick={() => toggleSource(source.id)}
-                      className={`h-6 w-10 rounded-full border p-0.5 transition ${
-                        source.included ? 'border-emerald-200 bg-emerald-100' : 'border-gray-200 bg-gray-100'
+                      className={`h-6 w-10 shrink-0 rounded-full border p-0.5 transition ${
+                        source.included ? 'border-deteal-line bg-deteal-bg' : 'border-surface-line3 bg-surface-pill'
                       }`}
                       aria-label={`${source.included ? 'Exclude' : 'Include'} ${getSourceDisplayName(source)}`}
                     >
@@ -1938,27 +1981,27 @@ export const V2DraftingMagicPage: React.FC = () => {
                   </div>
 
                   {source.uploadedFileName && (
-                    <div className="mt-2 truncate rounded-md bg-gray-50 px-2 py-1 text-xs text-gray-600">{source.uploadedFileName}</div>
+                    <div className="mt-2 truncate rounded-lg bg-surface-pill px-2 py-1 text-[11px] text-ink-muted">{source.uploadedFileName}</div>
                   )}
 
-                  <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
+                  <div className="mt-3 grid grid-cols-3 gap-2 text-[11px]">
                     <div>
-                      <div className="text-gray-400">Format</div>
-                      <div className="font-semibold text-gray-700">{source.format}</div>
+                      <div className="text-ink-faint">Format</div>
+                      <div className="font-semibold text-ink-secondary">{source.format}</div>
                     </div>
                     <div>
-                      <div className="text-gray-400">Sections</div>
-                      <div className="font-semibold text-gray-700">{source.sections}</div>
+                      <div className="text-ink-faint">Sections</div>
+                      <div className="font-semibold text-ink-secondary">{source.sections}</div>
                     </div>
                     <div>
-                      <div className="text-gray-400">Words</div>
-                      <div className="font-semibold text-gray-700">{source.words}</div>
+                      <div className="text-ink-faint">Words</div>
+                      <div className="font-semibold text-ink-secondary">{source.words}</div>
                     </div>
                   </div>
 
                   <div className="mt-3 flex items-center justify-between gap-2">
                     <span
-                      className={`inline-flex rounded-md border px-2 py-1 text-[11px] font-semibold leading-none ${
+                      className={`inline-flex rounded-lg border px-2 py-1 text-[11px] font-semibold leading-none ${
                         statusColors[source.status]
                       }`}
                     >
@@ -1967,7 +2010,7 @@ export const V2DraftingMagicPage: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => setBaseSource(source.id)}
-                      className="rounded-md px-2 py-1 text-[11px] font-semibold text-gray-500 hover:bg-gray-100 hover:text-gray-900"
+                      className="rounded-lg px-2 py-1 text-[11px] font-semibold text-ink-faint transition hover:bg-surface-pill hover:text-ink"
                     >
                       Set base
                     </button>
@@ -1987,15 +2030,15 @@ export const V2DraftingMagicPage: React.FC = () => {
                         setActiveSourceId(source.id);
                         setActiveTab('inputs');
                       }}
-                      className="rounded-md border border-gray-200 bg-white px-2 py-1.5 text-[11px] font-semibold text-gray-700 hover:border-pink-300 hover:bg-pink-50 hover:text-pink-700"
+                      className="rounded-lg border border-surface-ctl bg-white px-2 py-1.5 text-[11px] font-semibold text-ink-secondary transition hover:border-brand-hover hover:bg-surface-pill"
                     >
                       Open
                     </button>
                   </div>
 
                   {source.warning && (
-                    <div className="mt-2 flex items-start gap-2 rounded-md bg-amber-50 px-2 py-2 text-xs text-amber-800">
-                      <AlertTriangle size={14} className="mt-0.5 shrink-0" />
+                    <div className="mt-2 flex items-start gap-2 rounded-lg border border-deamber-line bg-deamber-bg px-2 py-2 text-[11px] leading-5 text-deamber-text">
+                      <AlertTriangle size={13} strokeWidth={1.8} className="mt-0.5 shrink-0 text-deamber-icon" />
                       <span>{source.warning}</span>
                     </div>
                   )}
@@ -2004,33 +2047,55 @@ export const V2DraftingMagicPage: React.FC = () => {
             </div>
           </aside>
 
-          <main className="order-1 overflow-visible bg-[#fbfaf7] lg:order-none lg:min-h-0 lg:overflow-y-auto">
+          <main className="order-1 overflow-visible bg-surface-app lg:order-none lg:min-h-0 lg:overflow-y-auto">
+            {/* Pathway bar — presentation only; the chip opens the existing
+                pathway/packet-template picker on the Inputs tab. */}
+            <div className="px-5 pt-5">
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-surface-line bg-white px-[18px] py-3.5">
+                <div className="flex flex-wrap items-center gap-3">
+                  <span className="text-[12.5px] font-semibold text-ink-muted">Pathway</span>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('inputs')}
+                    className="inline-flex items-center gap-2 rounded-[9px] border border-brand-line bg-brand-tint px-3 py-[7px] text-[13px] font-semibold text-brand-deep transition hover:border-brand-hover"
+                  >
+                    {currentPacketTemplate.label}
+                    <ChevronDown size={12} strokeWidth={2} />
+                  </button>
+                </div>
+                <span className="text-xs text-ink-faint">
+                  {draftSections.length} section{draftSections.length === 1 ? '' : 's'} ·{' '}
+                  {draftSections.filter((section) => section.status !== 'Needs review').length} drafted
+                </span>
+              </div>
+            </div>
+
             {activeTab === 'inputs' && (
-              <div className="p-5">
+              <div className="px-5 pb-5 pt-4">
                 <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                   <div>
-                    <h2 className="text-lg font-semibold text-gray-950">Prepare the packet</h2>
-                    <p className="mt-1 text-sm text-gray-600">Choose the practice pathway, load the documents, confirm the base, and add the new instruction.</p>
+                    <h2 className="font-display text-[22px] font-semibold text-ink">Prepare the packet</h2>
+                    <p className="mt-1 text-sm text-ink-muted">Choose the practice pathway, load the documents, confirm the base, and add the new instruction.</p>
                   </div>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <Badge tone={packetComplete ? 'success' : 'warn'}>{includedSources.length} of {sources.length} present</Badge>
                     {reviewNeededCount > 0 && <Badge tone="warn">{reviewNeededCount} extraction review</Badge>}
                     <button
                       type="button"
                       onClick={generateComparison}
-                      className="inline-flex items-center gap-2 rounded-md bg-gray-950 px-3 py-2 text-xs font-semibold text-white hover:bg-gray-800"
+                      className="inline-flex items-center gap-2 rounded-[10px] bg-brand px-4 py-2.5 text-xs font-semibold text-white transition hover:bg-brand-deep"
                     >
-                      <Wand2 size={14} />
-                      Generate comparison
+                      <Wand2 size={14} strokeWidth={1.8} />
+                      Compare the packet
                     </button>
                   </div>
                 </div>
 
-                <div className="mb-4 rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+                <div className="mb-4 rounded-xl border border-surface-line bg-white p-4 shadow-card">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
-                      <h3 className="text-sm font-semibold text-gray-950">Manage packet</h3>
-                      <p className="mt-1 text-xs leading-5 text-gray-600">Start with a practice pathway, then choose the document package for this matter.</p>
+                      <h3 className="text-sm font-semibold text-ink">Manage packet</h3>
+                      <p className="mt-1 text-xs leading-5 text-ink-muted">Start with a practice pathway, then choose the document package for this matter.</p>
                     </div>
                     <Badge tone="info">{currentPacketTemplate.description}</Badge>
                   </div>
@@ -2046,12 +2111,12 @@ export const V2DraftingMagicPage: React.FC = () => {
                           key={id}
                           type="button"
                           onClick={() => choosePracticePathway(id as PracticePathway)}
-                          className={`rounded-lg border p-3 text-left transition ${
-                            active ? 'border-gray-950 bg-gray-950 text-white' : 'border-gray-200 bg-gray-50 text-gray-800 hover:border-pink-300 hover:bg-pink-50'
+                          className={`rounded-[10px] border p-3 text-left transition ${
+                            active ? 'border-brand bg-brand text-white' : 'border-surface-line bg-white text-ink-secondary hover:border-brand-hover hover:bg-surface-pill'
                           }`}
                         >
                           <div className="text-sm font-semibold">{label}</div>
-                          <p className={`mt-1 text-xs leading-5 ${active ? 'text-gray-200' : 'text-gray-600'}`}>{description}</p>
+                          <p className={`mt-1 text-xs leading-5 ${active ? 'text-white/80' : 'text-ink-muted'}`}>{description}</p>
                         </button>
                       );
                     })}
@@ -2065,15 +2130,15 @@ export const V2DraftingMagicPage: React.FC = () => {
                           key={template.id}
                           type="button"
                           onClick={() => applyPacketTemplate(template.id)}
-                          className={`rounded-lg border p-3 text-left transition ${
-                            active ? 'border-pink-300 bg-pink-50 ring-2 ring-pink-100' : 'border-gray-200 bg-white hover:border-pink-200 hover:bg-pink-50'
+                          className={`rounded-[10px] border p-3 text-left transition ${
+                            active ? 'border-brand bg-brand-tint ring-2 ring-brand-line' : 'border-surface-line bg-white hover:border-brand-hover hover:bg-surface-pill'
                           }`}
                         >
                           <div className="flex items-center justify-between gap-2">
-                            <div className="text-sm font-semibold text-gray-950">{template.label}</div>
-                            {active && <Check size={15} className="text-pink-600" />}
+                            <div className="text-sm font-semibold text-ink">{template.label}</div>
+                            {active && <Check size={15} strokeWidth={2.2} className="text-brand-deep" />}
                           </div>
-                          <p className="mt-1 text-xs leading-5 text-gray-600">{template.description}</p>
+                          <p className="mt-1 text-xs leading-5 text-ink-muted">{template.description}</p>
                           <div className="mt-2 flex flex-wrap gap-1">
                             {template.sources.map((source) => (
                               <Badge key={source.id}>{getSourceDisplayName(source)}</Badge>
@@ -2085,15 +2150,15 @@ export const V2DraftingMagicPage: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="mb-4 rounded-lg border border-emerald-100 bg-emerald-50 p-4">
-                    <div className="flex items-center gap-2 text-sm font-semibold text-emerald-950">
-                      <ListChecks size={16} />
+                <div className="mb-4 rounded-xl border border-deteal-line bg-deteal-bg2 p-4">
+                    <div className="flex items-center gap-2 text-sm font-semibold text-deteal-deep">
+                      <ListChecks size={16} strokeWidth={1.5} className="text-deteal-icon2" />
                       Law impact path
                     </div>
                     <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-5">
                       {lawImpactChecklist.map((item, index) => (
-                        <div key={item} className="flex items-start gap-2 text-xs leading-5 text-emerald-900">
-                          <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-white text-[11px] font-semibold text-emerald-700">
+                        <div key={item} className="flex items-start gap-2 text-xs leading-5 text-deteal-deep">
+                          <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-deteal-line bg-white text-[11px] font-semibold text-deteal-text">
                             {index + 1}
                           </span>
                           <span>{item}</span>
@@ -2106,23 +2171,23 @@ export const V2DraftingMagicPage: React.FC = () => {
                   {includedSources.map((source) => (
                     <div
                       key={source.id}
-                      className={`rounded-lg border bg-white p-4 shadow-sm transition ${
-                        source.id === activeSourceId ? 'border-pink-300 ring-2 ring-pink-100' : 'border-gray-200'
+                      className={`rounded-xl border bg-white p-4 shadow-card transition ${
+                        source.id === activeSourceId ? 'border-brand ring-2 ring-brand-tint' : 'border-surface-line'
                       }`}
                     >
                       <div className="flex items-center justify-between gap-3">
                         <button
                           type="button"
                           onClick={() => setActiveSourceId(source.id)}
-                          className="flex h-8 w-8 items-center justify-center rounded-md border border-gray-200 bg-gray-50 text-gray-600 hover:bg-pink-50 hover:text-pink-700"
+                          className="flex h-8 w-8 items-center justify-center rounded-[10px] border border-surface-line bg-brand-tint text-brand transition hover:border-brand-hover"
                           aria-label={`Select ${source.role}`}
                         >
-                          <FileText size={17} />
+                          <FileText size={17} strokeWidth={1.5} />
                         </button>
-                        {source.base && <CheckCircle2 size={18} className="text-pink-500" />}
+                        {source.base && <CheckCircle2 size={18} strokeWidth={1.8} className="text-deteal-icon2" />}
                       </div>
-                      <h3 className="mt-4 text-sm font-semibold text-gray-950">{getSourceDisplayName(source)}</h3>
-                      <p className="mt-2 text-xs leading-5 text-gray-600">
+                      <h3 className="mt-4 text-sm font-semibold text-ink">{getSourceDisplayName(source)}</h3>
+                      <p className="mt-2 text-xs leading-5 text-ink-muted">
                         {source.description}
                       </p>
                       <div className="mt-3 flex flex-wrap gap-1">
@@ -2139,37 +2204,37 @@ export const V2DraftingMagicPage: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => setBaseSource(source.id)}
-                          className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-2 text-xs font-semibold ${
+                          className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-2 text-xs font-semibold transition ${
                             source.base
-                              ? 'border-pink-200 bg-pink-50 text-pink-700'
-                              : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
+                              ? 'border-brand-line bg-brand-tint text-brand-deep'
+                              : 'border-surface-ctl bg-white text-ink-secondary hover:border-brand-hover hover:bg-surface-pill'
                           }`}
                         >
-                          <CheckCircle2 size={14} />
+                          <CheckCircle2 size={14} strokeWidth={1.8} />
                           Base
                         </button>
                       </div>
                       <button
                         type="button"
                         onClick={() => setActiveSourceId(source.id)}
-                        className="mt-3 inline-flex w-full items-center justify-center rounded-md border border-gray-200 bg-gray-50 px-2.5 py-2 text-xs font-semibold text-gray-700 hover:border-pink-300 hover:bg-pink-50 hover:text-pink-700"
+                        className="mt-3 inline-flex w-full items-center justify-center rounded-lg border border-surface-ctl bg-white px-2.5 py-2 text-xs font-semibold text-ink-secondary transition hover:border-brand-hover hover:bg-surface-pill"
                       >
                         View source text
                       </button>
                     </div>
                   ))}
                   {!includedSources.length && (
-                    <div className="rounded-lg border border-dashed border-gray-300 bg-white p-6 text-sm text-gray-600 md:col-span-2 xl:col-span-5">
-                      No packet documents are currently included. Turn documents back on in the Source Library to add them to this workspace.
+                    <div className="rounded-xl border border-dashed border-surface-line3 bg-white p-6 text-sm text-ink-muted md:col-span-2 xl:col-span-5">
+                      No packet documents are included yet. Switch documents back on in Source documents to add them to this workspace.
                     </div>
                   )}
                 </div>
 
                 <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
-                  <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+                  <div className="rounded-xl border border-surface-line bg-white p-4 shadow-card">
                     <div className="flex flex-wrap items-center justify-between gap-3">
-                      <div className="flex items-center gap-2 text-sm font-semibold text-gray-950">
-                        <PencilLine size={16} />
+                      <div className="flex items-center gap-2 text-sm font-semibold text-ink">
+                        <PencilLine size={16} strokeWidth={1.5} className="text-brand" />
                         Attorney update or new law
                       </div>
                       <div className="flex flex-wrap items-center justify-end gap-2">
@@ -2177,17 +2242,17 @@ export const V2DraftingMagicPage: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => applyAttorneyInstruction('active')}
-                          className="inline-flex items-center gap-1.5 rounded-md border border-gray-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-gray-700 hover:border-pink-300 hover:bg-pink-50 hover:text-pink-700"
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-surface-ctl bg-white px-2.5 py-1.5 text-xs font-semibold text-ink-secondary transition hover:border-brand-hover hover:bg-surface-pill"
                         >
-                          <Wand2 size={13} />
+                          <Wand2 size={13} strokeWidth={1.8} />
                           Apply to active
                         </button>
                         <button
                           type="button"
                           onClick={() => applyAttorneyInstruction('packet')}
-                          className="inline-flex items-center gap-1.5 rounded-md bg-gray-950 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-gray-800"
+                          className="inline-flex items-center gap-1.5 rounded-lg bg-brand px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-brand-deep"
                         >
-                          <Wand2 size={13} />
+                          <Wand2 size={13} strokeWidth={1.8} />
                           Apply to packet
                         </button>
                       </div>
@@ -2200,7 +2265,7 @@ export const V2DraftingMagicPage: React.FC = () => {
                         setInstructionError(null);
                         markAnalysisStale();
                       }}
-                      className="mt-3 h-28 w-full resize-none rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm leading-6 text-gray-700 outline-none transition focus:border-pink-300 focus:bg-white focus:ring-2 focus:ring-pink-100"
+                      className="mt-3 h-28 w-full resize-none rounded-[10px] border border-surface-ctl bg-surface-app px-3 py-2 text-sm leading-6 text-ink-secondary outline-none transition focus:border-brand focus:bg-white focus:ring-2 focus:ring-brand-tint"
                     />
                     {/* Phase C.2 follow-up — sanitization preview chip.
                         Scans both the instructions AND every included
@@ -2216,29 +2281,29 @@ export const V2DraftingMagicPage: React.FC = () => {
                       />
                     </div>
                     <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
-                      <span className="rounded-md bg-gray-50 px-2 py-1 text-gray-500">Try: Replace Maya Chen with Rachel Stone</span>
-                      {instructionResult && <span className="rounded-md bg-emerald-50 px-2 py-1 font-semibold text-emerald-700">{instructionResult}</span>}
-                      {instructionError && <span className="rounded-md bg-amber-50 px-2 py-1 font-semibold text-amber-800">{instructionError}</span>}
+                      <span className="rounded-lg bg-surface-pill px-2 py-1 text-ink-faint">Try: Replace Maya Chen with Rachel Stone</span>
+                      {instructionResult && <span className="rounded-lg border border-deteal-line bg-deteal-bg px-2 py-1 font-semibold text-deteal-text">{instructionResult}</span>}
+                      {instructionError && <span className="rounded-lg border border-deamber-line bg-deamber-bg px-2 py-1 font-semibold text-deamber-text">{instructionError}</span>}
                     </div>
                   </div>
 
-                  <div className="rounded-lg border border-pink-100 bg-pink-50 p-4">
-                    <div className="text-sm font-semibold text-pink-950">Active packet item</div>
-                    <div className="mt-3 rounded-md bg-white/70 p-3">
-                      <div className="text-sm font-semibold text-gray-950">{getSourceDisplayName(activeSource)}</div>
-                      <p className="mt-2 text-xs leading-5 text-gray-700">{activeSource.description}</p>
+                  <div className="rounded-xl border border-brand-line bg-brand-tint p-4">
+                    <div className="text-sm font-semibold text-brand-deep">Active packet item</div>
+                    <div className="mt-3 rounded-[10px] border border-brand-line bg-white p-3">
+                      <div className="text-sm font-semibold text-ink">{getSourceDisplayName(activeSource)}</div>
+                      <p className="mt-2 text-xs leading-5 text-ink-secondary">{activeSource.description}</p>
                       <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
                         <div>
-                          <div className="text-gray-400">Format</div>
-                          <div className="font-semibold text-gray-800">{activeSource.format}</div>
+                          <div className="text-ink-faint">Format</div>
+                          <div className="font-semibold text-ink-secondary">{activeSource.format}</div>
                         </div>
                         <div>
-                          <div className="text-gray-400">Sections</div>
-                          <div className="font-semibold text-gray-800">{activeSource.sections}</div>
+                          <div className="text-ink-faint">Sections</div>
+                          <div className="font-semibold text-ink-secondary">{activeSource.sections}</div>
                         </div>
                         <div>
-                          <div className="text-gray-400">Words</div>
-                          <div className="font-semibold text-gray-800">{activeSource.words}</div>
+                          <div className="text-ink-faint">Words</div>
+                          <div className="font-semibold text-ink-secondary">{activeSource.words}</div>
                         </div>
                       </div>
                       <FileUploadControl
@@ -2247,35 +2312,35 @@ export const V2DraftingMagicPage: React.FC = () => {
                           void handleSourceFile(activeSource.id, file);
                         }}
                       />
-                      <div className="mt-3 rounded-md border border-pink-100 bg-white px-3 py-2">
+                      <div className="mt-3 rounded-[10px] border border-surface-line bg-white px-3 py-2">
                         <div className="flex flex-wrap items-center justify-between gap-2">
-                          <div className="text-xs font-semibold text-gray-600">Source preview</div>
+                          <div className="text-xs font-semibold text-ink-muted">Source preview</div>
                           <Badge tone={activeSource.inputMode === 'sample' ? 'neutral' : 'success'}>{activeSourcePreviewMode}</Badge>
                         </div>
                         <textarea
                           value={activeSource.excerpt || ''}
                           onChange={(event) => handleSourcePaste(activeSource.id, event.target.value)}
-                          className="mt-2 h-36 w-full resize-none rounded-md border border-pink-100 bg-white px-3 py-2 text-xs leading-5 text-gray-700 outline-none transition placeholder:text-gray-400 focus:border-pink-300 focus:ring-2 focus:ring-pink-100"
+                          className="mt-2 h-36 w-full resize-none rounded-[10px] border border-surface-ctl bg-white px-3 py-2 text-xs leading-5 text-ink-secondary outline-none transition placeholder:text-ink-faint focus:border-brand focus:ring-2 focus:ring-brand-tint"
                           placeholder={`Paste ${activeSource.role.toLowerCase()} text or notes`}
                         />
                         {!activeSource.excerpt?.trim() && activeSourcePreview && (
-                          <p className="mt-2 max-h-24 overflow-y-auto whitespace-pre-wrap text-xs leading-5 text-gray-600">{activeSourcePreview}</p>
+                          <p className="mt-2 max-h-24 overflow-y-auto whitespace-pre-wrap text-xs leading-5 text-ink-muted">{activeSourcePreview}</p>
                         )}
                       </div>
                     </div>
-                    <div className="mt-3 rounded-md bg-white/70 p-3">
+                    <div className="mt-3 rounded-[10px] border border-brand-line bg-white p-3">
                       <div className="flex items-center justify-between gap-2">
-                        <div className="text-xs font-semibold text-gray-600">Extracted drafting units</div>
+                        <div className="text-xs font-semibold text-ink-muted">Extracted drafting units</div>
                         <Badge tone="info">{activeSourceUnits.length}</Badge>
                       </div>
                       <div className="mt-2 space-y-2">
                         {activeSourceUnits.slice(0, 3).map((unit) => (
-                          <div key={unit.id} className="rounded-md border border-pink-100 bg-white px-2 py-2">
+                          <div key={unit.id} className="rounded-lg border border-surface-line bg-surface-app px-2 py-2">
                             <div className="flex items-center justify-between gap-2">
-                              <div className="text-xs font-semibold text-gray-900">{unit.label}</div>
-                              <span className="shrink-0 text-[11px] text-gray-500">{unit.confidence}</span>
+                              <div className="text-xs font-semibold text-ink">{unit.label}</div>
+                              <span className="shrink-0 text-[11px] text-ink-faint">{unit.confidence}</span>
                             </div>
-                            <p className="mt-1 line-clamp-2 text-xs leading-5 text-gray-600">{unit.snippet}</p>
+                            <p className="mt-1 line-clamp-2 text-xs leading-5 text-ink-muted">{unit.snippet}</p>
                           </div>
                         ))}
                       </div>
@@ -2286,22 +2351,22 @@ export const V2DraftingMagicPage: React.FC = () => {
             )}
 
             {activeTab === 'compare' && (
-              <div className="p-5">
+              <div className="px-5 pb-5 pt-4">
                 <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                   <div>
-                    <h2 className="text-lg font-semibold text-gray-950">Comparison matrix</h2>
-                    <p className="mt-1 text-sm text-gray-600">Review the legal drafting units before the system writes anything.</p>
+                    <h2 className="font-display text-[22px] font-semibold text-ink">Comparison matrix</h2>
+                    <p className="mt-1 text-sm text-ink-muted">Review the drafting units before anything gets written.</p>
                   </div>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <Badge tone={analysisFresh ? 'success' : 'warn'}>{analysisFresh ? 'Generated from packet' : 'Refresh recommended'}</Badge>
                     <Badge tone="warn">{reviewCount} open</Badge>
                     <Badge tone="success">{approvedCount} approved</Badge>
                     <button
                       type="button"
                       onClick={generateComparison}
-                      className="inline-flex items-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50"
+                      className="inline-flex items-center gap-2 rounded-lg border border-surface-ctl bg-white px-3 py-1.5 text-xs font-semibold text-ink-secondary transition hover:border-brand-hover hover:bg-surface-pill"
                     >
-                      <RefreshCw size={13} />
+                      <RotateCw size={13} strokeWidth={1.8} />
                       Regenerate
                     </button>
                   </div>
@@ -2314,25 +2379,25 @@ export const V2DraftingMagicPage: React.FC = () => {
                         key={row.id}
                         type="button"
                         onClick={() => setSelectedRowId(row.id)}
-                        className={`w-full rounded-lg border bg-white p-4 text-left shadow-sm transition hover:border-pink-200 ${
-                          selectedRowId === row.id ? 'border-pink-300 ring-2 ring-pink-100' : 'border-gray-200'
+                        className={`w-full rounded-xl border bg-white p-4 text-left shadow-card transition hover:border-brand-hover ${
+                          selectedRowId === row.id ? 'border-brand ring-2 ring-brand-tint' : 'border-surface-line'
                         }`}
                       >
                         <div className="flex flex-wrap items-start justify-between gap-3">
                           <div className="min-w-0 flex-1">
                             <div className="flex flex-wrap items-center gap-2">
-                              <span className="text-sm font-semibold text-gray-950">{row.issue}</span>
+                              <span className="text-sm font-semibold text-ink">{row.issue}</span>
                               <Badge tone={row.approved ? 'success' : 'warn'}>{row.approved ? 'Approved' : 'Attorney decision'}</Badge>
                               <Badge>{row.rowType}</Badge>
                             </div>
-                            <p className="mt-2 text-xs leading-5 text-gray-600">{row.newLawImpact}</p>
+                            <p className="mt-2 text-xs leading-5 text-ink-muted">{row.newLawImpact}</p>
                           </div>
                           <div className="flex shrink-0 flex-wrap items-center gap-2">
-                            <span className="rounded-md border border-gray-200 bg-gray-50 px-2 py-1 text-xs font-semibold text-gray-700">
+                            <span className="rounded-lg border border-surface-line bg-surface-pill px-2 py-1 text-xs font-semibold text-ink-secondary">
                               {row.recommendation}
                             </span>
-                            <span className="text-xs font-semibold text-gray-500">{row.confidence}</span>
-                            <ChevronRight size={15} className="text-gray-400" />
+                            <span className="text-xs font-semibold text-ink-faint">{row.confidence}</span>
+                            <ChevronRight size={15} strokeWidth={1.5} className="text-ink-faint" />
                           </div>
                         </div>
 
@@ -2340,15 +2405,15 @@ export const V2DraftingMagicPage: React.FC = () => {
                           {[row.sourceALabel, row.sourceBLabel, row.sourceCLabel].map((label, index) => {
                             const value = [row.sourceA, row.sourceB, row.sourceC][index];
                             return (
-                              <div key={`${row.id}-${label}`} className="rounded-md border border-gray-100 bg-gray-50 px-3 py-2">
-                                <div className="text-[11px] font-semibold text-gray-500">{label}</div>
-                                <p className="mt-1 line-clamp-2 text-xs leading-5 text-gray-700">{value}</p>
+                              <div key={`${row.id}-${label}`} className="rounded-[10px] border border-surface-line bg-surface-app px-3 py-2">
+                                <div className="text-[11px] font-semibold text-ink-faint">{label}</div>
+                                <p className="mt-1 line-clamp-2 text-xs leading-5 text-ink-secondary">{value}</p>
                               </div>
                             );
                           })}
                         </div>
 
-                        <div className="mt-3 rounded-md border border-pink-100 bg-pink-50 px-3 py-2 text-xs leading-5 text-pink-950">
+                        <div className="mt-3 rounded-[10px] border border-brand-line bg-brand-tint px-3 py-2 text-xs leading-5 text-brand-deep">
                           {row.rationale}
                         </div>
                       </button>
@@ -2356,39 +2421,39 @@ export const V2DraftingMagicPage: React.FC = () => {
                   </div>
 
                   <div className="space-y-3">
-                    <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-                      <div className="flex items-center gap-2 text-sm font-semibold text-gray-950">
-                        <UsersRound size={16} />
+                    <div className="rounded-xl border border-surface-line bg-white p-4 shadow-card">
+                      <div className="flex items-center gap-2 text-sm font-semibold text-ink">
+                        <UsersRound size={16} strokeWidth={1.5} className="text-brand" />
                         Matter model coverage
                       </div>
                       <div className="mt-3 space-y-2">
                         {estateMatterModel.map((item) => (
-                          <div key={item.id} className="rounded-md border border-gray-100 bg-gray-50 px-3 py-2">
+                          <div key={item.id} className="rounded-[10px] border border-surface-line bg-surface-app px-3 py-2">
                             <div className="flex items-center justify-between gap-2">
-                              <span className="text-xs font-semibold text-gray-900">{item.label}</span>
-                              <span className="text-[11px] font-semibold text-gray-500">{item.status}</span>
+                              <span className="text-xs font-semibold text-ink">{item.label}</span>
+                              <span className="text-[11px] font-semibold text-ink-faint">{item.status}</span>
                             </div>
-                            <p className="mt-1 text-xs leading-5 text-gray-600">{item.signal}</p>
+                            <p className="mt-1 text-xs leading-5 text-ink-muted">{item.signal}</p>
                           </div>
                         ))}
                       </div>
                     </div>
 
-                    <div className="rounded-lg border border-amber-100 bg-amber-50 p-4">
-                      <div className="flex items-center gap-2 text-sm font-semibold text-amber-950">
-                        <AlertTriangle size={16} />
+                    <div className="rounded-xl border border-deamber-line bg-deamber-bg p-4">
+                      <div className="flex items-center gap-2 text-sm font-semibold text-deamber-text">
+                        <AlertTriangle size={16} strokeWidth={1.8} className="text-deamber-icon" />
                         Drafting gate
                       </div>
-                      <p className="mt-2 text-xs leading-5 text-amber-900">
-                        Generate after the attorney has approved the open decisions or intentionally left them as review flags.
+                      <p className="mt-2 text-xs leading-5 text-deamber-text">
+                        Draft after the attorney has approved the open decisions or deliberately left them as review flags.
                       </p>
                       <button
                         type="button"
                         onClick={() => setActiveTab('strategy')}
-                        className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-md bg-gray-950 px-3 py-2 text-xs font-semibold text-white hover:bg-gray-800"
+                        className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-[10px] bg-brand px-3 py-2.5 text-xs font-semibold text-white transition hover:bg-brand-deep"
                       >
                         Continue to draft plan
-                        <ArrowRight size={14} />
+                        <ArrowRight size={14} strokeWidth={1.8} />
                       </button>
                     </div>
                   </div>
@@ -2397,20 +2462,20 @@ export const V2DraftingMagicPage: React.FC = () => {
             )}
 
             {activeTab === 'strategy' && (
-              <div className="p-5">
+              <div className="px-5 pb-5 pt-4">
                 <div className="mb-4">
-                  <h2 className="text-lg font-semibold text-gray-950">Drafting strategy</h2>
-                  <p className="mt-1 text-sm text-gray-600">Choose the drafting posture before generating the new document.</p>
+                  <h2 className="font-display text-[22px] font-semibold text-ink">Drafting strategy</h2>
+                  <p className="mt-1 text-sm text-ink-muted">Choose the drafting posture before the new document is written.</p>
                 </div>
 
-                <div className="mb-4 rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+                <div className="mb-4 rounded-xl border border-surface-line bg-white p-4 shadow-card">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div>
-                      <div className="flex items-center gap-2 text-sm font-semibold text-gray-950">
-                        <UsersRound size={16} />
+                      <div className="flex items-center gap-2 text-sm font-semibold text-ink">
+                        <UsersRound size={16} strokeWidth={1.5} className="text-brand" />
                         Issues Drafting Magic will check
                       </div>
-                      <p className="mt-1 text-xs leading-5 text-gray-600">
+                      <p className="mt-1 text-xs leading-5 text-ink-muted">
                         These checks shape the draft plan after the packet comparison has been generated.
                       </p>
                     </div>
@@ -2422,29 +2487,29 @@ export const V2DraftingMagicPage: React.FC = () => {
                         key={item.id}
                         type="button"
                         onClick={() => setActiveTab('compare')}
-                        className="rounded-md border border-gray-200 bg-gray-50 p-3 text-left transition hover:border-pink-200 hover:bg-pink-50"
+                        className="rounded-[10px] border border-surface-line bg-surface-app p-3 text-left transition hover:border-brand-hover hover:bg-surface-pill"
                       >
                         <div className="flex items-start justify-between gap-2">
-                          <div className="text-xs font-semibold text-gray-950">{item.label}</div>
-                          <span className="shrink-0 rounded border border-white bg-white px-1.5 py-0.5 text-[10px] font-semibold text-gray-600">
+                          <div className="text-xs font-semibold text-ink">{item.label}</div>
+                          <span className="shrink-0 rounded border border-surface-line bg-white px-1.5 py-0.5 text-[10px] font-semibold text-ink-muted">
                             {item.status}
                           </span>
                         </div>
-                        <p className="mt-2 line-clamp-2 text-xs leading-5 text-gray-600">{item.detail}</p>
-                        <div className="mt-2 text-[11px] font-semibold leading-4 text-pink-700">{item.signal}</div>
+                        <p className="mt-2 line-clamp-2 text-xs leading-5 text-ink-muted">{item.detail}</p>
+                        <div className="mt-2 text-[11px] font-semibold leading-4 text-brand-deep">{item.signal}</div>
                       </button>
                     ))}
                   </div>
-                  <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-md border border-gray-100 bg-gray-50 px-3 py-2">
-                    <span className="text-xs leading-5 text-gray-600">
+                  <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-[10px] border border-surface-line bg-surface-app px-3 py-2">
+                    <span className="text-xs leading-5 text-ink-muted">
                       Use this as the pre-draft coverage checklist. The actual decisions stay in the comparison matrix.
                     </span>
                     <button
                       type="button"
                       onClick={generateComparison}
-                      className="inline-flex items-center gap-1.5 rounded-md bg-gray-950 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-gray-800"
+                      className="inline-flex items-center gap-1.5 rounded-lg bg-brand px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-brand-deep"
                     >
-                      <Wand2 size={13} />
+                      <Wand2 size={13} strokeWidth={1.8} />
                       Build issue matrix
                     </button>
                   </div>
@@ -2457,8 +2522,8 @@ export const V2DraftingMagicPage: React.FC = () => {
                     ['tone', 'Tone', ['Client-friendly', 'Formal', 'Plain English', 'Attorney working draft']],
                     ['citations', 'Review posture', ['Attorney checklist', 'Inline source notes', 'Signing packet flags', 'No notes']],
                   ].map(([key, label, options]) => (
-                    <div key={key as string} className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-                      <h3 className="text-sm font-semibold text-gray-950">{label as string}</h3>
+                    <div key={key as string} className="rounded-xl border border-surface-line bg-white p-4 shadow-card">
+                      <h3 className="text-sm font-semibold text-ink">{label as string}</h3>
                       <div className="mt-3 flex flex-wrap gap-2">
                         {(options as string[]).map((option) => {
                           const active = strategy[key as keyof typeof strategy] === option;
@@ -2470,10 +2535,10 @@ export const V2DraftingMagicPage: React.FC = () => {
                                 setStrategy((current) => ({ ...current, [key as string]: option }));
                                 markDraftStale();
                               }}
-                              className={`rounded-md border px-3 py-2 text-xs font-semibold transition ${
+                              className={`rounded-lg border px-3 py-2 text-xs font-semibold transition ${
                                 active
-                                  ? 'border-gray-950 bg-gray-950 text-white'
-                                  : 'border-gray-200 bg-white text-gray-700 hover:border-pink-300 hover:bg-pink-50'
+                                  ? 'border-brand bg-brand text-white'
+                                  : 'border-surface-ctl bg-white text-ink-secondary hover:border-brand-hover hover:bg-surface-pill'
                               }`}
                             >
                               {option}
@@ -2485,27 +2550,27 @@ export const V2DraftingMagicPage: React.FC = () => {
                   ))}
                 </div>
 
-                <div className="mt-4 rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-                  <div className="flex items-center justify-between gap-3">
+                <div className="mt-4 rounded-xl border border-surface-line bg-white p-4 shadow-card">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
-                      <h3 className="text-sm font-semibold text-gray-950">Output outline</h3>
-                      <p className="mt-1 text-xs text-gray-600">This plan uses approved rows and flags open items for attorney review.</p>
+                      <h3 className="text-sm font-semibold text-ink">Output outline</h3>
+                      <p className="mt-1 text-xs text-ink-muted">This plan uses approved rows and flags open items for attorney review.</p>
                     </div>
                     <button
                       type="button"
                       onClick={generateDraft}
                       disabled={isGeneratingDraft || !privacyFilterReady}
-                      className="inline-flex items-center gap-2 rounded-md bg-pink-500 px-3 py-2 text-xs font-semibold text-white hover:bg-pink-600 disabled:cursor-not-allowed disabled:bg-gray-300"
+                      className="inline-flex items-center gap-2 rounded-[10px] bg-brand px-4 py-2.5 text-xs font-semibold text-white transition hover:bg-brand-deep disabled:cursor-not-allowed disabled:bg-surface-disabled disabled:text-ink-faint"
                     >
                       {isGeneratingDraft ? (
                         <>
                           <Loader2 size={14} className="animate-spin" />
-                          {generationStatus === 'sanitizing' ? 'Sanitizing packet' : 'Generating draft'}
+                          {generationStatus === 'sanitizing' ? 'Protecting the packet' : 'Drafting'}
                         </>
                       ) : (
                         <>
-                          Generate cloud draft
-                          <ArrowRight size={14} />
+                          Draft the document
+                          <ArrowRight size={14} strokeWidth={1.8} />
                         </>
                       )}
                     </button>
@@ -2513,10 +2578,10 @@ export const V2DraftingMagicPage: React.FC = () => {
 
                   <div className="mt-4 grid gap-2 md:grid-cols-3">
                     {draftSections.map((section, index) => (
-                      <div key={section.id} className="rounded-md border border-gray-200 bg-gray-50 p-3">
-                        <div className="text-[11px] font-semibold text-gray-400">Section {index + 1}</div>
-                        <div className="mt-1 text-sm font-semibold text-gray-900">{section.title}</div>
-                        <div className="mt-2 text-xs leading-5 text-gray-600">{section.requirements}</div>
+                      <div key={section.id} className="rounded-[10px] border border-surface-line bg-surface-app p-3">
+                        <div className="text-[11px] font-semibold uppercase tracking-[.05em] text-ink-faint">Section {index + 1}</div>
+                        <div className="mt-1 text-sm font-semibold text-ink">{section.title}</div>
+                        <div className="mt-2 text-xs leading-5 text-ink-muted">{section.requirements}</div>
                       </div>
                     ))}
                   </div>
@@ -2525,98 +2590,98 @@ export const V2DraftingMagicPage: React.FC = () => {
             )}
 
             {activeTab === 'draft' && (
-              <div className="p-5">
+              <div className="px-5 pb-5 pt-4">
                 <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                   <div>
-                    <h2 className="text-lg font-semibold text-gray-950">Draft preview</h2>
-                    <p className="mt-1 text-sm text-gray-600">Each section carries lineage, requirement mapping, and review status.</p>
+                    <h2 className="font-display text-[22px] font-semibold text-ink">Draft preview</h2>
+                    <p className="mt-1 text-sm text-ink-muted">Each section carries lineage, requirement mapping, and review status.</p>
                   </div>
-                  <div className="flex flex-wrap gap-2">
-                    <Badge tone={draftReady ? 'success' : 'warn'}>{draftReady ? 'Draft current' : 'Needs regeneration'}</Badge>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge tone={draftReady ? 'success' : 'warn'}>{draftReady ? 'Draft current' : 'Needs a redraft'}</Badge>
                     <button
                       type="button"
                       onClick={generateDraft}
                       disabled={isGeneratingDraft || !privacyFilterReady}
-                      className="inline-flex items-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400"
+                      className="inline-flex items-center gap-2 rounded-lg border border-surface-ctl bg-white px-3 py-2 text-xs font-semibold text-ink-secondary transition hover:border-brand-hover hover:bg-surface-pill disabled:cursor-not-allowed disabled:bg-surface-disabled disabled:text-ink-faint"
                     >
                       {isGeneratingDraft ? (
                         <Loader2 size={14} className="animate-spin" />
                       ) : (
-                        <RefreshCw size={14} />
+                        <RotateCw size={14} strokeWidth={1.8} />
                       )}
-                      {generationStatus === 'sanitizing' ? 'Sanitizing packet' : generationStatus === 'generating' ? 'Generating draft' : 'Regenerate cloud draft'}
+                      {generationStatus === 'sanitizing' ? 'Protecting the packet' : generationStatus === 'generating' ? 'Drafting' : 'Redraft everything'}
                     </button>
                     <button
                       type="button"
                       onClick={() => void exportDraftDocx()}
                       disabled={isExportingDocx}
-                      className="inline-flex items-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400"
+                      className="inline-flex items-center gap-2 rounded-lg border border-surface-ctl bg-white px-3 py-2 text-xs font-semibold text-ink-secondary transition hover:border-brand-hover hover:bg-surface-pill disabled:cursor-not-allowed disabled:bg-surface-disabled disabled:text-ink-faint"
                     >
-                      {isExportingDocx ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+                      {isExportingDocx ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} strokeWidth={1.8} />}
                       {isExportingDocx ? 'Exporting DOCX' : 'Export draft DOCX'}
                     </button>
                     <button
                       type="button"
                       onClick={() => setActiveTab('review')}
-                      className="inline-flex items-center gap-2 rounded-md bg-gray-950 px-3 py-2 text-xs font-semibold text-white hover:bg-gray-800"
+                      className="inline-flex items-center gap-2 rounded-[10px] bg-brand px-4 py-2.5 text-xs font-semibold text-white transition hover:bg-brand-deep"
                     >
                       Review checklist
-                      <ArrowRight size={14} />
+                      <ArrowRight size={14} strokeWidth={1.8} />
                     </button>
                   </div>
                 </div>
 
                 {!draftReady && (
-                  <div className="mb-3 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-                    <AlertTriangle size={16} className="mt-0.5 shrink-0" />
-                    <span>The comparison matrix or drafting strategy changed. Regenerate before treating this preview as current.</span>
+                  <div className="mb-3 flex items-start gap-2.5 rounded-[10px] border border-deamber-line bg-deamber-bg2 px-4 py-3 text-[12.5px] leading-5 text-deamber-text">
+                    <AlertTriangle size={15} strokeWidth={1.8} className="mt-0.5 shrink-0 text-deamber-icon" />
+                    <span>The comparison matrix or drafting strategy changed. Redraft before treating this preview as current.</span>
                   </div>
                 )}
 
                 {isGeneratingDraft && (
-                  <div className="mb-3 flex items-start gap-2 rounded-lg border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900">
-                    <Loader2 size={16} className="mt-0.5 shrink-0 animate-spin" />
+                  <div className="mb-3 flex items-start gap-2.5 rounded-[10px] border border-brand-line bg-[#F8F6FE] px-4 py-3 text-[12.5px] leading-5 text-brand-deep">
+                    <Loader2 size={15} className="mt-0.5 shrink-0 animate-spin" />
                     <span>
                       {generationStatus === 'sanitizing'
-                        ? 'Tokenizing the packet locally before it leaves the browser.'
-                        : 'Sending the tokenized packet to the Bedrock drafter.'}
+                        ? 'Protecting the packet on this device before anything is sent.'
+                        : 'Drafting from the protected packet.'}
                     </span>
                   </div>
                 )}
 
                 {generationError && (
-                  <div className="mb-3 flex items-start gap-2 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900">
-                    <AlertTriangle size={16} className="mt-0.5 shrink-0" />
+                  <div className="mb-3 flex items-start gap-2.5 rounded-[10px] border border-dered-line bg-dered-bg2 px-4 py-3 text-[12.5px] leading-5 text-dered-text">
+                    <AlertTriangle size={15} strokeWidth={1.8} className="mt-0.5 shrink-0 text-dered" />
                     <span>{generationError}</span>
                   </div>
                 )}
 
                 {draftExportError && (
-                  <div className="mb-3 flex items-start gap-2 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900">
-                    <AlertTriangle size={16} className="mt-0.5 shrink-0" />
+                  <div className="mb-3 flex items-start gap-2.5 rounded-[10px] border border-dered-line bg-dered-bg2 px-4 py-3 text-[12.5px] leading-5 text-dered-text">
+                    <AlertTriangle size={15} strokeWidth={1.8} className="mt-0.5 shrink-0 text-dered" />
                     <span>{draftExportError}</span>
                   </div>
                 )}
 
                 {lastDraftedLabel && !generationError && (
-                  <div className="mb-3 flex items-start gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
-                    <ShieldCheck size={16} className="mt-0.5 shrink-0" />
-                    <span>Cloud draft generated from a tokenized packet at {lastDraftedLabel}; display text was rehydrated locally.</span>
+                  <div className="mb-3 flex items-start gap-2.5 rounded-[10px] border border-deteal-line bg-deteal-bg2 px-4 py-3 text-[12.5px] leading-5 text-deteal-deep">
+                    <ShieldCheck size={15} strokeWidth={1.8} className="mt-0.5 shrink-0 text-deteal-icon2" />
+                    <span>Drafted from a protected packet at {lastDraftedLabel}; the display text was restored on this device.</span>
                   </div>
                 )}
 
                 {draftQc.state.error && (
-                  <div className="mb-3 flex items-start gap-2 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900">
-                    <AlertTriangle size={16} className="mt-0.5 shrink-0" />
-                    <span>Citation QC failed: {draftQc.state.error}</span>
+                  <div className="mb-3 flex items-start gap-2.5 rounded-[10px] border border-dered-line bg-dered-bg2 px-4 py-3 text-[12.5px] leading-5 text-dered-text">
+                    <AlertTriangle size={15} strokeWidth={1.8} className="mt-0.5 shrink-0 text-dered" />
+                    <span>Citation check failed: {draftQc.state.error}</span>
                   </div>
                 )}
 
                 {draftQc.state.isRunning && (
-                  <div className="mb-3 flex items-start gap-2 rounded-lg border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900">
-                    <Loader2 size={16} className="mt-0.5 shrink-0 animate-spin" />
+                  <div className="mb-3 flex items-start gap-2.5 rounded-[10px] border border-brand-line bg-[#F8F6FE] px-4 py-3 text-[12.5px] leading-5 text-brand-deep">
+                    <Loader2 size={15} className="mt-0.5 shrink-0 animate-spin" />
                     <span>
-                      Citation QC running — every cited authority is being verified against CourtListener and official
+                      Checking citations — every cited authority is being verified against CourtListener and official
                       statute sources ({Object.values(draftQc.state.perSection).reduce((n, r) => n + r.verdicts_in, 0)}
                       {' of '}
                       {Object.values(draftQc.state.perSection).reduce((n, r) => n + r.citation_count, 0)} citations checked).
@@ -2627,20 +2692,20 @@ export const V2DraftingMagicPage: React.FC = () => {
 
                 {!draftQc.state.isRunning && draftQc.state.summary && (
                   <div
-                    className={`mb-3 flex flex-wrap items-center justify-between gap-3 rounded-lg border px-4 py-3 text-sm ${
+                    className={`mb-3 flex flex-wrap items-center justify-between gap-3 rounded-[10px] border px-4 py-3 text-[12.5px] leading-5 ${
                       draftQc.state.summary.fake + draftQc.state.summary.ambiguous > 0
-                        ? 'border-amber-200 bg-amber-50 text-amber-900'
-                        : 'border-emerald-200 bg-emerald-50 text-emerald-900'
+                        ? 'border-deamber-line bg-deamber-bg2 text-deamber-text'
+                        : 'border-deteal-line bg-deteal-bg2 text-deteal-deep'
                     }`}
                   >
-                    <span className="flex items-start gap-2">
+                    <span className="flex items-start gap-2.5">
                       {draftQc.state.summary.fake + draftQc.state.summary.ambiguous > 0 ? (
-                        <AlertTriangle size={16} className="mt-0.5 shrink-0" />
+                        <AlertTriangle size={15} strokeWidth={1.8} className="mt-0.5 shrink-0 text-deamber-icon" />
                       ) : (
-                        <ShieldCheck size={16} className="mt-0.5 shrink-0" />
+                        <ShieldCheck size={15} strokeWidth={1.8} className="mt-0.5 shrink-0 text-deteal-icon2" />
                       )}
                       <span>
-                        Citation QC: {draftQc.state.summary.verified} verified
+                        Citations: {draftQc.state.summary.verified} verified
                         {draftQc.state.summary.fake > 0 && `, ${draftQc.state.summary.fake} fake`}
                         {draftQc.state.summary.ambiguous > 0 && `, ${draftQc.state.summary.ambiguous} unverifiable`}
                         {draftQc.state.summary.errors > 0 && `, ${draftQc.state.summary.errors} check errors`}
@@ -2655,9 +2720,9 @@ export const V2DraftingMagicPage: React.FC = () => {
                           type="button"
                           onClick={() => void fixFlaggedSections()}
                           disabled={fixingFlagged || isGeneratingDraft || !privacyFilterReady}
-                          className="inline-flex items-center gap-1.5 rounded-md bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-700 disabled:cursor-not-allowed disabled:bg-gray-300"
+                          className="inline-flex items-center gap-1.5 rounded-lg bg-deamber-lock px-3 py-1.5 text-xs font-semibold text-white transition hover:brightness-95 disabled:cursor-not-allowed disabled:bg-surface-disabled disabled:text-ink-faint"
                         >
-                          {fixingFlagged ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
+                          {fixingFlagged ? <Loader2 size={13} className="animate-spin" /> : <RotateCw size={13} strokeWidth={1.8} />}
                           {fixingFlagged
                             ? 'Fixing flagged sections'
                             : `Fix flagged (${Object.values(draftQc.state.perSection).filter((r) => r.status === 'flagged').length})`}
@@ -2667,16 +2732,16 @@ export const V2DraftingMagicPage: React.FC = () => {
                         type="button"
                         onClick={() => runDraftQcFor(draftSections, false)}
                         disabled={draftQc.state.isRunning || isGeneratingDraft}
-                        className="inline-flex items-center gap-1.5 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:text-gray-400"
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-surface-ctl bg-white px-3 py-1.5 text-xs font-semibold text-ink-secondary transition hover:border-brand-hover hover:bg-surface-pill disabled:cursor-not-allowed disabled:text-ink-faint"
                       >
-                        Re-run QC
+                        Check again
                       </button>
                     </span>
                   </div>
                 )}
 
-                <div className="space-y-3">
-                  {draftSections.map((section) => {
+                <div className="space-y-4 rounded-xl border border-surface-line bg-white p-[18px] shadow-card">
+                  {draftSections.map((section, sectionIndex) => {
                     const isSelected = selectedSectionId === section.id;
                     const isRegeneratingThis = regeneratingSectionId === section.id;
 
@@ -2684,23 +2749,25 @@ export const V2DraftingMagicPage: React.FC = () => {
                       <article
                         key={section.id}
                         onClick={() => setSelectedSectionId(section.id)}
-                        className={`rounded-lg border bg-white p-5 text-left shadow-sm transition hover:border-pink-200 ${
-                          isSelected ? 'border-pink-300 ring-2 ring-pink-100' : 'border-gray-200'
+                        className={`rounded-[10px] border p-4 text-left transition ${
+                          isSelected ? 'border-brand bg-brand-tint/40' : 'border-transparent hover:border-surface-line'
                         }`}
                       >
                         <div className="flex flex-wrap items-start justify-between gap-3">
-                          <div className="min-w-0 flex-1">
+                          <div className="flex min-w-0 flex-1 items-start gap-2">
+                            <span className="mt-1.5 shrink-0 text-[13.5px] font-semibold text-ink-faint">{sectionIndex + 1} ·</span>
+                            <div className="min-w-0 flex-1">
                             <input
                               value={section.title}
                               onChange={(event) => editDraftSection(section.id, { title: event.target.value })}
                               onFocus={() => setSelectedSectionId(section.id)}
-                              className="w-full rounded-md border border-transparent bg-transparent px-0 py-1 text-base font-semibold text-gray-950 outline-none transition focus:border-pink-200 focus:bg-pink-50/40 focus:px-2"
+                              className="w-full rounded-lg border border-transparent bg-transparent px-0 py-1 text-[13.5px] font-semibold text-ink outline-none transition focus:border-brand-line focus:bg-brand-tint focus:px-2"
                               aria-label={`Edit title for ${section.title}`}
                             />
                             <div className="mt-1 flex flex-wrap gap-1">
                               <span
-                                className={`rounded-md border px-2 py-1 text-[11px] font-semibold leading-none ${
-                                  statusColors[section.status] || 'border-gray-200 bg-gray-50 text-gray-700'
+                                className={`rounded-lg border px-2 py-1 text-[11px] font-semibold leading-none ${
+                                  statusColors[section.status] || 'border-surface-pillline bg-surface-pill text-ink-muted'
                                 }`}
                               >
                                 {section.status}
@@ -2712,30 +2779,30 @@ export const V2DraftingMagicPage: React.FC = () => {
                                 if (!qc) return null;
                                 if (qc.status === 'pending' || qc.status === 'verifying') {
                                   return (
-                                    <span className="inline-flex items-center gap-1 rounded-md border border-sky-200 bg-sky-50 px-2 py-1 text-[11px] font-semibold leading-none text-sky-700">
-                                      <Loader2 size={11} className="animate-spin" /> QC…
+                                    <span className="inline-flex items-center gap-1.5 rounded-lg border border-brand-line bg-brand-tint px-2 py-1 text-[11px] font-semibold leading-none text-brand-deep">
+                                      <span className="de-spinner" /> Checking citations…
                                     </span>
                                   );
                                 }
                                 if (qc.status === 'clean') {
                                   return (
-                                    <span className="inline-flex items-center gap-1 rounded-md border border-emerald-200 bg-emerald-50 px-2 py-1 text-[11px] font-semibold leading-none text-emerald-700">
-                                      <ShieldCheck size={11} /> Citations verified
+                                    <span className="inline-flex items-center gap-1 rounded-lg border border-deteal-line bg-deteal-bg px-2 py-1 text-[11px] font-semibold leading-none text-deteal-text">
+                                      <ShieldCheck size={11} strokeWidth={1.8} className="text-deteal-icon2" /> Citations verified
                                     </span>
                                   );
                                 }
                                 if (qc.status === 'flagged') {
                                   return (
-                                    <span className="inline-flex items-center gap-1 rounded-md border border-amber-300 bg-amber-50 px-2 py-1 text-[11px] font-semibold leading-none text-amber-800">
-                                      <AlertTriangle size={11} /> {qc.issues.filter((i) => i.status !== 'error').length} citation issue
+                                    <span className="inline-flex items-center gap-1 rounded-lg border border-deamber-line bg-deamber-bg px-2 py-1 text-[11px] font-semibold leading-none text-deamber-text">
+                                      <AlertTriangle size={11} strokeWidth={2} className="text-deamber-icon" /> {qc.issues.filter((i) => i.status !== 'error').length} citation issue
                                       {qc.issues.filter((i) => i.status !== 'error').length === 1 ? '' : 's'}
                                     </span>
                                   );
                                 }
                                 if (qc.status === 'partial') {
                                   return (
-                                    <span className="inline-flex items-center gap-1 rounded-md border border-amber-300 bg-amber-50 px-2 py-1 text-[11px] font-semibold leading-none text-amber-800">
-                                      <AlertTriangle size={11} /> Partially checked — {qc.unchecked_count ?? 0} citation
+                                    <span className="inline-flex items-center gap-1 rounded-lg border border-deamber-line bg-deamber-bg px-2 py-1 text-[11px] font-semibold leading-none text-deamber-text">
+                                      <AlertTriangle size={11} strokeWidth={2} className="text-deamber-icon" /> Partially checked — {qc.unchecked_count ?? 0} citation
                                       {(qc.unchecked_count ?? 0) === 1 ? '' : 's'} unverified
                                     </span>
                                   );
@@ -2743,22 +2810,23 @@ export const V2DraftingMagicPage: React.FC = () => {
                                 return null;
                               })()}
                             </div>
+                            </div>
                           </div>
-                          <div className="flex flex-wrap gap-2">
+                          <div className="flex shrink-0 flex-wrap gap-1.5">
                             <button
                               type="button"
                               onClick={(event) => {
                                 event.stopPropagation();
                                 toggleDraftSectionLock(section.id);
                               }}
-                              className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-2 text-xs font-semibold ${
+                              className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[11.5px] font-semibold transition ${
                                 section.locked
-                                  ? 'border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100'
-                                  : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
+                                  ? 'border-deamber-line bg-deamber-bg text-deamber-text hover:brightness-[.98]'
+                                  : 'border-surface-ctl bg-white text-ink-secondary hover:border-brand-hover hover:bg-surface-pill'
                               }`}
                               aria-pressed={Boolean(section.locked)}
                             >
-                              {section.locked ? <Lock size={14} /> : <Unlock size={14} />}
+                              {section.locked ? <Lock size={12} strokeWidth={1.8} /> : <Unlock size={12} strokeWidth={1.8} />}
                               {section.locked ? 'Locked' : 'Lock'}
                             </button>
                             <button
@@ -2768,34 +2836,52 @@ export const V2DraftingMagicPage: React.FC = () => {
                                 void regenerateDraftSection(section.id);
                               }}
                               disabled={isGeneratingDraft || Boolean(section.locked) || !privacyFilterReady}
-                              className="inline-flex items-center gap-1.5 rounded-md border border-gray-200 bg-white px-2.5 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400"
+                              className="inline-flex items-center gap-1.5 rounded-lg border border-surface-ctl bg-white px-2.5 py-1.5 text-[11.5px] font-semibold text-ink-secondary transition hover:border-brand-hover hover:bg-surface-pill disabled:cursor-not-allowed disabled:bg-surface-disabled disabled:text-ink-faint"
                             >
-                              {isRegeneratingThis ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
-                              {isRegeneratingThis ? 'Regenerating' : 'Regenerate section'}
+                              {isRegeneratingThis ? <Loader2 size={12} className="animate-spin" /> : <RotateCw size={12} strokeWidth={1.8} />}
+                              {isRegeneratingThis ? 'Drafting…' : 'Regenerate'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                setActiveTab('compare');
+                              }}
+                              className="inline-flex items-center gap-1.5 rounded-lg border border-surface-ctl bg-white px-2.5 py-1.5 text-[11.5px] font-semibold text-ink-secondary transition hover:border-brand-hover hover:bg-surface-pill"
+                            >
+                              <Columns2 size={12} strokeWidth={1.8} />
+                              Compare
                             </button>
                           </div>
                         </div>
+
+                        {isRegeneratingThis && (
+                          <div className="mt-3 flex items-center gap-3 rounded-[10px] border border-dashed border-surface-line3 px-4 py-3.5">
+                            <div className="de-thinkline" style={{ width: 200 }} />
+                            <span className="text-xs text-ink-faint">Drafting this section from the approved plan…</span>
+                          </div>
+                        )}
 
                         <textarea
                           value={section.content}
                           onChange={(event) => editDraftSection(section.id, { content: event.target.value })}
                           onFocus={() => setSelectedSectionId(section.id)}
-                          className="mt-3 min-h-32 w-full resize-y rounded-md border border-gray-200 bg-gray-50 px-3 py-3 text-sm leading-7 text-gray-700 outline-none transition focus:border-pink-300 focus:bg-white focus:ring-2 focus:ring-pink-100"
+                          className="mt-3 min-h-32 w-full resize-y rounded-[10px] border border-surface-pillline bg-white px-4 py-3.5 font-doc text-[13px] leading-[1.8] text-ink outline-none transition focus:border-brand focus:ring-2 focus:ring-brand-tint"
                           aria-label={`Edit draft content for ${section.title}`}
                         />
 
                         {(draftQc.state.perSection[section.id]?.issues.length ?? 0) > 0 && (
-                          <div className="mt-3 rounded-md border border-amber-200 bg-amber-50/60 px-3 py-2 text-xs text-amber-900">
-                            <div className="font-semibold">Citation QC findings</div>
+                          <div className="mt-3 rounded-[10px] border border-deamber-line bg-deamber-bg px-3 py-2 text-xs leading-5 text-deamber-text">
+                            <div className="font-semibold">Citation findings</div>
                             <ul className="mt-1 space-y-1">
                               {draftQc.state.perSection[section.id].issues.map((issue, i) => (
                                 <li key={`${section.id}-issue-${i}`}>
-                                  <span className="font-medium">“{issue.citation}”</span>{' '}
+                                  <span className="font-mono text-[11px] font-medium">{issue.citation}</span>{' '}
                                   {issue.status === 'fake'
-                                    ? '— verified FAKE.'
+                                    ? '— contradicted; this authority does not check out.'
                                     : issue.status === 'ambiguous'
-                                      ? '— could not be verified; confirm against Westlaw/Lexis before filing.'
-                                      : '— verifier errored; unverified.'}
+                                      ? '— verify manually against Westlaw or Lexis before filing.'
+                                      : '— the check errored; still unverified.'}
                                   {issue.reasoning ? ` ${issue.reasoning}` : ''}
                                 </li>
                               ))}
@@ -2803,13 +2889,13 @@ export const V2DraftingMagicPage: React.FC = () => {
                           </div>
                         )}
 
-                        <div className="mt-4 flex flex-wrap gap-2 text-xs text-gray-500">
-                          <span className="inline-flex items-center gap-1">
-                            <Highlighter size={14} />
+                        <div className="mt-4 flex flex-wrap gap-3 text-[11px] text-ink-faint">
+                          <span className="inline-flex items-center gap-1.5">
+                            <Highlighter size={13} strokeWidth={1.5} />
                             {section.lineage}
                           </span>
-                          <span className="inline-flex items-center gap-1">
-                            <ClipboardCheck size={14} />
+                          <span className="inline-flex items-center gap-1.5">
+                            <ClipboardCheck size={13} strokeWidth={1.5} />
                             {section.requirements}
                           </span>
                         </div>
@@ -2821,11 +2907,11 @@ export const V2DraftingMagicPage: React.FC = () => {
             )}
 
             {activeTab === 'review' && (
-              <div className="p-5">
+              <div className="px-5 pb-5 pt-4">
                 <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                   <div>
-                    <h2 className="text-lg font-semibold text-gray-950">Review and export readiness</h2>
-                    <p className="mt-1 text-sm text-gray-600">Map every requirement to draft text before the attorney exports.</p>
+                    <h2 className="font-display text-[22px] font-semibold text-ink">Review and export readiness</h2>
+                    <p className="mt-1 text-sm text-ink-muted">Map every requirement to draft text before the attorney exports.</p>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
                     <Badge tone="warn">Ready with warnings</Badge>
@@ -2833,39 +2919,39 @@ export const V2DraftingMagicPage: React.FC = () => {
                       type="button"
                       onClick={() => void exportDraftDocx()}
                       disabled={isExportingDocx}
-                      className="inline-flex items-center gap-2 rounded-md bg-gray-950 px-3 py-2 text-xs font-semibold text-white hover:bg-gray-800 disabled:cursor-not-allowed disabled:bg-gray-300"
+                      className="inline-flex items-center gap-2 rounded-[10px] bg-brand px-4 py-2.5 text-xs font-semibold text-white transition hover:bg-brand-deep disabled:cursor-not-allowed disabled:bg-surface-disabled disabled:text-ink-faint"
                     >
-                      {isExportingDocx ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+                      {isExportingDocx ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} strokeWidth={1.8} />}
                       {isExportingDocx ? 'Exporting DOCX' : 'Export draft DOCX'}
                     </button>
                   </div>
                 </div>
 
                 {draftExportError && (
-                  <div className="mb-3 flex items-start gap-2 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900">
-                    <AlertTriangle size={16} className="mt-0.5 shrink-0" />
+                  <div className="mb-3 flex items-start gap-2.5 rounded-[10px] border border-dered-line bg-dered-bg2 px-4 py-3 text-[12.5px] leading-5 text-dered-text">
+                    <AlertTriangle size={15} strokeWidth={1.8} className="mt-0.5 shrink-0 text-dered" />
                     <span>{draftExportError}</span>
                   </div>
                 )}
 
                 <div className="grid gap-3">
                   {complianceItems.map((item) => (
-                    <div key={item.id} className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+                    <div key={item.id} className="rounded-xl border border-surface-line bg-white p-4 shadow-card">
                       <div className="flex flex-wrap items-start justify-between gap-3">
                         <div>
-                          <h3 className="text-sm font-semibold text-gray-950">{item.requirement}</h3>
-                          <p className="mt-2 text-xs leading-5 text-gray-600">{item.evidence}</p>
+                          <h3 className="text-sm font-semibold text-ink">{item.requirement}</h3>
+                          <p className="mt-2 text-xs leading-5 text-ink-muted">{item.evidence}</p>
                         </div>
                         <span
-                          className={`rounded-md border px-2 py-1 text-[11px] font-semibold leading-none ${
-                            statusColors[item.status] || 'border-amber-200 bg-amber-50 text-amber-700'
+                          className={`rounded-lg border px-2 py-1 text-[11px] font-semibold leading-none ${
+                            statusColors[item.status] || 'border-deamber-line bg-deamber-bg text-deamber-text'
                           }`}
                         >
                           {item.status}
                         </span>
                       </div>
-                      <div className="mt-3 flex items-center gap-2 text-xs text-gray-500">
-                        <FileCheck2 size={14} />
+                      <div className="mt-3 flex items-center gap-1.5 text-[11px] text-ink-faint">
+                        <FileCheck2 size={13} strokeWidth={1.5} />
                         Draft location: {item.location}
                       </div>
                     </div>
@@ -2875,33 +2961,100 @@ export const V2DraftingMagicPage: React.FC = () => {
             )}
           </main>
 
-          <aside className="order-3 overflow-visible border-l border-gray-200 bg-white lg:order-none lg:min-h-0 lg:overflow-y-auto">
-            <SectionHeader icon={<PanelRight size={15} />} title="Decision Detail" meta={activeTab} />
+          <aside className="order-3 overflow-visible border-l border-surface-line bg-white lg:order-none lg:min-h-0 lg:overflow-y-auto">
+            <SectionHeader icon={<PanelRight size={15} strokeWidth={1.5} />} title="Decision detail" meta={activeTab} />
 
             <div className="space-y-4 p-4">
-              <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
-                <div className="flex items-center gap-2 text-sm font-semibold text-gray-950">
-                  <GitCompareArrows size={16} />
+              {/* Progress rail — derived from the existing draft-section state.
+                  Clicking a step selects that section (existing behavior). */}
+              <div className="rounded-xl border border-surface-line bg-white px-[18px] py-5">
+                <div className="mb-4 text-xs font-semibold uppercase tracking-[.05em] text-ink-muted">Progress</div>
+                <div className="flex flex-col">
+                  {draftSections.map((section, index) => {
+                    const isDrafting = regeneratingSectionId === section.id;
+                    const isDone = !isDrafting && section.status !== 'Needs review';
+                    const isLast = index === draftSections.length - 1;
+                    const next = draftSections[index + 1];
+                    const nextIsDrafting = next ? regeneratingSectionId === next.id : false;
+                    const connector = !isDone
+                      ? 'bg-surface-line'
+                      : nextIsDrafting
+                        ? 'bg-gradient-to-b from-deteal to-brand'
+                        : 'bg-brand';
+
+                    return (
+                      <button
+                        key={section.id}
+                        type="button"
+                        onClick={() => setSelectedSectionId(section.id)}
+                        className="flex gap-3 text-left"
+                      >
+                        <span className="flex flex-col items-center">
+                          <span
+                            className={`flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full border-[1.5px] ${
+                              isDone
+                                ? 'border-deteal bg-deteal-bg'
+                                : isDrafting
+                                  ? 'border-brand bg-brand-tint'
+                                  : 'border-surface-line3 bg-white'
+                            }`}
+                          >
+                            {isDone && <Check size={11} strokeWidth={2.6} className="text-deteal-icon2" />}
+                            {isDrafting && <span className="de-spinner" />}
+                          </span>
+                          {!isLast && <span className={`w-[2px] flex-1 ${connector}`} />}
+                        </span>
+                        <span className={isLast ? 'block' : 'block pb-[22px]'}>
+                          <span
+                            className={`block text-[12.5px] ${
+                              isDrafting
+                                ? 'font-semibold text-brand-deep'
+                                : isDone
+                                  ? 'font-semibold text-ink'
+                                  : 'font-medium text-ink-faint'
+                            }`}
+                          >
+                            {section.title}
+                          </span>
+                          <span className="block text-[11px] text-ink-faint">
+                            {isDrafting
+                              ? 'Drafting now'
+                              : isDone
+                                ? section.status === 'Reviewed'
+                                  ? 'Drafted · reviewed'
+                                  : 'Drafted'
+                                : `Queued — drafts after ${draftSections[index - 1]?.title ?? 'the packet'} completes.`}
+                          </span>
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-surface-line bg-surface-app p-4">
+                <div className="flex items-center gap-2 text-sm font-semibold text-ink">
+                  <GitCompareArrows size={16} strokeWidth={1.5} className="text-brand" />
                   {selectedRow.issue}
                 </div>
-                <div className="mt-3 space-y-3 text-xs leading-5 text-gray-700">
+                <div className="mt-3 space-y-3 text-xs leading-5 text-ink-secondary">
                   <div>
-                    <div className="font-semibold text-gray-500">{selectedRow.sourceALabel}</div>
+                    <div className="font-semibold text-ink-faint">{selectedRow.sourceALabel}</div>
                     {selectedRow.sourceA}
                   </div>
                   <div>
-                    <div className="font-semibold text-gray-500">{selectedRow.sourceBLabel}</div>
+                    <div className="font-semibold text-ink-faint">{selectedRow.sourceBLabel}</div>
                     {selectedRow.sourceB}
                   </div>
                   <div>
-                    <div className="font-semibold text-gray-500">{selectedRow.sourceCLabel}</div>
+                    <div className="font-semibold text-ink-faint">{selectedRow.sourceCLabel}</div>
                     {selectedRow.sourceC}
                   </div>
                 </div>
 
-                <div className="mt-4 rounded-md border border-white bg-white p-3">
-                  <div className="text-xs font-semibold text-gray-500">Recommendation rationale</div>
-                  <p className="mt-2 text-sm leading-6 text-gray-700">{selectedRow.rationale}</p>
+                <div className="mt-4 rounded-[10px] border border-surface-line bg-white p-3">
+                  <div className="text-xs font-semibold text-ink-faint">Recommendation rationale</div>
+                  <p className="mt-2 text-[13px] leading-6 text-ink-secondary">{selectedRow.rationale}</p>
                 </div>
 
                 <div className="mt-4 flex flex-wrap gap-2">
@@ -2910,10 +3063,10 @@ export const V2DraftingMagicPage: React.FC = () => {
                       key={recommendation}
                       type="button"
                       onClick={() => setRecommendation(selectedRow.id, recommendation)}
-                      className={`rounded-md border px-2 py-1.5 text-xs font-semibold ${
+                      className={`rounded-lg border px-2.5 py-1.5 text-xs font-semibold transition ${
                         selectedRow.recommendation === recommendation
-                          ? 'border-gray-950 bg-gray-950 text-white'
-                          : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
+                          ? 'border-brand bg-brand text-white'
+                          : 'border-surface-ctl bg-white text-ink-secondary hover:border-brand-hover hover:bg-surface-pill'
                       }`}
                     >
                       {recommendation}
@@ -2924,79 +3077,79 @@ export const V2DraftingMagicPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => toggleApproval(selectedRow.id)}
-                  className={`mt-3 inline-flex w-full items-center justify-center gap-2 rounded-md px-3 py-2 text-xs font-semibold ${
+                  className={`mt-3 inline-flex w-full items-center justify-center gap-2 rounded-[10px] px-3 py-2.5 text-xs font-semibold text-white transition ${
                     selectedRow.approved
-                      ? 'bg-emerald-600 text-white hover:bg-emerald-700'
-                      : 'bg-pink-500 text-white hover:bg-pink-600'
+                      ? 'bg-deteal-icon2 hover:brightness-95'
+                      : 'bg-brand hover:bg-brand-deep'
                   }`}
                 >
-                  {selectedRow.approved ? <CheckCircle2 size={14} /> : <Check size={14} />}
+                  {selectedRow.approved ? <CheckCircle2 size={14} strokeWidth={1.8} /> : <Check size={14} strokeWidth={2.2} />}
                   {selectedRow.approved ? 'Mark as open' : 'Approve recommendation'}
                 </button>
               </div>
 
-              <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+              <div className="rounded-xl border border-surface-line bg-white p-4 shadow-card">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div className="flex items-center gap-2 text-sm font-semibold text-gray-950">
-                    <Sparkles size={16} />
+                  <div className="flex items-center gap-2 text-sm font-semibold text-ink">
+                    <Sparkles size={16} strokeWidth={1.5} className="text-brand" />
                     Draft lineage
                   </div>
                   <Badge tone={selectedSection.locked ? 'info' : 'neutral'}>{selectedSection.locked ? 'Locked' : 'Editable'}</Badge>
                 </div>
-                <div className="mt-3 rounded-md bg-gray-50 p-3">
-                  <div className="text-sm font-semibold text-gray-900">{selectedSection.title}</div>
-                  <p className="mt-2 text-xs leading-5 text-gray-600">{selectedSection.content}</p>
+                <div className="mt-3 rounded-[10px] border border-surface-pillline bg-surface-app p-3">
+                  <div className="text-sm font-semibold text-ink">{selectedSection.title}</div>
+                  <p className="mt-2 font-doc text-[13px] leading-[1.8] text-ink-secondary">{selectedSection.content}</p>
                 </div>
                 <div className="mt-3 flex flex-wrap gap-2">
                   <button
                     type="button"
                     onClick={() => toggleDraftSectionLock(selectedSection.id)}
-                    className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-2 text-xs font-semibold ${
+                    className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-2 text-xs font-semibold transition ${
                       selectedSection.locked
-                        ? 'border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100'
-                        : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
+                        ? 'border-deamber-line bg-deamber-bg text-deamber-text hover:brightness-[.98]'
+                        : 'border-surface-ctl bg-white text-ink-secondary hover:border-brand-hover hover:bg-surface-pill'
                     }`}
                   >
-                    {selectedSection.locked ? <Lock size={14} /> : <Unlock size={14} />}
+                    {selectedSection.locked ? <Lock size={14} strokeWidth={1.8} /> : <Unlock size={14} strokeWidth={1.8} />}
                     {selectedSection.locked ? 'Unlock section' : 'Lock section'}
                   </button>
                   <button
                     type="button"
                     onClick={() => void regenerateDraftSection(selectedSection.id)}
                     disabled={isGeneratingDraft || Boolean(selectedSection.locked) || !privacyFilterReady}
-                    className="inline-flex items-center gap-1.5 rounded-md border border-gray-200 bg-white px-2.5 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400"
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-surface-ctl bg-white px-2.5 py-2 text-xs font-semibold text-ink-secondary transition hover:border-brand-hover hover:bg-surface-pill disabled:cursor-not-allowed disabled:bg-surface-disabled disabled:text-ink-faint"
                   >
-                    {regeneratingSectionId === selectedSection.id ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
-                    {regeneratingSectionId === selectedSection.id ? 'Regenerating' : 'Regenerate'}
+                    {regeneratingSectionId === selectedSection.id ? <Loader2 size={14} className="animate-spin" /> : <RotateCw size={14} strokeWidth={1.8} />}
+                    {regeneratingSectionId === selectedSection.id ? 'Drafting…' : 'Regenerate'}
                   </button>
                 </div>
-                <div className="mt-3 space-y-2 text-xs text-gray-600">
+                <div className="mt-3 space-y-2 text-xs leading-5 text-ink-muted">
                   <div className="flex items-start gap-2">
-                    <Highlighter size={14} className="mt-0.5 shrink-0 text-gray-500" />
+                    <Highlighter size={14} strokeWidth={1.5} className="mt-0.5 shrink-0 text-ink-faint" />
                     <span>{selectedSection.lineage}</span>
                   </div>
                   <div className="flex items-start gap-2">
-                    <ShieldCheck size={14} className="mt-0.5 shrink-0 text-gray-500" />
+                    <ShieldCheck size={14} strokeWidth={1.5} className="mt-0.5 shrink-0 text-ink-faint" />
                     <span>{selectedSection.requirements}</span>
                   </div>
                   <div className="flex items-start gap-2">
-                    <Lock size={14} className="mt-0.5 shrink-0 text-gray-500" />
+                    <Lock size={14} strokeWidth={1.5} className="mt-0.5 shrink-0 text-ink-faint" />
                     <span>
                       {selectedSectionEditedLabel
-                        ? `Edited locally at ${selectedSectionEditedLabel}. Locked sections are preserved during regeneration.`
-                        : 'Lock a section to preserve attorney edits during regeneration.'}
+                        ? `Edited on this device at ${selectedSectionEditedLabel}. Locked sections survive a redraft.`
+                        : 'Lock a section to keep attorney edits through the next redraft.'}
                     </span>
                   </div>
                 </div>
               </div>
 
-              <div className="rounded-lg border border-pink-100 bg-pink-50 p-4">
-                <div className="flex items-center gap-2 text-sm font-semibold text-pink-900">
-                  <Scale size={16} />
-                  Product posture
+              <div className="rounded-xl border border-brand-line bg-brand-tint p-4">
+                <div className="flex items-center gap-2 text-sm font-semibold text-brand-deep">
+                  <Scale size={16} strokeWidth={1.5} />
+                  How this workbench works
                 </div>
-                <p className="mt-2 text-xs leading-5 text-pink-900">
-                  This surface is a drafting workbench: compare first, approve the plan, draft second, review before export.
+                <p className="mt-2 text-xs leading-5 text-brand-deep">
+                  Compare the packet first, approve the plan, draft second, and review before you export.
                 </p>
               </div>
             </div>

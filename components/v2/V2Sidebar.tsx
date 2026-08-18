@@ -10,7 +10,8 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useAuth } from '@clerk/clerk-react';
+import { useAuth, useUser } from '@clerk/clerk-react';
+import { Plus, FileText, Wand2, CheckCircle } from 'lucide-react';
 import { getChatSanitizer } from '../../services/sanitization/chatAdapter';
 import { useSanitizer } from '../../hooks/useSanitizer';
 
@@ -37,8 +38,17 @@ function formatRelative(iso: string | null): string {
   return new Date(iso).toLocaleDateString();
 }
 
+function getInitials(name: string | null | undefined): string {
+  if (!name) return '?';
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return '?';
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
 export const V2Sidebar: React.FC = () => {
   const { getToken, isLoaded, isSignedIn } = useAuth();
+  const { user } = useUser();
   const navigate = useNavigate();
   const params = useParams<{ sessionId?: string }>();
   const activeSessionId = params.sessionId ?? null;
@@ -115,11 +125,13 @@ export const V2Sidebar: React.FC = () => {
   }, [load]);
 
   return (
-    <aside
-      className="w-72 shrink-0 border-r border-gray-100 bg-white flex flex-col h-screen"
-      style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}
-    >
-      <div className="p-3 border-b border-gray-100">
+    <aside className="w-72 shrink-0 border-r border-surface-line2 bg-white flex flex-col h-screen font-sans">
+      <div className="px-4 pt-5 pb-3.5 flex items-center gap-2.5">
+        <img src="/dancingelephant.png" alt="" className="w-8 h-8 rounded-[9px]" />
+        <span className="font-display text-[17px] font-semibold text-ink">DancingElephant</span>
+      </div>
+
+      <div className="px-3.5 pb-3.5 flex flex-col gap-2">
         <button
           type="button"
           // The nonce matters: when the user is already on /v2 (the common
@@ -128,42 +140,53 @@ export const V2Sidebar: React.FC = () => {
           // watches location.state.newChat and resets (fresh session id,
           // cleared messages/draft) whenever it sees a new nonce.
           onClick={() => navigate('/v2', { state: { newChat: Date.now() } })}
-          className="w-full rounded-lg bg-pink-500 hover:bg-pink-600 text-white text-sm font-semibold py-2"
+          className="w-full flex items-center justify-center gap-2 rounded-[10px] bg-brand hover:bg-brand-deep text-white text-[13.5px] font-semibold py-2.5"
         >
-          + New chat
+          <Plus size={15} strokeWidth={2} />
+          New chat
         </button>
+      </div>
+
+      <nav className="px-2.5 flex flex-col gap-0.5">
         <button
           type="button"
           onClick={() => navigate('/v2/draft')}
-          className="w-full mt-2 rounded-lg border border-pink-300 text-pink-700 hover:bg-pink-50 text-sm font-semibold py-2"
+          className="w-full flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13.5px] font-medium text-ink-secondary hover:bg-surface-pill"
         >
+          <FileText size={16} strokeWidth={1.5} />
           Draft a document
         </button>
         <button
           type="button"
           onClick={() => navigate('/v2/magic')}
-          className="w-full mt-2 rounded-lg border border-pink-300 text-pink-700 hover:bg-pink-50 text-sm font-semibold py-2"
+          className="w-full flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13.5px] font-medium text-ink-secondary hover:bg-surface-pill"
         >
+          <Wand2 size={16} strokeWidth={1.5} />
           Drafting Magic
         </button>
         <button
           type="button"
           onClick={() => navigate('/v2/verify')}
-          className="w-full mt-2 rounded-lg border border-pink-300 text-pink-700 hover:bg-pink-50 text-sm font-semibold py-2"
+          className="w-full flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13.5px] font-medium text-ink-secondary hover:bg-surface-pill"
         >
+          <CheckCircle size={16} strokeWidth={1.5} />
           Verify citations
         </button>
+      </nav>
+
+      <div className="px-[18px] pt-[18px] pb-2 text-[11px] font-semibold text-ink-faint tracking-[.05em] uppercase">
+        Recent
       </div>
 
-      <div className="flex-1 overflow-y-auto px-2 py-2">
+      <div className="flex-1 overflow-y-auto px-2.5 py-0">
         {loading && sessions.length === 0 && (
-          <div className="text-xs text-gray-400 px-2 py-3">Loading…</div>
+          <div className="text-xs text-ink-faint px-2.5 py-3">Loading…</div>
         )}
         {error && (
-          <div className="text-xs text-red-600 px-2 py-2">{error}</div>
+          <div className="text-xs text-dered px-2.5 py-2">{error}</div>
         )}
         {!loading && !error && displayedSessions.length === 0 && (
-          <div className="text-xs text-gray-400 px-2 py-3">
+          <div className="text-[13px] text-ink-faint px-2.5 py-2">
             No chats yet. Start one to see it here.
           </div>
         )}
@@ -174,24 +197,33 @@ export const V2Sidebar: React.FC = () => {
               key={s.session_id}
               type="button"
               onClick={() => navigate(`/v2/${s.session_id}`)}
-              className={`w-full text-left rounded-md px-2 py-2 mb-0.5 ${
+              className={`w-full text-left rounded-md px-2.5 py-2 mb-0.5 border ${
                 isActive
-                  ? 'bg-pink-50 border border-pink-200'
-                  : 'hover:bg-gray-50 border border-transparent'
+                  ? 'bg-brand-tint border-brand-line'
+                  : 'hover:bg-surface-pill border-transparent'
               }`}
               title={s.session_id}
             >
-              <div className="text-[13px] text-gray-900 truncate">
+              <div className="text-[13px] text-ink truncate">
                 {s.title || '(untitled session)'}
               </div>
-              <div className="text-[11px] text-gray-400 flex items-center gap-2 mt-0.5">
-                <span>{s.message_count} msg</span>
+              <div className="text-[11px] text-ink-faint flex items-center gap-2 mt-0.5">
+                <span>{s.message_count} messages</span>
                 <span>·</span>
                 <span>{formatRelative(s.last_active_at)}</span>
               </div>
             </button>
           );
         })}
+      </div>
+
+      <div className="px-[18px] py-3.5 border-t border-surface-line2 flex items-center gap-2.5">
+        <div className="w-[28px] h-[28px] rounded-full bg-brand-tint text-brand flex items-center justify-center text-xs font-semibold">
+          {getInitials(user?.fullName)}
+        </div>
+        <div className="text-[12.5px] font-medium text-ink-secondary truncate">
+          {user?.fullName || user?.primaryEmailAddress?.emailAddress || 'Account'}
+        </div>
       </div>
     </aside>
   );

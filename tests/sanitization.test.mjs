@@ -2068,9 +2068,10 @@ await test('V2ChatPage mounts the attestation modal (auth-gated surface)', () =>
 
 await test('ConfidentialityAttestation covers the four narrative points', () => {
   const text = readFileSync(joinPath(repoRoot, 'components/ConfidentialityAttestation.tsx'), 'utf8');
-  assert.ok(/What the tool does/.test(text), 'point 1 present');
-  assert.ok(/trust boundary/i.test(text), 'point 2 present');
-  assert.ok(/What it doesn't do|Rule of Professional Conduct 1\.6/.test(text), 'point 3 present');
+  // Headings follow the DancingElephant rebrand copy (docs/design-handoff/README.md).
+  assert.ok(/What stays on this device/.test(text), 'point 1 present');
+  assert.ok(/What is sent/.test(text), 'point 2 present');
+  assert.ok(/Your obligations stand|Rule of Professional Conduct 1\.6/.test(text), 'point 3 present');
   assert.ok(/No recovery/.test(text), 'point 4 present');
   assert.ok(/FFLP-TODO/.test(text), 'wording is flagged for F&F compliance review');
 });

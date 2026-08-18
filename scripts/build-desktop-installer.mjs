@@ -6,8 +6,8 @@
  * DESCRIPTION:
  * Packages the notarized desktop .app into a zip an attorney can install
  * with two clicks. The zip contains:
- *   1. AskPauli.app       — the signed + notarized app
- *   2. Install AskPauli.command — double-clickable installer:
+ *   1. DancingElephant.app       — the signed + notarized app
+ *   2. Install DancingElephant.command — double-clickable installer:
  *      copies the app to /Applications, writes the API-keys file to
  *      ~/Library/Application Support/AskPauli/.env
  *      (chmod 600, with a freshly generated per-machine AUDIT_HMAC_KEY),
@@ -21,14 +21,14 @@
  * recipients). Keys can be rotated at the providers at any time.
  *
  * INPUT FILES (repo-root relative):
- * - src-tauri/target/release/bundle/macos/AskPauli.app
+ * - src-tauri/target/release/bundle/macos/DancingElephant.app
  *   (must already be notarized — run `yarn desktop:app` first)
  * - .env, then /Users/arjundivecha/Dropbox/AAA Backup/.env.txt as fallback —
  *   source of ANTHROPIC_API_KEY, COURTLISTENER_API_KEY, CITELAW_API_KEY,
  *   OPENSTATES_API_KEY, LEGISCAN_API_KEY (fails loudly if any is missing)
  *
  * OUTPUT FILES:
- * - installer-pkg/dist/AskPauli-Desktop-<YYYY-MM-DD>.zip
+ * - installer-pkg/dist/DancingElephant-Desktop-<YYYY-MM-DD>.zip
  *
  * USAGE: node scripts/build-desktop-installer.mjs
  * =============================================================================
@@ -39,7 +39,7 @@ import { mkdirSync, rmSync, writeFileSync, existsSync, chmodSync, readFileSync }
 import { join } from 'node:path';
 
 const ROOT = process.cwd();
-const APP = join(ROOT, 'src-tauri', 'target', 'release', 'bundle', 'macos', 'AskPauli.app');
+const APP = join(ROOT, 'src-tauri', 'target', 'release', 'bundle', 'macos', 'DancingElephant.app');
 const OUT_DIR = join(ROOT, 'installer-pkg', 'dist');
 const KEYS = [
   'ANTHROPIC_API_KEY',
@@ -89,18 +89,18 @@ rmSync(stage, { recursive: true, force: true });
 mkdirSync(stage, { recursive: true });
 
 // 1. The app (ditto preserves signatures/extended attributes).
-execFileSync('ditto', [APP, join(stage, 'AskPauli.app')]);
+execFileSync('ditto', [APP, join(stage, 'DancingElephant.app')]);
 
 // 2. The installer .command.
 const envFileBody = KEYS.map((k) => `${k}=${env[k]}`).join('\n');
 const command = `#!/bin/bash
-# AskPauli — one-time installer.
+# DancingElephant — one-time installer.
 # Copies the app to /Applications and sets up your private keys file.
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
-echo "Installing AskPauli…"
+echo "Installing DancingElephant…"
 
-ditto "$HERE/AskPauli.app" "/Applications/AskPauli.app"
+ditto "$HERE/DancingElephant.app" "/Applications/DancingElephant.app"
 
 SUPPORT="$HOME/Library/Application Support/AskPauli"
 mkdir -p "$SUPPORT"
@@ -111,24 +111,24 @@ EOF
 chmod 600 "$SUPPORT/.env"
 
 echo "Done. Launching the app…"
-open "/Applications/AskPauli.app"
+open "/Applications/DancingElephant.app"
 echo ""
 echo "✅ Installed. You can find it in Applications and in Launchpad."
 echo "   (You can close this window.)"
 `;
-writeFileSync(join(stage, 'Install AskPauli.command'), command);
-chmodSync(join(stage, 'Install AskPauli.command'), 0o755);
+writeFileSync(join(stage, 'Install DancingElephant.command'), command);
+chmodSync(join(stage, 'Install DancingElephant.command'), 0o755);
 
 // 3. Attorney instructions.
 writeFileSync(
   join(stage, 'INSTALL-INSTRUCTIONS.md'),
-  `# Installing AskPauli (desktop app)
+  `# Installing DancingElephant (desktop app)
 
 Takes about 2 minutes, once.
 
 1. Download the zip Arjun sent you and double-click it to unzip
    (you'll get a folder with the app, this file, and an installer).
-2. **Right-click** (or Control-click) **"Install AskPauli.command"**
+2. **Right-click** (or Control-click) **"Install DancingElephant.command"**
    and choose **Open**. If macOS asks "are you sure?", click **Open**.
    (Right-click-then-Open matters the first time — a plain double-click
    may be blocked because the installer script isn't from the App Store.)
@@ -137,7 +137,7 @@ Takes about 2 minutes, once.
 4. Sign in with the same account you use on the website. That's it —
    from now on, open it from Applications or Launchpad like any app.
 
-**Already have AskPauli installed?** Same steps — the installer replaces
+**Already have DancingElephant installed?** Same steps — the installer replaces
 the old version in place. Your chats, drafts, and settings are kept.
 
 **What's different from the website?** Everything you type and every
@@ -150,7 +150,7 @@ under the firm's data-protection agreement.
 
 # What's new in this version (August 2026)
 
-**Box, connected.** AskPauli now links directly to the firm's Box.
+**Box, connected.** DancingElephant now links directly to the firm's Box.
 - **Draft a document → 📦 Load from Box** — browse your Box folders and
   open a document straight into the editor. First time, a browser window
   asks you to sign in to Box and grant access (once per computer).
@@ -186,7 +186,7 @@ instead of a row of buttons.
 
 // 4. Zip it.
 mkdirSync(OUT_DIR, { recursive: true });
-const zipPath = join(OUT_DIR, `AskPauli-Desktop-${date}.zip`);
+const zipPath = join(OUT_DIR, `DancingElephant-Desktop-${date}.zip`);
 rmSync(zipPath, { force: true });
 execFileSync('ditto', ['-c', '-k', '--keepParent', stage, zipPath]);
 rmSync(stage, { recursive: true, force: true });

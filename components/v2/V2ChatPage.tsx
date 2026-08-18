@@ -15,19 +15,43 @@
  *      - Privilege indicator chip the moment the sanitization event
  *        arrives (typically < 2s).
  *      - Tool affordance row that flips per tool from spinning →
- *        ✓ {ms} once results return.
+ *        a teal check + elapsed ms once results return.
  *      - Streaming text into the assistant bubble as tokens arrive.
  *      - Final summary footer (tool_rounds, total_tokens, elapsed) on
  *        the 'done' event.
  *   * On error: shows a red banner with the code + message and stops
  *     the stream.
  *
- * Visual language matches the existing app (Georgia serif, FAFAF8
- * background, pink accent on user, gray-on-white on assistant).
+ * Visual language: DancingElephant (2026-08 rebrand) — Inter UI on the
+ * #FCFBF9 app canvas, violet #7C5CFC primary, teal verified / amber
+ * privileged / red error accents, lucide line icons, light mode only.
+ * Design source of truth: docs/design-handoff/README.md + artboards 02/03.
+ *
+ * INPUT FILES: none. OUTPUT FILES: none.
+ * (network: /api/agent/* SSE, /api/agent/session, /api/matter-context)
  */
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams, useLocation } from 'react-router-dom';
+import {
+  BookOpen,
+  Check,
+  CircleAlert,
+  CircleCheck,
+  Copy,
+  FileText,
+  Info,
+  Package,
+  Paperclip,
+  Printer,
+  Search,
+  Send,
+  Shield,
+  ShieldCheck,
+  Square,
+  TriangleAlert,
+  X,
+} from 'lucide-react';
 import { useUser, useAuth } from '@clerk/clerk-react';
 import { MatterModeSelector } from './MatterModeSelector';
 import ReactMarkdown from 'react-markdown';
@@ -75,14 +99,17 @@ const InventedTokenWarning: React.FC<{ text: string }> = ({ text }) => {
   const shown = unknown.slice(0, 5).join(', ');
   const more = unknown.length > 5 ? ` and ${unknown.length - 5} more` : '';
   return (
-    <div className="mb-3 rounded border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900">
-      <div className="mb-0.5 font-semibold">
-        ⚠️ Model referenced {unknown.length} token{unknown.length !== 1 ? 's' : ''} not in your local map
-      </div>
+    <div className="mb-3 flex gap-2.5 rounded-[10px] border border-deamber-line bg-deamber-bg2 px-3 py-2.5 text-[12.5px] text-deamber-text">
+      <TriangleAlert size={15} strokeWidth={1.8} aria-hidden className="mt-0.5 shrink-0" />
       <div>
-        {shown}
-        {more}. These were not assigned from your prompt — treat as potentially invented. Verify
-        the specific identifier before relying on it.
+        <div className="mb-0.5 font-semibold">
+          Model referenced {unknown.length} token{unknown.length !== 1 ? 's' : ''} not in your local map
+        </div>
+        <div>
+          {shown}
+          {more}. These were not assigned from your prompt — treat as potentially invented. Verify
+          the specific identifier before relying on it.
+        </div>
       </div>
     </div>
   );
@@ -116,11 +143,18 @@ const LOCAL_DRAFT_KEY = (sessionId: string): string =>
 const LOCAL_DRAFT_DEBOUNCE_MS = 1500;
 
 /**
- * Welcome message displayed when a session has no messages yet AND no
- * stream is in flight. Mirrors V1's WELCOME_MESSAGE.
+ * Time-of-day greeting for the empty state (artboard 02). Purely cosmetic.
  */
-const WELCOME_MESSAGE =
-  'Welcome — I\'m AskPauli, your California legal research assistant. Ask a legal-research question, or use the workflow toggle above to pick Draft Document or Verify Citation. I have access to CourtListener case law, LegiScan + OpenStates legislation, California statute lookup, a citation verifier, and web search.';
+function greeting(): string {
+  const h = new Date().getHours();
+  if (h < 12) return 'Good morning, Counselor.';
+  if (h < 18) return 'Good afternoon, Counselor.';
+  return 'Good evening, Counselor.';
+}
+
+/** The example question the "Research a question" card prefills. */
+const SUGGESTED_RESEARCH_QUESTION =
+  "What's the statute of limitations on breach of a written contract in California?";
 
 /**
  * Convert an Anthropic-shape message content (string | content-block
@@ -448,7 +482,7 @@ export const V2ChatPage: React.FC = () => {
         : text;
       // Add the user message to the visible list immediately (attachment
       // shown as a chip line, not the full document body).
-      const visibleText = attachedDoc ? `📎 ${attachedDoc.name}\n\n${question}` : text;
+      const visibleText = attachedDoc ? `Attached: ${attachedDoc.name}\n\n${question}` : text;
       setMessages((prev) => [
         ...prev,
         { id: `u_${Date.now()}`, role: 'user', text: visibleText },
@@ -528,8 +562,9 @@ export const V2ChatPage: React.FC = () => {
     const clientCount = state.wireRedactions ?? 0;
     const clientChip =
       clientCount > 0 ? (
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-sky-100 px-3 py-1 text-xs font-semibold text-sky-800">
-          🔒 {clientCount} private item{clientCount === 1 ? '' : 's'} tokenized on this device before sending
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-deamber-line bg-deamber-bg px-3 py-1 text-xs font-semibold text-deamber-text">
+          <Shield size={12} strokeWidth={1.8} aria-hidden />
+          {clientCount} private item{clientCount === 1 ? '' : 's'} tokenized on this device before sending
         </span>
       ) : null;
     if (privileged) {
@@ -539,9 +574,10 @@ export const V2ChatPage: React.FC = () => {
       return (
         <span className="inline-flex flex-wrap items-center gap-1.5">
           {clientChip}
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800">
-            ⚠️ Server backstop flagged privileged content
-            {reasons.length > 0 && <span className="text-amber-700/80">({reasons.join(' · ')})</span>}
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-deamber-line bg-deamber-bg px-3 py-1 text-xs font-semibold text-deamber-text">
+            <TriangleAlert size={12} strokeWidth={1.8} aria-hidden />
+            Server backstop flagged privileged content
+            {reasons.length > 0 && <span className="font-medium opacity-80">({reasons.join(' · ')})</span>}
           </span>
         </span>
       );
@@ -549,93 +585,125 @@ export const V2ChatPage: React.FC = () => {
     return (
       <span className="inline-flex flex-wrap items-center gap-1.5">
         {clientChip}
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-deteal-line bg-deteal-bg px-3 py-1 text-xs font-semibold text-deteal-text">
+          {clientCount > 0 ? (
+            <Check size={12} strokeWidth={2.2} aria-hidden />
+          ) : (
+            <ShieldCheck size={12} strokeWidth={1.8} aria-hidden />
+          )}
           {clientCount > 0
-            ? '✓ Server backstop clean — no raw private data reached the server'
-            : '🌐 Nothing needed protection — no private items found on-device; server backstop clean'}
+            ? 'Server backstop clean — no raw private data reached the server'
+            : 'Nothing needed protection — no private items found on-device; server backstop clean'}
         </span>
       </span>
     );
   }, [state.sanitization, state.wireRedactions]);
 
+  // Header title — the first user message, truncated. Display only; no
+  // server-side session title exists yet.
+  const sessionTitle = useMemo(() => {
+    const first = displayedMessages.find((m) => m.role === 'user');
+    if (!first) return 'New chat';
+    const line = first.text.replace(/\s+/g, ' ').trim();
+    return line.length > 64 ? `${line.slice(0, 64)}…` : line || 'New chat';
+  }, [displayedMessages]);
+
   return (
-    <div
-      className="flex flex-col h-screen"
-      style={{ backgroundColor: '#FAFAF8', fontFamily: 'Georgia, "Times New Roman", serif' }}
-    >
+    <div className="flex h-screen flex-col bg-surface-app font-sans text-ink">
       {/* P2.4 — informed-consent attestation. Self-gates via useAttestation
           per Clerk user ID. Soft gate by default (dismissable). */}
       <ConfidentialityAttestation softGate />
 
-      <header className="bg-white border-b border-gray-100 px-6 py-4">
-        <div className="mx-auto flex max-w-4xl items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl overflow-hidden shadow-sm">
-              <img src="/Heart Favicon.png" alt="Logo" className="w-full h-full object-contain" />
-            </div>
-            <div>
-              <h1 className="text-lg font-semibold text-gray-900">AskPauli</h1>
-              <span className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-pink-500">
-                V2 Preview · Anthropic Agent Loop
-              </span>
+      {/* Signature gradient accent bar (artboard 02/03). */}
+      <div className="h-[3px] shrink-0 bg-de-gradient" aria-hidden />
+
+      <header className="shrink-0 border-b border-surface-line2 bg-white px-4 py-2.5 sm:px-6 sm:py-3">
+        <div className="mx-auto flex max-w-[1120px] flex-wrap items-center justify-between gap-2">
+          <div className="min-w-0 flex-1">
+            <div className="truncate text-[14.5px] font-semibold text-ink">{sessionTitle}</div>
+            <div className="truncate text-[11px] text-ink-faint">
+              session <span className="font-mono">{sessionId.slice(0, 16)}…</span>
             </div>
           </div>
-          <div className="flex items-center gap-3 text-xs">
-            <MatterModeSelector sessionId={sessionId} getToken={getToken} onModeChange={setMatterMode} />
-            <Link
-              to="/v2/draft"
-              className="rounded-full bg-pink-50 px-3 py-1.5 text-pink-700 font-semibold hover:bg-pink-100"
-            >
-              Draft a document →
-            </Link>
-            <span className="text-gray-400">
-              session: <span className="font-mono">{sessionId.slice(0, 16)}…</span>
-            </span>
-          </div>
+          <MatterModeSelector sessionId={sessionId} getToken={getToken} onModeChange={setMatterMode} />
         </div>
       </header>
 
       <main className="flex-1 overflow-hidden">
-        <div className="mx-auto h-full max-w-3xl flex flex-col">
+        <div className="mx-auto flex h-full max-w-[820px] flex-col">
           <WorkflowToggle
             workflow={workflow}
             onSelectWorkflow={setWorkflow}
             disabled={state.isStreaming}
           />
 
-          <div ref={scrollRef} className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+          <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-5 sm:px-6 space-y-5">
             {displayedMessages.length === 0 && !state.isStreaming && !hydrating && (
-              <>
-                <div className="rounded-2xl border border-gray-200 bg-white p-5 max-w-2xl mx-auto shadow-sm">
-                  <div className="text-[13px] font-semibold text-pink-600 uppercase tracking-wider mb-2">
-                    Welcome
-                  </div>
-                  <p className="text-[14px] text-gray-700 leading-relaxed">{WELCOME_MESSAGE}</p>
-                  <div className="mt-3 text-[12px] text-gray-500">
-                    <strong className="text-gray-700">Try:</strong> "What does CRC 2.550 require for a motion to seal?" — "Draft a holographic codicil for Estate of Smith" — paste a memo into Verify Citation to check every cite.
-                  </div>
+              <div className="flex flex-col items-center px-2 py-6 text-center sm:py-10">
+                <img
+                  src="/dancingelephant.png"
+                  alt=""
+                  className="mb-6 h-[72px] w-[72px] rounded-[20px]"
+                />
+                <div className="mb-2 font-display text-[26px] font-semibold leading-tight text-ink sm:text-[34px]">
+                  {greeting()}
                 </div>
-                <div className="rounded-2xl border border-pink-200 bg-pink-50 p-5 max-w-2xl mx-auto shadow-sm">
-                  <div className="text-[13px] font-semibold text-pink-700 uppercase tracking-wider mb-2">
-                    Why “AskPauli”?
-                  </div>
-                  <p className="text-[14px] text-gray-800 leading-relaxed">
-                    This app is named in homage to <strong>Rev. Dr. Pauli Murray</strong> (1910–1985) —
-                    Black, gender-nonconforming civil rights lawyer and California&rsquo;s first Black
-                    deputy attorney general. Murray&rsquo;s legal scholarship became the backbone of{' '}
-                    <em>Brown v. Board of Education</em> — Thurgood Marshall called their work the
-                    &ldquo;bible&rdquo; of the litigation — and their 1965 &ldquo;Jane Crow&rdquo; article laid the
-                    groundwork for <em>Reed v. Reed</em>, on which Ruth Bader Ginsburg credited Murray
-                    as an honorary co-author of the brief. A co-founder of the National Organization
-                    for Women and an LGBTQ+ icon, Murray&rsquo;s name today graces a Yale residential
-                    college and a Sundance-premiered documentary. We ask{' '}
-                    <em>what would Pauli do</em> — and we verify every citation.
-                  </p>
+                <div className="mb-8 text-[15px] text-ink-muted">What are we working on today?</div>
+                <div className="grid w-full max-w-[620px] grid-cols-1 gap-3.5 text-left sm:grid-cols-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setWorkflow('research');
+                      setDraft(SUGGESTED_RESEARCH_QUESTION);
+                    }}
+                    className="rounded-xl border border-surface-line bg-white p-[18px] text-left transition hover:border-brand-hover"
+                  >
+                    <Search size={18} strokeWidth={1.5} className="text-brand" aria-hidden />
+                    <div className="mb-1 mt-2.5 text-sm font-semibold text-ink">Research a question</div>
+                    <div className="text-[12.5px] leading-relaxed text-ink-muted">
+                      “{SUGGESTED_RESEARCH_QUESTION}”
+                    </div>
+                  </button>
+                  <Link
+                    to="/v2/draft"
+                    className="rounded-xl border border-surface-line bg-white p-[18px] text-left transition hover:border-brand-hover"
+                  >
+                    <FileText size={18} strokeWidth={1.5} className="text-brand" aria-hidden />
+                    <div className="mb-1 mt-2.5 text-sm font-semibold text-ink">Draft a motion</div>
+                    <div className="text-[12.5px] leading-relaxed text-ink-muted">
+                      Start a motion to compel, demurrer, or discovery response from a template.
+                    </div>
+                  </Link>
+                  <Link
+                    to="/v2/verify"
+                    className="rounded-xl border border-surface-line bg-white p-[18px] text-left transition hover:border-brand-hover"
+                  >
+                    <CircleCheck size={18} strokeWidth={1.5} className="text-brand" aria-hidden />
+                    <div className="mb-1 mt-2.5 text-sm font-semibold text-ink">Verify citations</div>
+                    <div className="text-[12.5px] leading-relaxed text-ink-muted">
+                      Paste a brief — every cite is checked against the official record.
+                    </div>
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => attachInputRef.current?.click()}
+                    className="rounded-xl border border-surface-line bg-white p-[18px] text-left transition hover:border-brand-hover"
+                  >
+                    <BookOpen size={18} strokeWidth={1.5} className="text-brand" aria-hidden />
+                    <div className="mb-1 mt-2.5 text-sm font-semibold text-ink">Summarize a document</div>
+                    <div className="text-[12.5px] leading-relaxed text-ink-muted">
+                      Upload a contract or opinion and get the key points in plain language.
+                    </div>
+                  </button>
                 </div>
-              </>
+                <div className="mt-9 flex items-center gap-2 text-[12.5px] text-ink-muted">
+                  <ShieldCheck size={14} strokeWidth={1.5} className="text-deteal-icon shrink-0" aria-hidden />
+                  Your clients' information is protected on your device before anything is sent.
+                </div>
+              </div>
             )}
             {hydrating && (
-              <div className="text-center text-gray-400 text-sm py-6 italic">Loading prior session…</div>
+              <div className="py-6 text-center text-sm italic text-ink-faint">Loading prior session…</div>
             )}
 
             {displayedMessages.map((m) => (
@@ -643,78 +711,94 @@ export const V2ChatPage: React.FC = () => {
             ))}
 
             {state.isStreaming && (
-              <div className="space-y-2">
+              <div className="space-y-2.5">
                 {privilegedBadge && <div className="flex justify-start">{privilegedBadge}</div>}
-                {state.toolEvents.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5">
-                    {state.toolEvents.map((t) => (
-                      <ToolPill key={t.id} tool={t} />
-                    ))}
-                  </div>
-                )}
-                {state.tokens && (
-                  <MessageBubble role="assistant" text={state.tokens} streaming />
-                )}
-                {!state.tokens && state.round > 0 && (
+                {state.tokens ? (
                   <MessageBubble
                     role="assistant"
-                    text={state.round === 1 ? 'Thinking…' : `Working on round ${state.round}…`}
+                    text={state.tokens}
                     streaming
+                    toolEvents={state.toolEvents}
                   />
+                ) : (
+                  <div>
+                    <AssistantHeader toolEvents={state.toolEvents} />
+                    {state.round > 0 && (
+                      <div className="flex items-center gap-2.5">
+                        <div className="de-thinkline" style={{ width: 200 }} aria-hidden />
+                        <span className="text-xs text-ink-faint">
+                          {state.round === 1 ? 'Thinking…' : `Working on round ${state.round}…`}
+                        </span>
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
             )}
 
             {state.refusal && (
-              <div className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-                <strong className="font-semibold">
-                  ⚠️ Fable declined this request
-                  {state.refusal.category ? ` (${state.refusal.category})` : ''}.
-                </strong>
-                {state.refusal.explanation && (
-                  <div className="mt-1">{state.refusal.explanation}</div>
-                )}
-                <div className="mt-1 text-amber-800/80">
-                  Your message was <span className="font-semibold">not</span> sent to any
-                  other model. You can revise it and try again.
+              <div className="flex gap-2.5 rounded-[10px] border border-deamber-line bg-deamber-bg2 px-3 py-2.5 text-[12.5px] text-deamber-text">
+                <TriangleAlert size={15} strokeWidth={1.8} aria-hidden className="mt-0.5 shrink-0" />
+                <div>
+                  <strong className="font-semibold">
+                    DancingElephant declined this request
+                    {state.refusal.category ? ` (${state.refusal.category})` : ''}
+                  </strong>{' '}
+                  and explained why.
+                  {state.refusal.explanation && (
+                    <div className="mt-1">{state.refusal.explanation}</div>
+                  )}
+                  <div className="mt-1 opacity-80">
+                    Your message was <span className="font-semibold">not</span> sent to any
+                    other model. You can revise it and try again.
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const lastUser = [...messages].reverse().find((m) => m.role === 'user');
+                      if (lastUser) setDraft(lastUser.text);
+                      reset();
+                    }}
+                    className="mt-2 rounded-lg border border-deamber-line bg-white px-3 py-1.5 text-xs font-semibold text-deamber-text transition hover:bg-deamber-bg"
+                  >
+                    Edit &amp; resend
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const lastUser = [...messages].reverse().find((m) => m.role === 'user');
-                    if (lastUser) setDraft(lastUser.text);
-                    reset();
-                  }}
-                  className="mt-2 rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-600"
-                >
-                  Edit &amp; resend
-                </button>
               </div>
             )}
 
             {state.modelFailover && (
-              <div className="rounded-lg border border-sky-200 bg-sky-50 px-4 py-2.5 text-xs text-sky-800">
-                <span className="font-semibold">{state.modelFailover.from}</span> is not
-                available on this account, so this answer was generated with{' '}
-                <span className="font-semibold">{state.modelFailover.to}</span> — same
-                provider (Anthropic), same privacy posture. Set{' '}
-                <code className="rounded bg-sky-100 px-1">V2_PRIMARY_MODEL</code> to change
-                the default engine.
+              <div className="flex gap-2.5 rounded-[10px] border border-brand-line bg-[#F8F6FE] px-3 py-2.5 text-[12.5px] text-[#4A3E91]">
+                <Info size={15} strokeWidth={1.8} aria-hidden className="mt-0.5 shrink-0 text-brand-deep" />
+                <span>
+                  <strong className="font-semibold">Switched to backup model.</strong> The primary
+                  model was unavailable; quality is unaffected.{' '}
+                  <span className="font-mono text-[11px] opacity-80">
+                    {state.modelFailover.from} → {state.modelFailover.to}
+                  </span>{' '}
+                  — same provider (Anthropic), same privacy posture. Set{' '}
+                  <code className="rounded bg-brand-tint px-1">V2_PRIMARY_MODEL</code> to change
+                  the default engine.
+                </span>
               </div>
             )}
 
             {state.error && (
-              <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
-                <strong className="font-semibold">
-                  {state.error.proxy ? 'Gate error' : 'Stream error'} —{' '}
-                </strong>
-                <span className="font-mono text-xs">{state.error.code}</span>
-                <div className="mt-1">{state.error.message}</div>
+              <div className="flex gap-2.5 rounded-[10px] border border-dered-line bg-dered-bg2 px-3 py-2.5 text-[12.5px] text-dered-text">
+                <CircleAlert size={15} strokeWidth={1.8} aria-hidden className="mt-0.5 shrink-0 text-dered" />
+                <span>
+                  <strong className="font-semibold">Couldn't reach the research service.</strong>{' '}
+                  Your message wasn't sent — try again.
+                  <div className="mt-1 font-mono text-[11px] opacity-80">
+                    {state.error.proxy ? 'gate' : 'stream'} · {state.error.code}
+                  </div>
+                  <div className="mt-0.5">{state.error.message}</div>
+                </span>
               </div>
             )}
 
             {state.done && (
-              <div className="text-xs text-gray-400 text-right">
+              <div className="text-right text-[11px] text-ink-faint">
                 {state.done.tool_rounds} tool round{state.done.tool_rounds === 1 ? '' : 's'} ·{' '}
                 {state.done.total_tokens.toLocaleString()} tokens ·{' '}
                 {Math.round(state.done.elapsed_ms / 100) / 10}s ·{' '}
@@ -732,43 +816,48 @@ export const V2ChatPage: React.FC = () => {
               onClose={() => setChatBoxBrowse(false)}
             />
           )}
-          <form onSubmit={onSubmit} className="border-t border-gray-100 bg-white px-6 py-4">
+          <form onSubmit={onSubmit} className="shrink-0 px-4 pb-5 pt-1 sm:px-6">
             {mobileGateNotice && (
-              <div className="mb-3 rounded border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900">
-                <span className="font-semibold">⚠️ Not sent. </span>
-                {mobileGateNotice}
+              <div className="mb-2.5 flex gap-2.5 rounded-[10px] border border-deamber-line bg-deamber-bg2 px-3 py-2.5 text-[12.5px] text-deamber-text">
+                <TriangleAlert size={15} strokeWidth={1.8} aria-hidden className="mt-0.5 shrink-0" />
+                <span>
+                  <strong className="font-semibold">Not sent. </strong>
+                  {mobileGateNotice}
+                </span>
               </div>
             )}
             {(attachedDoc || attachError || attachOcrStatus) && (
               <div className="mb-2 flex flex-wrap items-center gap-2 text-xs">
                 {attachedDoc && (
-                  <span className="inline-flex items-center gap-1.5 rounded-full border border-gray-300 bg-gray-50 px-3 py-1 text-gray-800">
-                    📎 <span className="max-w-[280px] truncate font-medium">{attachedDoc.name}</span>
-                    <span className="text-gray-500">({Math.max(1, Math.round(attachedDoc.text.length / 1000))}k chars)</span>
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-surface-line3 bg-white px-3 py-1 text-ink-secondary">
+                    <Paperclip size={12} strokeWidth={1.8} aria-hidden />
+                    <span className="max-w-[280px] truncate font-medium">{attachedDoc.name}</span>
+                    <span className="text-ink-faint">({Math.max(1, Math.round(attachedDoc.text.length / 1000))}k chars)</span>
                     {attachHasDetections ? (
-                      <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800">
-                        🔒 {attachPreview.tokens.length} item{attachPreview.tokens.length === 1 ? '' : 's'} will be protected
+                      <span className="inline-flex items-center gap-1 rounded-full bg-deamber-bg px-2 py-0.5 text-[10px] font-semibold text-deamber-text">
+                        <Shield size={10} strokeWidth={1.8} aria-hidden />
+                        {attachPreview.tokens.length} item{attachPreview.tokens.length === 1 ? '' : 's'} will be protected
                       </span>
                     ) : (
-                      <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-500">
+                      <span className="rounded-full bg-surface-pill px-2 py-0.5 text-[10px] text-ink-faint">
                         no private items detected — mark any missed name via select → redact
                       </span>
                     )}
                     <button
                       type="button"
                       onClick={() => setAttachedDoc(null)}
-                      className="ml-1 rounded px-1 text-gray-400 hover:bg-gray-200 hover:text-gray-700"
+                      className="ml-1 flex h-4 w-4 items-center justify-center rounded-full text-ink-faint hover:bg-surface-pill hover:text-ink-secondary"
                       aria-label="Remove attachment"
                     >
-                      ✕
+                      <X size={11} strokeWidth={2.2} aria-hidden />
                     </button>
                   </span>
                 )}
-                {attachOcrStatus && <span className="text-sky-700">{attachOcrStatus}</span>}
-                {attachError && <span className="text-amber-700">{attachError}</span>}
+                {attachOcrStatus && <span className="text-brand-deep">{attachOcrStatus}</span>}
+                {attachError && <span className="text-deamber-text">{attachError}</span>}
               </div>
             )}
-            <div className="flex items-end gap-3">
+            <div className="rounded-[14px] border border-surface-line3 bg-white px-4 py-3.5 shadow-card">
               <input
                 ref={attachInputRef}
                 type="file"
@@ -779,26 +868,6 @@ export const V2ChatPage: React.FC = () => {
                   if (f) void attachFile(f);
                 }}
               />
-              <button
-                type="button"
-                onClick={() => attachInputRef.current?.click()}
-                disabled={state.isStreaming || attachBusy}
-                title="Attach a document from this Mac (.txt, .doc, .docx, .pdf — scanned PDFs are OCR'd on-device)"
-                className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-600 shadow-sm hover:bg-gray-50 disabled:opacity-50"
-              >
-                {attachBusy ? '…' : '📎'}
-              </button>
-              {chatBoxState.configured && (
-                <button
-                  type="button"
-                  onClick={() => void onAttachBoxClick()}
-                  disabled={state.isStreaming || attachBusy}
-                  title="Attach a document from Box"
-                  className="rounded-lg border border-[#0061d5]/30 bg-[#0061d5]/5 px-3 py-2 text-sm text-[#0061d5] shadow-sm hover:bg-[#0061d5]/10 disabled:opacity-50"
-                >
-                  📦
-                </button>
-              )}
               <HighlightedDraftInput
                 value={draft}
                 onChange={setDraft}
@@ -812,70 +881,102 @@ export const V2ChatPage: React.FC = () => {
                   }
                 }}
               />
-              {state.isStreaming ? (
-                <button
-                  type="button"
-                  onClick={() => cancel()}
-                  title="Stop this turn — partial output is kept"
-                  className="rounded-lg border border-pink-300 bg-white px-4 py-2 text-sm font-semibold text-pink-600 shadow-sm hover:bg-pink-50"
-                >
-                  ■ Stop
-                </button>
-              ) : (
-                <button
-                  type="submit"
-                  disabled={!draft.trim() && !attachedDoc}
-                  className="rounded-lg bg-pink-500 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-pink-600 disabled:cursor-not-allowed disabled:bg-gray-300"
-                >
-                  Send
-                </button>
-              )}
+              <div className="mt-3 flex items-end justify-between gap-3">
+                <div className="flex min-w-0 flex-col gap-2">
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => attachInputRef.current?.click()}
+                      disabled={state.isStreaming || attachBusy}
+                      title="Attach a document from this Mac (.txt, .doc, .docx, .pdf — scanned PDFs are OCR'd on-device)"
+                      aria-label="Attach a document"
+                      className="flex h-8 w-8 items-center justify-center rounded-lg border border-surface-ctl bg-white text-ink-muted transition hover:bg-surface-pill disabled:opacity-50"
+                    >
+                      {attachBusy ? (
+                        <span className="de-spinner" aria-hidden />
+                      ) : (
+                        <Paperclip size={15} strokeWidth={1.5} aria-hidden />
+                      )}
+                    </button>
+                    {chatBoxState.configured && (
+                      <button
+                        type="button"
+                        onClick={() => void onAttachBoxClick()}
+                        disabled={state.isStreaming || attachBusy}
+                        title="Attach a document from Box"
+                        aria-label="Attach a document from Box"
+                        className="flex h-8 w-8 items-center justify-center rounded-lg border border-surface-ctl bg-white text-ink-muted transition hover:bg-surface-pill disabled:opacity-50"
+                      >
+                        <Package size={15} strokeWidth={1.5} aria-hidden />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Live sanitization preview (P1.1) — debounced 300ms after you stop
+                      typing. Informational only per the 7th addendum — no submission
+                      blocking. Shows the detector's verdict on your in-progress text. */}
+                  <LiveSanitizationPanel
+                    draft={draft}
+                    preview={livePreview}
+                    hasDetections={hasDetections}
+                    isComputing={previewComputing}
+                  />
+
+                  {/* Selection → force-redact. Appears when text is selected in
+                      the draft box; adds the selection to the "always privileged"
+                      denylist so it tokenizes on every future mention. */}
+                  {selectedText.trim() && (
+                    <button
+                      type="button"
+                      // preventDefault on mousedown: without it, pressing the
+                      // button blurs the textarea first, the blur handler
+                      // collapses the selection, selectedText empties, and this
+                      // button unmounts before its own click can fire.
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => {
+                        addToUserDenylist(selectedText);
+                        setSelectedText('');
+                      }}
+                      className="inline-flex w-fit items-center gap-1.5 rounded-full border border-deamber-line bg-deamber-bg px-2.5 py-1 text-[11px] font-semibold text-deamber-text transition hover:bg-deamber-bg2"
+                      title="Always redact this text before sending (this device)"
+                    >
+                      <Shield size={11} strokeWidth={1.8} aria-hidden />
+                      Always treat “{selectedText.trim().slice(0, 40)}
+                      {selectedText.trim().length > 40 ? '…' : ''}” as privileged
+                    </button>
+                  )}
+                </div>
+
+                {state.isStreaming ? (
+                  <button
+                    type="button"
+                    onClick={() => cancel()}
+                    title="Stop this turn — partial output is kept"
+                    aria-label="Stop"
+                    className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-[9px] border border-surface-ctl bg-white text-ink-secondary transition hover:bg-surface-pill"
+                  >
+                    <Square size={13} strokeWidth={2} fill="currentColor" aria-hidden />
+                  </button>
+                ) : (
+                  <button
+                    type="submit"
+                    disabled={!draft.trim() && !attachedDoc}
+                    aria-label="Send"
+                    className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-[9px] bg-brand text-white transition hover:bg-brand-deep disabled:cursor-not-allowed disabled:bg-surface-disabled disabled:text-ink-faint"
+                  >
+                    <Send size={15} strokeWidth={2} aria-hidden />
+                  </button>
+                )}
+              </div>
             </div>
 
-            {/* Live sanitization preview (P1.1) — debounced 300ms after you stop
-                typing. Informational only per the 7th addendum — no submission
-                blocking. Shows the detector's verdict on your in-progress text. */}
-            <LiveSanitizationPanel
-              draft={draft}
-              preview={livePreview}
-              hasDetections={hasDetections}
-              isComputing={previewComputing}
-            />
-
-            {/* Selection → force-redact. Appears when text is selected in
-                the draft box; adds the selection to the "always privileged"
-                denylist so it tokenizes on every future mention. */}
-            {selectedText.trim() && (
-              <div className="mt-2">
-                <button
-                  type="button"
-                  // preventDefault on mousedown: without it, pressing the
-                  // button blurs the textarea first, the blur handler
-                  // collapses the selection, selectedText empties, and this
-                  // button unmounts before its own click can fire.
-                  onMouseDown={(e) => e.preventDefault()}
-                  onClick={() => {
-                    addToUserDenylist(selectedText);
-                    setSelectedText('');
-                  }}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-rose-200 bg-rose-50 px-2.5 py-1 text-[11px] font-semibold text-rose-700 hover:bg-rose-100"
-                  title="Always redact this text before sending (this device)"
-                >
-                  🔒 Always treat “{selectedText.trim().slice(0, 40)}
-                  {selectedText.trim().length > 40 ? '…' : ''}” as privileged
-                </button>
-              </div>
-            )}
-
-            <div className="mt-2 flex items-center gap-2 text-[11px] text-gray-400">
-              <span>
-                V2 preview: Anthropic agent loop with live sanitization preview. Conversation persists to Upstash KV under{' '}
-                <span className="font-mono">{sessionId}</span>.
-              </span>
+            <div className="mt-2 text-center text-[11px] text-ink-faint">
+              Names, addresses, and case numbers are replaced with tokens on this device — only
+              tokens are sent.{' '}
               <button
                 type="button"
                 onClick={() => setShowPrivacyLists(true)}
-                className="shrink-0 font-semibold text-pink-500 underline decoration-dotted underline-offset-2 hover:text-pink-700"
+                className="font-semibold text-brand underline decoration-dotted underline-offset-2 transition hover:text-brand-deep"
               >
                 Privacy lists
               </button>
@@ -907,66 +1008,54 @@ const WorkflowToggle: React.FC<{
   onSelectWorkflow: (w: 'quick' | 'research') => void;
   disabled?: boolean;
 }> = ({ workflow, onSelectWorkflow, disabled }) => {
-  const ToggleBtn: React.FC<{
-    label: string;
-    sub: string;
-    active?: boolean;
-    onClick: () => void;
-    disabled?: boolean;
-  }> = ({ label, sub, active, onClick, disabled }) => (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      className={`flex-1 rounded-lg border px-3 py-2 text-left transition ${
-        active
-          ? 'border-pink-300 bg-pink-50'
-          : 'border-gray-200 bg-white hover:border-pink-200'
-      } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
-    >
-      <div className={`text-[12px] font-semibold ${active ? 'text-pink-700' : 'text-gray-800'}`}>
-        {label}
-      </div>
-      <div className="text-[10px] text-gray-500 leading-tight mt-0.5">{sub}</div>
-    </button>
-  );
-  const NavLink: React.FC<{ to: string; label: string; sub: string; disabled?: boolean }> = ({
-    to,
-    label,
-    sub,
-    disabled,
-  }) => (
-    <Link
-      to={to}
-      role="button"
-      aria-label={label}
-      className={`flex-1 rounded-lg border border-gray-200 bg-white hover:border-pink-200 px-3 py-2 text-left transition ${
-        disabled ? 'opacity-50 pointer-events-none' : ''
-      }`}
-    >
-      <div className="text-[12px] font-semibold text-gray-800">{label}</div>
-      <div className="text-[10px] text-gray-500 leading-tight mt-0.5">{sub}</div>
-    </Link>
-  );
+  const segment = 'px-3 py-[7px] transition whitespace-nowrap';
   return (
-    <div className="px-6 pt-4 pb-2">
-      <div className="flex gap-2">
-        <ToggleBtn
-          label="Quick Answer"
-          sub="Sonnet · no tools · ~5s"
-          active={workflow === 'quick'}
+    <div className="shrink-0 px-4 pb-1 pt-3 sm:px-6">
+      <div className="flex w-fit max-w-full overflow-x-auto rounded-[9px] border border-surface-line3 bg-white text-xs font-semibold">
+        <button
+          type="button"
           onClick={() => onSelectWorkflow('quick')}
           disabled={disabled}
-        />
-        <ToggleBtn
-          label="Research Memo"
-          sub="Fable 5 · full tools · ~30s"
-          active={workflow === 'research'}
+          title="Quick Answer — Sonnet, no tools, ~5s"
+          className={`${segment} ${
+            workflow === 'quick' ? 'bg-brand text-white' : 'text-ink-muted hover:bg-surface-pill'
+          } ${disabled ? 'cursor-not-allowed opacity-50' : ''}`}
+        >
+          Quick answer
+        </button>
+        <button
+          type="button"
           onClick={() => onSelectWorkflow('research')}
           disabled={disabled}
-        />
-        <NavLink to="/v2/draft" label="Draft Document" sub="Templates + section streaming" disabled={disabled} />
-        <NavLink to="/v2/verify" label="Verify Citation" sub="Adversarial citation check" disabled={disabled} />
+          title="Research Memo — full tools, ~30s"
+          className={`${segment} ${
+            workflow === 'research' ? 'bg-brand text-white' : 'text-ink-muted hover:bg-surface-pill'
+          } ${disabled ? 'cursor-not-allowed opacity-50' : ''}`}
+        >
+          Research memo
+        </button>
+        <Link
+          to="/v2/draft"
+          role="button"
+          aria-label="Draft a document"
+          title="Draft a document — templates + section streaming"
+          className={`${segment} text-ink-muted hover:bg-surface-pill ${
+            disabled ? 'pointer-events-none opacity-50' : ''
+          }`}
+        >
+          Draft a document
+        </Link>
+        <Link
+          to="/v2/verify"
+          role="button"
+          aria-label="Verify citations"
+          title="Verify citations — adversarial citation check"
+          className={`${segment} text-ink-muted hover:bg-surface-pill ${
+            disabled ? 'pointer-events-none opacity-50' : ''
+          }`}
+        >
+          Verify citations
+        </Link>
       </div>
     </div>
   );
@@ -1024,7 +1113,7 @@ const HighlightedDraftInput: React.FC<{
   };
 
   return (
-    <div className="relative flex-1">
+    <div className="relative w-full">
       <textarea
         ref={taRef}
         value={value}
@@ -1032,9 +1121,9 @@ const HighlightedDraftInput: React.FC<{
         onScroll={syncScroll}
         onSelect={reportSelection}
         onBlur={reportSelection}
-        placeholder="Ask a California legal-research question…"
+        placeholder="Ask a question about California law…"
         rows={2}
-        className="w-full resize-none rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-pink-400 focus:outline-none"
+        className="w-full resize-none border-0 bg-transparent p-0 text-sm leading-[1.6] text-ink placeholder:text-ink-faint focus:outline-none focus:ring-0"
         disabled={disabled}
         onKeyDown={onKeyDown}
       />
@@ -1042,7 +1131,7 @@ const HighlightedDraftInput: React.FC<{
         <div
           ref={overlayRef}
           aria-hidden
-          className="pointer-events-none absolute inset-0 overflow-hidden whitespace-pre-wrap break-words rounded-lg border border-transparent px-3 py-2 text-sm text-transparent"
+          className="pointer-events-none absolute inset-0 overflow-hidden whitespace-pre-wrap break-words border-0 p-0 text-sm leading-[1.6] text-transparent"
         >
           {preview.segments.map((seg, i) =>
             seg.token ? (
@@ -1054,7 +1143,17 @@ const HighlightedDraftInput: React.FC<{
               // badge floated above the word's end instead.
               <mark
                 key={i}
-                className="relative rounded-sm bg-amber-200/70 text-transparent underline decoration-amber-600 decoration-dotted underline-offset-4"
+                className="relative bg-deamber-hl text-transparent"
+                // padding + equal negative margin: the highlight reads 3px
+                // wider than the word (artboard 03) WITHOUT shifting any
+                // character position, so the overlay still mirrors the
+                // textarea underneath exactly.
+                style={{
+                  padding: '0 3px',
+                  margin: '0 -3px',
+                  borderBottom: '1.5px solid #E8A05C',
+                  borderRadius: 3,
+                }}
               >
                 {seg.text}
                 <button
@@ -1071,9 +1170,9 @@ const HighlightedDraftInput: React.FC<{
                   }}
                   title={`${seg.token.value} — mark "${seg.token.raw}" as NOT privileged (always send as-is on this device)`}
                   aria-label={`Mark "${seg.token.raw}" as not privileged`}
-                  className="pointer-events-auto absolute -right-2 -top-2.5 flex h-4 w-4 cursor-pointer items-center justify-center rounded-full border border-amber-400 bg-amber-100 text-[10px] leading-none text-amber-800 shadow-sm hover:bg-amber-300"
+                  className="pointer-events-auto absolute -right-2 -top-2.5 flex h-4 w-4 cursor-pointer items-center justify-center rounded-full border border-deamber-line bg-deamber-bg leading-none text-deamber-text shadow-card hover:bg-deamber-hl"
                 >
-                  ×
+                  <X size={9} strokeWidth={2.6} aria-hidden />
                 </button>
               </mark>
             ) : (
@@ -1102,40 +1201,48 @@ const LiveSanitizationPanel: React.FC<{
     // Brief pre-debounce state — show a faint placeholder so the user
     // knows the system is looking, not just silent.
     return (
-      <div className="mt-2 text-[11px] text-gray-400 italic">Analyzing…</div>
+      <div className="inline-flex w-fit items-center gap-2 rounded-full border border-surface-pillline bg-surface-pill px-2.5 py-1 text-[11px] font-semibold text-ink-muted">
+        <span className="de-spinner" aria-hidden />
+        <span>Checking for privileged content…</span>
+      </div>
     );
   }
   if (!hasDetections) {
     return (
-      <div className="mt-2 flex items-center gap-2">
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700">
-          🌐 No privileged content detected
-        </span>
-      </div>
+      <span className="inline-flex w-fit items-center gap-1.5 rounded-full border border-deteal-line bg-deteal-bg px-2.5 py-1 text-[11px] font-semibold text-deteal-text">
+        <ShieldCheck size={12} strokeWidth={1.8} aria-hidden />
+        Nothing to protect in this message
+      </span>
     );
   }
-  // Detections — list categories with counts; show the first ~3 raw matches.
+  // Detections — list categories with counts; show the first ~8 raw matches.
   const counts = preview.categoryCounts;
   const parts = Object.entries(counts)
     .filter(([, n]) => (n as number) > 0)
     .map(([cat, n]) => `${n} ${cat.replace(/_/g, ' ')}${(n as number) > 1 ? 's' : ''}`);
+  const count = preview.tokens.length;
   return (
-    <div className="mt-2 space-y-1.5">
-      <div className="flex items-center gap-2 flex-wrap">
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-semibold text-amber-800">
-          ⚠️ Detected: {parts.join(' · ')}
+    <div className="space-y-1.5">
+      <div className="flex flex-wrap items-center gap-2">
+        <span
+          className="inline-flex w-fit items-center gap-1.5 rounded-full border border-deamber-line bg-deamber-bg px-2.5 py-1 text-[11px] font-semibold text-deamber-text"
+          title={`Detected: ${parts.join(' · ')}`}
+        >
+          <Shield size={12} strokeWidth={1.8} aria-hidden />
+          {count} item{count === 1 ? '' : 's'} protected on this device
         </span>
-        <span className="text-[10px] text-gray-400">Web search remains available — your call.</span>
+        <span className="text-[10px] text-ink-faint">{parts.join(' · ')}</span>
       </div>
-      <div className="flex flex-wrap gap-1">
+      <div className="flex flex-wrap gap-1.5">
         {preview.tokens.slice(0, 8).map((t) => (
           <span
             key={t.value}
-            className="inline-flex items-center gap-1 rounded bg-amber-50 border border-amber-200 px-1.5 py-0.5 text-[10px] text-amber-900"
+            className="inline-flex items-center gap-1.5 rounded-[7px] border border-surface-line bg-surface-app px-2 py-0.5 text-[11px] text-ink-secondary"
             title={`Will tokenize as ${t.value}`}
           >
-            <span className="font-mono">{t.value}</span>
-            <span className="text-amber-700/70">= {t.raw.slice(0, 24)}{t.raw.length > 24 ? '…' : ''}</span>
+            <code className="font-mono text-deamber-text">{t.value}</code>
+            <span className="text-[#C6BED2]">←</span>
+            <span className="max-w-[180px] truncate">{t.raw.slice(0, 24)}{t.raw.length > 24 ? '…' : ''}</span>
             <button
               type="button"
               // Mark this term "not private" — adds it to the per-device
@@ -1148,14 +1255,14 @@ const LiveSanitizationPanel: React.FC<{
               }}
               title={`Not private — always send "${t.raw.slice(0, 40)}" as-is (this device). Manage under “Privacy lists” below.`}
               aria-label={`Mark "${t.raw}" as not private`}
-              className="ml-0.5 -mr-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full text-amber-700/60 hover:bg-amber-200 hover:text-amber-900"
+              className="ml-0.5 -mr-0.5 flex h-4 w-4 items-center justify-center rounded-full text-[#C6BED2] hover:bg-deamber-line hover:text-deamber-text"
             >
-              ×
+              <X size={10} strokeWidth={2.4} aria-hidden />
             </button>
           </span>
         ))}
         {preview.tokens.length > 8 && (
-          <span className="text-[10px] text-gray-400">+{preview.tokens.length - 8} more</span>
+          <span className="text-[10px] text-ink-faint">+{preview.tokens.length - 8} more</span>
         )}
       </div>
     </div>
@@ -1188,13 +1295,13 @@ const PrivacyListsModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     onRemove,
     removeTitle,
   }) => (
-    <li className="flex items-center justify-between gap-2 rounded border border-gray-100 bg-gray-50 px-2.5 py-1.5">
-      <span className="truncate text-xs text-gray-800">{term}</span>
+    <li className="flex items-center justify-between gap-2 rounded-lg border border-surface-line bg-surface-app px-2.5 py-1.5">
+      <span className="truncate text-xs text-ink-secondary">{term}</span>
       <button
         type="button"
         onClick={onRemove}
         title={removeTitle}
-        className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold text-gray-400 hover:bg-red-50 hover:text-red-600"
+        className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold text-ink-faint hover:bg-dered-bg hover:text-dered"
       >
         Remove
       </button>
@@ -1207,21 +1314,21 @@ const PrivacyListsModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
       onClick={onClose}
     >
       <div
-        className="max-h-[80vh] w-full max-w-2xl overflow-y-auto rounded-xl bg-white p-6 shadow-xl"
+        className="max-h-[80vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-6 shadow-modal"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-1 flex items-center justify-between">
-          <h2 className="text-base font-semibold text-gray-900">Privacy lists</h2>
+          <h2 className="font-display text-[22px] font-semibold text-ink">Privacy lists</h2>
           <button
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="rounded px-2 py-1 text-sm text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+            className="flex h-7 w-7 items-center justify-center rounded-lg text-ink-faint hover:bg-surface-pill hover:text-ink-secondary"
           >
-            ✕
+            <X size={15} strokeWidth={2} aria-hidden />
           </button>
         </div>
-        <p className="mb-4 text-xs text-gray-500">
+        <p className="mb-4 text-xs text-ink-muted">
           Stored on this device only. These lists teach the privacy filter your
           preferences: allowed terms are always sent as-is; protected terms are
           always redacted (tokenized) before anything leaves this computer.
@@ -1230,10 +1337,11 @@ const PrivacyListsModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
         <div className="grid gap-6 sm:grid-cols-2">
           {/* Allowed (not privileged) */}
           <section>
-            <h3 className="mb-1 text-sm font-semibold text-emerald-700">
-              🌐 Allowed terms <span className="font-normal text-gray-400">({allowed.length})</span>
+            <h3 className="mb-1 flex items-center gap-1.5 text-sm font-semibold text-deteal-text">
+              <ShieldCheck size={14} strokeWidth={1.8} aria-hidden />
+              Allowed terms <span className="font-normal text-ink-faint">({allowed.length})</span>
             </h3>
-            <p className="mb-2 text-[11px] text-gray-500">
+            <p className="mb-2 text-[11px] text-ink-muted">
               Marked “not privileged” — never flagged, sent as plain text.
             </p>
             <form
@@ -1251,18 +1359,18 @@ const PrivacyListsModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                 value={newAllowed}
                 onChange={(e) => setNewAllowed(e.target.value)}
                 placeholder="Add a term…"
-                className="min-w-0 flex-1 rounded border border-gray-200 px-2 py-1 text-xs focus:border-emerald-400 focus:outline-none"
+                className="min-w-0 flex-1 rounded-lg border border-surface-ctl px-2 py-1 text-xs text-ink focus:border-deteal-icon focus:outline-none"
               />
               <button
                 type="submit"
                 disabled={!newAllowed.trim()}
-                className="shrink-0 rounded bg-emerald-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-emerald-700 disabled:bg-gray-300"
+                className="shrink-0 rounded-lg bg-deteal-icon px-2.5 py-1 text-xs font-semibold text-white hover:bg-deteal-icon2 disabled:bg-surface-disabled disabled:text-ink-faint"
               >
                 Add
               </button>
             </form>
             {allowed.length === 0 ? (
-              <div className="rounded border border-dashed border-gray-200 px-3 py-4 text-center text-[11px] text-gray-400">
+              <div className="rounded-lg border border-dashed border-surface-line px-3 py-4 text-center text-[11px] text-ink-faint">
                 Nothing here yet. Click a highlighted word in the input (or the ×
                 on a detection chip) to mark it not privileged.
               </div>
@@ -1282,10 +1390,11 @@ const PrivacyListsModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
 
           {/* Protected (always privileged) */}
           <section>
-            <h3 className="mb-1 text-sm font-semibold text-rose-700">
-              🔒 Protected terms <span className="font-normal text-gray-400">({protectedTerms.length})</span>
+            <h3 className="mb-1 flex items-center gap-1.5 text-sm font-semibold text-deamber-text">
+              <Shield size={14} strokeWidth={1.8} aria-hidden />
+              Protected terms <span className="font-normal text-ink-faint">({protectedTerms.length})</span>
             </h3>
-            <p className="mb-2 text-[11px] text-gray-500">
+            <p className="mb-2 text-[11px] text-ink-muted">
               Marked “always privileged” — always redacted before sending, even
               if the detector misses them.
             </p>
@@ -1303,18 +1412,18 @@ const PrivacyListsModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                 value={newProtected}
                 onChange={(e) => setNewProtected(e.target.value)}
                 placeholder="Add a term (e.g. a client name)…"
-                className="min-w-0 flex-1 rounded border border-gray-200 px-2 py-1 text-xs focus:border-rose-400 focus:outline-none"
+                className="min-w-0 flex-1 rounded-lg border border-surface-ctl px-2 py-1 text-xs text-ink focus:border-deamber-icon focus:outline-none"
               />
               <button
                 type="submit"
                 disabled={!newProtected.trim()}
-                className="shrink-0 rounded bg-rose-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-rose-700 disabled:bg-gray-300"
+                className="shrink-0 rounded-lg bg-deamber-lock px-2.5 py-1 text-xs font-semibold text-white hover:bg-deamber-icon disabled:bg-surface-disabled disabled:text-ink-faint"
               >
                 Add
               </button>
             </form>
             {protectedTerms.length === 0 ? (
-              <div className="rounded border border-dashed border-gray-200 px-3 py-4 text-center text-[11px] text-gray-400">
+              <div className="rounded-lg border border-dashed border-surface-line px-3 py-4 text-center text-[11px] text-ink-faint">
                 Nothing here yet. Select text in the input and click “Always
                 treat as privileged”, or add a term above.
               </div>
@@ -1337,18 +1446,42 @@ const PrivacyListsModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   );
 };
 
+/** Tool-activity event shape as emitted by useV2AgentStream. */
+type ToolEventLike = { id?: string; name: string; status: string; elapsed_ms?: number };
+
+/**
+ * Assistant message header — logo tile + wordmark + the turn's tool pills
+ * (artboard 03, lines 197-208).
+ */
+const AssistantHeader: React.FC<{ toolEvents?: ToolEventLike[] }> = ({ toolEvents }) => (
+  <div className="mb-2.5 flex flex-wrap items-center gap-2">
+    <img src="/dancingelephant.png" alt="" className="h-[22px] w-[22px] rounded-[6px]" />
+    <span className="text-xs font-semibold text-ink-muted">DancingElephant</span>
+    {toolEvents && toolEvents.length > 0 && (
+      <div className="ml-1 flex flex-wrap gap-1.5">
+        {toolEvents.map((t, i) => (
+          <ToolPill key={t.id ?? `${t.name}_${i}`} tool={t} />
+        ))}
+      </div>
+    )}
+  </div>
+);
+
 const MessageBubble: React.FC<{
   role: 'user' | 'assistant';
   text: string;
   streaming?: boolean;
   sources?: V2SourceSummary[];
   workflow?: 'quick' | 'research';
+  /** Tool-activity pills shown inline in the assistant header. */
+  toolEvents?: ToolEventLike[];
 }> = ({
   role,
   text,
   streaming,
   sources,
   workflow,
+  toolEvents,
 }) => {
   const isUser = role === 'user';
   const [copied, setCopied] = useState(false);
@@ -1358,7 +1491,7 @@ const MessageBubble: React.FC<{
   // bubble. The bubble shows rehydrated REAL names for the attorney, but
   // every value in the token map is something that was swapped for a
   // TOKEN before the request left this laptop. Wrapping those values in a
-  // yellow <mark> gives the attorney live visual proof of exactly what was
+  // <mark> gives the attorney live visual proof of exactly what was
   // protected. Display-only: does not touch what is stored or sent.
   const highlighted = useMemo(() => {
     if (!isUser) return null;
@@ -1380,7 +1513,12 @@ const MessageBubble: React.FC<{
         <mark
           key={i}
           title="Protected — sent as a token, never as the real value"
-          className="rounded px-0.5 bg-yellow-300 text-gray-900"
+          className="bg-deamber-hl text-ink"
+          style={{
+            padding: '0 3px',
+            borderBottom: '1.5px solid #E8A05C',
+            borderRadius: 3,
+          }}
         >
           {part}
         </mark>
@@ -1416,118 +1554,129 @@ const MessageBubble: React.FC<{
 
   const handlePrint = useCallback(() => {
     // Open the message text in a print-only window so we don't print the
-    // whole chat surface. Header for context.
+    // whole chat surface. Header for context. Georgia here is deliberate:
+    // this is a rendered legal document, the one place the serif is kept.
     const w = window.open('', '_blank', 'width=800,height=900');
     if (!w) return;
-    w.document.write(`<!doctype html><html><head><title>V2 Message</title>
-      <style>body{font-family:Georgia,serif;padding:2rem;max-width:7in;margin:0 auto;color:#1a1a1a}pre{white-space:pre-wrap;font:inherit}</style>
+    w.document.write(`<!doctype html><html><head><title>DancingElephant message</title>
+      <style>body{font-family:Georgia,"Times New Roman",serif;padding:2rem;max-width:7in;margin:0 auto;color:#2A2233;line-height:1.9}pre{white-space:pre-wrap;font:inherit}</style>
       </head><body><pre>${text.replace(/[<>&]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c] as string))}</pre>
       <script>window.onload = () => window.print();</script></body></html>`);
     w.document.close();
   }, [text]);
 
-  return (
-    <div className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
-      <div className="max-w-[85%] flex flex-col gap-1">
+  // ----- User bubble: right-aligned violet-tint card -----
+  if (isUser) {
+    return (
+      <div className="flex justify-end">
         <div
-          className={`rounded-2xl px-4 py-3 text-[15px] leading-relaxed ${
-            isUser
-              ? 'bg-pink-500 text-white whitespace-pre-wrap'
-              : 'bg-white border border-gray-200 text-gray-900 shadow-sm v2-md'
-          }`}
+          className="max-w-[540px] whitespace-pre-wrap bg-brand-tint px-4 py-3 text-sm leading-[1.6] text-ink"
+          style={{ borderRadius: '14px 14px 4px 14px' }}
         >
-          {!isUser && <InventedTokenWarning text={text} />}
-          {isUser ? (
-            highlighted ?? text
-          ) : (
-            <ReactMarkdown
-              remarkPlugins={[remarkGfm]}
-              components={{
-                a: ({ node, ...props }) => (
-                  <a
-                    {...props}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-pink-600 underline hover:text-pink-700"
-                  />
-                ),
-              }}
-            >
-              {text}
-            </ReactMarkdown>
-          )}
-          {streaming && !isUser && <span className="ml-1 inline-block animate-pulse">▍</span>}
+          {highlighted ?? text}
         </div>
+      </div>
+    );
+  }
 
-        {/* Guardrail warning (P4.2) — flags case names cited in the
-            answer but not present in the sources panel. */}
-        {!isUser && !streaming && (() => {
-          const result = checkAnswer(text, sources ?? []);
-          if (result.warnings.length === 0) return null;
-          return (
-            <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-1.5 text-[11px] text-amber-900">
-              ⚠ {result.warnings[0]}
-            </div>
-          );
-        })()}
-
-        {/* Sources panel (P2.3) — appears on completed assistant
-            messages that had tool calls. Shows what the agent used. */}
-        {!isUser && !streaming && sources && sources.length > 0 && (
-          <SourcesPanel sources={sources} />
-        )}
-
-        {/* Per-message actions: only on completed assistant messages.
-            Hidden on user bubbles and while the assistant is still
-            streaming. */}
-        {!isUser && !streaming && (
-          <div className="flex items-center gap-2 text-[11px] text-gray-400 px-1 flex-wrap">
-            <button
-              type="button"
-              onClick={handleCopy}
-              className="hover:text-pink-600 inline-flex items-center gap-1"
-              title={copied ? 'Copied!' : 'Copy to clipboard'}
-              aria-label="Copy message"
-            >
-              {copied ? '✓ Copied' : '⧉ Copy'}
-            </button>
-            <span className="text-gray-300">·</span>
-            <button
-              type="button"
-              onClick={handlePrint}
-              className="hover:text-pink-600 inline-flex items-center gap-1"
-              title="Print message"
-              aria-label="Print message"
-            >
-              ⎙ Print
-            </button>
-            {workflow && (
-              <>
-                <span className="text-gray-300">·</span>
-                <span
-                  className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-                    workflow === 'quick'
-                      ? 'bg-blue-50 text-blue-700 border border-blue-200'
-                      : 'bg-purple-50 text-purple-700 border border-purple-200'
-                  }`}
-                  title={workflow === 'quick' ? 'Generated with Quick Answer (Sonnet, no tools)' : 'Generated with Research Memo (Fable 5 + full tools)'}
-                >
-                  {workflow === 'quick' ? 'Quick' : 'Research'}
-                </span>
-              </>
-            )}
+  // ----- Assistant message: full-width inside the 760px column -----
+  return (
+    <div className="w-full">
+      <AssistantHeader toolEvents={toolEvents} />
+      <div className="v2-md text-[14.5px] leading-[1.7] text-ink">
+        <InventedTokenWarning text={text} />
+        <ReactMarkdown
+          remarkPlugins={[remarkGfm]}
+          components={{
+            a: ({ node, ...props }) => (
+              <a
+                {...props}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-brand underline hover:text-brand-deep"
+              />
+            ),
+          }}
+        >
+          {text}
+        </ReactMarkdown>
+        {streaming && (
+          <div className="mt-3 flex items-center gap-2.5">
+            <div className="de-thinkline" style={{ width: 200 }} aria-hidden />
+            <span className="text-xs text-ink-faint">Writing…</span>
           </div>
         )}
       </div>
+
+      {/* Guardrail warning (P4.2) — flags case names cited in the
+          answer but not present in the sources panel. */}
+      {!streaming && (() => {
+        const result = checkAnswer(text, sources ?? []);
+        if (result.warnings.length === 0) return null;
+        return (
+          <div className="mt-3 flex gap-2.5 rounded-[10px] border border-deamber-line bg-deamber-bg2 px-3 py-2.5 text-[12.5px] text-deamber-text">
+            <TriangleAlert size={15} strokeWidth={1.8} aria-hidden className="mt-0.5 shrink-0" />
+            <span>{result.warnings[0]}</span>
+          </div>
+        );
+      })()}
+
+      {/* Sources panel (P2.3) — appears on completed assistant
+          messages that had tool calls. Shows what the agent used. */}
+      {!streaming && sources && sources.length > 0 && <SourcesPanel sources={sources} />}
+
+      {/* Per-message actions: only on completed assistant messages.
+          Hidden on user bubbles and while the assistant is still
+          streaming. */}
+      {!streaming && (
+        <div className="mt-2.5 flex flex-wrap items-center gap-2 text-[11px] text-ink-faint">
+          <button
+            type="button"
+            onClick={handleCopy}
+            className="inline-flex items-center gap-1.5 transition hover:text-ink-secondary"
+            title={copied ? 'Copied!' : 'Copy to clipboard'}
+            aria-label="Copy message"
+          >
+            {copied ? (
+              <Check size={12} strokeWidth={2.2} className="text-deteal-icon" aria-hidden />
+            ) : (
+              <Copy size={12} strokeWidth={1.5} aria-hidden />
+            )}
+            {copied ? 'Copied' : 'Copy'}
+          </button>
+          <span className="text-surface-line3">·</span>
+          <button
+            type="button"
+            onClick={handlePrint}
+            className="inline-flex items-center gap-1.5 transition hover:text-ink-secondary"
+            title="Print message"
+            aria-label="Print message"
+          >
+            <Printer size={12} strokeWidth={1.5} aria-hidden />
+            Print
+          </button>
+          {workflow && (
+            <>
+              <span className="text-surface-line3">·</span>
+              <span
+                className="inline-flex items-center rounded-full border border-surface-pillline bg-surface-pill px-2 py-0.5 text-[10px] font-semibold text-ink-muted"
+                title={workflow === 'quick' ? 'Generated with Quick Answer (no tools)' : 'Generated with Research Memo (full tools)'}
+              >
+                {workflow === 'quick' ? 'Quick' : 'Research'}
+              </span>
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 };
 
 /**
- * Sources panel — rendered below an assistant bubble that had tool calls.
+ * Sources panel — rendered below an assistant message that had tool calls.
  * Lists per-tool what was retrieved. Click-throughs go to the actual
  * source URL. A tool-agnostic listing that covers CourtListener / LegiScan /
- * OpenStates / citation_verify.
+ * OpenStates / citation_verify. Artboard 03, lines 219-240.
  */
 const SourcesPanel: React.FC<{ sources: V2SourceSummary[] }> = ({ sources }) => {
   // P4.3 — dedupe near-duplicates (CourtListener + citation_verify can
@@ -1549,87 +1698,121 @@ const SourcesPanel: React.FC<{ sources: V2SourceSummary[] }> = ({ sources }) => 
       default: return t;
     }
   };
+  // Header summary — counted, never fabricated: statuses the verifier
+  // actually reported. Sources with no status at all aren't counted.
+  const verified = pruned.filter((s) => s.status === 'verified').length;
+  const notFound = pruned.filter((s) => s.status === 'not_found').length;
+  const abstained = pruned.filter((s) => s.status && s.status !== 'verified' && s.status !== 'not_found').length;
+  const summaryParts = [
+    verified > 0 ? `${verified} verified` : null,
+    notFound > 0 ? `${notFound} not found` : null,
+    abstained > 0 ? `${abstained} to verify` : null,
+  ].filter(Boolean) as string[];
+
   return (
-    <div className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-[11px] space-y-1.5">
-      <div className="font-semibold text-gray-700 uppercase tracking-wider text-[10px]">Sources</div>
-      {Object.entries(grouped).map(([type, items]) => (
-        <div key={type}>
-          <div className="text-[10px] font-semibold text-pink-700 mb-0.5">
-            {labelFor(type)} <span className="text-gray-400">({items.length})</span>
-          </div>
-          <ul className="space-y-0.5 ml-2 list-disc list-inside">
+    <div className="mt-4 overflow-hidden rounded-xl border border-surface-line bg-white">
+      <div className="flex items-center justify-between gap-3 border-b border-[#F1EEF6] px-3.5 py-2.5">
+        <span className="text-xs font-semibold text-ink-secondary">
+          Sources · {pruned.length} citation{pruned.length === 1 ? '' : 's'}
+        </span>
+        {summaryParts.length > 0 && (
+          <span className="text-[11.5px] text-ink-faint">{summaryParts.join(' · ')}</span>
+        )}
+      </div>
+      <div className="flex flex-col gap-2 px-3.5 py-2.5">
+        {Object.entries(grouped).map(([type, items]) => (
+          <div key={type} className="flex flex-col gap-2">
+            <div className="text-[10.5px] font-bold uppercase tracking-[.05em] text-ink-faint">
+              {labelFor(type)} ({items.length})
+            </div>
             {items.map((s, i) => (
-              <li key={i} className="text-gray-700">
-                {s.url ? (
-                  <a
-                    href={s.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-pink-600 underline hover:text-pink-700"
-                  >
-                    {s.title}
-                  </a>
-                ) : (
-                  <span>{s.title}</span>
-                )}
-                {s.status && (
-                  <span
-                    className={`ml-2 inline-block rounded px-1 text-[9px] ${
-                      s.status === 'verified'
-                        ? 'bg-emerald-100 text-emerald-700'
-                        : s.status === 'not_found'
-                          ? 'bg-red-100 text-red-700'
-                          : // unconfirmed / unverified / unavailable: the verifier
-                            // abstained — never let an abstention blend into gray.
-                            'bg-amber-100 text-amber-800'
-                    }`}
-                  >
-                    {s.status === 'verified'
-                      ? 'verified'
-                      : s.status === 'not_found'
-                        ? 'not found'
-                        : `${s.status} — verify manually`}
-                  </span>
-                )}
-                {s.detail && <span className="text-gray-500"> — {s.detail}</span>}
-              </li>
+              <div key={i} className="flex items-start gap-2.5">
+                <span className="min-w-0 flex-1 font-mono text-[12.5px] leading-snug text-ink-secondary">
+                  {s.url ? (
+                    <a
+                      href={s.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-brand underline decoration-brand-line underline-offset-2 hover:text-brand-deep"
+                    >
+                      {s.title}
+                    </a>
+                  ) : (
+                    s.title
+                  )}
+                  {s.detail && (
+                    <span className="font-sans text-[11.5px] text-ink-faint"> — {s.detail}</span>
+                  )}
+                </span>
+                {s.status && <SourceStatusChip status={s.status} />}
+              </div>
             ))}
-          </ul>
-        </div>
-      ))}
+          </div>
+        ))}
+      </div>
     </div>
   );
 };
 
-const ToolPill: React.FC<{ tool: ReturnType<typeof toolPillData> | { name: string; status: string; elapsed_ms?: number } }> = ({
-  tool,
-}) => {
+const SourceStatusChip: React.FC<{ status: string }> = ({ status }) => {
+  if (status === 'verified') {
+    return (
+      <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-deteal-bg px-2 py-0.5 text-[11px] font-semibold text-deteal-text">
+        <Check size={10} strokeWidth={2.4} aria-hidden />
+        Verified
+      </span>
+    );
+  }
+  if (status === 'not_found') {
+    return (
+      <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-dered-bg px-2 py-0.5 text-[11px] font-semibold text-dered">
+        <X size={10} strokeWidth={2.4} aria-hidden />
+        Not found
+      </span>
+    );
+  }
+  // unconfirmed / unverified / unavailable: the verifier abstained —
+  // never let an abstention blend into neutral gray.
+  return (
+    <span
+      className="inline-flex shrink-0 items-center gap-1 rounded-full bg-deamber-bg px-2 py-0.5 text-[11px] font-semibold text-deamber-text"
+      title={`${status} — verify manually`}
+    >
+      <TriangleAlert size={10} strokeWidth={2.2} aria-hidden />
+      Verify manually
+    </span>
+  );
+};
+
+/**
+ * Tool-activity pill (artboard 03 / component sheet). running = spinner,
+ * done = teal check + elapsed, error = red variant.
+ */
+const ToolPill: React.FC<{ tool: ToolEventLike }> = ({ tool }) => {
   const name = toolHumanName(tool.name);
   if (tool.status === 'running') {
     return (
-      <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-3 py-1 text-xs text-blue-700 border border-blue-200">
-        <span className="animate-spin">⟳</span> Searching {name}…
+      <span className="inline-flex items-center gap-1.5 rounded-full border border-surface-pillline bg-surface-pill px-2.5 py-[3px] text-[11px] font-semibold text-ink-muted">
+        <span className="de-spinner" aria-hidden />
+        {name} · running
       </span>
     );
   }
   if (tool.status === 'error') {
     return (
-      <span className="inline-flex items-center gap-1.5 rounded-full bg-red-50 px-3 py-1 text-xs text-red-700 border border-red-200">
-        ✗ {name} failed
+      <span className="inline-flex items-center gap-1.5 rounded-full border border-dered-line bg-dered-bg px-2.5 py-[3px] text-[11px] font-semibold text-dered">
+        <X size={11} strokeWidth={2.2} aria-hidden />
+        {name} · failed
       </span>
     );
   }
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full bg-gray-50 px-3 py-1 text-xs text-gray-700 border border-gray-200">
-      ✓ {name}
-      {typeof tool.elapsed_ms === 'number' && ` · ${Math.round(tool.elapsed_ms)}ms`}
+    <span className="inline-flex items-center gap-1.5 rounded-full border border-surface-pillline bg-surface-pill px-2.5 py-[3px] text-[11px] font-semibold text-ink-muted">
+      <Check size={11} strokeWidth={2.2} className="text-deteal-icon" aria-hidden />
+      {name}
+      {typeof tool.elapsed_ms === 'number' && ` · ${Math.round(tool.elapsed_ms)} ms`}
     </span>
   );
 };
-
-// (Unused type helper kept for parity with ToolPill prop shape.)
-function toolPillData() {
-  return { name: '', status: 'done', elapsed_ms: 0 } as const;
-}
 
 export default V2ChatPage;
