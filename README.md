@@ -1,17 +1,17 @@
-# AskPauli
+# DancingElephant
 
-> **AI legal research & drafting for California solo and small firms — where client
-> data never leaves the lawyer's machine.** Named in homage to the Rev. Dr. Pauli
-> Murray (1910–1985): Black, gender-nonconforming civil rights lawyer, California's
-> first Black deputy attorney general, the scholar behind *Brown v. Board*'s legal
-> backbone and the "Jane Crow" article RBG built *Reed v. Reed* on. We ask what
-> would Pauli do — and we verify every citation.
+> **Legal AI that never forgets to check.** Research, drafting, and citation
+> verification for California solo and small firms — confidential client
+> information never leaves the lawyer's computer, and every citation is checked
+> against the official record. An elephant never forgets — and never fabricates.
 
-Renamed from **California Law Chatbot** on 2026-07-22. Built for Femme & Femme LLP
-(CA family-law / LGBTQ+ practice); commercialization assessment in
-`docs/commercialization-assessment-2026-07-16.md`.
+Rebranded from **AskPauli** on 2026-08-18 for commercialization (mainstream
+repositioning; new violet/teal/amber identity, Inter + Fraunces, line-elephant
+logo — design source of truth in `docs/design-handoff/`). Previously renamed from
+**California Law Chatbot** on 2026-07-22. Originally built for Femme & Femme LLP;
+commercialization assessment in `docs/commercialization-assessment-2026-07-16.md`.
 
-**This README describes the CURRENT system (V4, verified 2026-07-24).** The V1
+**This README describes the CURRENT system (V4, verified 2026-08-18).** The V1
 Gemini/OpenRouter/CEB architecture was purged 2026-07-02 and its documentation
 removed from this file 2026-07-24 — recover via git history (`git log --all`,
 archive tags). Deep architecture docs live in `openwiki/` (start with
@@ -19,11 +19,14 @@ archive tags). Deep architecture docs live in `openwiki/` (start with
 
 ## What it is
 
-- **Two surfaces, one engine.** A web app (`app.askpauli.com`, Vercel + Clerk +
-  Upstash) and a **local-first macOS desktop app** (Tauri 2; sessions, drafts, and
-  audit logs in per-user SQLite under `~/Library/Application Support/AskPauli/` —
-  zero cloud data stores; Upstash/Blob credentials are stripped at boot and the
-  code fails closed if any cloud path is reached). Landing page: `askpauli.com`.
+- **Two surfaces, one engine.** A web app (`dancingelephant.ai`, Vercel + Clerk +
+  Upstash; DNS on Cloudflare) and a **local-first macOS desktop app** (Tauri 2;
+  sessions, drafts, and audit logs in per-user SQLite under
+  `~/Library/Application Support/AskPauli/` — the directory name is kept from the
+  AskPauli era on purpose so existing installs retain their data; zero cloud data
+  stores; Upstash/Blob credentials are stripped at boot and the code fails closed
+  if any cloud path is reached). Legacy landing page: `askpauli.com` (rebrand +
+  redirect to dancingelephant.ai pending).
 - **Anthropic-direct agent loop** (`api/_lib/agentLoop.ts`): research, drafting,
   and citation-verification workflows calling the Anthropic Messages API under
   standard commercial terms + DPA (no training on API content). No other model
@@ -56,22 +59,32 @@ highlights:
 yarn build              # vite build → dist/
 yarn dev:full           # local web dev (API :3000 + vite :5173)
 yarn desktop            # self-contained desktop dev (sidecar :8477 + native window)
-yarn desktop:app        # build → sign → NOTARIZE the distributable AskPauli.app
+yarn desktop:app        # build → sign → NOTARIZE the distributable DancingElephant.app
 node scripts/build-desktop-installer.mjs   # attorney installer zip (contains live keys — private channels only)
 yarn test:sanitization && yarn test:traps  # plus tests/*.test.mjs and runTrapsWire.mjs — keep 100% green
 ```
 
-## Status (2026-07-24)
+## Status (2026-08-18)
 
-- Production web: `app.askpauli.com` (Vercel auto-deploy from `main`).
-- Desktop: notarized, Gatekeeper-accepted `AskPauli.app`; installer zip shared
-  with the firm's attorneys. No auto-update yet (known gap).
-- Sanitization suite fully green: wire traps 120/120, analyze traps 120/120,
-  unit tests 153/153.
-- Commercial track: local-first desktop is the product direction; the only
-  planned server for the commercial version is a thin license/key-provisioning
-  service (see the commercialization memory/docs). Pending: Clerk → license-key
-  auth, auto-update, discovery interviews via the Lavender Law network.
+- Production web: `https://dancingelephant.ai` (Vercel auto-deploy from `main`;
+  also `california-law-chatbot.vercel.app` and `chat.femmeandfemmelaw.com`).
+  DNS for dancingelephant.ai is on Cloudflare (nameservers titan/zelda) —
+  migrated off register.com's flaky nameservers; zone-migration script at
+  `scripts/migrate-dns-cloudflare.mjs`.
+- **DancingElephant rebrand shipped 2026-08-18**: all five surfaces reskinned
+  (violet #7C5CFC / teal / amber tokens in `tailwind.config.cjs`, Inter +
+  Fraunces, lucide icons, violet-gradient line-elephant logo), Pauli Murray
+  origin story and pink identity removed, attestation checkbox now required.
+  Design handoff (9 artboards + spec): `docs/design-handoff/`.
+- Desktop: notarized, Gatekeeper-accepted `DancingElephant.app` (bundle id
+  stays `com.askpauli.desktop` for data compatibility); installer zip at
+  `installer-pkg/dist/DancingElephant-Desktop-2026-08-18.zip` (**contains live
+  API keys — private channels only**). No auto-update yet (known gap).
+- Sanitization suite fully green (re-verified 2026-08-18 post-rebrand): wire
+  traps 120/120, analyze traps 120/120, unit tests 153/153, docx-surgery 50/50.
+- Pending: legacy `askpauli.com` landing-page rebrand + redirect; Clerk
+  application rename (dashboard-side; sign-in card still says "California Law
+  Chatbot"); Clerk → license-key auth, auto-update, discovery interviews.
 
 ## 🚧 Architectural dead-ends — DO NOT REVISIT WITHOUT NEW EVIDENCE
 

@@ -153,3 +153,81 @@ daemon path still exists and is the instant fallback (`VITE_DETECTOR=daemon` or
 ---
 SESSION END: 2026-06-30 18:30 PDT | Agent: Claude Code
 ---
+
+---
+SESSION START: 2026-08-17 → 2026-08-18 | Agent: Claude Code (Fable 5), session "Chatbot Rebrand"
+---
+
+### Session Summary
+Executed the full AskPauli → **DancingElephant** rebrand end to end: new visual
+identity designed (Claude Design), all five UI surfaces reskinned with zero logic
+changes, deployed to production, new domain **dancingelephant.ai** live with SSL,
+DNS migrated to Cloudflare, and the Mac desktop app rebuilt/notarized as
+DancingElephant.app. Branch `DE-Rebrand` (worktree `California-Law-Chatbot-DE-Rebrand`),
+merged to `main` in stages.
+
+### Decisions Made
+- **Brand story**: "an elephant never forgets — and never fabricates" (memory +
+  verified citations); mainstream-professional voice; Pauli Murray origin story and
+  all firm attribution removed from product chrome.
+- **Design tokens** (now in `tailwind.config.cjs` theme.extend — no longer empty):
+  brand violet #7C5CFC, ink #2A2233, deteal/deamber/dered semantic scales, surface
+  neutrals, plum (sign-in only). Inter (UI) + Fraunces (display) via Google Fonts;
+  Georgia survives ONLY inside rendered legal documents (`font-doc`). Signature
+  motifs in index.html: `.de-thinkline` (animated gradient line), `.de-rule`,
+  `.de-spinner`. Design source of truth: `docs/design-handoff/` (9 artboards + spec).
+- **Logo**: delivered art had ~50% padding and hairline strokes — tight-cropped,
+  strokes dilated ~2x + saturation boost, background switched to violet gradient
+  (#3B2B6E→#6847E8, variant 8 of 12; contact sheet in docs/design-handoff/assets/).
+- **Attestation checkbox is now REQUIRED** (default unchecked, gates the
+  acknowledge button). Trust copy strengthened everywhere to "Confidential client
+  information never leaves your computer" (sign-in, chat welcome, consent modal).
+  Caveat for compliance review: public_research matter mode still sends raw text
+  to the DPA-covered Anthropic channel by design (CLAUDE.md gotcha).
+- **Domain**: dancingelephant.ai (owned at Network Solutions/Register.com) → app at
+  root. DNS zone migrated to **Cloudflare** (nameservers titan/zelda.ns.cloudflare.com)
+  because register.com's nameservers intermittently SERVFAIL. All 13 records
+  mirrored DNS-only/unproxied (Vercel apex A 76.76.21.21, www CNAME, 4×MX + SPF +
+  autodiscover SRV/CNAME + imap/mail/pop/smtp CNAMEs — mail untouched). Script:
+  `scripts/migrate-dns-cloudflare.mjs` (idempotent; global-key auth because the
+  stored CF tokens lack zone.create).
+- **Desktop**: productName/window title → DancingElephant; full icon set regenerated
+  from the final logo; bundle id **stays com.askpauli.desktop** and the data dir
+  **stays ~/Library/Application Support/AskPauli/** so existing installs keep data.
+  Installed to /Applications (old AskPauli.app removed); installer zip built.
+
+### Architecture / Implementation notes
+- Reskin was 5 parallel subagents over disjoint file sets (SignIn/Sidebar/Consent,
+  Chat+MatterModeSelector+SanitizationChip, Verify, Draft, DraftingMagic); every
+  hook/API/streaming/sanitization path preserved. MatterModeSelector's two <select>s
+  are now a 3-segment control + consent chip popover (same handlers, 409 override
+  flow intact). V2SanitizationChip props unchanged (shared component).
+- Merge with main's docx-fidelity work (originalDocx/appliedEdits/onFidelityNote
+  export path) resolved into the new Draft header; docx-surgery suite 50/50.
+- ClerkProvider gained signInUrl/signUpUrl="/sign-in|/sign-up" — RedirectToSignIn
+  previously bypassed the branded page for Clerk's hosted default card.
+- tests/sanitization.test.mjs attestation-copy assertions updated to the new
+  headings (What stays on this device / What is sent / Your obligations stand /
+  No recovery). All suites green post-rebrand: 153/153, 120/120, 120/120 zero-leak.
+
+### Constraints & Gotchas (new)
+- Vercel bot-protection ("Security Checkpoint, Code 21") now challenges headless
+  Chromium from this machine after repeated automated hits — verify prod visually
+  via `vite preview` on the identical build, or a logged-in human browser.
+- Preview deployments are behind Vercel SSO; no automation-bypass secret configured.
+- `vercel domains add <domain> <project>` + apex A record → cert issues via HTTP-01;
+  apex cert needed a manual `vercel certs issue dancingelephant.ai` nudge after the
+  zone flipped (www issued on its own).
+- Installer zip bundles live API keys by design — private channels only.
+
+### Open / Next
+1. Legacy askpauli.com landing page: rebrand + redirect to dancingelephant.ai.
+2. Clerk dashboard: rename application (sign-in card still says "California Law
+   Chatbot"); dev-mode badge only on dev-key domains.
+3. Roll the Cloudflare Global API Key (its one job — zone creation — is done).
+4. Optional: transfer domain registration off Network Solutions; auto-update for
+   the desktop app remains the known gap.
+
+---
+SESSION END: 2026-08-18 | Agent: Claude Code (Fable 5)
+---
