@@ -698,7 +698,12 @@ export const V2ChatPage: React.FC = () => {
                 </div>
                 <div className="mt-9 flex items-center gap-2 text-[12.5px] text-ink-muted">
                   <ShieldCheck size={14} strokeWidth={1.5} className="text-deteal-icon shrink-0" aria-hidden />
-                  Your clients' information is protected on your device before anything is sent.
+                  <span>
+                    <span className="font-semibold text-ink">
+                      Confidential client information never leaves your computer
+                    </span>{' '}
+                    — only anonymous tokens are sent.
+                  </span>
                 </div>
               </div>
             )}
