@@ -73,7 +73,11 @@ export const ConfidentialityAttestation: React.FC<ConfidentialityAttestationProp
         </div>
 
         <p className="mb-5 text-[13.5px] leading-relaxed text-ink-muted">
-          A one-minute read on how DancingElephant handles client information.
+          A one-minute read on how DancingElephant handles client information. The short
+          version:{' '}
+          <span className="font-semibold text-ink">
+            confidential client information never leaves your computer.
+          </span>
         </p>
 
         <ol className="mb-[22px] flex flex-col gap-3.5 text-[13.5px] leading-relaxed text-ink">
