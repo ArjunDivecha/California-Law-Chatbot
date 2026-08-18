@@ -60,14 +60,26 @@ const RECORDS = [
 ];
 
 // --- auth --------------------------------------------------------------------
+// Global API Key auth (X-Auth-Email/X-Auth-Key): the account's API tokens
+// lack com.cloudflare.api.account.zone.create, so zone creation needs the
+// global key (Arjun added it 2026-08-18). Falls back to bearer-token auth
+// if the key lines are ever removed.
 const env = readFileSync('/Users/arjundivecha/Dropbox/AAA Backup/.env.txt', 'utf8');
+const email = env.match(/^CLOUDFLARE_EMAIL=(.+)$/m)?.[1]?.trim();
+const gkey = env.match(/^CLOUDFLARE_GLOBAL_API_KEY=(.+)$/m)?.[1]?.trim();
 const token = env.match(/^CLOUDFLARE_API_TOKEN=(.+)$/m)?.[1]?.trim();
-if (!token) { console.error('FAIL: CLOUDFLARE_API_TOKEN not found in .env.txt'); process.exit(1); }
+const authHeaders =
+  email && gkey
+    ? { 'X-Auth-Email': email, 'X-Auth-Key': gkey }
+    : token
+      ? { Authorization: `Bearer ${token}` }
+      : null;
+if (!authHeaders) { console.error('FAIL: no Cloudflare credentials in .env.txt'); process.exit(1); }
 
 async function cf(method, path, body) {
   const res = await fetch(`${API}${path}`, {
     method,
-    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    headers: { ...authHeaders, 'Content-Type': 'application/json' },
     body: body ? JSON.stringify(body) : undefined,
   });
   const json = await res.json();
