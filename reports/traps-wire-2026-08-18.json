@@ -1,9 +1,9 @@
 {
-  "generated_at": "2026-08-18T06:26:20.837Z",
+  "generated_at": "2026-08-18T07:11:25.525Z",
   "label": "2026-08-18",
   "manifest_version": 2,
   "manifest_authored": "2026-05-12",
-  "elapsed_seconds": 37.9,
+  "elapsed_seconds": 30.2,
   "totals": {
     "total": 120,
     "pass": 120,
