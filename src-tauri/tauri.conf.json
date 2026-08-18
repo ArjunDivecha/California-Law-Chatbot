@@ -1,6 +1,6 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "AskPauli",
+  "productName": "DancingElephant",
   "version": "0.2.0",
   "identifier": "com.askpauli.desktop",
   "build": {
@@ -11,7 +11,7 @@
   "app": {
     "windows": [
       {
-        "title": "AskPauli",
+        "title": "DancingElephant",
         "width": 1440,
         "height": 900,
         "resizable": true,
