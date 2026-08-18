@@ -37,7 +37,7 @@ import { join } from 'node:path';
 const APP = join(
   process.cwd(),
   'src-tauri', 'target', 'release', 'bundle', 'macos',
-  'AskPauli.app',
+  'DancingElephant.app',
 );
 const PROFILE = process.env.NOTARY_KEYCHAIN_PROFILE || 'clc-notary';
 

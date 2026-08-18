@@ -490,7 +490,7 @@ async function verifyCitationsWithCiteLaw(
         headers: {
           Authorization: `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
-          'User-Agent': 'AskPauli citation verification/1.0',
+          'User-Agent': 'DancingElephant citation verification/1.0',
         },
         body: JSON.stringify({
           citations: submitted.map((citation) => ({

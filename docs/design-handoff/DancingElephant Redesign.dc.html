@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Fraunces:opsz,wght@9..144,480;9..144,560;9..144,640&amp;display=swap" rel="stylesheet">
+<style>
+body { margin: 0; background: #EFECE6; font-family: 'Inter', sans-serif; color: #2A2233; }
+a { color: #7C5CFC; text-decoration: none; }
+a:hover { color: #6847E8; }
+@keyframes deSpin { to { transform: rotate(360deg); } }
+@keyframes deShimmer { from { background-position: 0% 0; } to { background-position: -300% 0; } }
+</style>
+</helmet>
+<section style="padding:56px;display:flex;flex-direction:column;gap:64px;align-items:flex-start">
+
+<!-- ══════════ ROW 1 · Sign-in + Welcome ══════════ -->
+<div style="display:flex;gap:56px;align-items:flex-start">
+
+<div>
+<div style="font-size:12px;font-weight:600;color:#8A8296;letter-spacing:.06em;text-transform:uppercase;margin-bottom:10px">01 · Sign-in</div>
+<div data-screen-label="01 Sign-in" style="width:1440px;height:860px;display:flex;border-radius:16px;overflow:hidden;box-shadow:0 12px 40px rgba(42,34,51,.14);font-family:Inter,sans-serif">
+  <div style="width:640px;background:#221A30;display:flex;flex-direction:column;justify-content:space-between;padding:56px">
+    <div style="display:flex;align-items:center;gap:12px">
+      <img src="assets/logo.png" alt="DancingElephant" style="width:44px;height:44px;border-radius:12px">
+      <span style="font-family:Fraunces,serif;font-size:21px;font-weight:560;color:#F5F2FA">DancingElephant</span>
+    </div>
+    <div>
+      <img src="assets/logo.png" alt="" style="width:300px;height:300px;border-radius:32px;display:block;margin-bottom:36px">
+      <div style="font-family:Fraunces,serif;font-size:44px;font-weight:560;line-height:1.15;color:#F5F2FA;max-width:420px">Legal AI that never forgets to check.</div>
+      <div style="margin-top:20px">{{ thinkLineWide }}</div>
+      <p style="font-size:15px;line-height:1.6;color:#B4A9C6;max-width:400px;margin:20px 0 0">Research, drafting, and citation verification for California attorneys — with client information protected on your device before anything is sent.</p>
+    </div>
+    <div style="font-size:12px;color:#7A6F8E">Every citation checked against the official record.</div>
+  </div>
+  <div style="flex:1;background:#FCFBF9;display:flex;align-items:center;justify-content:center">
+    <div style="width:400px;background:#FFFFFF;border:1px solid #EAE6F0;border-radius:14px;padding:36px;box-shadow:0 1px 3px rgba(42,34,51,.06)">
+      <div style="font-family:Fraunces,serif;font-size:24px;font-weight:560;margin-bottom:6px">Welcome back</div>
+      <div style="font-size:13.5px;color:#6E6580;margin-bottom:26px">Sign in to your workspace</div>
+      <button style="width:100%;display:flex;align-items:center;justify-content:center;gap:10px;border:1px solid #DDD8E5;border-radius:10px;background:#FFFFFF;padding:11px;font-size:14px;font-weight:600;color:#2A2233;cursor:pointer">
+        <svg width="17" height="17" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.5 12.2c0-.8-.07-1.5-.2-2.2H12v4.2h5.9a5.1 5.1 0 0 1-2.2 3.4v2.8h3.6c2.1-1.9 3.2-4.8 3.2-8.2z"></path><path fill="#34A853" d="M12 23c3 0 5.5-1 7.3-2.6l-3.6-2.8c-1 .7-2.2 1.1-3.7 1.1-2.9 0-5.3-1.9-6.2-4.5H2.1v2.9A11 11 0 0 0 12 23z"></path><path fill="#FBBC05" d="M5.8 14.2a6.6 6.6 0 0 1 0-4.3V7H2.1a11 11 0 0 0 0 9.9l3.7-2.8z"></path><path fill="#EA4335" d="M12 5.4c1.6 0 3.1.6 4.2 1.7l3.2-3.2A11 11 0 0 0 2.1 7l3.7 2.9c.9-2.6 3.3-4.5 6.2-4.5z"></path></svg>
+        Continue with Google
+      </button>
+      <div style="display:flex;align-items:center;gap:12px;margin:22px 0">
+        <div style="flex:1;height:1px;background:#EAE6F0"></div><span style="font-size:11.5px;color:#9C94A8">or</span><div style="flex:1;height:1px;background:#EAE6F0"></div>
+      </div>
+      <div style="font-size:12.5px;font-weight:600;color:#4A4258;margin-bottom:6px">Email address</div>
+      <div style="border:1px solid #DDD8E5;border-radius:10px;padding:11px 13px;font-size:14px;color:#9C94A8;margin-bottom:16px">you@yourfirm.com</div>
+      <button style="width:100%;border:none;border-radius:10px;background:#7C5CFC;color:#FFFFFF;padding:12px;font-size:14px;font-weight:600;cursor:pointer">Continue</button>
+      <div style="font-size:12px;color:#9C94A8;text-align:center;margin-top:18px">No account? <a href="#">Start a free trial</a></div>
+    </div>
+  </div>
+</div>
+</div>
+
+<div>
+<div style="font-size:12px;font-weight:600;color:#8A8296;letter-spacing:.06em;text-transform:uppercase;margin-bottom:10px">02 · Welcome / empty chat</div>
+<div data-screen-label="02 Welcome" style="width:1440px;height:860px;display:flex;background:#FCFBF9;border-radius:16px;overflow:hidden;box-shadow:0 12px 40px rgba(42,34,51,.14)">
+  <aside style="width:280px;background:#FFFFFF;border-right:1px solid #EEEAF3;display:flex;flex-direction:column">
+    <div style="padding:20px 18px 14px;display:flex;align-items:center;gap:10px">
+      <img src="assets/logo.png" alt="" style="width:32px;height:32px;border-radius:9px">
+      <span style="font-family:Fraunces,serif;font-size:17px;font-weight:560">DancingElephant</span>
+    </div>
+    <div style="padding:0 14px 14px;display:flex;flex-direction:column;gap:8px">
+      <button style="display:flex;align-items:center;justify-content:center;gap:8px;border:none;border-radius:10px;background:#7C5CFC;color:#FFFFFF;padding:10px;font-size:13.5px;font-weight:600;cursor:pointer">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg>New chat
+      </button>
+    </div>
+    <nav style="padding:0 10px;display:flex;flex-direction:column;gap:2px">
+      <div style="display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:8px;font-size:13.5px;font-weight:500;color:#4A4258"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6M9 15h6M9 11h2"></path></svg>Draft a document</div>
+      <div style="display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:8px;font-size:13.5px;font-weight:500;color:#4A4258"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4V2m0 12v-2M8 9h2m10 0h2m-4.2-3.2L19 4.6m-1.2 7.6 1.2 1.2M3 21l9-9m3.2-6.2-1.4 1.4"></path></svg>Drafting Magic</div>
+      <div style="display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:8px;font-size:13.5px;font-weight:500;color:#4A4258"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2 4-5"></path><circle cx="12" cy="12" r="9"></circle></svg>Verify citations</div>
+    </nav>
+    <div style="padding:18px 18px 8px;font-size:11px;font-weight:600;color:#9C94A8;letter-spacing:.05em;text-transform:uppercase">Recent</div>
+    <div style="flex:1;padding:0 10px;font-size:13px;color:#9C94A8"><div style="padding:8px 10px">No chats yet. Start one to see it here.</div></div>
+    <div style="padding:14px 18px;border-top:1px solid #EEEAF3;display:flex;align-items:center;gap:10px">
+      <div style="width:28px;height:28px;border-radius:50%;background:#F3F0FE;color:#7C5CFC;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600">RM</div>
+      <div style="font-size:12.5px;font-weight:500;color:#4A4258">R. Morgan, Esq.</div>
+    </div>
+  </aside>
+  <main style="flex:1;display:flex;flex-direction:column">
+    <div style="height:3px;background:linear-gradient(90deg,#7C5CFC,#2DD4BF,#E8A05C)"></div>
+    <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px">
+      <img src="assets/logo.png" alt="" style="width:72px;height:72px;border-radius:18px;margin-bottom:24px">
+      <div style="font-family:Fraunces,serif;font-size:34px;font-weight:560;margin-bottom:8px">Good morning, Counselor.</div>
+      <div style="font-size:15px;color:#6E6580;margin-bottom:36px">What are we working on today?</div>
+      <div style="display:grid;grid-template-columns:repeat(2,300px);gap:14px">
+        <div style="background:#FFFFFF;border:1px solid #EAE6F0;border-radius:12px;padding:18px;cursor:pointer" style-hover="border-color:#C9BFF5">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#7C5CFC" stroke-width="1.5" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><path d="m21 21-4.3-4.3"></path></svg>
+          <div style="font-size:14px;font-weight:600;margin:10px 0 4px">Research a question</div>
+          <div style="font-size:12.5px;color:#6E6580;line-height:1.5">“What's the statute of limitations on breach of a written contract in California?”</div>
+        </div>
+        <div style="background:#FFFFFF;border:1px solid #EAE6F0;border-radius:12px;padding:18px;cursor:pointer" style-hover="border-color:#C9BFF5">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#7C5CFC" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6M9 15h6M9 11h2"></path></svg>
+          <div style="font-size:14px;font-weight:600;margin:10px 0 4px">Draft a motion</div>
+          <div style="font-size:12.5px;color:#6E6580;line-height:1.5">Start a motion to compel, demurrer, or discovery response from a template.</div>
+        </div>
+        <div style="background:#FFFFFF;border:1px solid #EAE6F0;border-radius:12px;padding:18px;cursor:pointer" style-hover="border-color:#C9BFF5">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#7C5CFC" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2 4-5"></path><circle cx="12" cy="12" r="9"></circle></svg>
+          <div style="font-size:14px;font-weight:600;margin:10px 0 4px">Verify citations</div>
+          <div style="font-size:12.5px;color:#6E6580;line-height:1.5">Paste a brief — every cite is checked against the official record.</div>
+        </div>
+        <div style="background:#FFFFFF;border:1px solid #EAE6F0;border-radius:12px;padding:18px;cursor:pointer" style-hover="border-color:#C9BFF5">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#7C5CFC" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V4a2 2 0 0 0-2-2H6.5A2.5 2.5 0 0 0 4 4.5z"></path><path d="M20 17v5H6.5a2.5 2.5 0 0 1 0-5"></path></svg>
+          <div style="font-size:14px;font-weight:600;margin:10px 0 4px">Summarize a document</div>
+          <div style="font-size:12.5px;color:#6E6580;line-height:1.5">Upload a contract or opinion and get the key points in plain language.</div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:36px;font-size:12.5px;color:#6E6580">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#14B8A6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><path d="m9 12 2 2 4-4"></path></svg>
+        Your clients' information is protected on your device before anything is sent.
+      </div>
+    </div>
+    <div style="padding:0 200px 32px">
+      <div style="background:#FFFFFF;border:1px solid #E3DEED;border-radius:14px;padding:14px 16px;box-shadow:0 1px 3px rgba(42,34,51,.05)">
+        <div style="font-size:14px;color:#9C94A8">Ask a question about California law…</div>
+        <div style="display:flex;justify-content:flex-end;margin-top:12px">
+          <button style="width:34px;height:34px;border:none;border-radius:9px;background:#7C5CFC;color:#FFFFFF;display:flex;align-items:center;justify-content:center;cursor:pointer"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4z"></path></svg></button>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+</div>
+</div>
+
+<!-- ══════════ ROW 2 · Chat + Consent ══════════ -->
+<div style="display:flex;gap:56px;align-items:flex-start">
+
+<div>
+<div style="font-size:12px;font-weight:600;color:#8A8296;letter-spacing:.06em;text-transform:uppercase;margin-bottom:10px">03 · Chat — main surface</div>
+<div data-screen-label="03 Chat" style="width:1440px;height:960px;display:flex;background:#FCFBF9;border-radius:16px;overflow:hidden;box-shadow:0 12px 40px rgba(42,34,51,.14)">
+  <aside style="width:280px;background:#FFFFFF;border-right:1px solid #EEEAF3;display:flex;flex-direction:column">
+    <div style="padding:20px 18px 14px;display:flex;align-items:center;gap:10px">
+      <img src="assets/logo.png" alt="" style="width:32px;height:32px;border-radius:9px">
+      <span style="font-family:Fraunces,serif;font-size:17px;font-weight:560">DancingElephant</span>
+    </div>
+    <div style="padding:0 14px 14px">
+      <button style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;border:none;border-radius:10px;background:#7C5CFC;color:#FFFFFF;padding:10px;font-size:13.5px;font-weight:600;cursor:pointer">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg>New chat
+      </button>
+    </div>
+    <nav style="padding:0 10px;display:flex;flex-direction:column;gap:2px">
+      <div style="display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:8px;font-size:13.5px;font-weight:500;color:#4A4258"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6M9 15h6M9 11h2"></path></svg>Draft a document</div>
+      <div style="display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:8px;font-size:13.5px;font-weight:500;color:#4A4258"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4V2m0 12v-2M8 9h2m10 0h2m-4.2-3.2L19 4.6m-1.2 7.6 1.2 1.2M3 21l9-9m3.2-6.2-1.4 1.4"></path></svg>Drafting Magic</div>
+      <div style="display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:8px;font-size:13.5px;font-weight:500;color:#4A4258"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2 4-5"></path><circle cx="12" cy="12" r="9"></circle></svg>Verify citations</div>
+    </nav>
+    <div style="padding:18px 18px 8px;font-size:11px;font-weight:600;color:#9C94A8;letter-spacing:.05em;text-transform:uppercase">Recent</div>
+    <div style="flex:1;overflow:hidden;padding:0 10px;display:flex;flex-direction:column;gap:2px">
+      <div style="background:#F3F0FE;border:1px solid #E2DAFB;border-radius:8px;padding:8px 10px">
+        <div style="font-size:13px;font-weight:500;color:#2A2233;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Anti-SLAPP motion timing</div>
+        <div style="font-size:11px;color:#9C94A8;margin-top:2px">6 messages · just now</div>
+      </div>
+      <div style="border:1px solid transparent;border-radius:8px;padding:8px 10px">
+        <div style="font-size:13px;font-weight:500;color:#4A4258;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Delgado — lease dispute research</div>
+        <div style="font-size:11px;color:#9C94A8;margin-top:2px">14 messages · 2h ago</div>
+      </div>
+      <div style="border:1px solid transparent;border-radius:8px;padding:8px 10px">
+        <div style="font-size:13px;font-weight:500;color:#4A4258;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">CCP § 998 offer strategy</div>
+        <div style="font-size:11px;color:#9C94A8;margin-top:2px">9 messages · 1d ago</div>
+      </div>
+      <div style="border:1px solid transparent;border-radius:8px;padding:8px 10px">
+        <div style="font-size:13px;font-weight:500;color:#4A4258;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Demurrer — failure to state a claim</div>
+        <div style="font-size:11px;color:#9C94A8;margin-top:2px">22 messages · 3d ago</div>
+      </div>
+    </div>
+    <div style="padding:14px 18px;border-top:1px solid #EEEAF3;display:flex;align-items:center;gap:10px">
+      <div style="width:28px;height:28px;border-radius:50%;background:#F3F0FE;color:#7C5CFC;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600">RM</div>
+      <div style="font-size:12.5px;font-weight:500;color:#4A4258">R. Morgan, Esq.</div>
+    </div>
+  </aside>
+  <main style="flex:1;display:flex;flex-direction:column;min-width:0">
+    <div style="background:#FFFFFF;border-bottom:1px solid #EEEAF3;padding:12px 24px;display:flex;align-items:center;justify-content:space-between">
+      <div style="font-size:14.5px;font-weight:600">Anti-SLAPP motion timing</div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="display:flex;border:1px solid #E3DEED;border-radius:9px;overflow:hidden;font-size:12px;font-weight:600">
+          <div style="padding:7px 12px;color:#6E6580;background:#FFFFFF">Public research</div>
+          <div style="padding:7px 12px;color:#FFFFFF;background:#7C5CFC">Client confidential</div>
+          <div style="display:flex;align-items:center;gap:5px;padding:7px 12px;color:#6E6580;background:#FFFFFF"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 8 0v4"></path></svg>Protected discovery</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;background:#E9FBF7;border:1px solid #BFEEE4;border-radius:99px;padding:6px 12px;font-size:12px;font-weight:600;color:#0E7C6E">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 13 4 4L19 7"></path></svg>Client consent recorded
+        </div>
+      </div>
+    </div>
+    <div style="flex:1;overflow:hidden;padding:28px 0;display:flex;flex-direction:column;gap:22px">
+      <div style="width:760px;margin:0 auto;display:flex;justify-content:flex-end">
+        <div style="max-width:540px;background:#F3F0FE;border-radius:14px 14px 4px 14px;padding:13px 16px;font-size:14px;line-height:1.6">My client Maria Delgado was served with a complaint on June 3. Can we still bring an anti-SLAPP motion, and does the 60-day clock run from service or filing?</div>
+      </div>
+      <div style="width:760px;margin:0 auto">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+          <img src="assets/logo.png" alt="" style="width:22px;height:22px;border-radius:6px">
+          <span style="font-size:12px;font-weight:600;color:#6E6580">DancingElephant</span>
+          <div style="display:flex;gap:6px;margin-left:8px">
+            <div style="display:flex;align-items:center;gap:6px;background:#F6F4FB;border:1px solid #E9E5F2;border-radius:99px;padding:3px 10px;font-size:11px;font-weight:600;color:#6E6580"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#14B8A6" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 13 4 4L19 7"></path></svg>web_search · 842 ms</div>
+            <div style="display:flex;align-items:center;gap:6px;background:#F6F4FB;border:1px solid #E9E5F2;border-radius:99px;padding:3px 10px;font-size:11px;font-weight:600;color:#6E6580"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#14B8A6" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 13 4 4L19 7"></path></svg>courtlistener.lookup · 1.2 s</div>
+            <sc-if value="{{ streaming }}" hint-placeholder-val="{{ true }}">
+              <div style="display:flex;align-items:center;gap:6px;background:#F6F4FB;border:1px solid #E9E5F2;border-radius:99px;padding:3px 10px;font-size:11px;font-weight:600;color:#6E6580">{{ spinner }}citelaw.verify · running</div>
+            </sc-if>
+          </div>
+        </div>
+        <div style="font-size:14.5px;line-height:1.7;color:#2A2233">
+          <p style="margin:0 0 12px">Yes — you're within the window, but barely. Under <strong>CCP § 425.16(f)</strong>, an anti-SLAPP motion must be filed within <strong>60 days of service of the complaint</strong>, not filing <span style="display:inline-flex;align-items:center;justify-content:center;min-width:16px;height:16px;border-radius:5px;background:#EDE8FC;color:#6847E8;font-size:10px;font-weight:700;vertical-align:2px">1</span>. Service on June 3 puts your deadline at <strong>August 2</strong>.</p>
+          <p style="margin:0 0 12px">Courts may permit a later filing at their discretion, but <em>Platypus Wear, Inc. v. Goldberg</em> holds that discretion is abused where the delay is substantial and unjustified <span style="display:inline-flex;align-items:center;justify-content:center;min-width:16px;height:16px;border-radius:5px;background:#EDE8FC;color:#6847E8;font-size:10px;font-weight:700;vertical-align:2px">2</span>.</p>
+        </div>
+        <sc-if value="{{ streaming }}" hint-placeholder-val="{{ true }}">
+          <div style="display:flex;align-items:center;gap:10px;margin-top:14px">
+            {{ thinkLine }}
+            <span style="font-size:12px;color:#9C94A8">Verifying citations…</span>
+          </div>
+        </sc-if>
+        <div style="margin-top:16px;background:#FFFFFF;border:1px solid #EAE6F0;border-radius:12px;overflow:hidden">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid #F1EEF6">
+            <span style="font-size:12px;font-weight:600;color:#4A4258">Sources · 3 citations</span>
+            <span style="font-size:11.5px;color:#9C94A8">2 verified · 1 checking</span>
+          </div>
+          <div style="padding:10px 14px;display:flex;flex-direction:column;gap:8px">
+            <div style="font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#9C94A8">CA Codes</div>
+            <div style="display:flex;align-items:center;gap:10px">
+              <span style="flex:1;font-size:12.5px;font-family:ui-monospace,monospace;color:#4A4258">Cal. Civ. Proc. Code § 425.16(f)</span>
+              <span style="display:flex;align-items:center;gap:4px;font-size:11px;font-weight:600;color:#0E7C6E;background:#E9FBF7;border-radius:99px;padding:2px 8px"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 13 4 4L19 7"></path></svg>Verified</span>
+            </div>
+            <div style="font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#9C94A8;margin-top:4px">CourtListener</div>
+            <div style="display:flex;align-items:center;gap:10px">
+              <span style="flex:1;font-size:12.5px;font-family:ui-monospace,monospace;color:#4A4258">Platypus Wear, Inc. v. Goldberg, 166 Cal.App.4th 772 (2008)</span>
+              <span style="display:flex;align-items:center;gap:4px;font-size:11px;font-weight:600;color:#0E7C6E;background:#E9FBF7;border-radius:99px;padding:2px 8px"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 13 4 4L19 7"></path></svg>Verified</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px">
+              <span style="flex:1;font-size:12.5px;font-family:ui-monospace,monospace;color:#4A4258">Olsen v. Harbison, 191 Cal.App.4th 325 (2010)</span>
+              <span style="display:flex;align-items:center;gap:5px;font-size:11px;font-weight:600;color:#6E6580;background:#F6F4FB;border-radius:99px;padding:2px 8px">{{ spinner }}Checking</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div style="width:760px;margin:0 auto;padding-bottom:24px">
+      <div style="background:#FFFFFF;border:1px solid #E3DEED;border-radius:14px;padding:14px 16px;box-shadow:0 1px 3px rgba(42,34,51,.05)">
+        <div style="font-size:14px;line-height:1.6;color:#2A2233">Draft a follow-up letter to <span style="background:#FBEBD3;border-bottom:1.5px solid #E8A05C;border-radius:3px;padding:0 3px">Maria Delgado</span> at <span style="background:#FBEBD3;border-bottom:1.5px solid #E8A05C;border-radius:3px;padding:0 3px">418 Alvarado St, Monterey</span> about case <span style="background:#FBEBD3;border-bottom:1.5px solid #E8A05C;border-radius:3px;padding:0 3px">24CV-01882</span>…</div>
+        <div style="display:flex;align-items:flex-end;justify-content:space-between;margin-top:12px">
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <div style="display:flex;align-items:center;gap:6px;background:#FDF6EC;border:1px solid #F2DCBC;border-radius:99px;padding:5px 12px;font-size:12px;font-weight:600;color:#9A6420;width:fit-content;cursor:pointer">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+              3 items protected on this device
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"></path></svg>
+            </div>
+            <sc-if value="{{ privacyExpanded }}" hint-placeholder-val="{{ true }}">
+              <div style="display:flex;flex-wrap:wrap;gap:6px">
+                <span style="display:flex;align-items:center;gap:6px;font-size:11px;background:#FCFBF9;border:1px solid #EDE9F3;border-radius:7px;padding:3px 8px;color:#4A4258"><code style="font-family:ui-monospace,monospace;color:#9A6420">CLIENT_001</code><span style="color:#C6BED2">←</span>Maria Delgado</span>
+                <span style="display:flex;align-items:center;gap:6px;font-size:11px;background:#FCFBF9;border:1px solid #EDE9F3;border-radius:7px;padding:3px 8px;color:#4A4258"><code style="font-family:ui-monospace,monospace;color:#9A6420">ADDR_001</code><span style="color:#C6BED2">←</span>418 Alvarado St, Monterey</span>
+                <span style="display:flex;align-items:center;gap:6px;font-size:11px;background:#FCFBF9;border:1px solid #EDE9F3;border-radius:7px;padding:3px 8px;color:#4A4258"><code style="font-family:ui-monospace,monospace;color:#9A6420">CASE_001</code><span style="color:#C6BED2">←</span>24CV-01882</span>
+              </div>
+            </sc-if>
+          </div>
+          <button style="width:34px;height:34px;border:none;border-radius:9px;background:#7C5CFC;color:#FFFFFF;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4z"></path></svg></button>
+        </div>
+      </div>
+      <div style="font-size:11px;color:#9C94A8;text-align:center;margin-top:8px">Names, addresses, and case numbers are replaced with tokens on this device — only tokens are sent.</div>
+    </div>
+  </main>
+</div>
+</div>
+
+<div>
+<div style="font-size:12px;font-weight:600;color:#8A8296;letter-spacing:.06em;text-transform:uppercase;margin-bottom:10px">04 · Consent / attestation modal</div>
+<div data-screen-label="04 Consent modal" style="width:900px;height:960px;position:relative;background:#FCFBF9;border-radius:16px;overflow:hidden;box-shadow:0 12px 40px rgba(42,34,51,.14)">
+  <div style="position:absolute;inset:0;background:rgba(34,26,48,.45);display:flex;align-items:center;justify-content:center;padding:40px">
+    <div style="width:560px;background:#FFFFFF;border-radius:16px;padding:32px;box-shadow:0 20px 60px rgba(34,26,48,.35)">
+      <div style="height:3px;border-radius:2px;background:linear-gradient(90deg,#7C5CFC,#2DD4BF,#E8A05C);margin-bottom:24px"></div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#14B8A6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><path d="m9 12 2 2 4-4"></path></svg>
+        <div style="font-family:Fraunces,serif;font-size:22px;font-weight:560">Before you continue</div>
+      </div>
+      <p style="font-size:13.5px;line-height:1.6;color:#6E6580;margin:0 0 20px">A one-minute read on how DancingElephant handles client information.</p>
+      <div style="display:flex;flex-direction:column;gap:14px;margin-bottom:22px">
+        <div style="display:flex;gap:12px">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#7C5CFC" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:2px"><rect x="5" y="2" width="14" height="20" rx="2"></rect><path d="M12 18h.01"></path></svg>
+          <div style="font-size:13.5px;line-height:1.6"><strong>What stays on this device.</strong> When you type client facts, names and identifiers are replaced with tokens in your browser. The map from tokens back to real names never leaves this device.</div>
+        </div>
+        <div style="display:flex;gap:12px">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#7C5CFC" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:2px"><path d="m22 2-7 20-4-9-9-4z"></path></svg>
+          <div style="font-size:13.5px;line-height:1.6"><strong>What is sent.</strong> Only the tokenized text reaches the model and research providers — never the real names. Model inputs are not used for training.</div>
+        </div>
+        <div style="display:flex;gap:12px">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#D97706" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:2px"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"></path><path d="M12 9v4M12 17h.01"></path></svg>
+          <div style="font-size:13.5px;line-height:1.6"><strong>Your obligations stand.</strong> This is a technical safeguard, not a substitute for your duties under Rule of Professional Conduct 1.6 or your duty to supervise AI-assisted work.</div>
+        </div>
+        <div style="display:flex;gap:12px">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#6E6580" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:2px"><rect x="4" y="11" width="16" height="10" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 8 0v4"></path></svg>
+          <div style="font-size:13.5px;line-height:1.6"><strong>No recovery.</strong> Clearing browser data deletes the local token map permanently. Prior chats will show tokens in place of names. This is deliberate.</div>
+        </div>
+      </div>
+      <label style="display:flex;align-items:flex-start;gap:10px;background:#FCFBF9;border:1px solid #EAE6F0;border-radius:10px;padding:12px 14px;font-size:13px;line-height:1.5;cursor:pointer;margin-bottom:20px">
+        <input type="checkbox" checked style="margin-top:2px;accent-color:#7C5CFC">
+        I've read the four points above and understand where client information does and doesn't go.
+      </label>
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <button style="border:none;background:none;font-size:13px;color:#6E6580;cursor:pointer">Not now</button>
+        <button style="border:none;border-radius:10px;background:#7C5CFC;color:#FFFFFF;padding:11px 20px;font-size:13.5px;font-weight:600;cursor:pointer">I understand — continue</button>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+</div>
+
+<!-- ══════════ ROW 3 · Verify + Draft ══════════ -->
+<div style="display:flex;gap:56px;align-items:flex-start">
+
+<div>
+<div style="font-size:12px;font-weight:600;color:#8A8296;letter-spacing:.06em;text-transform:uppercase;margin-bottom:10px">05 · Verify Citations</div>
+<div data-screen-label="05 Verify Citations" style="width:1440px;height:900px;display:flex;flex-direction:column;background:#FCFBF9;border-radius:16px;overflow:hidden;box-shadow:0 12px 40px rgba(42,34,51,.14)">
+  <div style="background:#FFFFFF;border-bottom:1px solid #EEEAF3;padding:14px 28px;display:flex;align-items:center;justify-content:space-between">
+    <div style="display:flex;align-items:center;gap:12px">
+      <img src="assets/logo.png" alt="" style="width:30px;height:30px;border-radius:8px">
+      <div>
+        <div style="font-size:15px;font-weight:600">Verify citations</div>
+        <div style="font-size:12px;color:#6E6580">Every cite checked against the official record — an elephant never fabricates.</div>
+      </div>
+    </div>
+    <a href="#" style="font-size:13px;font-weight:500">← Back to chat</a>
+  </div>
+  <div style="flex:1;display:flex;gap:24px;padding:24px 28px;min-height:0">
+    <div style="flex:1;background:#FFFFFF;border:1px solid #EAE6F0;border-radius:12px;padding:20px;display:flex;flex-direction:column">
+      <div style="font-size:14px;font-weight:600;margin-bottom:12px">Passage to verify</div>
+      <div style="flex:1;border:1px solid #E3DEED;border-radius:10px;padding:14px;font-family:ui-monospace,monospace;font-size:12.5px;line-height:1.7;color:#4A4258;overflow:hidden">Defendant's reliance on <span style="background:#FBEBD3;border-bottom:1.5px solid #E8A05C;border-radius:3px;padding:0 2px">Acme Holdings LLC</span> is misplaced. An anti-SLAPP motion must be filed within 60 days of service. CCP § 425.16(f); Platypus Wear, Inc. v. Goldberg, 166 Cal.App.4th 772 (2008). The court retains discretion to consider later filings, Chitsazzadeh v. Kramer &amp; Kaslow, 199 Cal.App.4th 676 (2011), and fees follow under CCP § 425.16(c). See also Martinez v. Pacific Coast Lending, 88 Cal.App.5th 411 (2023)…</div>
+      <div style="display:flex;align-items:center;gap:6px;background:#FDF6EC;border:1px solid #F2DCBC;border-radius:99px;padding:5px 12px;font-size:12px;font-weight:600;color:#9A6420;width:fit-content;margin-top:12px">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+        1 item protected on this device
+      </div>
+      <div style="display:flex;align-items:center;gap:14px;margin-top:16px">
+        <button style="border:none;border-radius:10px;background:#7C5CFC;color:#FFFFFF;padding:11px 20px;font-size:13.5px;font-weight:600;cursor:pointer">Verify citations</button>
+        <span style="font-size:12px;color:#9C94A8">About 18 s per citation</span>
+      </div>
+    </div>
+    <div style="flex:1;background:#FFFFFF;border:1px solid #EAE6F0;border-radius:12px;padding:20px;display:flex;flex-direction:column;gap:10px">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div style="font-size:14px;font-weight:600">Verdicts</div>
+        <div style="font-size:12px;color:#9C94A8">72 s elapsed</div>
+      </div>
+      <div style="height:2px;border-radius:2px;background:linear-gradient(90deg,#7C5CFC,#2DD4BF,#E8A05C);opacity:.6"></div>
+      <div style="display:flex;gap:8px">
+        <div style="display:flex;align-items:center;gap:6px;background:#E9FBF7;border:1px solid #BFEEE4;border-radius:99px;padding:5px 12px;font-size:12px;font-weight:600;color:#0E7C6E">2 verified</div>
+        <div style="display:flex;align-items:center;gap:6px;background:#FDEDEC;border:1px solid #F4C7C3;border-radius:99px;padding:5px 12px;font-size:12px;font-weight:600;color:#B3261E">1 contradicted</div>
+        <div style="display:flex;align-items:center;gap:6px;background:#FDF6EC;border:1px solid #F2DCBC;border-radius:99px;padding:5px 12px;font-size:12px;font-weight:600;color:#9A6420">1 verify manually</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-top:4px">
+        <div style="display:flex;gap:12px;border:1px solid #BFEEE4;background:#F4FDFB;border-radius:10px;padding:12px 14px">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#0E9384" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:1px"><path d="m5 13 4 4L19 7"></path></svg>
+          <div style="min-width:0">
+            <div style="display:flex;align-items:center;gap:8px"><span style="font-size:9.5px;font-weight:700;letter-spacing:.05em;background:#E2DAFB;color:#6847E8;border-radius:4px;padding:1px 5px">STATUTE</span><span style="font-family:ui-monospace,monospace;font-size:12.5px;color:#2A2233">CCP § 425.16(f)</span><span style="font-size:11.5px;font-weight:700;color:#0E7C6E">Verified</span></div>
+            <div style="font-size:12px;color:#6E6580;margin-top:3px">Matches the official code. 60-day deadline from service confirmed, discretion clause present.</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:12px;border:1px solid #BFEEE4;background:#F4FDFB;border-radius:10px;padding:12px 14px">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#0E9384" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:1px"><path d="m5 13 4 4L19 7"></path></svg>
+          <div style="min-width:0">
+            <div style="display:flex;align-items:center;gap:8px"><span style="font-size:9.5px;font-weight:700;letter-spacing:.05em;background:#EDEBF2;color:#6E6580;border-radius:4px;padding:1px 5px">CASE</span><span style="font-family:ui-monospace,monospace;font-size:12.5px;color:#2A2233">Platypus Wear, Inc. v. Goldberg, 166 Cal.App.4th 772</span><span style="font-size:11.5px;font-weight:700;color:#0E7C6E">Verified</span></div>
+            <div style="font-size:12px;margin-top:3px"><a href="#">Platypus Wear, Inc. v. Goldberg — CourtListener</a><span style="color:#9C94A8"> · identity match, conf 0.98</span></div>
+          </div>
+        </div>
+        <div style="display:flex;gap:12px;border:1px solid #F4C7C3;background:#FEF7F6;border-radius:10px;padding:12px 14px">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#B3261E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:1px"><path d="M18 6 6 18M6 6l12 12"></path></svg>
+          <div style="min-width:0">
+            <div style="display:flex;align-items:center;gap:8px"><span style="font-size:9.5px;font-weight:700;letter-spacing:.05em;background:#EDEBF2;color:#6E6580;border-radius:4px;padding:1px 5px">CASE</span><span style="font-family:ui-monospace,monospace;font-size:12.5px;color:#2A2233">Martinez v. Pacific Coast Lending, 88 Cal.App.5th 411</span><span style="font-size:11.5px;font-weight:700;color:#B3261E">Contradicted</span></div>
+            <div style="font-size:12px;color:#6E6580;margin-top:3px">No case by this name exists at this citation. 88 Cal.App.5th 411 resolves to an unrelated matter. Do not rely on this cite.</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:12px;border:1px solid #F2DCBC;background:#FDFAF4;border-radius:10px;padding:12px 14px">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#D97706" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:1px"><path d="M12 9v4M12 17h.01"></path><circle cx="12" cy="12" r="9"></circle></svg>
+          <div style="min-width:0">
+            <div style="display:flex;align-items:center;gap:8px"><span style="font-size:9.5px;font-weight:700;letter-spacing:.05em;background:#EDEBF2;color:#6E6580;border-radius:4px;padding:1px 5px">CASE</span><span style="font-family:ui-monospace,monospace;font-size:12.5px;color:#2A2233">Chitsazzadeh v. Kramer &amp; Kaslow, 199 Cal.App.4th 676</span><span style="font-size:11.5px;font-weight:700;color:#9A6420">Verify manually</span></div>
+            <div style="font-size:12px;color:#6E6580;margin-top:3px">Case exists, but the retrieved opinion couldn't confirm the discretion proposition. Read the opinion before relying on it.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<div>
+<div style="font-size:12px;font-weight:600;color:#8A8296;letter-spacing:.06em;text-transform:uppercase;margin-bottom:10px">06 · Draft a Document</div>
+<div data-screen-label="06 Draft a Document" style="width:1440px;height:900px;display:flex;flex-direction:column;background:#FCFBF9;border-radius:16px;overflow:hidden;box-shadow:0 12px 40px rgba(42,34,51,.14)">
+  <div style="background:#FFFFFF;border-bottom:1px solid #EEEAF3;padding:14px 28px;display:flex;align-items:center;justify-content:space-between">
+    <div style="display:flex;align-items:center;gap:12px">
+      <img src="assets/logo.png" alt="" style="width:30px;height:30px;border-radius:8px">
+      <div>
+        <div style="font-size:15px;font-weight:600">Opposition to Motion to Compel — Delgado</div>
+        <div style="font-size:12px;color:#6E6580">You approve every change individually. Nothing is applied without you.</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px">
+      <button style="display:flex;align-items:center;gap:7px;border:1px solid #DDD8E5;border-radius:9px;background:#FFFFFF;padding:8px 14px;font-size:12.5px;font-weight:600;color:#4A4258;cursor:pointer"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"></path></svg>DOCX</button>
+      <button style="display:flex;align-items:center;gap:7px;border:1px solid #DDD8E5;border-radius:9px;background:#FFFFFF;padding:8px 14px;font-size:12.5px;font-weight:600;color:#4A4258;cursor:pointer"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"></path></svg>PDF</button>
+    </div>
+  </div>
+  <div style="flex:1;display:flex;gap:24px;padding:24px 28px;min-height:0">
+    <div style="flex:1.2;background:#FFFFFF;border:1px solid #EAE6F0;border-radius:12px;padding:32px 40px;overflow:hidden">
+      <div style="font-family:Fraunces,serif;font-size:11px;letter-spacing:.08em;color:#9C94A8;text-transform:uppercase;margin-bottom:18px">Document · opposition-draft-v3.docx</div>
+      <div style="font-family:Georgia,'Times New Roman',serif;font-size:13.5px;line-height:1.9;color:#2A2233">
+        <div style="text-align:center;font-weight:700;margin-bottom:14px">OPPOSITION TO MOTION TO COMPEL FURTHER RESPONSES</div>
+        <p style="margin:0 0 10px;text-indent:2em">Plaintiff's motion should be denied for three independent reasons. First, the motion is untimely under Code of Civil Procedure section 2031.310, subdivision (c), which requires notice within 45 days of the verified response.</p>
+        <p style="margin:0 0 10px;text-indent:2em">Second, <span style="background:#F4FDFB;border-bottom:2px solid #2DD4BF">the separate statement fails to comply with rule 3.1345 of the California Rules of Court because it omits the text of each response at issue</span>, an independent ground for denial.</p>
+        <p style="margin:0 0 10px;text-indent:2em">Third, <span style="background:#FDF6EC;border-bottom:2px solid #E8A05C">Defendant has already produced all responsive, non-privileged documents in its possession, custody, or control</span>, and Plaintiff identifies no specific deficiency.</p>
+        <p style="margin:0;text-indent:2em">For these reasons, and as set forth in the accompanying declaration, the Court should deny the motion and award Defendant its reasonable expenses incurred in opposing it.</p>
+      </div>
+    </div>
+    <div style="flex:1;display:flex;flex-direction:column;gap:12px;overflow:hidden">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div style="font-size:13px;font-weight:600">Proposed edits · 2 of 4 remaining</div>
+        <div style="font-size:12px;color:#9C94A8">1 applied · 1 skipped</div>
+      </div>
+      <div style="background:#FFFFFF;border:1px solid #E2DAFB;border-radius:12px;padding:16px;box-shadow:0 1px 3px rgba(42,34,51,.05)">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <span style="font-size:12px;font-weight:600;color:#6847E8">Edit 3 · Separate statement argument</span>
+          <span style="font-size:11px;color:#9C94A8">¶ 2</span>
+        </div>
+        <div style="border-radius:8px;overflow:hidden;font-family:ui-monospace,monospace;font-size:12px;line-height:1.6">
+          <div style="background:#FDEDEC;color:#8C1D18;padding:7px 10px;text-decoration:line-through">the separate statement is defective</div>
+          <div style="background:#E9FBF7;color:#0E5C52;padding:7px 10px">the separate statement fails to comply with rule 3.1345 of the California Rules of Court because it omits the text of each response at issue</div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:12px">
+          <button style="flex:1;border:none;border-radius:8px;background:#7C5CFC;color:#FFFFFF;padding:9px;font-size:12.5px;font-weight:600;cursor:pointer">Approve change</button>
+          <button style="border:1px solid #DDD8E5;border-radius:8px;background:#FFFFFF;padding:9px 16px;font-size:12.5px;font-weight:600;color:#6E6580;cursor:pointer">Skip</button>
+        </div>
+      </div>
+      <div style="background:#FFFFFF;border:1px solid #EAE6F0;border-radius:12px;padding:16px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <span style="font-size:12px;font-weight:600;color:#6847E8">Edit 4 · Production status</span>
+          <span style="font-size:11px;color:#9C94A8">¶ 3</span>
+        </div>
+        <div style="border-radius:8px;overflow:hidden;font-family:ui-monospace,monospace;font-size:12px;line-height:1.6">
+          <div style="background:#FDEDEC;color:#8C1D18;padding:7px 10px;text-decoration:line-through">Defendant has produced everything</div>
+          <div style="background:#E9FBF7;color:#0E5C52;padding:7px 10px">Defendant has already produced all responsive, non-privileged documents in its possession, custody, or control</div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:12px">
+          <button style="flex:1;border:none;border-radius:8px;background:#7C5CFC;color:#FFFFFF;padding:9px;font-size:12.5px;font-weight:600;cursor:pointer">Approve change</button>
+          <button style="border:1px solid #DDD8E5;border-radius:8px;background:#FFFFFF;padding:9px 16px;font-size:12.5px;font-weight:600;color:#6E6580;cursor:pointer">Skip</button>
+        </div>
+      </div>
+      <div style="background:#F4FDFB;border:1px solid #BFEEE4;border-radius:12px;padding:12px 16px;display:flex;align-items:center;gap:10px">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#0E9384" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 13 4 4L19 7"></path></svg>
+        <span style="font-size:12.5px;color:#0E5C52"><strong>Edit 1 applied</strong> — timeliness argument (¶ 1)</span>
+      </div>
+      <div style="background:#FCFBF9;border:1px solid #EAE6F0;border-radius:12px;padding:12px 16px;display:flex;align-items:center;gap:10px">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9C94A8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"></path></svg>
+        <span style="font-size:12.5px;color:#6E6580"><strong>Edit 2 skipped</strong> — caption reformat · <a href="#">Undo</a></span>
+      </div>
+      <div style="background:#FDF6EC;border:1px solid #F2DCBC;border-radius:12px;padding:12px 16px;display:flex;align-items:center;gap:10px">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#D97706" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"></path><path d="M12 9v4M12 17h.01"></path></svg>
+        <span style="font-size:12.5px;color:#9A6420"><strong>Couldn't locate</strong> — prayer-for-relief wording changed since this edit was proposed.</span>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+</div>
+
+<!-- ══════════ ROW 4 · Drafting Magic + Mobile ══════════ -->
+<div style="display:flex;gap:56px;align-items:flex-start">
+
+<div>
+<div style="font-size:12px;font-weight:600;color:#8A8296;letter-spacing:.06em;text-transform:uppercase;margin-bottom:10px">07 · Drafting Magic — workbench</div>
+<div data-screen-label="07 Drafting Magic" style="width:1440px;height:940px;display:flex;flex-direction:column;background:#FCFBF9;border-radius:16px;overflow:hidden;box-shadow:0 12px 40px rgba(42,34,51,.14)">
+  <div style="background:#FFFFFF;border-bottom:1px solid #EEEAF3;padding:14px 28px;display:flex;align-items:center;justify-content:space-between">
+    <div style="display:flex;align-items:center;gap:12px">
+      <img src="assets/logo.png" alt="" style="width:30px;height:30px;border-radius:8px">
+      <div>
+        <div style="font-size:15px;font-weight:600">Drafting Magic · Settlement demand packet</div>
+        <div style="font-size:12px;color:#6E6580">Delgado v. Coastal Property Group</div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:14px">
+      <span style="display:flex;align-items:center;gap:6px;font-size:12px;color:#9C94A8"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 3"></path></svg>Autosaved 2:41 PM</span>
+      <button style="border:none;border-radius:9px;background:#7C5CFC;color:#FFFFFF;padding:9px 16px;font-size:12.5px;font-weight:600;cursor:pointer">Export packet</button>
+    </div>
+  </div>
+  <div style="flex:1;display:flex;gap:20px;padding:20px 28px;min-height:0">
+    <div style="width:280px;display:flex;flex-direction:column;gap:10px">
+      <div style="font-size:12px;font-weight:600;color:#6E6580;text-transform:uppercase;letter-spacing:.05em">Source documents</div>
+      <div style="background:#FFFFFF;border:1px solid #EAE6F0;border-radius:10px;padding:12px 14px;display:flex;gap:10px">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#7C5CFC" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:1px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>
+        <div style="min-width:0">
+          <div style="font-size:12.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">lease-agreement-2023.pdf</div>
+          <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:#0E7C6E;margin-top:2px"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 13 4 4L19 7"></path></svg>Extracted · 14 pages</div>
+        </div>
+      </div>
+      <div style="background:#FFFFFF;border:1px solid #EAE6F0;border-radius:10px;padding:12px 14px;display:flex;gap:10px">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#7C5CFC" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:1px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>
+        <div style="min-width:0">
+          <div style="font-size:12.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">repair-invoices-bundle.pdf</div>
+          <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:#0E7C6E;margin-top:2px"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 13 4 4L19 7"></path></svg>Extracted · 22 pages</div>
+        </div>
+      </div>
+      <div style="background:#FFFFFF;border:1px solid #EAE6F0;border-radius:10px;padding:12px 14px;display:flex;gap:10px">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9C94A8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:1px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>
+        <div style="min-width:0">
+          <div style="font-size:12.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">tenant-correspondence.pdf</div>
+          <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:#6E6580;margin-top:2px">{{ spinner }}Extracting…</div>
+        </div>
+      </div>
+      <button style="display:flex;align-items:center;justify-content:center;gap:8px;border:1px dashed #C9BFF5;border-radius:10px;background:#FBFAFE;padding:12px;font-size:12.5px;font-weight:600;color:#7C5CFC;cursor:pointer">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"></path></svg>Add document
+      </button>
+    </div>
+    <div style="flex:1;display:flex;flex-direction:column;gap:12px;min-width:0">
+      <div style="background:#FFFFFF;border:1px solid #EAE6F0;border-radius:12px;padding:14px 18px;display:flex;align-items:center;justify-content:space-between">
+        <div style="display:flex;align-items:center;gap:12px">
+          <span style="font-size:12.5px;font-weight:600;color:#6E6580">Pathway</span>
+          <span style="display:flex;align-items:center;gap:8px;border:1px solid #E2DAFB;background:#F3F0FE;border-radius:9px;padding:7px 12px;font-size:13px;font-weight:600;color:#6847E8">Settlement demand letter<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"></path></svg></span>
+        </div>
+        <span style="font-size:12px;color:#9C94A8">5 sections · 2 drafted</span>
+      </div>
+      <div style="background:#FFFFFF;border:1px solid #EAE6F0;border-radius:12px;padding:18px;flex:1;display:flex;flex-direction:column;gap:14px;overflow:hidden">
+        <div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+            <div style="font-size:13.5px;font-weight:600">2 · Factual background</div>
+            <div style="display:flex;gap:6px">
+              <button style="display:flex;align-items:center;gap:6px;border:1px solid #DDD8E5;border-radius:8px;background:#FFFFFF;padding:6px 10px;font-size:11.5px;font-weight:600;color:#4A4258;cursor:pointer"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.6-6.4L21 8"></path><path d="M21 3v5h-5"></path></svg>Regenerate</button>
+              <button style="display:flex;align-items:center;gap:6px;border:1px solid #DDD8E5;border-radius:8px;background:#FFFFFF;padding:6px 10px;font-size:11.5px;font-weight:600;color:#4A4258;cursor:pointer"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h3M16 3h3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-3M12 3v18"></path></svg>Compare</button>
+            </div>
+          </div>
+          <div style="border:1px solid #E9E5F2;border-radius:10px;padding:14px 16px;font-family:Georgia,'Times New Roman',serif;font-size:13px;line-height:1.8;color:#2A2233">Our client leased the premises at <span style="background:#FBEBD3;border-bottom:1.5px solid #E8A05C;border-radius:3px;padding:0 2px">418 Alvarado St</span> beginning March 2023. Between September 2024 and January 2025, she reported water intrusion on six occasions, documented in the attached correspondence. Landlord's agents inspected twice but performed no repairs, and invoices totaling $18,240 reflect remediation our client paid out of pocket.</div>
+        </div>
+        <div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+            <div style="font-size:13.5px;font-weight:600;color:#6E6580">3 · Liability analysis</div>
+            <span style="display:flex;align-items:center;gap:6px;font-size:11.5px;font-weight:600;color:#6E6580">{{ spinner }}Drafting…</span>
+          </div>
+          <div style="border:1px dashed #E3DEED;border-radius:10px;padding:14px 16px;display:flex;align-items:center;gap:12px">
+            {{ thinkLine }}
+            <span style="font-size:12px;color:#9C94A8">Reading lease §§ 8–11 and Civil Code § 1941.1…</span>
+          </div>
+        </div>
+        <div>
+          <div style="font-size:13.5px;font-weight:600;color:#9C94A8;margin-bottom:8px">4 · Damages summary</div>
+          <div style="border:1px dashed #EAE6F0;border-radius:10px;padding:14px 16px;font-size:12.5px;color:#9C94A8">Queued — drafts after liability analysis completes.</div>
+        </div>
+      </div>
+    </div>
+    <div style="width:230px;background:#FFFFFF;border:1px solid #EAE6F0;border-radius:12px;padding:20px 18px">
+      <div style="font-size:12px;font-weight:600;color:#6E6580;text-transform:uppercase;letter-spacing:.05em;margin-bottom:16px">Progress</div>
+      <div style="display:flex;flex-direction:column">
+        <div style="display:flex;gap:12px">
+          <div style="display:flex;flex-direction:column;align-items:center"><div style="width:22px;height:22px;border-radius:50%;background:#E9FBF7;border:1.5px solid #2DD4BF;display:flex;align-items:center;justify-content:center"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#0E9384" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m5 13 4 4L19 7"></path></svg></div><div style="width:2px;flex:1;background:linear-gradient(180deg,#2DD4BF,#7C5CFC)"></div></div>
+          <div style="padding-bottom:22px"><div style="font-size:12.5px;font-weight:600">Introduction</div><div style="font-size:11px;color:#9C94A8">Drafted · reviewed</div></div>
+        </div>
+        <div style="display:flex;gap:12px">
+          <div style="display:flex;flex-direction:column;align-items:center"><div style="width:22px;height:22px;border-radius:50%;background:#E9FBF7;border:1.5px solid #2DD4BF;display:flex;align-items:center;justify-content:center"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#0E9384" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m5 13 4 4L19 7"></path></svg></div><div style="width:2px;flex:1;background:linear-gradient(180deg,#7C5CFC,#7C5CFC)"></div></div>
+          <div style="padding-bottom:22px"><div style="font-size:12.5px;font-weight:600">Factual background</div><div style="font-size:11px;color:#9C94A8">Drafted</div></div>
+        </div>
+        <div style="display:flex;gap:12px">
+          <div style="display:flex;flex-direction:column;align-items:center"><div style="width:22px;height:22px;border-radius:50%;background:#F3F0FE;border:1.5px solid #7C5CFC;display:flex;align-items:center;justify-content:center">{{ spinnerSm }}</div><div style="width:2px;flex:1;background:#EAE6F0"></div></div>
+          <div style="padding-bottom:22px"><div style="font-size:12.5px;font-weight:600;color:#6847E8">Liability analysis</div><div style="font-size:11px;color:#9C94A8">Drafting now</div></div>
+        </div>
+        <div style="display:flex;gap:12px">
+          <div style="display:flex;flex-direction:column;align-items:center"><div style="width:22px;height:22px;border-radius:50%;background:#FFFFFF;border:1.5px solid #E3DEED"></div><div style="width:2px;flex:1;background:#EAE6F0"></div></div>
+          <div style="padding-bottom:22px"><div style="font-size:12.5px;font-weight:500;color:#9C94A8">Damages summary</div></div>
+        </div>
+        <div style="display:flex;gap:12px">
+          <div style="display:flex;flex-direction:column;align-items:center"><div style="width:22px;height:22px;border-radius:50%;background:#FFFFFF;border:1.5px solid #E3DEED"></div></div>
+          <div><div style="font-size:12.5px;font-weight:500;color:#9C94A8">Demand &amp; deadline</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:40px">
+<div>
+<div style="font-size:12px;font-weight:600;color:#8A8296;letter-spacing:.06em;text-transform:uppercase;margin-bottom:10px">08 · Mobile — chat &amp; verify</div>
+<div style="display:flex;gap:32px">
+<div data-screen-label="08a Mobile chat" style="width:390px;height:844px;display:flex;flex-direction:column;background:#FCFBF9;border-radius:24px;overflow:hidden;box-shadow:0 12px 40px rgba(42,34,51,.14);border:1px solid #E3DFEA">
+  <div style="background:#FFFFFF;border-bottom:1px solid #EEEAF3;padding:14px 16px;display:flex;align-items:center;justify-content:space-between">
+    <div style="display:flex;align-items:center;gap:9px">
+      <img src="assets/logo.png" alt="" style="width:26px;height:26px;border-radius:7px">
+      <span style="font-family:Fraunces,serif;font-size:15px;font-weight:560">DancingElephant</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:5px;background:#F3F0FE;border:1px solid #E2DAFB;border-radius:99px;padding:4px 10px;font-size:11px;font-weight:600;color:#6847E8">
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 8 0v4"></path></svg>Confidential
+    </div>
+  </div>
+  <div style="flex:1;padding:18px 16px;display:flex;flex-direction:column;gap:16px;overflow:hidden">
+    <div style="display:flex;justify-content:flex-end"><div style="max-width:280px;background:#F3F0FE;border-radius:14px 14px 4px 14px;padding:11px 14px;font-size:13.5px;line-height:1.55">Can my client still bring an anti-SLAPP motion if served June 3?</div></div>
+    <div>
+      <div style="display:flex;align-items:center;gap:7px;margin-bottom:8px">
+        <img src="assets/logo.png" alt="" style="width:18px;height:18px;border-radius:5px">
+        <span style="font-size:11px;font-weight:600;color:#6E6580">DancingElephant</span>
+      </div>
+      <div style="font-size:13.5px;line-height:1.65">Yes — under <strong>CCP § 425.16(f)</strong> the motion must be filed within 60 days of <em>service</em>, so your deadline is <strong>August 2</strong>.</div>
+      <div style="display:flex;align-items:center;gap:6px;margin-top:10px">
+        <span style="display:flex;align-items:center;gap:4px;font-size:10.5px;font-weight:600;color:#0E7C6E;background:#E9FBF7;border-radius:99px;padding:2px 8px"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m5 13 4 4L19 7"></path></svg>2 cites verified</span>
+        <span style="font-size:10.5px;color:#9C94A8">Sources ›</span>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:9px">{{ thinkLineSm }}<span style="font-size:11px;color:#9C94A8">Thinking…</span></div>
+  </div>
+  <div style="padding:12px 14px 20px">
+    <div style="background:#FFFFFF;border:1px solid #E3DEED;border-radius:14px;padding:11px 13px">
+      <div style="font-size:13px;line-height:1.55">Follow up with <span style="background:#FBEBD3;border-bottom:1.5px solid #E8A05C;border-radius:3px;padding:0 2px">Maria Delgado</span> about…</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:9px">
+        <span style="display:flex;align-items:center;gap:5px;background:#FDF6EC;border:1px solid #F2DCBC;border-radius:99px;padding:3px 9px;font-size:10.5px;font-weight:600;color:#9A6420"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>1 protected</span>
+        <button style="width:30px;height:30px;border:none;border-radius:8px;background:#7C5CFC;color:#FFFFFF;display:flex;align-items:center;justify-content:center;cursor:pointer"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4z"></path></svg></button>
+      </div>
+    </div>
+  </div>
+</div>
+<div data-screen-label="08b Mobile verify" style="width:390px;height:844px;display:flex;flex-direction:column;background:#FCFBF9;border-radius:24px;overflow:hidden;box-shadow:0 12px 40px rgba(42,34,51,.14);border:1px solid #E3DFEA">
+  <div style="background:#FFFFFF;border-bottom:1px solid #EEEAF3;padding:14px 16px;display:flex;align-items:center;gap:10px">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4A4258" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"></path></svg>
+    <span style="font-size:15px;font-weight:600">Verify citations</span>
+  </div>
+  <div style="padding:16px;display:flex;flex-direction:column;gap:10px;flex:1;overflow:hidden">
+    <div style="height:2px;border-radius:2px;background:linear-gradient(90deg,#7C5CFC,#2DD4BF,#E8A05C);opacity:.6"></div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap">
+      <span style="background:#E9FBF7;border:1px solid #BFEEE4;border-radius:99px;padding:4px 10px;font-size:11px;font-weight:600;color:#0E7C6E">2 verified</span>
+      <span style="background:#FDEDEC;border:1px solid #F4C7C3;border-radius:99px;padding:4px 10px;font-size:11px;font-weight:600;color:#B3261E">1 contradicted</span>
+      <span style="background:#FDF6EC;border:1px solid #F2DCBC;border-radius:99px;padding:4px 10px;font-size:11px;font-weight:600;color:#9A6420">1 manual</span>
+    </div>
+    <div style="display:flex;gap:10px;border:1px solid #BFEEE4;background:#F4FDFB;border-radius:10px;padding:11px 12px">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#0E9384" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:1px"><path d="m5 13 4 4L19 7"></path></svg>
+      <div style="min-width:0">
+        <div style="font-family:ui-monospace,monospace;font-size:11.5px;color:#2A2233">CCP § 425.16(f)</div>
+        <div style="font-size:11px;color:#0E7C6E;font-weight:600;margin-top:2px">Verified · official code match</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;border:1px solid #BFEEE4;background:#F4FDFB;border-radius:10px;padding:11px 12px">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#0E9384" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:1px"><path d="m5 13 4 4L19 7"></path></svg>
+      <div style="min-width:0">
+        <div style="font-family:ui-monospace,monospace;font-size:11.5px;color:#2A2233;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Platypus Wear v. Goldberg, 166 Cal.App.4th 772</div>
+        <div style="font-size:11px;color:#0E7C6E;font-weight:600;margin-top:2px">Verified · conf 0.98</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;border:1px solid #F4C7C3;background:#FEF7F6;border-radius:10px;padding:11px 12px">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#B3261E" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:1px"><path d="M18 6 6 18M6 6l12 12"></path></svg>
+      <div style="min-width:0">
+        <div style="font-family:ui-monospace,monospace;font-size:11.5px;color:#2A2233;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Martinez v. Pacific Coast Lending, 88 Cal.App.5th 411</div>
+        <div style="font-size:11px;color:#B3261E;font-weight:600;margin-top:2px">Contradicted · no such case at this cite</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;border:1px solid #F2DCBC;background:#FDFAF4;border-radius:10px;padding:11px 12px">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#D97706" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:1px"><path d="M12 9v4M12 17h.01"></path><circle cx="12" cy="12" r="9"></circle></svg>
+      <div style="min-width:0">
+        <div style="font-family:ui-monospace,monospace;font-size:11.5px;color:#2A2233;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Chitsazzadeh v. Kramer &amp; Kaslow, 199 Cal.App.4th 676</div>
+        <div style="font-size:11px;color:#9A6420;font-weight:600;margin-top:2px">Verify manually · read the opinion</div>
+      </div>
+    </div>
+    <div style="margin-top:auto;background:#FFFFFF;border:1px solid #EAE6F0;border-radius:10px;padding:11px 12px;display:flex;align-items:center;justify-content:space-between">
+      <span style="font-size:12px;color:#4A4258"><strong>4</strong> citations · 72 s</span>
+      <button style="border:none;border-radius:8px;background:#7C5CFC;color:#FFFFFF;padding:8px 14px;font-size:12px;font-weight:600;cursor:pointer">Verify another</button>
+    </div>
+  </div>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+<!-- ══════════ ROW 5 · Component sheet ══════════ -->
+<div>
+<div style="font-size:12px;font-weight:600;color:#8A8296;letter-spacing:.06em;text-transform:uppercase;margin-bottom:10px">09 · Component sheet</div>
+<div data-screen-label="09 Components" style="width:1440px;background:#FCFBF9;border-radius:16px;box-shadow:0 12px 40px rgba(42,34,51,.14);padding:40px;display:flex;flex-direction:column;gap:32px">
+  <div style="display:flex;align-items:baseline;gap:16px">
+    <div style="font-family:Fraunces,serif;font-size:26px;font-weight:560">DancingElephant components</div>
+    <div style="font-size:13px;color:#6E6580">Inter UI · Fraunces display · violet #7C5CFC · teal #2DD4BF · amber #E8A05C · ink #2A2233</div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:28px">
+    <div style="background:#FFFFFF;border:1px solid #EAE6F0;border-radius:12px;padding:20px">
+      <div style="font-size:12px;font-weight:700;color:#9C94A8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:14px">Buttons</div>
+      <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center">
+        <button style="border:none;border-radius:10px;background:#7C5CFC;color:#FFFFFF;padding:10px 18px;font-size:13px;font-weight:600;cursor:pointer" style-hover="background:linear-gradient(90deg,#7C5CFC,#5FA8E8)">Primary</button>
+        <button style="border:1px solid #DDD8E5;border-radius:10px;background:#FFFFFF;color:#2A2233;padding:10px 18px;font-size:13px;font-weight:600;cursor:pointer">Secondary</button>
+        <button style="border:1px solid #F4C7C3;border-radius:10px;background:#FFFFFF;color:#B3261E;padding:10px 18px;font-size:13px;font-weight:600;cursor:pointer">Destructive</button>
+        <button style="border:none;border-radius:10px;background:#EDEBF2;color:#9C94A8;padding:10px 18px;font-size:13px;font-weight:600;cursor:not-allowed">Disabled</button>
+      </div>
+      <div style="font-size:11px;color:#9C94A8;margin-top:12px">Primary hover picks up the gradient edge (violet → teal).</div>
+    </div>
+    <div style="background:#FFFFFF;border:1px solid #EAE6F0;border-radius:12px;padding:20px">
+      <div style="font-size:12px;font-weight:700;color:#9C94A8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:14px">Matter-mode selector</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div style="display:flex;border:1px solid #E3DEED;border-radius:9px;overflow:hidden;font-size:12px;font-weight:600;width:fit-content">
+          <div style="padding:7px 12px;color:#FFFFFF;background:#14B8A6">Public research</div><div style="padding:7px 12px;color:#6E6580">Client confidential</div><div style="padding:7px 12px;color:#6E6580">Protected discovery</div>
+        </div>
+        <div style="display:flex;border:1px solid #E3DEED;border-radius:9px;overflow:hidden;font-size:12px;font-weight:600;width:fit-content">
+          <div style="padding:7px 12px;color:#6E6580">Public research</div><div style="padding:7px 12px;color:#FFFFFF;background:#7C5CFC">Client confidential</div><div style="padding:7px 12px;color:#6E6580">Protected discovery</div>
+        </div>
+        <div style="display:flex;border:1px solid #F2DCBC;border-radius:9px;overflow:hidden;font-size:12px;font-weight:600;width:fit-content">
+          <div style="padding:7px 12px;color:#6E6580">Public research</div><div style="padding:7px 12px;color:#6E6580">Client confidential</div><div style="display:flex;align-items:center;gap:5px;padding:7px 12px;color:#FFFFFF;background:#B97F35"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 8 0v4"></path></svg>Protected discovery</div>
+        </div>
+      </div>
+      <div style="font-size:11px;color:#9C94A8;margin-top:12px">Protected discovery is locked — downgrading requires attorney confirmation.</div>
+    </div>
+    <div style="background:#FFFFFF;border:1px solid #EAE6F0;border-radius:12px;padding:20px">
+      <div style="font-size:12px;font-weight:700;color:#9C94A8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:14px">Consent chips</div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px">
+        <span style="display:flex;align-items:center;gap:6px;background:#E9FBF7;border:1px solid #BFEEE4;border-radius:99px;padding:6px 12px;font-size:12px;font-weight:600;color:#0E7C6E"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 13 4 4L19 7"></path></svg>Consent recorded</span>
+        <span style="display:flex;align-items:center;gap:6px;background:#E9FBF7;border:1px solid #BFEEE4;border-radius:99px;padding:6px 12px;font-size:12px;font-weight:600;color:#0E7C6E">Allowed w/ restrictions</span>
+        <span style="display:flex;align-items:center;gap:6px;background:#FDF6EC;border:1px solid #F2DCBC;border-radius:99px;padding:6px 12px;font-size:12px;font-weight:600;color:#9A6420">Consent not obtained</span>
+        <span style="display:flex;align-items:center;gap:6px;background:#FDEDEC;border:1px solid #F4C7C3;border-radius:99px;padding:6px 12px;font-size:12px;font-weight:600;color:#B3261E">Prohibited</span>
+      </div>
+      <div style="font-size:11px;color:#9C94A8;margin-top:12px">Until consent is recorded: “Research tools off until consent is recorded.”</div>
+    </div>
+    <div style="background:#FFFFFF;border:1px solid #EAE6F0;border-radius:12px;padding:20px">
+      <div style="font-size:12px;font-weight:700;color:#9C94A8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:14px">Privacy shield chip</div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <span style="display:flex;align-items:center;gap:6px;background:#FDF6EC;border:1px solid #F2DCBC;border-radius:99px;padding:6px 12px;font-size:12px;font-weight:600;color:#9A6420;width:fit-content"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>3 items protected on this device</span>
+        <div style="display:flex;flex-wrap:wrap;gap:6px">
+          <span style="display:flex;align-items:center;gap:6px;font-size:11px;background:#FCFBF9;border:1px solid #EDE9F3;border-radius:7px;padding:3px 8px"><code style="font-family:ui-monospace,monospace;color:#9A6420">CLIENT_001</code><span style="color:#C6BED2">←</span>Maria Delgado<span style="color:#C6BED2;cursor:pointer">✕</span></span>
+          <span style="display:flex;align-items:center;gap:6px;font-size:11px;background:#FCFBF9;border:1px solid #EDE9F3;border-radius:7px;padding:3px 8px"><code style="font-family:ui-monospace,monospace;color:#9A6420">CASE_001</code><span style="color:#C6BED2">←</span>24CV-01882<span style="color:#C6BED2;cursor:pointer">✕</span></span>
+        </div>
+        <span style="display:flex;align-items:center;gap:6px;background:#E9FBF7;border:1px solid #BFEEE4;border-radius:99px;padding:6px 12px;font-size:12px;font-weight:600;color:#0E7C6E;width:fit-content">Nothing to protect in this message</span>
+      </div>
+      <div style="font-size:11px;color:#9C94A8;margin-top:12px">✕ marks a term “not privileged” — sent as-is from this device onward.</div>
+    </div>
+    <div style="background:#FFFFFF;border:1px solid #EAE6F0;border-radius:12px;padding:20px">
+      <div style="font-size:12px;font-weight:700;color:#9C94A8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:14px">Tool-activity pills</div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px">
+        <span style="display:flex;align-items:center;gap:6px;background:#F6F4FB;border:1px solid #E9E5F2;border-radius:99px;padding:4px 11px;font-size:11.5px;font-weight:600;color:#6E6580">{{ spinner }}citelaw.verify · running</span>
+        <span style="display:flex;align-items:center;gap:6px;background:#F6F4FB;border:1px solid #E9E5F2;border-radius:99px;padding:4px 11px;font-size:11.5px;font-weight:600;color:#6E6580"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#14B8A6" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 13 4 4L19 7"></path></svg>web_search · 842 ms</span>
+        <span style="display:flex;align-items:center;gap:6px;background:#FDEDEC;border:1px solid #F4C7C3;border-radius:99px;padding:4px 11px;font-size:11.5px;font-weight:600;color:#B3261E"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"></path></svg>courtlistener · failed, retrying</span>
+      </div>
+    </div>
+    <div style="background:#FFFFFF;border:1px solid #EAE6F0;border-radius:12px;padding:20px">
+      <div style="font-size:12px;font-weight:700;color:#9C94A8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:14px">Thinking line</div>
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div style="display:flex;align-items:center;gap:10px">{{ thinkLine }}<span style="font-size:12px;color:#9C94A8">Streaming / thinking</span></div>
+        <div style="height:2px;border-radius:2px;background:linear-gradient(90deg,#7C5CFC,#2DD4BF,#E8A05C);width:260px"></div>
+        <div style="font-size:11px;color:#9C94A8;line-height:1.6">The logo's continuous line, echoed: 2px gradient rule (violet → teal → amber). Animated shimmer while thinking; static as a section divider. 1.6 s loop, linear.</div>
+      </div>
+    </div>
+    <div style="background:#FFFFFF;border:1px solid #EAE6F0;border-radius:12px;padding:20px">
+      <div style="font-size:12px;font-weight:700;color:#9C94A8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:14px">Citation verdict rows</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div style="display:flex;align-items:center;gap:10px;border:1px solid #BFEEE4;background:#F4FDFB;border-radius:10px;padding:9px 12px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0E9384" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 13 4 4L19 7"></path></svg><span style="flex:1;font-family:ui-monospace,monospace;font-size:12px">CCP § 425.16(f)</span><span style="font-size:11px;font-weight:700;color:#0E7C6E">Verified</span></div>
+        <div style="display:flex;align-items:center;gap:10px;border:1px solid #F4C7C3;background:#FEF7F6;border-radius:10px;padding:9px 12px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#B3261E" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"></path></svg><span style="flex:1;font-family:ui-monospace,monospace;font-size:12px">Martinez v. Pacific Coast Lending</span><span style="font-size:11px;font-weight:700;color:#B3261E">Contradicted</span></div>
+        <div style="display:flex;align-items:center;gap:10px;border:1px solid #F2DCBC;background:#FDFAF4;border-radius:10px;padding:9px 12px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#D97706" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01"></path><circle cx="12" cy="12" r="9"></circle></svg><span style="flex:1;font-family:ui-monospace,monospace;font-size:12px">Chitsazzadeh v. Kramer &amp; Kaslow</span><span style="font-size:11px;font-weight:700;color:#9A6420">Verify manually</span></div>
+      </div>
+    </div>
+    <div style="background:#FFFFFF;border:1px solid #EAE6F0;border-radius:12px;padding:20px">
+      <div style="font-size:12px;font-weight:700;color:#9C94A8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:14px">Proposed-edit card states</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div style="border:1px solid #E2DAFB;border-radius:10px;padding:10px 12px">
+          <div style="font-size:11.5px;font-weight:600;color:#6847E8;margin-bottom:6px">Pending</div>
+          <div style="font-family:ui-monospace,monospace;font-size:11px;border-radius:6px;overflow:hidden"><div style="background:#FDEDEC;color:#8C1D18;padding:4px 8px;text-decoration:line-through">old wording</div><div style="background:#E9FBF7;color:#0E5C52;padding:4px 8px">proposed replacement wording</div></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;border:1px solid #BFEEE4;background:#F4FDFB;border-radius:10px;padding:9px 12px;font-size:12px;color:#0E5C52"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#0E9384" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 13 4 4L19 7"></path></svg><strong>Applied</strong></div>
+        <div style="display:flex;align-items:center;gap:8px;border:1px solid #EAE6F0;background:#FCFBF9;border-radius:10px;padding:9px 12px;font-size:12px;color:#6E6580"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#9C94A8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"></path></svg><strong>Skipped</strong> · Undo</div>
+        <div style="display:flex;align-items:center;gap:8px;border:1px solid #F2DCBC;background:#FDF6EC;border-radius:10px;padding:9px 12px;font-size:12px;color:#9A6420"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#D97706" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"></path><path d="M12 9v4M12 17h.01"></path></svg><strong>Couldn't locate</strong> in current text</div>
+      </div>
+    </div>
+    <div style="background:#FFFFFF;border:1px solid #EAE6F0;border-radius:12px;padding:20px">
+      <div style="font-size:12px;font-weight:700;color:#9C94A8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:14px">Toasts &amp; banners</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div style="display:flex;gap:10px;border:1px solid #F4C7C3;background:#FEF7F6;border-radius:10px;padding:10px 12px;font-size:12.5px;color:#8C1D18"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#B3261E" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:1px"><circle cx="12" cy="12" r="9"></circle><path d="M12 8v4M12 16h.01"></path></svg><span><strong>Couldn't reach the research service.</strong> Your message wasn't sent — try again.</span></div>
+        <div style="display:flex;gap:10px;border:1px solid #E2DAFB;background:#F8F6FE;border-radius:10px;padding:10px 12px;font-size:12.5px;color:#4A3E91"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#6847E8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:1px"><circle cx="12" cy="12" r="9"></circle><path d="M12 16v-4M12 8h.01"></path></svg><span><strong>Switched to backup model.</strong> The primary model was unavailable; quality is unaffected.</span></div>
+        <div style="display:flex;gap:10px;border:1px solid #F2DCBC;background:#FDFAF4;border-radius:10px;padding:10px 12px;font-size:12.5px;color:#9A6420"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#D97706" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:1px"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"></path><path d="M12 9v4M12 17h.01"></path></svg><span><strong>DancingElephant declined this request</strong> and explained why in the chat.</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;streaming&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Chat artboard&quot;,&quot;description&quot;:&quot;Show the in-flight state: thinking line, running tool pill, 'Checking' source row&quot;},&quot;privacyExpanded&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Chat artboard&quot;,&quot;description&quot;:&quot;Expand the privacy shield chip to show the tokenized terms&quot;}}">
+class Component extends DCLogic {
+  renderVals() {
+    const spin = (size, border) => React.createElement('span', {
+      style: { display: 'inline-block', width: size, height: size, border: border + 'px solid #D7CDF9', borderTopColor: '#7C5CFC', borderRadius: '50%', animation: 'deSpin .8s linear infinite', flexShrink: 0 }
+    });
+    const line = (w, h) => React.createElement('div', {
+      style: { height: h, width: w, borderRadius: h, background: 'linear-gradient(90deg,#7C5CFC,#2DD4BF,#E8A05C,#7C5CFC)', backgroundSize: '300% 100%', animation: 'deShimmer 1.6s linear infinite', flexShrink: 0 }
+    });
+    return {
+      streaming: this.props.streaming ?? true,
+      privacyExpanded: this.props.privacyExpanded ?? true,
+      spinner: spin(11, 1.5),
+      spinnerSm: spin(10, 1.5),
+      thinkLine: line(200, 2),
+      thinkLineSm: line(120, 2),
+      thinkLineWide: line(340, 2.5),
+    };
+  }
+}
+</script>
+</body>
+</html>

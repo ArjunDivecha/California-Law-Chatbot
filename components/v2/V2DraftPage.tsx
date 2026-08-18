@@ -35,6 +35,20 @@ import { Link } from 'react-router-dom';
 import { useUser, useAuth } from '@clerk/clerk-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import {
+  AlertTriangle,
+  ArrowLeft,
+  Check,
+  Download,
+  FolderOpen,
+  History,
+  Pencil,
+  Plus,
+  ShieldCheck,
+  Trash2,
+  Upload,
+  X,
+} from 'lucide-react';
 import { useV2AgentStream } from '../../hooks/useV2AgentStream.ts';
 import { useSanitizer } from '../../hooks/useSanitizer';
 import { addToUserAllowlist } from '../../services/sanitization/userAllowlist.ts';
@@ -545,7 +559,7 @@ export const V2DraftPage: React.FC = () => {
         }
         const name = boxFileName
           ? boxFileName.replace(/\.(docx|doc|pdf|txt|md)$/i, '') + '.docx'
-          : `${draftTitle(documentText, uploadedName).replace(/[^\w\- ]+/g, '').slice(0, 60) || 'AskPauli draft'}.docx`;
+          : `${draftTitle(documentText, uploadedName).replace(/[^\w\- ]+/g, '').slice(0, 60) || 'DancingElephant draft'}.docx`;
         const result = boxFileId
           ? await uploadToBox(getToken, blob, name, { fileId: boxFileId })
           : await uploadToBox(getToken, blob, name, { folderId: folderId ?? '0' });
@@ -720,6 +734,13 @@ export const V2DraftPage: React.FC = () => {
     [setProposalStatus],
   );
 
+  // Undo a SKIP only — returns the proposal to the pending queue. Skipping
+  // never touched the document, so this is a pure status reversal.
+  const onUndoReject = useCallback(
+    (turnIdx: number, prop: Proposal) => setProposalStatus(turnIdx, prop.id, 'pending'),
+    [setProposalStatus],
+  );
+
   const onApproveAll = useCallback(
     (turnIdx: number) => {
       setHistory((h) => {
@@ -777,24 +798,96 @@ export const V2DraftPage: React.FC = () => {
     setRecentDrafts(listDraftSessions());
   }, []);
 
+  // ----- Derived review counters (artboard 06 header line) -----
+  const allProposals = useMemo(() => history.flatMap((t) => t.proposals), [history]);
+  const editCounts = useMemo(() => {
+    let pending = 0;
+    let applied = 0;
+    let skipped = 0;
+    let unmatched = 0;
+    for (const p of allProposals) {
+      if (p.status === 'pending') pending += 1;
+      else if (p.status === 'applied') applied += 1;
+      else if (p.status === 'rejected') skipped += 1;
+      else unmatched += 1;
+    }
+    return { total: allProposals.length, pending, applied, skipped, unmatched };
+  }, [allProposals]);
+
+  const headerTitle = documentText ? draftTitle(documentText, uploadedName) : 'Draft a document';
+
   // -------------------------------------------------------------------------
   // Render — load screen vs editor
   // -------------------------------------------------------------------------
   return (
-    <div
-      className="flex flex-col h-screen"
-      style={{ backgroundColor: '#FAFAF8', fontFamily: 'Georgia, "Times New Roman", serif' }}
-    >
-      <header className="bg-white border-b border-gray-100 px-6 py-3 flex items-center justify-between">
-        <div>
-          <h1 className="text-lg font-semibold text-gray-900">AskPauli</h1>
-          <p className="text-xs font-semibold uppercase tracking-wide text-pink-500">
-            V2 Draft · edit a document
-          </p>
+    <div className="flex flex-col h-screen bg-surface-app font-sans text-ink">
+      <header className="bg-white border-b border-surface-line2 px-7 py-3.5 flex items-center justify-between gap-4">
+        <div className="flex items-center gap-3 min-w-0">
+          <img
+            src="/dancingelephant.png"
+            alt=""
+            className="h-[30px] w-[30px] shrink-0 rounded-lg"
+          />
+          <div className="min-w-0">
+            <div className="truncate text-[15px] font-semibold text-ink">{headerTitle}</div>
+            <div className="text-[12px] text-ink-muted">
+              You approve every change individually. Nothing is applied without you.
+            </div>
+          </div>
         </div>
-        <Link to="/v2" className="text-xs rounded-full bg-gray-100 hover:bg-gray-200 px-3 py-1.5 text-gray-700">
-          ← Chat
-        </Link>
+        <div className="flex items-center gap-2.5 shrink-0">
+          {documentText !== null && (
+            <>
+              <ExportButtons
+                documentText={documentText}
+                disabled={state.isStreaming}
+                originalDocx={originalDocx}
+                appliedEdits={appliedEdits}
+                onFidelityNote={(note) => {
+                  setBoxSavedNote(note);
+                  if (note) window.setTimeout(() => setBoxSavedNote(null), 12000);
+                }}
+              />
+              {boxState.configured && (
+                <button
+                  type="button"
+                  onClick={() => void onBoxSaveClick()}
+                  disabled={state.isStreaming || boxBusy}
+                  className="whitespace-nowrap rounded-[9px] border border-surface-ctl bg-white px-3.5 py-2 text-[12.5px] font-semibold text-ink-secondary transition hover:border-brand-hover disabled:opacity-60"
+                  title={boxFileId ? `Save as a new version of ${boxFileName ?? 'the Box file'}` : 'Save this document to a Box folder'}
+                >
+                  {boxBusy ? 'Saving…' : boxFileId ? 'Save new version to Box' : 'Save to Box'}
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setShowVersions((s) => !s)}
+                className={`flex items-center gap-1.5 whitespace-nowrap rounded-[9px] border px-3.5 py-2 text-[12.5px] font-semibold transition ${
+                  showVersions
+                    ? 'border-brand-line bg-brand-tint text-brand-deep'
+                    : 'border-surface-ctl bg-white text-ink-secondary hover:border-brand-hover'
+                }`}
+              >
+                <History size={14} strokeWidth={1.8} />
+                Versions{versions.length > 0 ? ` (${versions.length})` : ''}
+              </button>
+              <button
+                type="button"
+                onClick={onStartOver}
+                className="whitespace-nowrap rounded-[9px] border border-surface-ctl bg-white px-3.5 py-2 text-[12.5px] font-semibold text-ink-secondary transition hover:border-brand-hover"
+              >
+                New document
+              </button>
+            </>
+          )}
+          <Link
+            to="/v2"
+            className="flex items-center gap-1.5 whitespace-nowrap rounded-[9px] border border-surface-ctl bg-white px-3.5 py-2 text-[12.5px] font-semibold text-ink-secondary transition hover:border-brand-hover"
+          >
+            <ArrowLeft size={14} strokeWidth={1.8} />
+            Chat
+          </Link>
+        </div>
       </header>
 
       {boxBrowseMode && (
@@ -807,13 +900,15 @@ export const V2DraftPage: React.FC = () => {
         />
       )}
       {boxSavedNote && (
-        <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-full bg-gray-900 px-4 py-2 text-xs text-white shadow-lg">
-          {boxSavedNote}
+        <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 flex max-w-xl items-start gap-2.5 rounded-[10px] border border-deteal-line bg-deteal-bg2 px-3.5 py-2.5 text-[12.5px] text-deteal-deep shadow-card">
+          <Check size={15} strokeWidth={1.8} className="mt-px shrink-0 text-deteal-icon2" />
+          <span>{boxSavedNote}</span>
         </div>
       )}
       {boxError && documentText !== null && (
-        <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-full bg-red-600 px-4 py-2 text-xs text-white shadow-lg">
-          {boxError}
+        <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 flex max-w-xl items-start gap-2.5 rounded-[10px] border border-dered-line bg-dered-bg2 px-3.5 py-2.5 text-[12.5px] text-dered-text shadow-card">
+          <AlertTriangle size={15} strokeWidth={1.8} className="mt-px shrink-0 text-dered" />
+          <span>{boxError}</span>
         </div>
       )}
       {!documentText ? (
@@ -839,51 +934,12 @@ export const V2DraftPage: React.FC = () => {
           ocrStatus={ocrStatus}
         />
       ) : (
-        <div className="flex-1 min-h-0 flex">
+        <div className="flex-1 min-h-0 flex gap-6 px-7 py-6">
           {/* Left: the document (only changes when a proposal is approved) */}
-          <div className="flex-1 min-w-0 flex flex-col border-r border-gray-200">
-            <div className="flex items-center justify-between px-6 py-2 border-b border-gray-100 bg-white">
-              <h2 className="text-sm font-semibold text-gray-900">Document</h2>
-              <div className="flex items-center gap-2">
-                <ExportButtons
-                  documentText={documentText}
-                  disabled={state.isStreaming}
-                  originalDocx={originalDocx}
-                  appliedEdits={appliedEdits}
-                  onFidelityNote={(note) => {
-                    setBoxSavedNote(note);
-                    if (note) window.setTimeout(() => setBoxSavedNote(null), 12000);
-                  }}
-                />
-                {boxState.configured && (
-                  <button
-                    type="button"
-                    onClick={() => void onBoxSaveClick()}
-                    disabled={state.isStreaming || boxBusy}
-                    className="whitespace-nowrap text-xs rounded-full bg-[#0061d5]/10 hover:bg-[#0061d5]/20 disabled:opacity-60 px-3 py-1.5 text-[#0061d5] font-semibold"
-                    title={boxFileId ? `Save as a new version of ${boxFileName ?? 'the Box file'}` : 'Save this document to a Box folder'}
-                  >
-                    {boxBusy ? 'Box…' : boxFileId ? 'Save to Box ↺' : 'Save to Box'}
-                  </button>
-                )}
-                <button
-                  type="button"
-                  onClick={() => setShowVersions((s) => !s)}
-                  className={`whitespace-nowrap text-xs rounded-full px-3 py-1.5 ${
-                    showVersions ? 'bg-pink-100 text-pink-700' : 'bg-gray-100 hover:bg-gray-200 text-gray-600'
-                  }`}
-                >
-                  Versions{versions.length > 0 ? ` (${versions.length})` : ''}
-                </button>
-                <button
-                  type="button"
-                  onClick={onStartOver}
-                  className="whitespace-nowrap text-xs rounded-full bg-gray-100 hover:bg-gray-200 px-3 py-1.5 text-gray-600"
-                >
-                  New document
-                </button>
-              </div>
-            </div>
+          {/* Merge note: main's inline document toolbar (export/Box/Versions/New)
+              lives in the page header in the DE-Rebrand layout — same handlers,
+              including main's originalDocx/appliedEdits/onFidelityNote export path. */}
+          <div className="flex-[1.2] min-w-0 flex flex-col gap-3 min-h-0">
             {showVersions && (
               <VersionsPanel
                 versions={versions}
@@ -903,48 +959,62 @@ export const V2DraftPage: React.FC = () => {
                 onClose={() => setComparing(null)}
               />
             )}
-            <div className="flex-1 overflow-y-auto px-8 py-6">
+            <div className="flex-1 min-h-0 overflow-y-auto rounded-xl border border-surface-line bg-white px-10 py-8">
+              <div className="font-display text-[11px] uppercase tracking-wider text-ink-faint mb-4">
+                Document{uploadedName ? ` · ${uploadedName}` : ''}
+              </div>
               {hasCitationLikeText(documentText) && (
-                <div className="max-w-3xl mx-auto mb-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-2.5 text-xs text-amber-900">
-                  <span className="font-semibold">Citations in this document are not verified.</span>{' '}
-                  This editor runs no citation check — confirm every authority against Westlaw/Lexis, or
-                  paste the passage into{' '}
-                  <Link to="/v2/verify" className="font-semibold underline hover:text-amber-700">
-                    Verify
-                  </Link>{' '}
-                  before filing.
+                <div className="mb-5 flex items-start gap-2.5 rounded-[10px] border border-deamber-line bg-deamber-bg2 px-3.5 py-2.5 text-[12.5px] text-deamber-text">
+                  <AlertTriangle size={15} strokeWidth={1.8} className="mt-px shrink-0 text-deamber-icon" />
+                  <span>
+                    <strong className="font-semibold">Citations here are not verified.</strong>{' '}
+                    This editor runs no citation check — confirm every authority against Westlaw or Lexis,
+                    or run the passage through{' '}
+                    <Link to="/v2/verify" className="font-semibold text-brand-deep underline-offset-2 hover:underline">
+                      Verify citations
+                    </Link>{' '}
+                    before filing.
+                  </span>
                 </div>
               )}
-              <article className="v2-md max-w-3xl mx-auto text-[15px] leading-relaxed text-gray-900">
+              <article className="v2-md font-doc text-[13.5px] leading-[1.9] text-ink">
                 <ReactMarkdown remarkPlugins={[remarkGfm]}>{documentText}</ReactMarkdown>
               </article>
             </div>
           </div>
 
           {/* Right: instruction chat + proposal cards */}
-          <div className="w-[420px] shrink-0 flex flex-col bg-white">
-            <div className="px-4 py-2 border-b border-gray-100">
-              <h2 className="text-sm font-semibold text-gray-900">Tell it what to change</h2>
-              <p className="text-[11px] text-gray-500">It proposes changes — you approve each one.</p>
+          <div className="w-[420px] shrink-0 flex flex-col min-h-0 gap-3">
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="text-[13px] font-semibold text-ink">
+                {editCounts.total === 0
+                  ? 'Proposed edits'
+                  : `Proposed edits · ${editCounts.pending} of ${editCounts.total} remaining`}
+              </h2>
+              {editCounts.total > 0 && (
+                <span className="text-[12px] text-ink-faint">
+                  {editCounts.applied} applied · {editCounts.skipped} skipped
+                </span>
+              )}
             </div>
-            <div className="flex-1 overflow-y-auto px-4 py-3 space-y-4">
+            <div className="flex-1 min-h-0 overflow-y-auto space-y-4 pr-1">
               {history.length === 0 && (
-                <p className="text-xs text-gray-500">
-                  Type an instruction or a question — e.g.{' '}
-                  <em>"What would you change to protect the tenant?"</em> or{' '}
-                  <em>"Make the tone more formal."</em> Nothing changes until you approve it.
-                </p>
+                <div className="rounded-xl border border-surface-line bg-white p-4 text-[12.5px] leading-relaxed text-ink-muted">
+                  Describe a change, or ask what should change — for example{' '}
+                  <em>“What would you change to protect the tenant?”</em> or{' '}
+                  <em>“Make the tone more formal.”</em> Nothing is applied until you approve it.
+                </div>
               )}
               {history.map((turn, turnIdx) => (
                 <div key={turnIdx} className="space-y-2">
                   <div className="flex justify-end">
-                    <div className="max-w-[90%] rounded-2xl bg-pink-500 text-white px-3 py-2 text-[13px] whitespace-pre-wrap">
+                    <div className="max-w-[90%] whitespace-pre-wrap rounded-xl bg-brand px-3.5 py-2 text-[13px] text-white">
                       <InstructionWithHighlight text={turn.instruction} />
                     </div>
                   </div>
 
                   {turn.rawNote && (
-                    <div className="text-[12px] text-gray-600 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 whitespace-pre-wrap">
+                    <div className="whitespace-pre-wrap rounded-xl border border-surface-line bg-surface-app px-3.5 py-2.5 text-[12px] text-ink-muted">
                       {turn.rawNote}
                       {turn.diagnostic && (
                         <button
@@ -955,7 +1025,7 @@ export const V2DraftPage: React.FC = () => {
                               `--- INSTRUCTION ---\n${turn.instruction}\n\n--- WIRE TEXT SENT (tokenized) ---\n${d.wire}\n\n--- RAW MODEL REPLY ---\n${d.reply}`,
                             );
                           }}
-                          className="mt-2 block rounded border border-gray-300 bg-white px-2 py-1 text-[11px] font-semibold text-gray-700 hover:bg-gray-100"
+                          className="mt-2 block rounded-lg border border-surface-ctl bg-white px-2.5 py-1 text-[11px] font-semibold text-ink-secondary transition hover:border-brand-hover"
                           title="Copies the tokenized text that was sent plus the raw reply — no raw client names — so this can be diagnosed"
                         >
                           Copy diagnostic
@@ -967,22 +1037,36 @@ export const V2DraftPage: React.FC = () => {
                   {turn.proposals.length > 0 && (
                     <ProposalList
                       proposals={turn.proposals}
+                      startIndex={history
+                        .slice(0, turnIdx)
+                        .reduce((n, t) => n + t.proposals.length, 0)}
+                      documentText={documentText}
                       onApprove={(p, override) => onApprove(turnIdx, p, override)}
                       onReject={(p) => onReject(turnIdx, p)}
+                      onUndoReject={(p) => onUndoReject(turnIdx, p)}
                       onApproveAll={() => onApproveAll(turnIdx)}
                     />
                   )}
                 </div>
               ))}
               {state.isStreaming && (
-                <div className="text-[11px] text-gray-400 pl-1">Reviewing the document and drafting proposed changes…</div>
+                <div className="flex items-center gap-2.5 px-1 text-[12px] text-ink-faint">
+                  <span className="de-spinner" aria-hidden="true" />
+                  Reviewing the document and drafting proposed changes…
+                </div>
               )}
               {state.error && (
-                <div className="text-[11px] text-red-600 pl-1">Error: {state.error.message}</div>
+                <div className="flex items-start gap-2.5 rounded-[10px] border border-dered-line bg-dered-bg2 px-3.5 py-2.5 text-[12.5px] text-dered-text">
+                  <AlertTriangle size={15} strokeWidth={1.8} className="mt-px shrink-0 text-dered" />
+                  <span>
+                    <strong className="font-semibold">Couldn't propose changes.</strong>{' '}
+                    {state.error.message}
+                  </span>
+                </div>
               )}
             </div>
 
-            <div className="border-t border-gray-100 p-3">
+            <div className="shrink-0 rounded-xl border border-surface-line bg-white p-3">
               <div className="mb-2">
                 <InstructionSanitizationChips combinedText={`${documentText}\n${instruction}`} />
               </div>
@@ -998,14 +1082,14 @@ export const V2DraftPage: React.FC = () => {
                 rows={3}
                 placeholder="Describe a change, or ask what should change…"
                 disabled={state.isStreaming}
-                className="w-full resize-none rounded-lg border border-gray-200 px-3 py-2 text-[14px] focus:outline-none focus:ring-2 focus:ring-pink-300"
+                className="w-full resize-none rounded-[10px] border border-surface-ctl px-3 py-2 text-[13.5px] text-ink placeholder:text-ink-faint focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand-line disabled:bg-surface-app"
               />
               <div className="mt-2 flex justify-end">
                 <button
                   type="button"
                   onClick={onSubmitInstruction}
                   disabled={!instruction.trim() || state.isStreaming}
-                  className="rounded-full bg-pink-500 hover:bg-pink-600 disabled:bg-gray-300 text-white text-sm font-semibold px-5 py-1.5"
+                  className="rounded-[10px] bg-brand px-[18px] py-2 text-[13px] font-semibold text-white transition hover:bg-brand-deep disabled:cursor-not-allowed disabled:bg-surface-disabled disabled:text-ink-faint"
                 >
                   {state.isStreaming ? 'Working…' : 'Propose changes'}
                 </button>
@@ -1021,17 +1105,30 @@ export const V2DraftPage: React.FC = () => {
 // ---------------------------------------------------------------------------
 // Proposal list — approve/reject each change
 // ---------------------------------------------------------------------------
+/** Paragraph the "find" text sits in, 1-based — derived from the live document,
+ *  never invented. Returns null when the text can't be located. */
+function paragraphNumber(doc: string | null, find: string): number | null {
+  if (!doc || !find) return null;
+  const idx = doc.indexOf(find);
+  if (idx < 0) return null;
+  return doc.slice(0, idx).split(/\n{2,}/).length;
+}
+
 const ProposalList: React.FC<{
   proposals: Proposal[];
+  /** Number of proposals in earlier turns — keeps "Edit N" continuous. */
+  startIndex: number;
+  documentText: string | null;
   onApprove: (p: Proposal, overrideReplace?: string) => void;
   onReject: (p: Proposal) => void;
+  onUndoReject?: (p: Proposal) => void;
   onApproveAll: () => void;
-}> = ({ proposals, onApprove, onReject, onApproveAll }) => {
+}> = ({ proposals, startIndex, documentText, onApprove, onReject, onUndoReject, onApproveAll }) => {
   const pending = proposals.filter((p) => p.status === 'pending').length;
   return (
     <div className="space-y-2">
-      <div className="flex items-center justify-between">
-        <span className="text-[11px] font-semibold text-gray-700">
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-[11.5px] font-semibold text-ink-secondary">
           {proposals.length} proposed change{proposals.length > 1 ? 's' : ''}
           {pending > 0 ? ` · ${pending} to review` : ' · all reviewed'}
         </span>
@@ -1039,139 +1136,210 @@ const ProposalList: React.FC<{
           <button
             type="button"
             onClick={onApproveAll}
-            className="text-[11px] font-semibold text-pink-600 hover:text-pink-700"
+            className="text-[11.5px] font-semibold text-brand-deep underline-offset-2 hover:underline"
           >
             Approve all
           </button>
         )}
       </div>
-      {proposals.map((p) => (
+      {proposals.map((p, i) => (
         <ProposalCard
           key={p.id}
           proposal={p}
+          editNumber={startIndex + i + 1}
+          documentText={documentText}
           onApprove={(override) => onApprove(p, override)}
           onReject={() => onReject(p)}
+          onUndoReject={onUndoReject ? () => onUndoReject(p) : undefined}
         />
       ))}
     </div>
   );
 };
 
+/** Old → new diff block (artboard 06): red strikethrough over teal replacement. */
+const DiffBlock: React.FC<{ find: string; replace: string }> = ({ find, replace }) => (
+  <div className="overflow-hidden rounded-lg font-mono text-[12px] leading-[1.6]">
+    <div className="whitespace-pre-wrap bg-dered-bg px-2.5 py-[7px] text-dered-text line-through">
+      {find.slice(0, 400)}
+    </div>
+    <div className="whitespace-pre-wrap bg-deteal-bg px-2.5 py-[7px] text-deteal-deep">
+      {replace.slice(0, 400)}
+    </div>
+  </div>
+);
+
 const ProposalCard: React.FC<{
   proposal: Proposal;
+  editNumber: number;
+  documentText: string | null;
   onApprove: (overrideReplace?: string) => void;
   onReject: () => void;
-}> = ({ proposal, onApprove, onReject }) => {
+  onUndoReject?: () => void;
+}> = ({ proposal, editNumber, documentText, onApprove, onReject, onUndoReject }) => {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(proposal.replace);
-  const statusBadge = {
-    pending: null,
-    applied: <span className="text-[10px] font-semibold text-emerald-700">✓ Applied</span>,
-    rejected: <span className="text-[10px] font-semibold text-gray-400">Skipped</span>,
-    unmatched: <span className="text-[10px] font-semibold text-amber-700">⚠ Couldn’t locate text — apply manually</span>,
-  }[proposal.status];
+  const para = useMemo(
+    () => paragraphNumber(documentText, proposal.find),
+    [documentText, proposal.find],
+  );
+  const label = proposal.section || proposal.description;
+  const hasDiff = Boolean(proposal.find || proposal.replace);
 
-  return (
-    <div
-      className={`rounded-lg border px-3 py-2 text-[12px] ${
-        proposal.status === 'applied'
-          ? 'border-emerald-200 bg-emerald-50/50'
-          : proposal.status === 'rejected'
-          ? 'border-gray-200 bg-gray-50 opacity-70'
-          : proposal.status === 'unmatched'
-          ? 'border-amber-200 bg-amber-50'
-          : 'border-gray-200 bg-white'
-      }`}
-    >
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          <div className="font-semibold text-gray-800">{proposal.section}</div>
-          <div className="text-gray-700">{proposal.description}</div>
-          {proposal.rationale && <div className="text-[11px] text-gray-500 mt-0.5">{proposal.rationale}</div>}
+  // ----- Collapsed rows: applied / skipped / couldn't locate -----
+  if (proposal.status !== 'pending') {
+    const row = {
+      applied: {
+        wrap: 'border-deteal-line bg-deteal-bg2',
+        text: 'text-deteal-deep',
+        icon: <Check size={15} strokeWidth={2} className="mt-px shrink-0 text-deteal-icon2" />,
+        body: (
+          <>
+            <strong className="font-semibold">Edit {editNumber} applied</strong> — {label}
+            {para !== null ? ` (¶ ${para})` : ''}
+          </>
+        ),
+      },
+      rejected: {
+        wrap: 'border-surface-line bg-surface-app',
+        text: 'text-ink-muted',
+        icon: <X size={15} strokeWidth={2} className="mt-px shrink-0 text-ink-faint" />,
+        body: (
+          <>
+            <strong className="font-semibold">Edit {editNumber} skipped</strong> — {label}
+            {onUndoReject && (
+              <>
+                {' · '}
+                <button
+                  type="button"
+                  onClick={onUndoReject}
+                  className="font-semibold text-brand-deep underline-offset-2 hover:underline"
+                >
+                  Undo
+                </button>
+              </>
+            )}
+          </>
+        ),
+      },
+      unmatched: {
+        wrap: 'border-deamber-line bg-deamber-bg',
+        text: 'text-deamber-text',
+        icon: <AlertTriangle size={15} strokeWidth={2} className="mt-px shrink-0 text-deamber-icon" />,
+        body: (
+          <>
+            <strong className="font-semibold">Couldn't locate</strong> — {label}. The wording changed
+            since this edit was proposed, so apply it by hand from the before/after below.
+          </>
+        ),
+      },
+    }[proposal.status];
+
+    return (
+      <div className={`rounded-xl border px-4 py-3 ${row.wrap}`}>
+        <div className={`flex items-start gap-2.5 text-[12.5px] ${row.text}`}>
+          {row.icon}
+          <span className="min-w-0 flex-1">{row.body}</span>
+          {hasDiff && (
+            <button
+              type="button"
+              onClick={() => setOpen((o) => !o)}
+              className="shrink-0 text-[11px] font-semibold text-ink-faint underline-offset-2 hover:underline"
+            >
+              {open ? 'Hide' : 'View'}
+            </button>
+          )}
         </div>
-        {statusBadge}
+        {open && hasDiff && (
+          <div className="mt-2.5">
+            <DiffBlock find={proposal.find} replace={proposal.replace} />
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ----- Pending card -----
+  return (
+    <div className="rounded-xl border border-brand-line bg-white p-4 shadow-card">
+      <div className="mb-2.5 flex items-start justify-between gap-3">
+        <span className="min-w-0 text-[12px] font-semibold text-brand-deep">
+          Edit {editNumber} · {label}
+        </span>
+        {para !== null && <span className="shrink-0 text-[11px] text-ink-faint">¶ {para}</span>}
       </div>
 
-      {(proposal.find || proposal.replace) && (
-        <button
-          type="button"
-          onClick={() => setOpen((o) => !o)}
-          className="mt-1 text-[10px] text-gray-400 hover:text-gray-600"
-        >
-          {open ? 'Hide before/after' : 'Show before/after'}
-        </button>
+      {proposal.description && proposal.description !== label && (
+        <p className="mb-2 text-[12.5px] text-ink-secondary">{proposal.description}</p>
       )}
-      {open && (
-        <div className="mt-1 space-y-1">
-          <div className="rounded bg-red-50 border border-red-100 px-2 py-1 text-[11px] text-red-900 line-through whitespace-pre-wrap">
-            {proposal.find.slice(0, 400)}
-          </div>
-          <div className="rounded bg-emerald-50 border border-emerald-100 px-2 py-1 text-[11px] text-emerald-900 whitespace-pre-wrap">
-            {proposal.replace.slice(0, 400)}
-          </div>
-        </div>
+      {proposal.rationale && (
+        <p className="mb-2.5 text-[11.5px] text-ink-muted">{proposal.rationale}</p>
       )}
 
+      {hasDiff && <DiffBlock find={proposal.find} replace={proposal.replace} />}
+
       {/* Modify mode — edit the replacement text before applying. */}
-      {proposal.status === 'pending' && editing && (
-        <div className="mt-2 space-y-1">
-          <label className="text-[10px] text-gray-500">Edit the new text, then Apply:</label>
+      {editing && (
+        <div className="mt-2.5 space-y-1">
+          <label className="block text-[11px] text-ink-muted">
+            Edit the new text, then apply it:
+          </label>
           <textarea
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             rows={Math.min(8, Math.max(3, Math.ceil(draft.length / 60)))}
-            className="w-full resize-y rounded border border-gray-300 px-2 py-1 text-[12px] focus:outline-none focus:ring-2 focus:ring-pink-300"
+            className="w-full resize-y rounded-lg border border-surface-ctl px-2.5 py-1.5 text-[12px] text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand-line"
           />
         </div>
       )}
 
-      {proposal.status === 'pending' && (
-        <div className="mt-2 flex items-center gap-2">
-          {editing ? (
-            <>
-              <button
-                type="button"
-                onClick={() => onApprove(draft)}
-                className="rounded-full bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-semibold px-3 py-1"
-              >
-                ✓ Apply edited
-              </button>
-              <button
-                type="button"
-                onClick={() => { setEditing(false); setDraft(proposal.replace); }}
-                className="rounded-full bg-gray-100 hover:bg-gray-200 text-gray-700 text-[11px] font-semibold px-3 py-1"
-              >
-                Cancel
-              </button>
-            </>
-          ) : (
-            <>
-              <button
-                type="button"
-                onClick={() => onApprove()}
-                className="rounded-full bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-semibold px-3 py-1"
-              >
-                ✓ Approve
-              </button>
-              <button
-                type="button"
-                onClick={() => { setDraft(proposal.replace); setEditing(true); setOpen(true); }}
-                className="rounded-full bg-indigo-100 hover:bg-indigo-200 text-indigo-700 text-[11px] font-semibold px-3 py-1"
-              >
-                ✎ Modify
-              </button>
-              <button
-                type="button"
-                onClick={onReject}
-                className="rounded-full bg-gray-100 hover:bg-gray-200 text-gray-700 text-[11px] font-semibold px-3 py-1"
-              >
-                ✗ Reject
-              </button>
-            </>
-          )}
-        </div>
-      )}
+      <div className="mt-3 flex items-center gap-2">
+        {editing ? (
+          <>
+            <button
+              type="button"
+              onClick={() => onApprove(draft)}
+              className="flex-1 rounded-lg bg-brand px-3 py-2.5 text-[12.5px] font-semibold text-white transition hover:bg-brand-deep"
+            >
+              Apply edited text
+            </button>
+            <button
+              type="button"
+              onClick={() => { setEditing(false); setDraft(proposal.replace); }}
+              className="rounded-lg border border-surface-ctl bg-white px-4 py-2.5 text-[12.5px] font-semibold text-ink-muted transition hover:border-brand-hover"
+            >
+              Cancel
+            </button>
+          </>
+        ) : (
+          <>
+            <button
+              type="button"
+              onClick={() => onApprove()}
+              className="flex-1 rounded-lg bg-brand px-3 py-2.5 text-[12.5px] font-semibold text-white transition hover:bg-brand-deep"
+            >
+              Approve change
+            </button>
+            <button
+              type="button"
+              onClick={() => { setDraft(proposal.replace); setEditing(true); setOpen(true); }}
+              title="Edit the replacement text before applying it"
+              className="flex items-center gap-1.5 rounded-lg border border-surface-ctl bg-white px-3 py-2.5 text-[12.5px] font-semibold text-ink-muted transition hover:border-brand-hover"
+            >
+              <Pencil size={13} strokeWidth={1.8} />
+              Edit
+            </button>
+            <button
+              type="button"
+              onClick={onReject}
+              className="rounded-lg border border-surface-ctl bg-white px-4 py-2.5 text-[12.5px] font-semibold text-ink-muted transition hover:border-brand-hover"
+            >
+              Skip
+            </button>
+          </>
+        )}
+      </div>
     </div>
   );
 };
@@ -1226,34 +1394,32 @@ const LoadScreen: React.FC<{
         if (file) onFileDropped(file);
       }}
     >
-      <div
-        className={`max-w-3xl mx-auto px-6 py-10 rounded-xl transition ${
-          dragOver ? 'ring-2 ring-pink-400 ring-offset-2 bg-pink-50/40' : ''
-        }`}
-      >
-        <h2 className="text-xl font-semibold text-gray-900 mb-1">Start with your document</h2>
-        <p className="text-sm text-gray-600 mb-5">
+      <div className="mx-auto max-w-3xl px-6 py-10">
+        <h2 className="mb-1.5 font-display text-[26px] font-semibold text-ink">
+          Start with your document
+        </h2>
+        <p className="mb-6 text-[13.5px] leading-relaxed text-ink-muted">
           Paste your document below, drag a file anywhere onto this page, or upload one
-          (.txt, .doc, .docx, .pdf). Then you'll tell the assistant what to change — it
-          proposes edits and you approve each one. Private details are replaced with
-          placeholders before anything is sent.
+          (.txt, .doc, .docx, .pdf). Then tell the assistant what to change — it proposes
+          edits and you approve each one. Your clients' information is protected on your
+          device before anything is sent.
         </p>
 
         {recentDrafts.length > 0 && (
-          <div className="mb-6 rounded-xl border border-gray-200 bg-gray-50/60 px-4 py-3">
-            <h3 className="text-sm font-semibold text-gray-900 mb-2">Recent drafts</h3>
+          <div className="mb-6 rounded-xl border border-surface-line bg-white p-4 shadow-card">
+            <h3 className="mb-2.5 text-[13px] font-semibold text-ink">Recent drafts</h3>
             <ul className="space-y-1">
               {recentDrafts.map((d) => (
                 <li key={d.id} className="flex items-center justify-between gap-2">
                   <button
                     type="button"
                     onClick={() => onOpenRecent(d.id)}
-                    className="flex-1 min-w-0 truncate text-left text-sm text-pink-600 hover:text-pink-700 hover:underline"
+                    className="min-w-0 flex-1 truncate text-left text-[13px] font-medium text-brand-deep underline-offset-2 hover:underline"
                     title={d.title}
                   >
                     {d.title}
                   </button>
-                  <span className="shrink-0 text-[11px] text-gray-500">
+                  <span className="shrink-0 text-[11px] text-ink-faint">
                     {new Date(d.savedAt).toLocaleString(undefined, {
                       month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
                     })}
@@ -1261,80 +1427,106 @@ const LoadScreen: React.FC<{
                   <button
                     type="button"
                     onClick={() => onDeleteRecent(d.id)}
-                    className="shrink-0 rounded px-1.5 py-0.5 text-[11px] text-gray-400 hover:bg-gray-200 hover:text-gray-700"
+                    className="shrink-0 rounded-md p-1 text-ink-faint transition hover:bg-surface-pill hover:text-dered"
                     aria-label={`Delete draft ${d.title}`}
+                    title={`Delete draft ${d.title}`}
                   >
-                    ✕
+                    <Trash2 size={13} strokeWidth={1.8} />
                   </button>
                 </li>
               ))}
             </ul>
-            <p className="mt-2 text-[11px] text-gray-500">
+            <p className="mt-2.5 text-[11px] text-ink-faint">
               Saved on this device only, encrypted at rest. Your latest draft reopens
               automatically.
             </p>
           </div>
         )}
 
-        <div className="flex items-center gap-3 mb-3">
-          <button
-            type="button"
-            onClick={onUploadClick}
-            disabled={uploadBusy}
-            className="rounded-full bg-gray-100 hover:bg-gray-200 disabled:opacity-60 text-gray-800 text-sm font-semibold px-4 py-2"
-          >
-            {uploadBusy ? 'Reading file…' : '⬆ Upload a file'}
-          </button>
-          {boxConfigured && (
+        <div
+          className={`rounded-xl border bg-white p-5 shadow-card transition ${
+            dragOver ? 'border-2 border-dashed border-brand-hover bg-brand-tint/50' : 'border-surface-line'
+          }`}
+        >
+          <div className="mb-3 flex flex-wrap items-center gap-3">
             <button
               type="button"
-              onClick={onBoxLoad}
-              disabled={uploadBusy || boxBusy}
-              className="rounded-full bg-[#0061d5]/10 hover:bg-[#0061d5]/20 disabled:opacity-60 text-[#0061d5] text-sm font-semibold px-4 py-2"
-              title={boxConnectedLogin ? `Box: ${boxConnectedLogin}` : 'Sign in with Box, then browse your folders'}
+              onClick={onUploadClick}
+              disabled={uploadBusy}
+              className="flex items-center gap-2 rounded-[10px] border border-surface-ctl bg-white px-4 py-2 text-[13px] font-semibold text-ink-secondary transition hover:border-brand-hover disabled:opacity-60"
             >
-              {boxBusy ? 'Box…' : '📦 Load from Box'}
+              <Upload size={14} strokeWidth={1.8} />
+              {uploadBusy ? 'Reading file…' : 'Upload a file'}
             </button>
+            {boxConfigured && (
+              <button
+                type="button"
+                onClick={onBoxLoad}
+                disabled={uploadBusy || boxBusy}
+                className="flex items-center gap-2 rounded-[10px] border border-surface-ctl bg-white px-4 py-2 text-[13px] font-semibold text-ink-secondary transition hover:border-brand-hover disabled:opacity-60"
+                title={boxConnectedLogin ? `Box: ${boxConnectedLogin}` : 'Sign in with Box, then browse your folders'}
+              >
+                <FolderOpen size={14} strokeWidth={1.8} />
+                {boxBusy ? 'Opening Box…' : 'Load from Box'}
+              </button>
+            )}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept={ACCEPTED_FILE_TYPES}
+              onChange={onFileChosen}
+              className="hidden"
+            />
+            {uploadedName && (
+              <span className="text-[12px] text-ink-muted">
+                Loaded from <strong className="font-semibold text-ink-secondary">{uploadedName}</strong>
+              </span>
+            )}
+          </div>
+
+          {boxError && (
+            <p className="mb-3 flex items-start gap-2 rounded-[10px] border border-dered-line bg-dered-bg2 px-3 py-2 text-[12.5px] text-dered-text">
+              <AlertTriangle size={14} strokeWidth={1.8} className="mt-px shrink-0 text-dered" />
+              {boxError}
+            </p>
           )}
-          {boxError && <span className="text-xs text-red-600">{boxError}</span>}
-          {ocrStatus && <span className="text-xs text-sky-700">{ocrStatus}</span>}
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept={ACCEPTED_FILE_TYPES}
-            onChange={onFileChosen}
-            className="hidden"
+          {ocrStatus && (
+            <p className="mb-3 flex items-center gap-2 text-[12.5px] text-ink-muted">
+              <span className="de-spinner" aria-hidden="true" />
+              {ocrStatus}
+            </p>
+          )}
+
+          <textarea
+            value={pasteText}
+            onChange={(e) => setPasteText(e.target.value)}
+            rows={16}
+            placeholder="Paste your document text here…"
+            className="w-full resize-y rounded-[10px] border border-surface-ctl px-4 py-3 font-doc text-[13.5px] leading-[1.9] text-ink placeholder:font-sans placeholder:text-ink-faint focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand-line"
           />
-          {uploadedName && (
-            <span className="text-xs text-gray-500">Loaded from <strong>{uploadedName}</strong></span>
+
+          {uploadError && (
+            <p className="mt-2.5 flex items-start gap-2 rounded-[10px] border border-deamber-line bg-deamber-bg2 px-3 py-2 text-[12.5px] text-deamber-text">
+              <AlertTriangle size={14} strokeWidth={1.8} className="mt-px shrink-0 text-deamber-icon" />
+              {uploadError}
+            </p>
           )}
-        </div>
 
-        <textarea
-          value={pasteText}
-          onChange={(e) => setPasteText(e.target.value)}
-          rows={16}
-          placeholder="Paste your document text here…"
-          className="w-full resize-y rounded-lg border border-gray-200 px-4 py-3 text-[14px] leading-relaxed focus:outline-none focus:ring-2 focus:ring-pink-300"
-          style={{ fontFamily: 'Georgia, serif' }}
-        />
-
-        {uploadError && <p className="mt-2 text-xs text-amber-700">{uploadError}</p>}
-
-        <div className="mt-3 flex items-center justify-between">
-          <span className="text-xs text-gray-500">
-            {pasteText.trim().length > 0
-              ? `${pasteText.trim().split(/\s+/).length} words${detectionCount > 0 ? ` · ${detectionCount} private item${detectionCount > 1 ? 's' : ''} will be protected` : ''}`
-              : 'Nothing loaded yet.'}
-          </span>
-          <button
-            type="button"
-            onClick={onLoadDocument}
-            disabled={pasteText.trim().length < 10}
-            className="rounded-full bg-pink-500 hover:bg-pink-600 disabled:bg-gray-300 text-white text-sm font-semibold px-6 py-2"
-          >
-            Load document →
-          </button>
+          <div className="mt-3.5 flex items-center justify-between gap-3">
+            <span className="text-[12px] text-ink-faint">
+              {pasteText.trim().length > 0
+                ? `${pasteText.trim().split(/\s+/).length} words${detectionCount > 0 ? ` · ${detectionCount} private item${detectionCount > 1 ? 's' : ''} protected on this device` : ''}`
+                : 'Nothing loaded yet.'}
+            </span>
+            <button
+              type="button"
+              onClick={onLoadDocument}
+              disabled={pasteText.trim().length < 10}
+              className="rounded-[10px] bg-brand px-5 py-2.5 text-[13px] font-semibold text-white transition hover:bg-brand-deep disabled:cursor-not-allowed disabled:bg-surface-disabled disabled:text-ink-faint"
+            >
+              Load document
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -1366,67 +1558,74 @@ const VersionsPanel: React.FC<{
   onSaveVersion: () => void;
 }> = ({ versions, viewing, onView, onCloseView, onRestore, onCompare, onSaveVersion }) => {
   return (
-    <div className="shrink-0 border-b border-gray-200 bg-gray-50/70">
-      <div className="px-6 py-2 border-b border-gray-200 flex items-center gap-3">
-        <h3 className="text-sm font-semibold text-gray-900">Version history</h3>
-        <p className="flex-1 text-[11px] text-gray-500">Saved on this device. Restoring never deletes a version.</p>
+    <div className="shrink-0 overflow-hidden rounded-xl border border-surface-line bg-white shadow-card">
+      <div className="flex items-center gap-3 border-b border-surface-line2 px-5 py-2.5">
+        <h3 className="text-[13px] font-semibold text-ink">Version history</h3>
+        <p className="flex-1 text-[11px] text-ink-faint">
+          Saved on this device. Restoring never deletes a version.
+        </p>
         <button
           type="button"
           onClick={onSaveVersion}
-          className="whitespace-nowrap rounded-full bg-white border border-gray-300 hover:bg-gray-100 px-3 py-1 text-[11px] font-semibold text-gray-700"
+          className="flex items-center gap-1.5 whitespace-nowrap rounded-lg border border-surface-ctl bg-white px-3 py-1.5 text-[11.5px] font-semibold text-ink-secondary transition hover:border-brand-hover"
           title="Save a named checkpoint of the current document"
         >
-          + Save checkpoint
+          <Plus size={13} strokeWidth={1.8} />
+          Save checkpoint
         </button>
       </div>
-      <div className="max-h-72 overflow-y-auto px-6 py-3 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2">
+      <div className="grid max-h-72 grid-cols-1 gap-2 overflow-y-auto bg-surface-app px-5 py-3 sm:grid-cols-2 xl:grid-cols-3">
         {versions.length === 0 && (
-          <p className="text-xs text-gray-500 px-1 py-2 col-span-full">
+          <p className="col-span-full px-1 py-2 text-[12px] text-ink-muted">
             No versions yet. One is saved automatically when you load a document and each time
-            you apply proposals — or use “Save version” for a named checkpoint.
+            you apply proposals — or use “Save checkpoint” for a named one.
           </p>
         )}
         {versions.map((v) => (
-          <div key={v.version} className="rounded-lg border border-gray-200 bg-white px-3 py-2">
+          <div key={v.version} className="rounded-[10px] border border-surface-line bg-white px-3 py-2.5">
             <div className="flex items-baseline justify-between gap-2">
-              <span className="text-xs font-semibold text-gray-900">
+              <span className="text-[12px] font-semibold text-ink">
                 v{v.version} · {VERSION_KIND_LABEL[v.kind] ?? v.kind}
                 {v.kind === 'restore' && v.restoredFrom ? ` v${v.restoredFrom}` : ''}
               </span>
-              <span className="shrink-0 text-[10px] text-gray-500">
+              <span className="shrink-0 text-[10.5px] text-ink-faint">
                 {new Date(v.savedAt).toLocaleString(undefined, {
                   month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
                 })}
               </span>
             </div>
-            {v.label && <div className="mt-0.5 text-xs text-pink-700 font-medium truncate" title={v.label}>“{v.label}”</div>}
+            {v.label && (
+              <div className="mt-0.5 truncate text-[12px] font-medium text-brand-deep" title={v.label}>
+                “{v.label}”
+              </div>
+            )}
             {v.proposals.length > 0 && (
               <ul className="mt-1 space-y-0.5">
                 {v.proposals.slice(0, 3).map((p, i) => (
-                  <li key={i} className="text-[11px] text-gray-600 truncate" title={`${p.section}: ${p.description}`}>
+                  <li key={i} className="truncate text-[11px] text-ink-muted" title={`${p.section}: ${p.description}`}>
                     • {p.description || p.section}
                   </li>
                 ))}
                 {v.proposals.length > 3 && (
-                  <li className="text-[11px] text-gray-400">…and {v.proposals.length - 3} more</li>
+                  <li className="text-[11px] text-ink-faint">…and {v.proposals.length - 3} more</li>
                 )}
               </ul>
             )}
-            <div className="mt-1.5 flex items-center gap-2">
-              <span className={`text-[10px] ${v.wordDelta >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>
+            <div className="mt-2 flex items-center gap-2.5">
+              <span className={`text-[10.5px] font-semibold ${v.wordDelta >= 0 ? 'text-deteal-text' : 'text-dered-text'}`}>
                 {v.wordDelta >= 0 ? `+${v.wordDelta}` : v.wordDelta} words
               </span>
               <button
                 type="button"
                 onClick={() => onView(v)}
-                className="text-[11px] font-semibold text-gray-600 hover:text-gray-900 hover:underline"
+                className="text-[11px] font-semibold text-ink-muted underline-offset-2 hover:text-ink hover:underline"
               >
                 View
               </button>
               <button
                 type="button"
                 onClick={() => onCompare(v)}
-                className="text-[11px] font-semibold text-gray-600 hover:text-gray-900 hover:underline"
+                className="text-[11px] font-semibold text-ink-muted underline-offset-2 hover:text-ink hover:underline"
                 title="Redline: this version vs the current document"
               >
                 Compare
@@ -1434,7 +1633,7 @@ const VersionsPanel: React.FC<{
               <button
                 type="button"
                 onClick={() => onRestore(v)}
-                className="text-[11px] font-semibold text-pink-600 hover:text-pink-700 hover:underline"
+                className="text-[11px] font-semibold text-brand-deep underline-offset-2 hover:underline"
               >
                 Restore
               </button>
@@ -1443,38 +1642,38 @@ const VersionsPanel: React.FC<{
         ))}
       </div>
       {viewing && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-8" onClick={onCloseView}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-plum/30 p-8" onClick={onCloseView}>
           <div
-            className="max-h-full w-full max-w-3xl overflow-hidden rounded-xl bg-white shadow-xl flex flex-col"
+            className="flex max-h-full w-full max-w-3xl flex-col overflow-hidden rounded-2xl bg-white shadow-modal"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between border-b border-gray-200 px-5 py-3">
-              <div>
-                <h4 className="text-sm font-semibold text-gray-900">
+            <div className="flex items-center justify-between gap-3 border-b border-surface-line2 px-5 py-3">
+              <div className="min-w-0">
+                <h4 className="truncate text-[13.5px] font-semibold text-ink">
                   Version {viewing.meta.version} · {VERSION_KIND_LABEL[viewing.meta.kind] ?? viewing.meta.kind}
                   {viewing.meta.label ? ` — “${viewing.meta.label}”` : ''}
                 </h4>
-                <p className="text-[11px] text-gray-500">{new Date(viewing.meta.savedAt).toLocaleString()}</p>
+                <p className="text-[11px] text-ink-faint">{new Date(viewing.meta.savedAt).toLocaleString()}</p>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex shrink-0 items-center gap-2">
                 <button
                   type="button"
                   onClick={() => onRestore(viewing.meta)}
-                  className="rounded-full bg-pink-500 hover:bg-pink-600 px-3 py-1.5 text-xs font-semibold text-white"
+                  className="rounded-[10px] bg-brand px-3.5 py-2 text-[12.5px] font-semibold text-white transition hover:bg-brand-deep"
                 >
                   Restore this version
                 </button>
                 <button
                   type="button"
                   onClick={onCloseView}
-                  className="rounded-full bg-gray-100 hover:bg-gray-200 px-3 py-1.5 text-xs text-gray-700"
+                  className="rounded-[10px] border border-surface-ctl bg-white px-3.5 py-2 text-[12.5px] font-semibold text-ink-secondary transition hover:border-brand-hover"
                 >
                   Close
                 </button>
               </div>
             </div>
-            <div className="flex-1 overflow-y-auto px-6 py-4">
-              <article className="v2-md text-[14px] leading-relaxed text-gray-900">
+            <div className="flex-1 overflow-y-auto px-8 py-6">
+              <article className="v2-md font-doc text-[13.5px] leading-[1.9] text-ink">
                 <ReactMarkdown remarkPlugins={[remarkGfm]}>{viewing.text}</ReactMarkdown>
               </article>
             </div>
@@ -1497,24 +1696,24 @@ const RedlineModal: React.FC<{
   onClose: () => void;
 }> = ({ meta, ops, stats, onClose }) => {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-8" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-plum/30 p-8" onClick={onClose}>
       <div
-        className="max-h-full w-full max-w-4xl overflow-hidden rounded-xl bg-white shadow-xl flex flex-col"
+        className="flex max-h-full w-full max-w-4xl flex-col overflow-hidden rounded-2xl bg-white shadow-modal"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between border-b border-gray-200 px-5 py-3">
-          <div>
-            <h4 className="text-sm font-semibold text-gray-900">
+        <div className="flex items-center justify-between gap-3 border-b border-surface-line2 px-5 py-3">
+          <div className="min-w-0">
+            <h4 className="text-[13.5px] font-semibold text-ink">
               Redline: v{meta.version} → current document
             </h4>
-            <p className="text-[11px] text-gray-500">
+            <p className="text-[11px] text-ink-faint">
               {stats.identical ? (
                 'No differences — the current document is identical to this version.'
               ) : (
                 <>
-                  <span className="text-sky-700 font-semibold">{stats.insertedWords} inserted</span>
+                  <span className="font-semibold text-deteal-text">{stats.insertedWords} inserted</span>
                   {' · '}
-                  <span className="text-red-700 font-semibold">{stats.deletedWords} deleted</span>
+                  <span className="font-semibold text-dered-text">{stats.deletedWords} deleted</span>
                   {' words vs '}
                   {new Date(meta.savedAt).toLocaleString()}
                 </>
@@ -1524,22 +1723,22 @@ const RedlineModal: React.FC<{
           <button
             type="button"
             onClick={onClose}
-            className="rounded-full bg-gray-100 hover:bg-gray-200 px-3 py-1.5 text-xs text-gray-700"
+            className="shrink-0 rounded-[10px] border border-surface-ctl bg-white px-3.5 py-2 text-[12.5px] font-semibold text-ink-secondary transition hover:border-brand-hover"
           >
             Close
           </button>
         </div>
-        <div className="flex-1 overflow-y-auto px-6 py-4">
-          <div className="whitespace-pre-wrap text-[14px] leading-relaxed text-gray-900 font-serif">
+        <div className="flex-1 overflow-y-auto px-8 py-6">
+          <div className="whitespace-pre-wrap font-doc text-[13.5px] leading-[1.9] text-ink">
             {ops.map((op, i) =>
               op.type === 'equal' ? (
                 <span key={i}>{op.text}</span>
               ) : op.type === 'ins' ? (
-                <ins key={i} className="bg-sky-50 text-sky-800 underline decoration-sky-600 no-underline-offset">
+                <ins key={i} className="bg-deteal-bg text-deteal-deep no-underline">
                   {op.text}
                 </ins>
               ) : (
-                <del key={i} className="bg-red-50 text-red-700 line-through decoration-red-500">
+                <del key={i} className="bg-dered-bg text-dered-text line-through decoration-dered">
                   {op.text}
                 </del>
               ),
@@ -1555,36 +1754,39 @@ const InstructionSanitizationChips: React.FC<{ combinedText: string }> = ({ comb
   const { preview, hasDetections } = useV2SanitizationPreview(combinedText);
   if (!hasDetections) {
     return (
-      <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700">
-        🔒 Nothing private detected — safe to send
+      <span className="inline-flex items-center gap-1.5 rounded-full border border-deteal-line bg-deteal-bg px-3 py-1.5 text-[12px] font-semibold text-deteal-text">
+        <ShieldCheck size={13} strokeWidth={1.8} />
+        Nothing to protect in this message
       </span>
     );
   }
   return (
-    <div className="space-y-1">
-      <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-semibold text-amber-800">
-        🔒 {preview.tokens.length} item{preview.tokens.length > 1 ? 's' : ''} protected before sending
+    <div className="space-y-1.5">
+      <span className="inline-flex items-center gap-1.5 rounded-full border border-deamber-line bg-deamber-bg px-3 py-1.5 text-[12px] font-semibold text-deamber-text">
+        <ShieldCheck size={13} strokeWidth={1.8} />
+        {preview.tokens.length} item{preview.tokens.length > 1 ? 's' : ''} protected on this device
         {preview.tokens.length > 8 && (
-          <span className="font-normal text-amber-700/70">· scroll to review all</span>
+          <span className="font-normal text-ink-faint">· scroll to review all</span>
         )}
       </span>
-      <div className="flex flex-wrap gap-1 max-h-28 overflow-y-auto pr-1">
+      <div className="flex max-h-28 flex-wrap gap-1.5 overflow-y-auto pr-1">
         {preview.tokens.map((t) => (
           <span
             key={t.value}
-            className="inline-flex items-center gap-1 rounded bg-amber-50 border border-amber-200 px-1.5 py-0.5 text-[10px] text-amber-900"
+            className="inline-flex items-center gap-1.5 rounded-[7px] border border-surface-line bg-surface-app px-2 py-0.5 text-[11px] text-ink-secondary"
             title={`Will be sent as ${t.value}`}
           >
-            <span className="font-mono">{t.value}</span>
-            <span className="text-amber-700/70">= {t.raw.slice(0, 20)}{t.raw.length > 20 ? '…' : ''}</span>
+            <code className="font-mono text-deamber-text">{t.value}</code>
+            <span className="text-ink-faint">←</span>
+            {t.raw.slice(0, 20)}{t.raw.length > 20 ? '…' : ''}
             <button
               type="button"
               onClick={() => addToUserAllowlist(t.raw)}
-              title={`Not private — always send "${t.raw.slice(0, 40)}" as-is (this device).`}
-              aria-label={`Mark "${t.raw}" as not private`}
-              className="ml-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full text-amber-700/60 hover:bg-amber-200 hover:text-amber-900"
+              title={`Not privileged — always send "${t.raw.slice(0, 40)}" as-is (this device).`}
+              aria-label={`Mark "${t.raw}" as not privileged`}
+              className="ml-0.5 flex h-4 w-4 items-center justify-center rounded-full text-ink-faint transition hover:bg-surface-pill hover:text-ink"
             >
-              ×
+              <X size={10} strokeWidth={2.2} />
             </button>
           </span>
         ))}
@@ -1609,7 +1811,13 @@ const InstructionWithHighlight: React.FC<{ text: string }> = ({ text }) => {
     const set = new Set(values);
     return parts.map((p, i) =>
       set.has(p) ? (
-        <mark key={i} className="rounded px-0.5 bg-yellow-300 text-gray-900" title="Protected — sent as a token">{p}</mark>
+        <mark
+          key={i}
+          className="rounded-[3px] border-b-[1.5px] border-deamber bg-deamber-hl px-0.5 text-ink"
+          title="Protected on this device — sent as a token"
+        >
+          {p}
+        </mark>
       ) : (
         <React.Fragment key={i}>{p}</React.Fragment>
       )
@@ -1845,44 +2053,32 @@ const ExportButtons: React.FC<{
     },
     [documentText],
   );
-  const [open, setOpen] = useState(false);
   return (
-    <div className="relative flex flex-col items-end gap-1">
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        onBlur={() => window.setTimeout(() => setOpen(false), 150)}
-        disabled={disabled || busy !== null}
-        className="whitespace-nowrap rounded-full bg-pink-500 hover:bg-pink-600 disabled:bg-gray-300 text-white text-xs font-semibold px-3.5 py-1.5"
-      >
-        {busy ? `Exporting ${busy.toUpperCase()}…` : 'Export ▾'}
-      </button>
-      {open && (
-        <div className="absolute right-0 top-9 z-30 w-40 overflow-hidden rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
-          {(
-            [
-              ['docx', 'Word (.docx)'],
-              ['pdf', 'PDF'],
-              ['html', 'Web page (.html)'],
-            ] as const
-          ).map(([fmt, label]) => (
-            <button
-              key={fmt}
-              type="button"
-              onMouseDown={(e) => {
-                e.preventDefault();
-                setOpen(false);
-                void onExport(fmt);
-              }}
-              className="block w-full px-3 py-1.5 text-left text-xs text-gray-800 hover:bg-pink-50"
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-      )}
+    <div className="relative flex items-center gap-2.5">
+      {(
+        [
+          ['docx', 'DOCX', 'Download as a Word document (.docx)'],
+          ['pdf', 'PDF', 'Download as a PDF'],
+          ['html', 'HTML', 'Download as a self-contained web page (.html)'],
+        ] as const
+      ).map(([fmt, label, hint]) => (
+        <button
+          key={fmt}
+          type="button"
+          onClick={() => void onExport(fmt)}
+          disabled={disabled || busy !== null}
+          title={hint}
+          className="flex items-center gap-[7px] whitespace-nowrap rounded-[9px] border border-surface-ctl bg-white px-3.5 py-2 text-[12.5px] font-semibold text-ink-secondary transition hover:border-brand-hover disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          <Download size={14} strokeWidth={1.8} />
+          {busy === fmt ? 'Exporting…' : label}
+        </button>
+      ))}
       {error && (
-        <span role="alert" className="text-[10px] text-red-600 max-w-[240px] text-right">
+        <span
+          role="alert"
+          className="absolute right-0 top-full mt-1 max-w-[280px] text-right text-[11px] text-dered-text"
+        >
           {error}
         </span>
       )}

@@ -15,7 +15,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { consumeState, exchangeCode } from '../_lib/box.js';
 
 function page(body: string): string {
-  return `<!doctype html><html><head><meta charset="utf-8"><title>AskPauli × Box</title>
+  return `<!doctype html><html><head><meta charset="utf-8"><title>DancingElephant × Box</title>
 <style>body{font-family:-apple-system,Segoe UI,Roboto,sans-serif;background:#fff;color:#1a1a1a;
 display:flex;align-items:center;justify-content:center;height:100vh;margin:0}
 .card{max-width:420px;text-align:center;padding:2rem;border:1px solid #e5e7eb;border-radius:12px}
@@ -46,7 +46,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
   try {
     await exchangeCode(rec.user_id, code, rec.redirect_uri);
-    res.status(200).send(page('<h3>Box connected ✓</h3><p>You can close this window and return to AskPauli.</p>'));
+    res.status(200).send(page('<h3>Box connected ✓</h3><p>You can close this window and return to DancingElephant.</p>'));
   } catch (err) {
     // Server log only — never render Box's raw error (may echo the code).
     console.error('[box/callback] token exchange failed:', err instanceof Error ? err.message : String(err));

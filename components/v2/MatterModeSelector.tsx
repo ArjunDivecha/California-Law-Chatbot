@@ -15,6 +15,7 @@
  * =============================================================================
  */
 import { useCallback, useEffect, useState } from 'react';
+import { Check, Lock } from 'lucide-react';
 
 type MatterMode = 'public_research' | 'client_confidential' | 'protected_discovery';
 type ConsentStatus = 'not_obtained' | 'allowed' | 'restricted' | 'prohibited' | 'revoked';
@@ -23,6 +24,39 @@ const LABELS: Record<MatterMode, string> = {
   public_research: 'Public research',
   client_confidential: 'Client matter (confidential)',
   protected_discovery: 'Protected discovery',
+};
+
+/** Short segment labels (the artboard's 3-segment control). LABELS above is
+ *  kept as the long-form/accessible wording used in titles + confirms. */
+const SEGMENT_LABELS: Record<MatterMode, string> = {
+  public_research: 'Public research',
+  client_confidential: 'Client confidential',
+  protected_discovery: 'Protected discovery',
+};
+
+/** Active-segment fill per mode (teal / violet / dark amber). */
+const SEGMENT_ACTIVE: Record<MatterMode, string> = {
+  public_research: 'bg-deteal-icon text-white',
+  client_confidential: 'bg-brand text-white',
+  protected_discovery: 'bg-deamber-lock text-white',
+};
+
+/** Short consent-chip wording (the long CONSENT_LABELS still drive the
+ *  attestation confirm dialog, so their semantics are untouched). */
+const CONSENT_CHIP: Record<ConsentStatus, string> = {
+  not_obtained: 'Consent not obtained',
+  allowed: 'Client consent recorded',
+  restricted: 'Allowed w/ restrictions',
+  prohibited: 'Consent prohibited',
+  revoked: 'Consent revoked',
+};
+
+const CONSENT_CHIP_STYLE: Record<ConsentStatus, string> = {
+  not_obtained: 'border-deamber-line bg-deamber-bg text-deamber-text hover:bg-deamber-bg2',
+  allowed: 'border-deteal-line bg-deteal-bg text-deteal-text hover:bg-deteal-bg2',
+  restricted: 'border-deteal-line bg-deteal-bg text-deteal-text hover:bg-deteal-bg2',
+  prohibited: 'border-dered-line bg-dered-bg text-dered hover:bg-dered-bg2',
+  revoked: 'border-dered-line bg-dered-bg text-dered hover:bg-dered-bg2',
 };
 
 const CONSENT_LABELS: Record<ConsentStatus, string> = {
@@ -47,6 +81,8 @@ export function MatterModeSelector({ sessionId, getToken, onModeChange }: Props)
   const [consent, setConsent] = useState<ConsentStatus>('not_obtained');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Consent chip popover (replaces the old <select>; same options/handler).
+  const [consentOpen, setConsentOpen] = useState(false);
 
   const authHeaders = useCallback(async (): Promise<Record<string, string>> => {
     const token = await getToken();
@@ -148,49 +184,120 @@ export function MatterModeSelector({ sessionId, getToken, onModeChange }: Props)
     [sessionId, mode, authHeaders],
   );
 
+  const consentRecorded = consent === 'allowed' || consent === 'restricted';
+
   return (
-    <div className="flex items-center gap-1.5" title="Matter mode — drives confidentiality controls">
-      {locked && (
-        <span className="text-amber-600" aria-label="Protected discovery locked" title="Protected discovery is locked">🔒</span>
-      )}
-      <select
+    <div className="flex flex-wrap items-center gap-2" title="Matter mode — drives confidentiality controls">
+      {/* 3-segment matter-mode control. Same change semantics as the old
+          <select>: each segment calls apply(), which handles the 409
+          attorney-override confirm and the locked-downgrade flow. */}
+      <div
+        role="radiogroup"
         aria-label="Matter mode"
-        disabled={busy}
-        value={mode}
-        onChange={(e) => apply(e.target.value as MatterMode)}
-        className="rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-pink-200"
+        className={`flex overflow-hidden rounded-[9px] border text-xs font-semibold ${
+          locked ? 'border-deamber-line' : 'border-surface-line3'
+        } ${busy ? 'opacity-60' : ''}`}
       >
-        {(Object.keys(LABELS) as MatterMode[]).map((m) => (
-          <option key={m} value={m}>{LABELS[m]}</option>
-        ))}
-      </select>
+        {(Object.keys(SEGMENT_LABELS) as MatterMode[]).map((m) => {
+          const active = mode === m;
+          return (
+            <button
+              key={m}
+              type="button"
+              role="radio"
+              aria-checked={active}
+              disabled={busy}
+              onClick={() => { if (!active) void apply(m); }}
+              title={
+                m === 'protected_discovery' && locked
+                  ? 'Protected discovery is locked — downgrading requires attorney confirmation'
+                  : LABELS[m]
+              }
+              className={`flex items-center gap-1.5 px-3 py-[7px] transition ${
+                active ? SEGMENT_ACTIVE[m] : 'bg-white text-ink-muted hover:bg-surface-pill'
+              } ${busy ? 'cursor-not-allowed' : ''}`}
+            >
+              {m === 'protected_discovery' && (
+                <Lock size={12} strokeWidth={1.8} aria-hidden />
+              )}
+              {SEGMENT_LABELS[m]}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Consent status chip → popover with every consent option, wired to
+          the same applyConsent() attestation flow the <select> used. */}
       {mode !== 'public_research' && (
-        <select
-          aria-label="Client AI consent"
-          disabled={busy}
-          value={consent}
-          onChange={(e) => applyConsent(e.target.value as ConsentStatus)}
-          title="Client AI-use consent for this matter — external research tools stay disabled until consent is recorded"
-          className={`rounded-full border px-3 py-1.5 text-xs font-semibold shadow-sm focus:outline-none focus:ring-2 focus:ring-pink-200 ${
-            consent === 'allowed' || consent === 'restricted'
-              ? 'border-green-200 bg-green-50 text-green-800 hover:bg-green-100'
-              : 'border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100'
-          }`}
-        >
-          {(Object.keys(CONSENT_LABELS) as ConsentStatus[]).map((c) => (
-            <option key={c} value={c}>{CONSENT_LABELS[c]}</option>
-          ))}
-        </select>
+        <div className="relative">
+          <button
+            type="button"
+            disabled={busy}
+            aria-haspopup="listbox"
+            aria-expanded={consentOpen}
+            aria-label="Client AI consent"
+            onClick={() => setConsentOpen((v) => !v)}
+            title="Client AI-use consent for this matter — external research tools stay disabled until consent is recorded"
+            className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition ${CONSENT_CHIP_STYLE[consent]} ${
+              busy ? 'cursor-not-allowed opacity-60' : ''
+            }`}
+          >
+            {consentRecorded && <Check size={12} strokeWidth={2.2} aria-hidden />}
+            {CONSENT_CHIP[consent]}
+          </button>
+          {consentOpen && (
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setConsentOpen(false)} />
+              <div
+                role="listbox"
+                className="absolute right-0 z-50 mt-1.5 w-64 rounded-xl border border-surface-line bg-white p-1.5 shadow-card"
+              >
+                {(Object.keys(CONSENT_LABELS) as ConsentStatus[]).map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    role="option"
+                    aria-selected={consent === c}
+                    onClick={() => {
+                      setConsentOpen(false);
+                      void applyConsent(c);
+                    }}
+                    className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs font-medium transition hover:bg-surface-pill ${
+                      consent === c ? 'text-brand-deep' : 'text-ink-secondary'
+                    }`}
+                  >
+                    <Check
+                      size={12}
+                      strokeWidth={2.2}
+                      aria-hidden
+                      className={consent === c ? '' : 'invisible'}
+                    />
+                    {CONSENT_LABELS[c]}
+                  </button>
+                ))}
+                <div className="px-2.5 pb-1 pt-2 text-[10.5px] leading-snug text-ink-faint">
+                  COPRAC/PRD §5.10 — the policy engine blocks external tool calls on this
+                  matter until client AI consent is recorded.
+                </div>
+              </div>
+            </>
+          )}
+        </div>
       )}
+
       {mode !== 'public_research' && consent === 'not_obtained' && (
         <span
-          className="text-[11px] text-amber-700"
+          className="text-[11px] text-deamber-text"
           title="COPRAC/PRD §5.10 — the policy engine blocks external tool calls on this matter until client AI consent is recorded"
         >
-          research tools off until consent recorded
+          Research tools off until consent is recorded.
         </span>
       )}
-      {error && <span className="text-red-500" title={error}>!</span>}
+      {error && (
+        <span className="text-[11px] font-semibold text-dered" title={error}>
+          {error}
+        </span>
+      )}
     </div>
   );
 }

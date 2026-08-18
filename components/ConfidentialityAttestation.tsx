@@ -13,7 +13,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useUser } from '@clerk/clerk-react';
-import { ShieldCheck } from 'lucide-react';
+import { ShieldCheck, Smartphone, Send, AlertTriangle, Lock } from 'lucide-react';
 import { useAttestation } from '../hooks/useAttestation';
 
 interface ConfidentialityAttestationProps {
@@ -36,6 +36,10 @@ export const ConfidentialityAttestation: React.FC<ConfidentialityAttestationProp
   // acknowledges. (Previously dismiss called acknowledge(), permanently
   // recording attestation — a bug flagged in the 2026-06-16 review.)
   const [dismissed, setDismissed] = useState(false);
+  // Acknowledgement checkbox (artboard 04). Required: "I understand —
+  // continue" stays disabled until the attorney checks it, so attestation
+  // can't be recorded without an affirmative act (Arjun, 2026-08-17).
+  const [readChecked, setReadChecked] = useState(false);
 
   // Avoid modal flash during mount + Clerk bootstrap.
   if (!isLoaded || !ready || !userId || attested || dismissed) return null;
@@ -57,66 +61,76 @@ export const ConfidentialityAttestation: React.FC<ConfidentialityAttestationProp
         role="dialog"
         aria-modal="true"
         aria-labelledby="cla-attestation-title"
-        className="w-full max-w-lg rounded-lg bg-white p-5 shadow-xl"
+        className="w-full max-w-[560px] rounded-2xl bg-white p-8 shadow-modal"
         data-testid="confidentiality-attestation"
       >
-        <div className="mb-3 flex items-center gap-2">
-          <ShieldCheck size={20} className="text-emerald-600" />
-          <h2 id="cla-attestation-title" className="text-lg font-semibold text-slate-800">
+        <div className="de-rule mb-6" />
+        <div className="mb-2 flex items-center gap-2.5">
+          <ShieldCheck size={22} strokeWidth={1.5} className="text-deteal-icon" />
+          <h2 id="cla-attestation-title" className="font-display text-[22px] font-semibold text-ink">
             Before you continue
           </h2>
         </div>
 
-        <p className="mb-3 text-sm text-slate-600">
-          {/* [FFLP-TODO: compliance counsel to finalize the intro sentence] */}
-          This tool is designed for California legal research with a
-          confidentiality boundary. Please read the four points below before
-          using it for any matter involving real client facts.
+        <p className="mb-5 text-[13.5px] leading-relaxed text-ink-muted">
+          A one-minute read on how DancingElephant handles client information.
         </p>
 
-        <ol className="mb-4 space-y-2 text-sm text-slate-700">
-          <li>
-            <span className="font-semibold">What the tool does.</span>{' '}
-            {/* [FFLP-TODO: confirm that "tokenizes" is the right term to use publicly] */}
-            When you type client facts, the tool tokenizes names, addresses,
-            and other identifiers in your browser before sending anything to
-            a server.
+        <ol className="mb-[22px] flex flex-col gap-3.5 text-[13.5px] leading-relaxed text-ink">
+          <li className="flex gap-3">
+            <Smartphone size={17} strokeWidth={1.5} className="mt-0.5 shrink-0 text-brand" />
+            <div>
+              {/* [FFLP-TODO: confirm that "tokenizes" is the right term to use publicly] */}
+              <strong>What stays on this device.</strong> When you type client facts, names
+              and identifiers are replaced with tokens in your browser. The map from tokens
+              back to real names never leaves this device.
+            </div>
           </li>
-          <li>
-            <span className="font-semibold">The trust boundary.</span>{' '}
-            The map from tokens back to real names is stored only in this
-            browser, on this device. It is not stored on our servers, not
-            synced across devices, and not sent to any third-party
-            retrieval provider (OpenStates, LegiScan, CourtListener,
-            OpenAI) or to the generative model. Only the tokenized text —
-            never the real names — reaches the model, which is{' '}
-            {/* [FFLP-TODO: compliance counsel to finalize provider phrasing] */}
-            Anthropic's Claude (Fable 5) via the Messages API under
-            Anthropic's commercial terms (no training on inputs).
+          <li className="flex gap-3">
+            <Send size={17} strokeWidth={1.5} className="mt-0.5 shrink-0 text-brand" />
+            <div>
+              {/* [FFLP-TODO: compliance counsel to finalize provider phrasing] */}
+              <strong>What is sent.</strong> Only the tokenized text reaches the model and
+              research providers — never the real names. Model inputs are not used for
+              training.
+            </div>
           </li>
-          <li>
-            <span className="font-semibold">What it doesn't do.</span>{' '}
-            {/* [FFLP-TODO: compliance counsel to confirm Rule 1.6 / ABA 512 framing] */}
-            Sanitization is a technical safeguard, not a substitute for
-            your professional obligations under California Rule of
-            Professional Conduct 1.6, your firm's confidentiality policy,
-            or your duty to supervise AI-assisted work product.
+          <li className="flex gap-3">
+            <AlertTriangle size={17} strokeWidth={1.5} className="mt-0.5 shrink-0 text-deamber-icon" />
+            <div>
+              {/* [FFLP-TODO: compliance counsel to confirm Rule 1.6 / ABA 512 framing] */}
+              <strong>Your obligations stand.</strong> This is a technical safeguard, not a
+              substitute for your duties under Rule of Professional Conduct 1.6 or your
+              duty to supervise AI-assisted work.
+            </div>
           </li>
-          <li>
-            <span className="font-semibold">No recovery.</span>{' '}
-            If you clear your browser data or open the tool on a new
-            device, the local token map is gone. Prior tokenized chats
-            will display as tokens in place of real names. There is no
-            recovery — this is deliberate.
+          <li className="flex gap-3">
+            <Lock size={17} strokeWidth={1.5} className="mt-0.5 shrink-0 text-ink-muted" />
+            <div>
+              <strong>No recovery.</strong> Clearing browser data deletes the local token
+              map permanently. Prior chats will show tokens in place of names. This is
+              deliberate.
+            </div>
           </li>
         </ol>
 
-        <div className="flex items-center justify-between border-t border-slate-200 pt-3">
+        <label className="mb-5 flex items-start gap-2.5 rounded-[10px] border border-surface-line bg-surface-app px-3.5 py-3 text-[13px] leading-relaxed cursor-pointer">
+          <input
+            type="checkbox"
+            checked={readChecked}
+            onChange={(e) => setReadChecked(e.target.checked)}
+            className="mt-0.5 accent-brand"
+          />
+          I&apos;ve read the four points above and understand where client information does
+          and doesn&apos;t go.
+        </label>
+
+        <div className="flex items-center justify-between">
           {softGate ? (
             <button
               type="button"
               onClick={handleDismiss}
-              className="text-sm text-slate-500 hover:text-slate-700"
+              className="text-[13px] text-ink-muted hover:text-ink-secondary"
             >
               Not now
             </button>
@@ -126,7 +140,12 @@ export const ConfidentialityAttestation: React.FC<ConfidentialityAttestationProp
           <button
             type="button"
             onClick={handleAcknowledge}
-            className="inline-flex items-center gap-2 rounded bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-700"
+            disabled={!readChecked}
+            className={
+              readChecked
+                ? 'inline-flex items-center gap-2 rounded-[10px] bg-brand px-5 py-2.5 text-[13.5px] font-semibold text-white hover:bg-brand-deep'
+                : 'inline-flex items-center gap-2 rounded-[10px] bg-surface-disabled px-5 py-2.5 text-[13.5px] font-semibold text-ink-faint cursor-not-allowed'
+            }
           >
             I understand — continue
           </button>
@@ -146,7 +165,7 @@ const Backdrop: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     };
   }, []);
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(34,26,48,.45)] p-4">
       {children}
     </div>
   );
