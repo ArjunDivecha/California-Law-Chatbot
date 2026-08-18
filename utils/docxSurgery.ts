@@ -20,9 +20,11 @@
  *   Every other byte of the archive is passed through untouched.
  *
  * WHAT IT DOES NOT DO
- *   No formatting changes, no structural edits, no support for text that
- *   spans paragraphs. Replacements that cannot be located are reported to
- *   the caller (never silently dropped) so the UI can fall back or warn.
+ *   No formatting changes and no structural edits. Text spanning paragraph
+ *   boundaries is handled by a second, cross-paragraph pass that preserves
+ *   the paragraph structure (see replaceAcrossParagraphs). Replacements
+ *   that cannot be located are reported to the caller (never silently
+ *   dropped) so the UI can fall back or warn.
  *
  * No file I/O (operates on ArrayBuffers in the browser).
  */
@@ -45,9 +47,35 @@ export interface DocxSurgeryResult {
 
 const BODY_PART = 'word/document.xml';
 
+/** XML joiner that renders as a line break WITHIN a paragraph: closes the
+ *  current <w:t>, emits <w:br/>, opens a new <w:t>. Valid because a <w:r>
+ *  may hold multiple <w:t>/<w:br/> children; both new elements inherit the
+ *  run's formatting. Used when a replacement carries more lines than there
+ *  are paragraphs to put them in. */
+const BR_JOIN = '</w:t><w:br/><w:t xml:space="preserve">';
+
 /** Normalize whitespace the way Word may render it, for tolerant matching. */
 function normalizeWs(s: string): string {
   return s.replace(/ /g, ' ').replace(/\s+/g, ' ');
+}
+
+/** Canonicalize typographic characters Word substitutes automatically —
+ *  curly quotes, en/em dashes, non-breaking hyphens, NBSP — so a find
+ *  string written with straight quotes still matches the document. The
+ *  mapping is strictly 1 char → 1 char, so indices are preserved. */
+function canonChar(c: string): string {
+  switch (c) {
+    case '‘': case '’': case 'ʼ': return "'";
+    case '“': case '”': return '"';
+    case '–': case '—': case '‑': case '−': return '-';
+    case ' ': return ' ';
+    default: return c;
+  }
+}
+function canonicalize(s: string): string {
+  let out = '';
+  for (const c of s) out += canonChar(c);
+  return out;
 }
 
 function escapeXml(s: string): string {
@@ -71,30 +99,79 @@ interface RunSlot {
   start: number;
   /** Index just past the text content. */
   end: number;
-  /** Decoded text of the run. */
+  /** Decoded text of the run (a single ' ' for tab/break markers). */
   text: string;
   /** True when the <w:t> carries xml:space="preserve". */
   preserved: boolean;
+  /** False for <w:tab/>/<w:br/>/<w:cr/> markers: they render as whitespace
+   *  (so they participate in matching) but their XML is never rewritten. */
+  editable: boolean;
 }
 
-/** Find every <w:t>…</w:t> text slot in a chunk of document XML. */
+/** Find every text slot in a chunk of document XML, in document order:
+ *  <w:t> runs (editable) plus tab/line-break markers (whitespace-only).
+ *  Extracted plain text renders <w:tab/> as a space, so a find string
+ *  taken from it contains ' ' where the XML has a tab element — without
+ *  these pseudo-slots such finds could never match (2026-08-17). */
 function findRunSlots(xml: string): RunSlot[] {
   const slots: RunSlot[] = [];
-  // Matches <w:t> and <w:t xml:space="preserve">, plus self-closing <w:t/>.
-  const re = /<w:t(\s[^>]*)?>([\s\S]*?)<\/w:t>/g;
+  const re = /<w:t(\s[^>]*)?>([\s\S]*?)<\/w:t>|<w:(?:tab|br|cr)\s*\/>|<\/w:p>/g;
   let m: RegExpExecArray | null;
   while ((m = re.exec(xml)) !== null) {
-    const attrs = m[1] ?? '';
-    const inner = m[2] ?? '';
-    const innerStart = m.index + m[0].length - inner.length - '</w:t>'.length;
-    slots.push({
-      start: innerStart,
-      end: innerStart + inner.length,
-      text: decodeXmlText(inner),
-      preserved: /xml:space\s*=\s*"preserve"/.test(attrs),
-    });
+    if (m[2] !== undefined) {
+      const attrs = m[1] ?? '';
+      const inner = m[2];
+      const innerStart = m.index + m[0].length - inner.length - '</w:t>'.length;
+      slots.push({
+        start: innerStart,
+        end: innerStart + inner.length,
+        text: decodeXmlText(inner),
+        preserved: /xml:space\s*=\s*"preserve"/.test(attrs),
+        editable: true,
+      });
+    } else {
+      // Paragraph ends render as a newline in extracted text; tabs/breaks
+      // as a space. Both are matchable whitespace, never rewritten.
+      const text = m[0] === '</w:p>' ? '\n' : ' ';
+      slots.push({ start: m.index, end: m.index + m[0].length, text, preserved: false, editable: false });
+    }
   }
   return slots;
+}
+
+/** Locate `find` in the concatenated slot text: exact, then canonicalized
+ *  (curly quotes/dashes/NBSP), then whitespace-tolerant with an exact
+ *  position map. Returns the matched [start, len) span, or null. */
+function locateMatch(concat: string, find: string): { start: number; len: number } | null {
+  let matchStart = concat.indexOf(find);
+  if (matchStart !== -1) return { start: matchStart, len: find.length };
+  matchStart = canonicalize(concat).indexOf(canonicalize(find));
+  if (matchStart !== -1) return { start: matchStart, len: find.length };
+  let norm = '';
+  const normStart: number[] = [];
+  const normEnd: number[] = [];
+  let i = 0;
+  while (i < concat.length) {
+    if (/[\s ]/.test(concat[i])) {
+      let j = i;
+      while (j < concat.length && /[\s ]/.test(concat[j])) j += 1;
+      norm += ' ';
+      normStart.push(i);
+      normEnd.push(j);
+      i = j;
+    } else {
+      norm += canonChar(concat[i]);
+      normStart.push(i);
+      normEnd.push(i + 1);
+      i += 1;
+    }
+  }
+  const nFind = normalizeWs(canonicalize(find)).trim();
+  if (nFind.length === 0) return null;
+  const nIdx = norm.indexOf(nFind);
+  if (nIdx === -1) return null;
+  const start = normStart[nIdx];
+  return { start, len: normEnd[nIdx + nFind.length - 1] - start };
 }
 
 /** Split the body XML into paragraph chunks so matching stays in-paragraph. */
@@ -124,38 +201,16 @@ export function replaceInParagraph(paraXml: string, find: string, replace: strin
     concat += s.text;
   });
 
-  // Exact match first; fall back to whitespace-tolerant match.
-  let matchStart = concat.indexOf(find);
-  let matchLen = find.length;
-  if (matchStart === -1) {
-    const nConcat = normalizeWs(concat);
-    const nFind = normalizeWs(find);
-    const nIdx = nConcat.indexOf(nFind);
-    if (nIdx === -1) return null;
-    // Map the normalized index back by walking the original string.
-    let seen = 0;
-    let origIdx = -1;
-    for (let i = 0; i < concat.length; i += 1) {
-      const nSlice = normalizeWs(concat.slice(0, i));
-      if (nSlice.length >= nIdx && origIdx === -1) {
-        origIdx = i;
-        break;
-      }
-      seen = i;
-    }
-    if (origIdx === -1) return null;
-    matchStart = origIdx;
-    // Extend to cover the same normalized length.
-    let end = matchStart;
-    while (end < concat.length && normalizeWs(concat.slice(matchStart, end)).length < nFind.length) {
-      end += 1;
-    }
-    matchLen = end - matchStart;
-  }
-  const matchEnd = matchStart + matchLen;
+  const located = locateMatch(concat, find);
+  if (!located) return null;
+  const matchStart = located.start;
+  const matchEnd = matchStart + located.len;
 
   // Rewrite affected slots from last to first so earlier indices stay valid.
-  const touched = offsets.filter((o) => o.to > matchStart && o.from < matchEnd);
+  // Tab/break pseudo-slots inside the match are left untouched: their XML
+  // stays, and the replacement lands in the first EDITABLE slot, so a match
+  // spanning "5.1<tab>Text" keeps the tab and types over the text.
+  const touched = offsets.filter((o) => o.to > matchStart && o.from < matchEnd && slots[o.slot].editable);
   if (touched.length === 0) return null;
   let out = paraXml;
   for (let i = touched.length - 1; i >= 0; i -= 1) {
@@ -167,6 +222,88 @@ export function replaceInParagraph(paraXml: string, find: string, replace: strin
     const newText =
       slot.text.slice(0, localStart) + (isFirst ? replace : '') + slot.text.slice(localEnd);
     out = out.slice(0, slot.start) + escapeXml(newText) + out.slice(slot.end);
+  }
+  return out;
+}
+
+/**
+ * Apply one replacement across paragraph boundaries. Used only when no
+ * single paragraph contains the find text (2026-08-17: real engagement
+ * letters produced finds like "Re: … Agreement\nDear [NAMES]" and
+ * multi-line signature blocks, which the per-paragraph pass can never
+ * match). Paragraph structure is preserved: the replacement is split on
+ * newlines and distributed across the matched paragraphs in order — the
+ * k-th replacement line lands in the k-th matched paragraph's first
+ * touched run, surplus document text in the span is blanked, and surplus
+ * replacement lines are appended to the last paragraph's text.
+ * Returns the new body XML, or null when the find isn't present at all.
+ */
+export function replaceAcrossParagraphs(xml: string, find: string, replace: string): string | null {
+  const slots = findRunSlots(xml);
+  if (slots.length === 0) return null;
+
+  let concat = '';
+  const offsets: Array<{ slot: number; from: number; to: number }> = [];
+  slots.forEach((s, i) => {
+    offsets.push({ slot: i, from: concat.length, to: concat.length + s.text.length });
+    concat += s.text;
+  });
+
+  const located = locateMatch(concat, find);
+  if (!located) return null;
+  const matchStart = located.start;
+  const matchEnd = matchStart + located.len;
+
+  // Empty runs (zero-length <w:t/>) strictly inside the span must NOT count
+  // as touched paragraphs — they would silently steal a replacement line.
+  const touched = offsets.filter(
+    (o) => o.to > matchStart && o.from < matchEnd && slots[o.slot].editable && slots[o.slot].text.length > 0,
+  );
+  if (touched.length === 0) return null;
+
+  // Paragraph index for each slot = number of </w:p> pseudo-slots before it.
+  const paraIndexOfSlot: number[] = [];
+  let paraCounter = 0;
+  slots.forEach((s, i) => {
+    paraIndexOfSlot[i] = paraCounter;
+    if (!s.editable && s.text === '\n') paraCounter += 1;
+  });
+
+  // Distribute the replacement lines over the matched paragraphs in order.
+  // Each paragraph gets an ARRAY of lines: normally one; the last matched
+  // paragraph absorbs any surplus as real Word line breaks (<w:br/>), never
+  // space-joined — space-joining ran a client's address into one line in a
+  // real engagement letter (2026-08-18).
+  const paraOrder: number[] = [];
+  for (const o of touched) {
+    const pi = paraIndexOfSlot[o.slot];
+    if (paraOrder[paraOrder.length - 1] !== pi) paraOrder.push(pi);
+  }
+  const lines = replace.split(/\n+/);
+  const linesForPara = new Map<number, string[]>();
+  paraOrder.forEach((pi, k) => {
+    if (k === paraOrder.length - 1) linesForPara.set(pi, lines.slice(k));
+    else linesForPara.set(pi, lines[k] !== undefined ? [lines[k]] : []);
+  });
+
+  // First touched slot per paragraph receives that paragraph's line(s);
+  // every other touched slot's matched span is blanked. Rewrite last→first.
+  const firstSlotForPara = new Map<number, number>();
+  for (const o of touched) {
+    const pi = paraIndexOfSlot[o.slot];
+    if (!firstSlotForPara.has(pi)) firstSlotForPara.set(pi, o.slot);
+  }
+  let out = xml;
+  for (let i = touched.length - 1; i >= 0; i -= 1) {
+    const o = touched[i];
+    const slot = slots[o.slot];
+    const localStart = Math.max(0, matchStart - o.from);
+    const localEnd = Math.min(slot.text.length, matchEnd - o.from);
+    const pi = paraIndexOfSlot[o.slot];
+    const parts = firstSlotForPara.get(pi) === o.slot ? (linesForPara.get(pi) ?? []) : [];
+    const insertXml = parts.map(escapeXml).join(BR_JOIN);
+    const newXml = escapeXml(slot.text.slice(0, localStart)) + insertXml + escapeXml(slot.text.slice(localEnd));
+    out = out.slice(0, slot.start) + newXml + out.slice(slot.end);
   }
   return out;
 }
@@ -195,6 +332,15 @@ export function applyReplacementsToXml(
         applied.push(rep);
         done = true;
         break; // first occurrence only — mirrors the editor's applyChange
+      }
+    }
+    if (!done) {
+      // Cross-paragraph pass — only when no single paragraph matched.
+      const next = replaceAcrossParagraphs(current, rep.find, rep.replace);
+      if (next !== null) {
+        current = next;
+        applied.push(rep);
+        done = true;
       }
     }
     if (!done) unmatched.push(rep);

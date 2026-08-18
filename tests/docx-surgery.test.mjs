@@ -17,7 +17,7 @@
  * Usage:        ./node_modules/.bin/tsx tests/docx-surgery.test.mjs
  */
 
-import { Document, Packer, Paragraph, TextRun, HeadingLevel } from 'docx';
+import { Document, Packer, Paragraph, TextRun, HeadingLevel, ImageRun, Header } from 'docx';
 import { unzipSync, strFromU8 } from 'fflate';
 import { editDocxInPlace, replaceInParagraph } from '../utils/docxSurgery.ts';
 
@@ -113,10 +113,159 @@ xml = bodyOf(res.bytes);
 check('special chars escaped in XML', xml.includes('Smith &amp; Jones &lt;Trustees&gt;'));
 check('document still parses as text', textOf(xml).includes('Smith & Jones <Trustees> "the Trust"'));
 
+// ---------- 5b. whitespace-fallback alignment (2026-08-17 corruption bug) ----------
+// The old approximate index-mapping misaligned any match that followed a
+// multi-space gap, fusing stray characters onto the replacement ("Trusteee",
+// "quarterly..") and silently corrupting saved documents. These pin the fix.
+const mkPara = (...runs) =>
+  '<w:p>' + runs.map((r) => `<w:r><w:t xml:space="preserve">${r}</w:t></w:r>`).join('') + '</w:p>';
+{
+  const cases = [
+    { name: 'match after multi-space gap', para: mkPara('Name:     John Roe, Trustee'), find: 'John  Roe, Trustee', replace: 'Jane Doe, Trustee', want: 'Name:     Jane Doe, Trustee' },
+    { name: 'numbered clause after gap', para: mkPara('5.1    The Trustee shall account annually.'), find: 'The  Trustee shall account annually.', replace: 'The Trustee shall account quarterly.', want: '5.1    The Trustee shall account quarterly.' },
+    { name: 'single char after gap', para: mkPara('A   B'), find: 'B', replace: 'C', want: 'A   C' },
+    { name: 'gap inside doc, single space in find', para: mkPara('The  Trustee shall distribute.'), find: 'The Trustee shall distribute.', replace: 'The Trustee may distribute.', want: 'The Trustee may distribute.' },
+  ];
+  for (const c of cases) {
+    const out = replaceInParagraph(c.para, c.find, c.replace);
+    check(`ws-fallback exact: ${c.name}`, out !== null && textOf(out) === c.want,
+      out === null ? 'no match' : JSON.stringify(textOf(out)));
+  }
+  check('ws-fallback: whitespace-only find rejected', replaceInParagraph(mkPara('a  b'), '   ', 'x') === null);
+}
+
+// ---------- 5c. tabs and curly quotes (2026-08-17 "3 changes could not be located") ----------
+// Word stores tabs as <w:tab/> elements (extracted text shows a space) and
+// auto-curls quotes/dashes; find strings from the model use plain chars.
+{
+  const tabPara = '<w:p><w:r><w:t>5.1</w:t></w:r><w:r><w:tab/></w:r><w:r><w:t xml:space="preserve">The Trustee shall account annually.</w:t></w:r></w:p>';
+  const out1 = replaceInParagraph(tabPara, '5.1 The Trustee shall account annually.', '5.1 The Trustee shall account quarterly.');
+  check('tab element matches a space in find', out1 !== null && textOf(out1).includes('quarterly'), out1 === null ? 'no match' : textOf(out1));
+  check('tab element preserved in XML', out1 !== null && out1.includes('<w:tab/>'));
+
+  const curlyPara = mkPara('femme &amp; femme LLP (“the firm”) has agreed — subject to Ms. O’Brien’s consent.');
+  const out2 = replaceInParagraph(curlyPara, 'femme & femme LLP ("the firm") has agreed - subject to Ms. O\'Brien\'s consent.', 'femme & femme LLP ("the firm") has agreed.');
+  check('curly quotes/em-dash match straight chars', out2 !== null && textOf(out2).includes('has agreed.'), out2 === null ? 'no match' : textOf(out2));
+
+  const out3 = replaceInParagraph(mkPara('Dear Clients:'), 'Dear Clients:', 'Dear Arjun and Diana:');
+  check('non-breaking space matches plain space', out3 !== null && textOf(out3).includes('Dear Arjun and Diana:'));
+}
+
+// ---------- 5d. cross-paragraph matches (2026-08-17 engagement-letter misses) ----------
+// The real letter produced finds spanning paragraph boundaries: the Re:
+// line + salutation, and the multi-line signature block. Pin those shapes.
+{
+  const letter = new Document({
+    sections: [{
+      children: [
+        new Paragraph({ children: [new TextRun({ text: 'Re: Attorney Client Engagement Agreement', bold: true })] }),
+        new Paragraph({ children: [new TextRun('Dear [NAMES]')] }),
+        new Paragraph({ children: [new TextRun('Body of the letter stays put.')] }),
+        new Paragraph({ children: [new TextRun('By: Date: [CLIENT]')] }),
+        new Paragraph({ children: [new TextRun('By: Date: [CLIENT]')] }),
+      ],
+    }],
+  });
+  const src = await Packer.toBuffer(letter);
+  const beforeXml = bodyOf(new Uint8Array(src));
+  const boldCount = (beforeXml.match(/<w:b\/>|<w:b /g) ?? []).length;
+  const paraCount = (beforeXml.match(/<w:p[ >]/g) ?? []).length;
+
+  // Miss #1 shape: Re: line + salutation, replacement mirrors the two lines.
+  let res = editDocxInPlace(src.buffer ?? src, [
+    { find: 'Re: Attorney Client Engagement Agreement\nDear [NAMES]', replace: 'Re: Attorney Client Engagement Agreement\nDear Arjun Divecha and Diana Divecha' },
+  ]);
+  let xml = bodyOf(res.bytes);
+  check('cross-para: Re/Dear matched', res.applied.length === 1, JSON.stringify(res.unmatched));
+  check('cross-para: salutation replaced', textOf(xml).includes('Dear Arjun Divecha and Diana Divecha'));
+  check('cross-para: Re line intact', textOf(xml).includes('Re: Attorney Client Engagement Agreement'));
+  check('cross-para: body untouched', textOf(xml).includes('Body of the letter stays put.'));
+  check('cross-para: paragraph count preserved', (xml.match(/<w:p[ >]/g) ?? []).length === paraCount);
+  check('cross-para: bold formatting preserved', (xml.match(/<w:b\/>|<w:b /g) ?? []).length === boldCount);
+
+  // Miss #2 shape: multi-line signature block (space-joined find, as the
+  // model sometimes flattens newlines to spaces).
+  res = editDocxInPlace(src.buffer ?? src, [
+    { find: 'By: Date: [CLIENT] By: Date: [CLIENT]', replace: 'By: Date: Arjun Divecha\nBy: Date: Diana Divecha' },
+  ]);
+  xml = bodyOf(res.bytes);
+  check('cross-para: signature block matched', res.applied.length === 1, JSON.stringify(res.unmatched));
+  check('cross-para: first signer line', textOf(xml).includes('By: Date: Arjun Divecha'));
+  check('cross-para: second signer line', textOf(xml).includes('By: Date: Diana Divecha'));
+  check('cross-para: no stale [CLIENT] left', !textOf(xml).includes('[CLIENT]'));
+
+  // Surplus lines (4-line address into 2 paragraphs) become REAL Word line
+  // breaks (<w:br/>), never space-joined — space-joining ran a client's
+  // address into one line in a real letter (2026-08-18).
+  const addr = new Document({
+    sections: [{
+      children: [
+        new Paragraph({ children: [new TextRun('[CLIENT NAMES]')] }),
+        new Paragraph({ children: [new TextRun('[CLIENT ADDRESS]')] }),
+      ],
+    }],
+  });
+  const addrSrc = await Packer.toBuffer(addr);
+  res = editDocxInPlace(addrSrc.buffer ?? addrSrc, [
+    { find: '[CLIENT NAMES]\n[CLIENT ADDRESS]', replace: 'Arjun Divecha\nDiana Divecha\n161 Bret Harte Road,\nBerkeley CA 94708' },
+  ]);
+  xml = bodyOf(res.bytes);
+  check('surplus lines: matched', res.applied.length === 1, JSON.stringify(res.unmatched));
+  {
+    const runsText = (xml.match(/<w:t(?:\s[^>]*)?>([\s\S]*?)<\/w:t>/g) ?? []).map((t) => t.replace(/<[^>]+>/g, ''));
+    check('surplus lines: no space-joined address', !runsText.some((t) => t.includes('Divecha 161')),
+      JSON.stringify(runsText));
+    check('surplus lines: br breaks inserted', (xml.match(/<w:br\/>/g) ?? []).length >= 2);
+    check('surplus lines: every address line present as its own text', ['Arjun Divecha', 'Diana Divecha', '161 Bret Harte Road,', 'Berkeley CA 94708'].every((l) => runsText.includes(l)),
+      JSON.stringify(runsText));
+  }
+
+  // Guard: a find matching nowhere still reports unmatched.
+  res = editDocxInPlace(src.buffer ?? src, [{ find: 'totally absent text', replace: 'x' }]);
+  check('cross-para: absent find still unmatched', res.unmatched.length === 1);
+}
+
 // ---------- 6. paragraph-level helper ----------
 const para = '<w:p><w:r><w:t>Hello </w:t></w:r><w:r><w:t>world</w:t></w:r></w:p>';
 check('replaceInParagraph handles split text', (replaceInParagraph(para, 'Hello world', 'Goodbye world') ?? '').includes('Goodbye world'));
 check('replaceInParagraph returns null when absent', replaceInParagraph(para, 'nothing here', 'x') === null);
+
+// ---------- 7. letterhead logo in the header survives byte-for-byte ----------
+// The firm's engagement letters carry a logo in word/header*.xml +
+// word/media/*. The surgery only rewrites word/document.xml, so these must
+// pass through untouched (asked 2026-08-17 about Femme's letterhead).
+{
+  const png = Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+    'base64',
+  );
+  const letter = new Document({
+    sections: [{
+      headers: {
+        default: new Header({
+          children: [new Paragraph({ children: [new ImageRun({ type: 'png', data: png, transformation: { width: 40, height: 40 } })] })],
+        }),
+      },
+      children: [new Paragraph({ children: [new TextRun('Dear CLIENT 1 and CLIENT 2:')] })],
+    }],
+  });
+  const src = await Packer.toBuffer(letter);
+  const before = unzipSync(new Uint8Array(src));
+  const mediaKeys = Object.keys(before).filter((k) => k.startsWith('word/media/'));
+  const headerKeys = Object.keys(before).filter((k) => /word\/header\d*\.xml$/.test(k));
+  check('logo fixture has media + header parts', mediaKeys.length > 0 && headerKeys.length > 0,
+    `media=${mediaKeys.length} header=${headerKeys.length}`);
+  const edited = editDocxInPlace(src.buffer ?? src, [
+    { find: 'Dear CLIENT 1 and CLIENT 2:', replace: 'Dear Arjun Divecha and Diana Divecha:' },
+  ]);
+  const after = unzipSync(edited.bytes);
+  const identical = (k) => after[k] && Buffer.compare(Buffer.from(before[k]), Buffer.from(after[k])) === 0;
+  check('logo edit applied', edited.applied.length === 1 && edited.unmatched.length === 0);
+  check('logo image bytes identical', mediaKeys.every(identical));
+  check('header XML identical', headerKeys.every(identical));
+  check('no parts lost', Object.keys(before).length === Object.keys(after).length);
+  check('body text replaced under logo', textOf(bodyOf(edited.bytes)).includes('Dear Arjun Divecha and Diana Divecha:'));
+}
 
 console.log(`\nDOCX surgery: ${passed} passed, ${failed} failed`);
 process.exit(failed === 0 ? 0 : 1);
