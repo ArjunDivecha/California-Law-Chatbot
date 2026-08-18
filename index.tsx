@@ -22,7 +22,9 @@ const root = ReactDOM.createRoot(rootElement);
 root.render(
   <React.StrictMode>
     <ErrorBoundary>
-      <ClerkProvider publishableKey={PUBLISHABLE_KEY}>
+      {/* signInUrl/signUpUrl route RedirectToSignIn to the branded in-app
+          sign-in page instead of Clerk's hosted default card. */}
+      <ClerkProvider publishableKey={PUBLISHABLE_KEY} signInUrl="/sign-in" signUpUrl="/sign-up">
         <BrowserRouter>
           <App />
         </BrowserRouter>
