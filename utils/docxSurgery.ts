@@ -47,6 +47,13 @@ export interface DocxSurgeryResult {
 
 const BODY_PART = 'word/document.xml';
 
+/** XML joiner that renders as a line break WITHIN a paragraph: closes the
+ *  current <w:t>, emits <w:br/>, opens a new <w:t>. Valid because a <w:r>
+ *  may hold multiple <w:t>/<w:br/> children; both new elements inherit the
+ *  run's formatting. Used when a replacement carries more lines than there
+ *  are paragraphs to put them in. */
+const BR_JOIN = '</w:t><w:br/><w:t xml:space="preserve">';
+
 /** Normalize whitespace the way Word may render it, for tolerant matching. */
 function normalizeWs(s: string): string {
   return s.replace(/ /g, ' ').replace(/\s+/g, ' ');
@@ -247,7 +254,11 @@ export function replaceAcrossParagraphs(xml: string, find: string, replace: stri
   const matchStart = located.start;
   const matchEnd = matchStart + located.len;
 
-  const touched = offsets.filter((o) => o.to > matchStart && o.from < matchEnd && slots[o.slot].editable);
+  // Empty runs (zero-length <w:t/>) strictly inside the span must NOT count
+  // as touched paragraphs — they would silently steal a replacement line.
+  const touched = offsets.filter(
+    (o) => o.to > matchStart && o.from < matchEnd && slots[o.slot].editable && slots[o.slot].text.length > 0,
+  );
   if (touched.length === 0) return null;
 
   // Paragraph index for each slot = number of </w:p> pseudo-slots before it.
@@ -259,24 +270,24 @@ export function replaceAcrossParagraphs(xml: string, find: string, replace: stri
   });
 
   // Distribute the replacement lines over the matched paragraphs in order.
+  // Each paragraph gets an ARRAY of lines: normally one; the last matched
+  // paragraph absorbs any surplus as real Word line breaks (<w:br/>), never
+  // space-joined — space-joining ran a client's address into one line in a
+  // real engagement letter (2026-08-18).
   const paraOrder: number[] = [];
   for (const o of touched) {
     const pi = paraIndexOfSlot[o.slot];
     if (paraOrder[paraOrder.length - 1] !== pi) paraOrder.push(pi);
   }
   const lines = replace.split(/\n+/);
-  if (lines.length > paraOrder.length) {
-    // Surplus lines: merge the tail into the last available paragraph.
-    const head = lines.slice(0, paraOrder.length - 1);
-    const tail = lines.slice(paraOrder.length - 1).join(' ');
-    lines.length = 0;
-    lines.push(...head, tail);
-  }
-  const lineForPara = new Map<number, string>();
-  paraOrder.forEach((pi, k) => lineForPara.set(pi, lines[k] ?? ''));
+  const linesForPara = new Map<number, string[]>();
+  paraOrder.forEach((pi, k) => {
+    if (k === paraOrder.length - 1) linesForPara.set(pi, lines.slice(k));
+    else linesForPara.set(pi, lines[k] !== undefined ? [lines[k]] : []);
+  });
 
-  // First touched slot per paragraph receives that paragraph's line; every
-  // other touched slot's matched span is blanked. Rewrite last → first.
+  // First touched slot per paragraph receives that paragraph's line(s);
+  // every other touched slot's matched span is blanked. Rewrite last→first.
   const firstSlotForPara = new Map<number, number>();
   for (const o of touched) {
     const pi = paraIndexOfSlot[o.slot];
@@ -289,9 +300,10 @@ export function replaceAcrossParagraphs(xml: string, find: string, replace: stri
     const localStart = Math.max(0, matchStart - o.from);
     const localEnd = Math.min(slot.text.length, matchEnd - o.from);
     const pi = paraIndexOfSlot[o.slot];
-    const insert = firstSlotForPara.get(pi) === o.slot ? (lineForPara.get(pi) ?? '') : '';
-    const newText = slot.text.slice(0, localStart) + insert + slot.text.slice(localEnd);
-    out = out.slice(0, slot.start) + escapeXml(newText) + out.slice(slot.end);
+    const parts = firstSlotForPara.get(pi) === o.slot ? (linesForPara.get(pi) ?? []) : [];
+    const insertXml = parts.map(escapeXml).join(BR_JOIN);
+    const newXml = escapeXml(slot.text.slice(0, localStart)) + insertXml + escapeXml(slot.text.slice(localEnd));
+    out = out.slice(0, slot.start) + newXml + out.slice(slot.end);
   }
   return out;
 }

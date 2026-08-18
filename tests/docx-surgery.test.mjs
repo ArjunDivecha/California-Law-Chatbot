@@ -194,6 +194,32 @@ const mkPara = (...runs) =>
   check('cross-para: second signer line', textOf(xml).includes('By: Date: Diana Divecha'));
   check('cross-para: no stale [CLIENT] left', !textOf(xml).includes('[CLIENT]'));
 
+  // Surplus lines (4-line address into 2 paragraphs) become REAL Word line
+  // breaks (<w:br/>), never space-joined — space-joining ran a client's
+  // address into one line in a real letter (2026-08-18).
+  const addr = new Document({
+    sections: [{
+      children: [
+        new Paragraph({ children: [new TextRun('[CLIENT NAMES]')] }),
+        new Paragraph({ children: [new TextRun('[CLIENT ADDRESS]')] }),
+      ],
+    }],
+  });
+  const addrSrc = await Packer.toBuffer(addr);
+  res = editDocxInPlace(addrSrc.buffer ?? addrSrc, [
+    { find: '[CLIENT NAMES]\n[CLIENT ADDRESS]', replace: 'Arjun Divecha\nDiana Divecha\n161 Bret Harte Road,\nBerkeley CA 94708' },
+  ]);
+  xml = bodyOf(res.bytes);
+  check('surplus lines: matched', res.applied.length === 1, JSON.stringify(res.unmatched));
+  {
+    const runsText = (xml.match(/<w:t(?:\s[^>]*)?>([\s\S]*?)<\/w:t>/g) ?? []).map((t) => t.replace(/<[^>]+>/g, ''));
+    check('surplus lines: no space-joined address', !runsText.some((t) => t.includes('Divecha 161')),
+      JSON.stringify(runsText));
+    check('surplus lines: br breaks inserted', (xml.match(/<w:br\/>/g) ?? []).length >= 2);
+    check('surplus lines: every address line present as its own text', ['Arjun Divecha', 'Diana Divecha', '161 Bret Harte Road,', 'Berkeley CA 94708'].every((l) => runsText.includes(l)),
+      JSON.stringify(runsText));
+  }
+
   // Guard: a find matching nowhere still reports unmatched.
   res = editDocxInPlace(src.buffer ?? src, [{ find: 'totally absent text', replace: 'x' }]);
   check('cross-para: absent find still unmatched', res.unmatched.length === 1);
