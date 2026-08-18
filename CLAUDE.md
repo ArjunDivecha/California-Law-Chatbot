@@ -7,12 +7,21 @@ described the retired V1 (OpenRouter/Gemini/CEB) architecture and was fully stal
 
 ## Purpose
 
-California Law Chatbot is a Clerk-authenticated legal research + document-drafting
-assistant for a California family-law / LGBTQ practice (Femme & Femme Law). The current
-mainline is **V4**: a single `/v2` front end backed by Vercel serverless functions that
-run a server-side agent loop calling the **Anthropic Messages API directly**, gated by a
-server-authoritative compliance policy engine, with **on-device PII tokenization** before
-any text leaves the browser. It is deployed and in production.
+**DancingElephant** (rebranded from AskPauli 2026-08-18; repo/Vercel project name is
+still `california-law-chatbot`) is a Clerk-authenticated legal research +
+document-drafting assistant for California attorneys, being commercialized beyond its
+original firm (Femme & Femme Law). The current mainline is **V4**: a single `/v2` front
+end backed by Vercel serverless functions that run a server-side agent loop calling the
+**Anthropic Messages API directly**, gated by a server-authoritative compliance policy
+engine, with **on-device PII tokenization** before any text leaves the browser. It is
+deployed and in production at `dancingelephant.ai`.
+
+**Brand/design**: violet #7C5CFC / teal / amber tokens live in `tailwind.config.cjs`
+(`theme.extend` is no longer empty); Inter (UI) + Fraunces (display); Georgia only
+inside rendered legal documents (`font-doc`); gradient motif classes `.de-thinkline` /
+`.de-rule` / `.de-spinner` in `index.html`. Design source of truth:
+`docs/design-handoff/` (9 artboards + spec README). No pink, no emoji chrome, no
+"AskPauli"/"Pauli" strings in UI.
 
 ## Deep architecture: read OpenWiki first
 
@@ -87,8 +96,8 @@ yarn dev:full           # dev:api + dev together                   (unverified t
 
 ## Current state
 
-- **Active, in production**: `california-law-chatbot.vercel.app` and `chat.femmeandfemmelaw.com` (Vercel auto-deploy from `main`).
-- Mainline is V4: one `/v2` front end, V1 fully purged.
-- **Sanitization suite fully green** (verified 2026-07-17): `runTrapsWire.mjs` 120/120, `runTraps.mjs` 120/120, `sanitization.test.mjs` 153/153. The T-PII-032 wire regression flagged in FABLE.md was fixed in `40c9881`.
-- **Desktop app** (branch work, 2026-07-16/17): a standalone Tauri .app with a bundled sidecar + local SQLite session/audit store (zero cloud data stores) lives under `src-tauri/` + `desktop-server.mjs` — see `docs/desktop-spike.md`. `yarn desktop` (dev) / `yarn desktop:app` (build).
-- Uncommitted working-tree edits exist in `App.tsx` and `components/v2/V2DraftPage.tsx` (pre-existing; not part of this review).
+- **Active, in production**: `https://dancingelephant.ai` (primary, DNS on Cloudflare — nameservers titan/zelda; zone-migration script `scripts/migrate-dns-cloudflare.mjs`), plus `california-law-chatbot.vercel.app` and `chat.femmeandfemmelaw.com` (Vercel auto-deploy from `main`). Legacy `askpauli.com` still serves the old AskPauli landing page (rebrand + redirect pending).
+- Mainline is V4: one `/v2` front end, V1 fully purged. **DancingElephant rebrand shipped 2026-08-18** — all five surfaces reskinned, logic untouched; attestation checkbox now required; trust copy standardized on "Confidential client information never leaves your computer".
+- **Sanitization suite fully green** (re-verified 2026-08-18 post-rebrand): `runTrapsWire.mjs` 120/120 zero-leak, `runTraps.mjs` 120/120, `sanitization.test.mjs` 153/153, `docx-surgery.test.mjs` 50/50. Note: `sanitization.test.mjs` asserts the attestation modal's rebrand headings — keep copy and test in sync.
+- **Desktop app shipped**: notarized, Gatekeeper-accepted `DancingElephant.app` (installed in /Applications; installer zip in `installer-pkg/dist/`, **contains live API keys — private channels only**). Bundle id stays `com.askpauli.desktop` and the data dir stays `~/Library/Application Support/AskPauli/` deliberately — changing either orphans existing installs' local SQLite data. `yarn desktop` (dev) / `yarn desktop:app` (build+notarize).
+- Rebrand gotchas: Vercel previews are SSO-protected and Vercel bot-protection challenges repeated headless-browser hits from this machine (verify prod-identical builds via `vite preview` instead); Clerk application name (sign-in card title) is dashboard-configured and still says "California Law Chatbot".
