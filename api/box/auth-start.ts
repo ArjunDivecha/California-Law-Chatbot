@@ -34,10 +34,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     res.status(503).json({ error: 'box_not_configured' });
     return;
   }
-  // The OAuth redirect must land on the SAME origin the app is served from
-  // (web: app.askpauli.com; desktop sidecar: 127.0.0.1:8477; dev: 5173).
+  // Local surfaces (desktop sidecar 127.0.0.1:8477, dev 5173) redirect back to
+  // their own origin. Web surfaces are PINNED to one canonical callback origin,
+  // because Box enforces exact redirect_uri registration and only the canonical
+  // one is registered in the Box dev console. The callback page notifies
+  // window.opener via postMessage(target '*'), so the popup finishing on the
+  // canonical origin still completes the flow for any web origin (e.g. the
+  // dancingelephant.ai rebrand domain, 2026-08-18). Override with
+  // BOX_REDIRECT_ORIGIN once new callbacks are registered with Box.
   const origin = headerString(req.headers.origin) || `http://${headerString(req.headers.host) ?? ''}`;
-  const redirectUri = redirectUriForOrigin(origin);
+  const isLocal = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
+  const webCallbackOrigin = process.env.BOX_REDIRECT_ORIGIN || 'https://app.askpauli.com';
+  const redirectUri = redirectUriForOrigin(isLocal ? origin : webCallbackOrigin);
   if (!redirectUri) {
     res.status(400).json({ error: 'bad_origin' });
     return;

@@ -44,6 +44,10 @@ const DEFAULT_ALLOWED_ORIGINS = [
   'https://california-law-chatbot.vercel.app',
   'https://california-law-chatbot-v2.vercel.app',
   'https://chat.femmeandfemmelaw.com',
+  // DancingElephant rebrand domains (2026-08-18) + the legacy app host.
+  'https://dancingelephant.ai',
+  'https://www.dancingelephant.ai',
+  'https://app.askpauli.com',
   'http://localhost:5173',
   'http://127.0.0.1:5173',
   'http://localhost:3000',
