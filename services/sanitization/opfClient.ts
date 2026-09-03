@@ -276,6 +276,11 @@ async function fetchFromDaemon(
   timeoutMs: number
 ): Promise<Response> {
   let lastError: unknown = null;
+  // Every candidate's failure, not just the last one. Until 2026-09-03 the
+  // thrown message carried only the final (bridge) error, which hid the
+  // real cause of an outage — the daemon answering `http 500` on every
+  // loopback URL — behind "OPF bridge is not connected".
+  const attempts: string[] = [];
 
   for (const baseUrl of daemonUrlCandidates()) {
     const ctrl = new AbortController();
@@ -294,6 +299,7 @@ async function fetchFromDaemon(
       return res;
     } catch (err) {
       lastError = err;
+      attempts.push(`${baseUrl}: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
       globalThis.clearTimeout(timer);
     }
@@ -303,13 +309,11 @@ async function fetchFromDaemon(
     return await fetchViaBridge(path, init, timeoutMs);
   } catch (err) {
     lastError = err;
+    attempts.push(`bridge: ${err instanceof Error ? err.message : String(err)}`);
   }
 
-  throw new Error(
-    `OPF daemon unreachable on loopback (${daemonUrlCandidates().join(', ')}, bridge): ${
-      lastError instanceof Error ? lastError.message : String(lastError)
-    }`
-  );
+  void lastError;
+  throw new Error(`OPF daemon unreachable on loopback — ${attempts.join(' | ')}`);
 }
 
 /**

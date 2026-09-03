@@ -47,6 +47,19 @@ fi
 mkdir -p "$LOG_DIR"
 chown -R "$TARGET_USER" "$LOG_DIR"
 
+# 2b. Persistent PyInstaller extraction dir (2026-09-03 fix). The daemon is a
+# PyInstaller --onefile binary that unpacks itself into $TMPDIR/_MEIxxxx at
+# launch. By default that lands in /var/folders/.../T, which macOS purges
+# of files not accessed for ~3 days. The daemon idle-unloads its model, and
+# the next cold-start lazily imports transformers modules that were never
+# touched since launch — they had been purged, so every /v1/detect returned
+# 500 "No such file or directory: .../_MEI.../modeling_deberta_v2.py" while
+# /v1/health still said ok. Pointing TMPDIR at a dir outside the purge zone
+# (the PyInstaller bootloader honours TMPDIR at runtime) fixes it.
+RUNTIME_TMP="$USER_HOME/Library/Application Support/FFLP/gliner-daemon/runtime-tmp"
+mkdir -p "$RUNTIME_TMP"
+chown -R "$TARGET_USER" "$USER_HOME/Library/Application Support/FFLP"
+
 # 3. Write launchd plist for the target user
 mkdir -p "$LAUNCH_AGENTS"
 chown "$TARGET_USER" "$LAUNCH_AGENTS"
@@ -76,6 +89,8 @@ cat > "$PLIST" <<EOF
     <string>1</string>
     <key>TRANSFORMERS_OFFLINE</key>
     <string>1</string>
+    <key>TMPDIR</key>
+    <string>$RUNTIME_TMP</string>
   </dict>
   <key>RunAtLoad</key>
   <true/>

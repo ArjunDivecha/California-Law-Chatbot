@@ -68,7 +68,7 @@ from typing import Any, Optional
 os.environ.setdefault('TRANSFORMERS_VERBOSITY', 'error')
 os.environ.setdefault('TOKENIZERS_PARALLELISM', 'false')
 
-VERSION = "0.1.0"
+VERSION = "0.1.1"
 DEFAULT_PORT = 47841
 DEFAULT_HTTPS_PORT = 47842
 IDLE_UNLOAD_SECONDS = 600
@@ -368,9 +368,36 @@ class GLiNERService:
         return True
 
 
+def _runtime_purged(exc: BaseException) -> bool:
+    """True when `exc` shows PyInstaller's unpacked runtime has been deleted
+    underneath us (2026-09-03 incident). macOS purges /var/folders/.../T of
+    files not accessed for ~3 days; after an idle-unload the next model
+    cold-start lazily imports modules that were never touched since launch
+    and fails with FileNotFoundError inside sys._MEIPASS. Nothing in-process
+    can recover — the files are gone — so the only correct move is to exit
+    and let launchd (KeepAlive) relaunch, which re-extracts the bundle."""
+    meipass = getattr(sys, "_MEIPASS", None)
+    if not meipass or not isinstance(exc, (FileNotFoundError, ModuleNotFoundError, ImportError)):
+        return False
+    return meipass in str(exc) or (
+        isinstance(exc, FileNotFoundError) and not os.path.isdir(meipass)
+    )
+
+
+def _exit_for_relaunch(reason: str) -> None:
+    logger.critical(f"PyInstaller runtime purged ({reason}) — exiting so launchd relaunches the daemon")
+    logging.shutdown()
+    os._exit(75)  # EX_TEMPFAIL; launchd KeepAlive restarts after ThrottleInterval
+
+
 def _idle_watcher(service: GLiNERService) -> None:
+    meipass = getattr(sys, "_MEIPASS", None)
     while True:
         time.sleep(IDLE_CHECK_INTERVAL_SECONDS)
+        # Cheap liveness check on the unpacked runtime itself: if the whole
+        # _MEI dir is gone, exit now rather than on the next user request.
+        if meipass and not os.path.isdir(meipass):
+            _exit_for_relaunch(f"{meipass} missing")
         try:
             service.maybe_unload()
         except Exception as e:
@@ -466,6 +493,8 @@ class GLiNERRequestHandler(BaseHTTPRequestHandler):
         except Exception as e:
             logger.exception(f"detect error: {e}")
             self._send_json(500, {"error": "internal_error", "message": str(e)})
+            if _runtime_purged(e):
+                _exit_for_relaunch(str(e))
 
 
 def _bridge_html() -> str:
