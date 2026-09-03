@@ -109,6 +109,34 @@ interface EngineHandle {
 
 let enginePromise: Promise<EngineHandle> | null = null;
 let loaded = false;
+
+// Inference serialization (2026-09-03 fix). onnxruntime-web's JSEP/WebGPU
+// backend is NOT reentrant: a second `session.run()` issued while one is
+// in flight throws `Error("Session already started")` (see
+// public/ort/ort-wasm-simd-threaded.jsep.mjs). In the app that happens
+// routinely — the live preview (useV2SanitizationPreview) fires
+// detectSpans on a keystroke debounce, and pressing Enter calls
+// tokenizeForWire → detectSpans while that preview run is still going.
+// The wire path is fail-closed by design, so the collision surfaced to
+// users as "gate · sanitizer_unavailable … Session already started" on
+// both the website and the desktop app. Every inference now goes through
+// this promise chain so at most one run is in flight per page.
+let inferenceTail: Promise<unknown> = Promise.resolve();
+function runExclusive<T>(fn: () => Promise<T>): Promise<T> {
+  const next = inferenceTail.then(fn, fn);
+  // Keep the chain alive regardless of outcome; errors propagate to the
+  // caller via `next`, never to the shared tail.
+  inferenceTail = next.then(() => undefined, () => undefined);
+  return next;
+}
+
+// Test-only: inject a fake engine so the serialization contract can be
+// exercised in Node without the 1 GB model. Pass null to restore.
+let engineOverride: EngineHandle | null = null;
+export function setEngineOverrideForTest(engine: EngineHandle | null): void {
+  engineOverride = engine;
+  if (engine) loaded = true;
+}
 let activeProvider: 'webgpu' | 'wasm' | null = null;
 let lastRequestAt: number | null = null;
 const startedAt = nowMs();
@@ -364,18 +392,22 @@ export function getActiveProvider(): 'webgpu' | 'wasm' | null {
  * caller can fail-closed (identical contract to opfClient.detectSpans).
  */
 export async function detectSpans(text: string, opts: DetectOptions = {}): Promise<DetectResult> {
-  const engine = await ensureEngine();
+  const engine = engineOverride ?? (await ensureEngine());
   if (!text || opts.warmupOnly) {
     return { spans: [], elapsedMs: 0, modelLoaded: loaded };
   }
   const t0 = nowMs();
-  const results = await engine.inference({
-    texts: [text],
-    entities: GLINER_LABELS,
-    flatNer: true,            // matches Python predict_entities default
-    threshold: DETECT_THRESHOLD,
-    multiLabel: false,
-  });
+  // Serialized — see runExclusive above. A caller that times out or is
+  // abandoned still lets the queue drain in order.
+  const results = await runExclusive(() =>
+    engine.inference({
+      texts: [text],
+      entities: GLINER_LABELS,
+      flatNer: true,            // matches Python predict_entities default
+      threshold: DETECT_THRESHOLD,
+      multiLabel: false,
+    })
+  );
   const elapsedMs = nowMs() - t0;
   lastRequestAt = nowMs();
 
