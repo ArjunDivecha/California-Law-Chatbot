@@ -68,3 +68,7 @@ evals/kimi-k3/.calibration-reports/
 # Desktop build artifacts: staged .app bundles and installer zips embed live API keys
 installer-pkg/stage-*/
 installer-pkg/*.zip
+
+# Local-only scratch: desktop installer backups and ad-hoc output
+installer-pkg/backup-*/
+output/
