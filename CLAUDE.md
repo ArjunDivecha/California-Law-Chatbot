@@ -40,7 +40,8 @@ Base: `/Users/arjundivecha/Dropbox/AAA Backup/A Working/California-Law-Chatbot`
 - `api/_lib/compliance/toolQueryGuard.ts` — last-mile outbound exfiltration guard (fail-closed: every branch defaults to `allowed:false`).
 - `api/_lib/tools/index.ts` — tool registry / `dispatchTool()`; per-tool try/catch returns `is_error` tool_results instead of throwing.
 - `api/_lib/httpGuard.ts` — Clerk auth (`requireUser`), CORS allowlist, session-ownership, rate limiting; shared by all agent routes.
-- `api/_lib/sessionStore.ts` — Upstash Redis wrapper: session messages/meta, tool-result cache, single-flight turn lock, rate-limit counter.
+- `api/_lib/sessionStore.ts` — Redis-shaped store wrapper (Turso/libSQL or Upstash): session messages/meta, tool-result cache, single-flight turn lock, rate-limit counter.
+- `api/_lib/libsqlKv.ts` — Turso/libSQL implementation of `SessionRedis` + `AuditSink` + `EnvelopeSink`; hosted twin of the desktop `sqliteKv.ts`. Test: `tests/libsqlKv.test.mjs` (local `file:` DB).
 - `api/_lib/approvedModels.ts` — counsel-approved Anthropic model allowlist; `assertApprovedModel` throws (fail-closed) on any non-listed id.
 - `api/_shared/sanitization/patterns.ts` — deterministic PII regexes (SSN, phone, card, `CA_DRIVER_LICENSE`, …); shared by both sanitizer pipelines.
 - `api/_shared/sanitization/index.ts` — `analyze()` span analyzer (the "analyze pipeline").
@@ -77,7 +78,7 @@ yarn dev:full           # dev:api + dev together                   (unverified t
 ## Data locations (absolute paths)
 
 - `…/California-Law-Chatbot/.env` — live secrets (ANTHROPIC, OPENAI, CLERK_SECRET_KEY, UPSTASH tokens, …). **Gitignored**; only `.env.example` is tracked. Do not commit `.env`, `.env.local`, `.env.local.bak-*`, or `archive-env-2026-07-01/` (all gitignored).
-- Sessions / metadata / audit / rate-limit — **Upstash Redis** (remote); key shapes in `api/_lib/sessionStore.ts`.
+- Sessions / metadata / audit / rate-limit — **Turso/libSQL** via `api/_lib/libsqlKv.ts` when `TURSO_DATABASE_URL` is set (2026-09-13; same five-table schema as the desktop app's `api/_lib/desktop/sqliteKv.ts`), else **Upstash Redis** `cal-law-chat-redis`. Key shapes in `api/_lib/sessionStore.ts`. Store selection is a config flip: `sessionStore.resolveRedis`, `auditLog.resolveSink`/`resolveEnvelopeSink`, and `api/chats.ts redis()` all check `libsqlConfigured()`. Migration script: `scripts/migrate-upstash-to-libsql.mjs`.
 - Sanitization token maps + local UX state — **browser IndexedDB** (encrypted store `api/_shared/sanitization/store.ts`).
 - Chat payload persistence — optional **Vercel Blob** via `api/chats.ts`.
 - Trap fixtures — `…/tests/traps/manifest-v1.json`. Test/smoke reports land in `…/reports/` (timestamped JSON).

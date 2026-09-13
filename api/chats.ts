@@ -12,6 +12,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { verifyToken } from '@clerk/backend';
 import { Redis } from '@upstash/redis';
+import { libsqlConfigured, getLibsqlKv } from './_lib/libsqlKv.js';
 import { put, del, get } from '@vercel/blob';
 import { randomUUID } from 'crypto';
 import type { ChatMessage } from '../types';
@@ -110,11 +111,25 @@ async function getUserId(req: VercelRequest): Promise<string> {
 
 // ─── REDIS + BLOB HELPERS ────────────────────────────────────────────────────
 
-function redis() {
+/** The subset of Redis this handler uses; satisfied by LibsqlKv and @upstash/redis. */
+interface ChatKv {
+  get(key: string): Promise<string | null>;
+  set(key: string, value: string): Promise<unknown>;
+  del(key: string): Promise<number>;
+  zadd(key: string, score_member: { score: number; member: string }): Promise<number | null>;
+  zrange(key: string, start: number, stop: number, opts?: { rev?: boolean }): Promise<string[]>;
+  zrem(key: string, ...members: string[]): Promise<number>;
+  zcard(key: string): Promise<number>;
+}
+
+// Same store selection as api/_lib/sessionStore.ts: Turso/libSQL when the
+// Marketplace integration is configured, otherwise Upstash Redis.
+function redis(): ChatKv {
+  if (libsqlConfigured()) return getLibsqlKv();
   return new Redis({
     url: process.env.UPSTASH_REDIS_REST_URL!,
     token: process.env.UPSTASH_REDIS_REST_TOKEN!,
-  });
+  }) as unknown as ChatKv;
 }
 
 interface ChatMeta {
@@ -140,8 +155,8 @@ function parseMessagesJson(input: string): ChatMessage[] | null {
   }
 }
 
-async function getMeta(kv: Redis, chatId: string): Promise<ChatMeta | null> {
-  const raw = await kv.get<string>(metaKey(chatId));
+async function getMeta(kv: ChatKv, chatId: string): Promise<ChatMeta | null> {
+  const raw = await kv.get(metaKey(chatId));
   if (!raw) return null;
   return JSON.parse(typeof raw === 'string' ? raw : JSON.stringify(raw)) as ChatMeta;
 }

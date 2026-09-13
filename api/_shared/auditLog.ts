@@ -18,6 +18,7 @@
 
 import { createCipheriv, createHmac, randomBytes } from 'node:crypto';
 import { Redis } from '@upstash/redis';
+import { libsqlConfigured, getLibsqlKv } from '../_lib/libsqlKv.js';
 
 export interface AuditRecord {
   timestamp: string;              // ISO-8601
@@ -77,6 +78,10 @@ export function setAuditSink(sink: AuditSink | null): void {
 function resolveSink(): AuditSink {
   if (injectedSink) return injectedSink;
   if (cachedSink) return cachedSink;
+  if (libsqlConfigured()) {
+    cachedSink = getLibsqlKv();
+    return cachedSink;
+  }
   const url = process.env.UPSTASH_REDIS_REST_URL;
   const token = process.env.UPSTASH_REDIS_REST_TOKEN;
   if (!url || !token) {
@@ -238,6 +243,10 @@ export interface EnvelopeSink {
 let envelopeSink: EnvelopeSink | null = null;
 function resolveEnvelopeSink(): EnvelopeSink | null {
   if (envelopeSink) return envelopeSink;
+  if (libsqlConfigured()) {
+    envelopeSink = getLibsqlKv();
+    return envelopeSink;
+  }
   const url = process.env.UPSTASH_REDIS_REST_URL;
   const token = process.env.UPSTASH_REDIS_REST_TOKEN;
   if (!url || !token) return null;

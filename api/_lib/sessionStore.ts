@@ -1,6 +1,7 @@
 /**
- * Session store for the V2 agent loop. Wraps Upstash Redis (REST) per
- * the schema documented in docs/upstash-kv-schema-v1.md (v1.0).
+ * Session store for the V2 agent loop. Wraps a Redis-shaped key/value
+ * store — Turso/libSQL (api/_lib/libsqlKv.ts, preferred when configured) or
+ * Upstash Redis (REST) — per the schema in docs/upstash-kv-schema-v1.md (v1.0).
  *
  * Owners + key shapes:
  *   session:{id}:messages          List (RPUSH) of JSON-stringified Anthropic-shape messages
@@ -13,6 +14,7 @@
  */
 
 import { Redis } from '@upstash/redis';
+import { libsqlConfigured, getLibsqlKv } from './libsqlKv.js';
 import type { MatterMode, ClientAiConsentStatus } from './compliance/policyEngine.js';
 
 // ---------------------------------------------------------------------------
@@ -46,7 +48,7 @@ export interface SessionRedis {
     stop: number,
     opts?: { rev?: boolean },
   ): Promise<string[]>;
-  zrem(key: string, member: string): Promise<number>;
+  zrem(key: string, ...members: string[]): Promise<number>;
   zcard(key: string): Promise<number>;
 }
 
@@ -69,11 +71,18 @@ export function getRedis(): SessionRedis {
 function resolveRedis(): SessionRedis {
   if (injected) return injected;
   if (cached) return cached;
+  // Store selection (2026-09-13): Turso/libSQL when the Marketplace
+  // integration has injected TURSO_DATABASE_URL — same schema as the desktop
+  // app's local SQLite store — otherwise the original Upstash Redis client.
+  if (libsqlConfigured()) {
+    cached = getLibsqlKv();
+    return cached;
+  }
   const url = process.env.UPSTASH_REDIS_REST_URL;
   const token = process.env.UPSTASH_REDIS_REST_TOKEN;
   if (!url || !token) {
     throw new Error(
-      'sessionStore: UPSTASH_REDIS_REST_URL / TOKEN not configured',
+      'sessionStore: neither TURSO_DATABASE_URL nor UPSTASH_REDIS_REST_URL / TOKEN configured',
     );
   }
   cached = new Redis({ url, token }) as unknown as SessionRedis;
