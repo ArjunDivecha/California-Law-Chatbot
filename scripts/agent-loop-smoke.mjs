@@ -17,7 +17,7 @@
  * Confirms session state was written to Upstash KV. Writes a smoke
  * report to reports/agent-loop-smoke-{date}.json.
  *
- * Env required: ANTHROPIC_API_KEY, OPENAI_API_KEY, UPSTASH_VECTOR_*,
+ * Env required: ANTHROPIC_API_KEY, OPENAI_API_KEY,
  * UPSTASH_REDIS_*, COURTLISTENER_API_KEY. Falls back to
  * /Users/arjundivecha/Dropbox/AAA Backup/.env.txt.
  *
@@ -41,8 +41,6 @@ function loadEnvFallback() {
   const required = [
     'ANTHROPIC_API_KEY',
     'OPENAI_API_KEY',
-    'UPSTASH_VECTOR_REST_URL',
-    'UPSTASH_VECTOR_REST_TOKEN',
     'UPSTASH_REDIS_REST_URL',
     'UPSTASH_REDIS_REST_TOKEN',
     'COURTLISTENER_API_KEY',

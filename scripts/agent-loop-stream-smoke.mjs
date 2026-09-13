@@ -25,8 +25,6 @@ function loadEnvFallback() {
   const required = [
     'ANTHROPIC_API_KEY',
     'OPENAI_API_KEY',
-    'UPSTASH_VECTOR_REST_URL',
-    'UPSTASH_VECTOR_REST_TOKEN',
     'UPSTASH_REDIS_REST_URL',
     'UPSTASH_REDIS_REST_TOKEN',
     'COURTLISTENER_API_KEY',

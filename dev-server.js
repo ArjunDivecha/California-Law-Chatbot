@@ -22,10 +22,6 @@ dotenv.config({ path: '.env.local', override: true }); // loads .env.local (over
   const required = [
     'ANTHROPIC_API_KEY',
     'OPENAI_API_KEY',
-    'UPSTASH_VECTOR_REST_URL',
-    'UPSTASH_VECTOR_REST_TOKEN',
-    'UPSTASH_REDIS_REST_URL',
-    'UPSTASH_REDIS_REST_TOKEN',
     'COURTLISTENER_API_KEY',
     'CITELAW_API_KEY',
     'BOX_CLIENT_ID',
@@ -162,7 +158,6 @@ app.listen(PORT, () => {
   console.log('  GOOGLE_API_KEY:', process.env.GOOGLE_API_KEY ? '✅ Set' : 'ℹ️ Not set');
   console.log('  GEMINI_API_KEY:', process.env.GEMINI_API_KEY ? '✅ Set' : 'ℹ️ Not set');
   console.log('  ANTHROPIC_API_KEY:', process.env.ANTHROPIC_API_KEY ? '✅ Set' : '❌ Missing');
-  console.log('  UPSTASH_VECTOR_REST_URL:', process.env.UPSTASH_VECTOR_REST_URL ? '✅ Set' : '❌ Missing');
   console.log('  COURTLISTENER_API_KEY:', process.env.COURTLISTENER_API_KEY ? '✅ Set' : '❌ Missing');
   console.log('  CITELAW_API_KEY:', process.env.CITELAW_API_KEY ? '✅ Set' : 'ℹ️ Not set (CourtListener fallback only)');
   console.log('');
