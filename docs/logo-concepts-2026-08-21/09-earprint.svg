@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" width="96" height="96">
+  <!-- DancingElephant concept 09 "Earprint" — concentric arcs reading as both an elephant ear and a fingerprint (on-device privacy). -->
+  <g fill="none" stroke-linecap="round" transform="rotate(-24 48 48)">
+    <path d="M70,18 A32,32 0 1 0 74,72" stroke="#7C5CFC" stroke-width="8"/>
+    <path d="M62,33 A17,17 0 1 0 65,60" stroke="#5C7CFC" stroke-width="8"/>
+    <path d="M55,44 A7,7 0 1 0 56,52" stroke="#2DD4BF" stroke-width="8"/>
+  </g>
+</svg>

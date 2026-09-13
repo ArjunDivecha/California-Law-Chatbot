@@ -1,0 +1,237 @@
+{
+ "batch": "B1",
+ "category": "verification",
+ "authored_at": "2026-07-27",
+ "note": "Lineage record for the 20 batch-B1 citation-verification tasks. No citation in this batch was invented or mutated by the authoring agent: every case citation is carried verbatim from tests/citation-eval-set.json, and every truth label comes from evals/kimi-k3/datasets/california-law-v1/revalidation/citation-revalidation-report.json. Negative/mismatch evidence for the fabricated and miscited entries comes from CourtListener official-reporter volume-index records ingested into sources.jsonl with source_id prefix CIT-INDEX-.",
+ "entries": [
+  {
+   "task_id": "verification-real-001",
+   "legacy_entry_id": "real-3",
+   "legacy_entry_text": "Geiser v. Kuhns (2022) 13 Cal.5th 1238",
+   "legacy_label": "real",
+   "revalidated_verdict": "confirmed",
+   "transformation": "none -- citation carried verbatim from tests/citation-eval-set.json",
+   "evidence_source_ids": [
+    "CIT-REAL-3"
+   ]
+  },
+  {
+   "task_id": "verification-real-002",
+   "legacy_entry_id": "real-7",
+   "legacy_entry_text": "Costco Wholesale Corp. v. Superior Court (2009) 47 Cal.4th 725",
+   "legacy_label": "real",
+   "revalidated_verdict": "confirmed",
+   "transformation": "none -- citation carried verbatim from tests/citation-eval-set.json",
+   "evidence_source_ids": [
+    "CIT-REAL-7"
+   ]
+  },
+  {
+   "task_id": "verification-real-003",
+   "legacy_entry_id": "real-8",
+   "legacy_entry_text": "Cembrook v. Superior Court (1961) 56 Cal.2d 423",
+   "legacy_label": "real",
+   "revalidated_verdict": "confirmed",
+   "transformation": "none -- citation carried verbatim from tests/citation-eval-set.json",
+   "evidence_source_ids": [
+    "CIT-REAL-8"
+   ]
+  },
+  {
+   "task_id": "verification-real-004",
+   "legacy_entry_id": "real-9",
+   "legacy_entry_text": "West Pico Furniture Co. v. Superior Court (1961) 56 Cal.2d 407",
+   "legacy_label": "real",
+   "revalidated_verdict": "confirmed",
+   "transformation": "none -- citation carried verbatim from tests/citation-eval-set.json",
+   "evidence_source_ids": [
+    "CIT-REAL-9"
+   ]
+  },
+  {
+   "task_id": "verification-real-005",
+   "legacy_entry_id": "real-10",
+   "legacy_entry_text": "Bridgestone/Firestone, Inc. v. Superior Court (1992) 7 Cal.App.4th 1384",
+   "legacy_label": "real",
+   "revalidated_verdict": "confirmed",
+   "transformation": "none -- citation carried verbatim from tests/citation-eval-set.json",
+   "evidence_source_ids": [
+    "CIT-REAL-10"
+   ]
+  },
+  {
+   "task_id": "verification-real-006",
+   "legacy_entry_id": "real-12",
+   "legacy_entry_text": "In re Marriage of Lippel (1990) 51 Cal.3d 1160",
+   "legacy_label": "real",
+   "revalidated_verdict": "confirmed",
+   "transformation": "none -- citation carried verbatim from tests/citation-eval-set.json",
+   "evidence_source_ids": [
+    "CIT-REAL-12"
+   ]
+  },
+  {
+   "task_id": "verification-real-007",
+   "legacy_entry_id": "real-13",
+   "legacy_entry_text": "Briggs v. Eden Council for Hope & Opportunity (1999) 19 Cal.4th 1106",
+   "legacy_label": "real",
+   "revalidated_verdict": "confirmed",
+   "transformation": "none -- citation carried verbatim from tests/citation-eval-set.json",
+   "evidence_source_ids": [
+    "CIT-REAL-13"
+   ]
+  },
+  {
+   "task_id": "verification-real-008",
+   "legacy_entry_id": "real-15",
+   "legacy_entry_text": "Wilson v. Cable News Network, Inc. (2019) 7 Cal.5th 871",
+   "legacy_label": "real",
+   "revalidated_verdict": "confirmed",
+   "transformation": "none -- citation carried verbatim from tests/citation-eval-set.json",
+   "evidence_source_ids": [
+    "CIT-REAL-15"
+   ]
+  },
+  {
+   "task_id": "verification-real-009",
+   "legacy_entry_id": "real-18",
+   "legacy_entry_text": "FilmOn.com Inc. v. DoubleVerify Inc. (2019) 7 Cal.5th 133",
+   "legacy_label": "real",
+   "revalidated_verdict": "confirmed",
+   "transformation": "none -- citation carried verbatim from tests/citation-eval-set.json",
+   "evidence_source_ids": [
+    "CIT-REAL-18"
+   ]
+  },
+  {
+   "task_id": "verification-real-010",
+   "legacy_entry_id": "real-19",
+   "legacy_entry_text": "Baral v. Schnitt (2016) 1 Cal.5th 376",
+   "legacy_label": "real",
+   "revalidated_verdict": "confirmed",
+   "transformation": "none -- citation carried verbatim from tests/citation-eval-set.json",
+   "evidence_source_ids": [
+    "CIT-REAL-19"
+   ]
+  },
+  {
+   "task_id": "verification-fabricated-001",
+   "legacy_entry_id": "fake-1",
+   "legacy_entry_text": "Hendricks v. California Probate Bureau (2019) 7 Cal.5th 904",
+   "legacy_label": "fake",
+   "revalidated_verdict": "confirmed",
+   "transformation": "none -- fabricated citation carried verbatim from tests/citation-eval-set.json; the label was revalidated against primary/official-reporter index sources, not invented by the authoring agent",
+   "actual_occupant_of_cited_page": "Wilson v. Cable News Network",
+   "evidence_source_ids": [
+    "CIT-INDEX-CAL-5TH-7"
+   ]
+  },
+  {
+   "task_id": "verification-fabricated-002",
+   "legacy_entry_id": "fake-2",
+   "legacy_entry_text": "Foster v. State Bar (1987) 43 Cal.3d 421",
+   "legacy_label": "fake",
+   "revalidated_verdict": "confirmed",
+   "transformation": "none -- fabricated citation carried verbatim from tests/citation-eval-set.json; the label was revalidated against primary/official-reporter index sources, not invented by the authoring agent",
+   "actual_occupant_of_cited_page": "People v. Bloyd",
+   "evidence_source_ids": [
+    "CIT-INDEX-CAL-3D-43"
+   ]
+  },
+  {
+   "task_id": "verification-fabricated-003",
+   "legacy_entry_id": "fake-3",
+   "legacy_entry_text": "In re Estate of Markham (2014) 228 Cal.App.4th 1399",
+   "legacy_label": "fake",
+   "revalidated_verdict": "confirmed",
+   "transformation": "none -- fabricated citation carried verbatim from tests/citation-eval-set.json; the label was revalidated against primary/official-reporter index sources, not invented by the authoring agent",
+   "actual_occupant_of_cited_page": "People v. J.C.",
+   "evidence_source_ids": [
+    "CIT-INDEX-CAL-APP-4TH-228"
+   ]
+  },
+  {
+   "task_id": "verification-fabricated-004",
+   "legacy_entry_id": "fake-5",
+   "legacy_entry_text": "Hernandez v. California Coastal Commission (1998) 18 Cal.4th 1107",
+   "legacy_label": "fake",
+   "revalidated_verdict": "confirmed",
+   "transformation": "none -- fabricated citation carried verbatim from tests/citation-eval-set.json; the label was revalidated against primary/official-reporter index sources, not invented by the authoring agent",
+   "actual_occupant_of_cited_page": "Broadman",
+   "evidence_source_ids": [
+    "CIT-INDEX-CAL-4TH-18"
+   ]
+  },
+  {
+   "task_id": "verification-fabricated-005",
+   "legacy_entry_id": "fake-6",
+   "legacy_entry_text": "In re Marriage of Aspen (2011) 195 Cal.App.4th 542",
+   "legacy_label": "fake",
+   "revalidated_verdict": "confirmed",
+   "transformation": "none -- fabricated citation carried verbatim from tests/citation-eval-set.json; the label was revalidated against primary/official-reporter index sources, not invented by the authoring agent",
+   "actual_occupant_of_cited_page": "Haro v. City of Solana Beach",
+   "evidence_source_ids": [
+    "CIT-INDEX-CAL-APP-4TH-195"
+   ]
+  },
+  {
+   "task_id": "verification-fabricated-006",
+   "legacy_entry_id": "fake-7",
+   "legacy_entry_text": "Volk v. San Diego Trust Co. (1994) 8 Cal.4th 217",
+   "legacy_label": "fake",
+   "revalidated_verdict": "confirmed",
+   "transformation": "none -- fabricated citation carried verbatim from tests/citation-eval-set.json; the label was revalidated against primary/official-reporter index sources, not invented by the authoring agent",
+   "actual_occupant_of_cited_page": "Garamendi",
+   "evidence_source_ids": [
+    "CIT-INDEX-CAL-4TH-8"
+   ]
+  },
+  {
+   "task_id": "verification-fabricated-007",
+   "legacy_entry_id": "fake-8",
+   "legacy_entry_text": "Goldman v. Department of Industrial Relations (2008) 159 Cal.App.4th 1281",
+   "legacy_label": "fake",
+   "revalidated_verdict": "confirmed",
+   "transformation": "none -- fabricated citation carried verbatim from tests/citation-eval-set.json; the label was revalidated against primary/official-reporter index sources, not invented by the authoring agent",
+   "actual_occupant_of_cited_page": "2000 Jeep Cherokee",
+   "evidence_source_ids": [
+    "CIT-INDEX-CAL-APP-4TH-159"
+   ]
+  },
+  {
+   "task_id": "verification-fabricated-008",
+   "legacy_entry_id": "fake-9",
+   "legacy_entry_text": "Bell v. Bayside Restaurant Group (2017) 11 Cal.5th 332",
+   "legacy_label": "fake",
+   "revalidated_verdict": "confirmed",
+   "transformation": "none -- fabricated citation carried verbatim from tests/citation-eval-set.json; the label was revalidated against primary/official-reporter index sources, not invented by the authoring agent",
+   "actual_occupant_of_cited_page": "Steskal",
+   "evidence_source_ids": [
+    "CIT-INDEX-CAL-5TH-11"
+   ]
+  },
+  {
+   "task_id": "verification-edge-001",
+   "legacy_entry_id": "real-11",
+   "legacy_entry_text": "Estate of Williams (1968) 269 Cal.App.2d 671",
+   "legacy_label": "real",
+   "revalidated_verdict": "contradicted",
+   "transformation": "none -- citation carried verbatim from tests/citation-eval-set.json; the legacy 'real' label was contradicted on revalidation (case name and reporter citation do not match), so the task is authored as a miscitation task",
+   "actual_occupant_of_cited_page": "People v. Timmons",
+   "evidence_source_ids": [
+    "CIT-INDEX-CAL-APP-2D-269"
+   ]
+  },
+  {
+   "task_id": "verification-edge-002",
+   "legacy_entry_id": null,
+   "legacy_entry_text": null,
+   "legacy_label": null,
+   "revalidated_verdict": null,
+   "transformation": "none -- authority-status task grounded directly in the official Judicial Council rule text fetched from courts.ca.gov; no citation distractor involved",
+   "evidence_source_ids": [
+    "CRC-8-1115"
+   ]
+  }
+ ]
+}

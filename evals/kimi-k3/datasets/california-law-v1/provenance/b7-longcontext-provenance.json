@@ -1,0 +1,880 @@
+{
+  "batch": "B7",
+  "category": "long_context",
+  "task_ids": [
+    "longcontext-001",
+    "longcontext-002",
+    "longcontext-003",
+    "longcontext-004",
+    "longcontext-005",
+    "longcontext-006",
+    "longcontext-007",
+    "longcontext-008",
+    "longcontext-009",
+    "longcontext-010"
+  ],
+  "builder": {
+    "script": "evals/kimi-k3/datasets/california-law-v1/provenance/b7-builder.mjs",
+    "modules": [
+      "provenance/b7-builder-lib.mjs",
+      "provenance/b7-lib-pools.mjs",
+      "provenance/b7-specs-a.mjs",
+      "provenance/b7-specs-b.mjs"
+    ],
+    "prng": "mulberry32",
+    "seed": 20260727,
+    "per_task_seed_formula": "SEED + 7919 * task_index",
+    "deterministic": true,
+    "note": "Re-running the builder with the same seed reproduces every packet byte for byte. No Date.now(), no Math.random(), no network access."
+  },
+  "new_source_records": [],
+  "source_policy": "Zero new source records. Every proposition excerpt is a programmatic verbatim (whitespace-normalized) slice of an already-registered official leginfo Family Code record; the builder throws rather than paraphrase. B8a constraint respected: no aggregator-hosted case excerpt is used anywhere in this batch.",
+  "data_class": "synthetic",
+  "synthetic_notice": "All parties, counsel, firms, courts, departments, case numbers, account numbers, exhibits, dates, transactions, and events in every packet are invented for evaluation purposes.",
+  "totals": {
+    "tasks": 10,
+    "packet_words_total": 399771,
+    "packet_words_min": 27601,
+    "packet_words_max": 56318,
+    "criteria_total": 46,
+    "propositions_total": 42
+  },
+  "tasks": [
+    {
+      "task_id": "longcontext-001",
+      "anchor": "FAM 771(a) post-separation earnings; FAM 760; FAM 770(a)(2)-(3); operative date of separation buried in a stipulation and order",
+      "task_seed": 20260727,
+      "packet_words": 27601,
+      "packet_characters": 200034,
+      "turn_characters": 201274,
+      "section_plan": [
+        {
+          "kind": "exhibits",
+          "label": null,
+          "target_words": 2200,
+          "insert_depths": [
+            0.34
+          ]
+        },
+        {
+          "kind": "correspondence",
+          "label": null,
+          "target_words": 6800,
+          "insert_depths": [
+            0.09
+          ]
+        },
+        {
+          "kind": "declaration",
+          "label": null,
+          "target_words": 4200,
+          "insert_depths": [
+            0.62
+          ]
+        },
+        {
+          "kind": "billing",
+          "label": null,
+          "target_words": 3600,
+          "insert_depths": []
+        },
+        {
+          "kind": "ledger",
+          "label": "ACCOUNT LEDGER DETAIL — MERIDIAN CREDIT UNION ACCOUNT NO. xxxx-7731 (PETITIONER, SOLE NAME)",
+          "target_words": 3200,
+          "insert_depths": [
+            0.42
+          ]
+        },
+        {
+          "kind": "depo",
+          "label": null,
+          "target_words": 2600,
+          "insert_depths": []
+        },
+        {
+          "kind": "discovery",
+          "label": null,
+          "target_words": 1800,
+          "insert_depths": []
+        },
+        {
+          "kind": "minutes",
+          "label": null,
+          "target_words": 900,
+          "insert_depths": [
+            0.5
+          ]
+        },
+        {
+          "kind": "emails",
+          "label": null,
+          "target_words": 700,
+          "insert_depths": []
+        }
+      ],
+      "buried_operative_facts": [
+        "Stipulation and Order entered November 14, 2023 fixing the date of separation as October 17, 2022 (buried in the minute-order section at depth ~0.95 of the packet)",
+        "Kestrel Bridge Advisory LLC consulting engagement commenced November 1, 2022; no services performed before that date; $18,400 monthly (ledger section, depth ~0.69)",
+        "Condominium at 2280 Sparrowgrass Court inherited by will in 2019, distributed August 30, 2019, rented since October 2019 for $2,950 per month (declaration section, depth ~0.44)"
+      ],
+      "distractor_facts": [
+        "February 3, 2021 date of separation pleaded in the original FL-100 and asserted in correspondence item 004A, expressly superseded and withdrawn by the stipulation"
+      ],
+      "source_ids": [
+        "STAT-CAL-FAM-CODE-760",
+        "STAT-CAL-FAM-CODE-770",
+        "STAT-CAL-FAM-CODE-771"
+      ],
+      "criteria_count": 4,
+      "proposition_count": 3
+    },
+    {
+      "task_id": "longcontext-002",
+      "anchor": "FAM 2640(a)-(b) separate-property reimbursement traced through a buried escrow settlement statement",
+      "task_seed": 20268646,
+      "packet_words": 31237,
+      "packet_characters": 232348,
+      "turn_characters": 233623,
+      "section_plan": [
+        {
+          "kind": "correspondence",
+          "label": null,
+          "target_words": 7200,
+          "insert_depths": []
+        },
+        {
+          "kind": "exhibits",
+          "label": null,
+          "target_words": 2600,
+          "insert_depths": []
+        },
+        {
+          "kind": "billing",
+          "label": null,
+          "target_words": 4200,
+          "insert_depths": []
+        },
+        {
+          "kind": "declaration",
+          "label": null,
+          "target_words": 4600,
+          "insert_depths": [
+            0.5
+          ]
+        },
+        {
+          "kind": "ledger",
+          "label": "ACCOUNT LEDGER DETAIL — HARBOR UNION JOINT CHECKING NO. xxxx-2214",
+          "target_words": 5200,
+          "insert_depths": [
+            0.72
+          ]
+        },
+        {
+          "kind": "depo",
+          "label": null,
+          "target_words": 3400,
+          "insert_depths": []
+        },
+        {
+          "kind": "discovery",
+          "label": null,
+          "target_words": 2000,
+          "insert_depths": []
+        },
+        {
+          "kind": "minutes",
+          "label": null,
+          "target_words": 800,
+          "insert_depths": []
+        }
+      ],
+      "buried_operative_facts": [
+        "Escrow No. 24-118804 excerpt showing a $187,450.00 wire from premarital sole-name Coastline Savings account no. xxxx-3390, with escrow-holder certification of the source (ledger section, depth ~0.72)",
+        "$61,200.00 second wire from the Harbor Union joint account funded exclusively by post-marriage employment earnings",
+        "Post-closing payments: $296,411.08 mortgage interest, $118,940.22 principal reduction, $131,802.55 property taxes, $22,614.90 insurance, $46,308.71 maintenance",
+        "Declaration paragraphs 51A-51B: no written waiver of reimbursement exists anywhere in the file (declaration section, depth ~0.50)"
+      ],
+      "distractor_facts": [
+        "Total buyer funds of $248,650.00, which a careless reading would treat as the reimbursable contribution",
+        "The large community mortgage-interest, tax, insurance, and maintenance figures, which section 2640(a) expressly excludes from contributions to acquisition"
+      ],
+      "source_ids": [
+        "STAT-CAL-FAM-CODE-2640",
+        "STAT-CAL-FAM-CODE-760"
+      ],
+      "criteria_count": 4,
+      "proposition_count": 3
+    },
+    {
+      "task_id": "longcontext-003",
+      "anchor": "FAM 4058(a)(1) inclusions and 4058(c) exclusions applied to income items scattered across buried schedules",
+      "task_seed": 20276565,
+      "packet_words": 35882,
+      "packet_characters": 265495,
+      "turn_characters": 266714,
+      "section_plan": [
+        {
+          "kind": "exhibits",
+          "label": null,
+          "target_words": 3000,
+          "insert_depths": []
+        },
+        {
+          "kind": "billing",
+          "label": null,
+          "target_words": 5200,
+          "insert_depths": []
+        },
+        {
+          "kind": "correspondence",
+          "label": null,
+          "target_words": 7600,
+          "insert_depths": [
+            0.22
+          ]
+        },
+        {
+          "kind": "declaration",
+          "label": null,
+          "target_words": 5000,
+          "insert_depths": []
+        },
+        {
+          "kind": "ledger",
+          "label": null,
+          "target_words": 5400,
+          "insert_depths": []
+        },
+        {
+          "kind": "discovery",
+          "label": null,
+          "target_words": 3200,
+          "insert_depths": [
+            0.66
+          ]
+        },
+        {
+          "kind": "depo",
+          "label": null,
+          "target_words": 3400,
+          "insert_depths": []
+        },
+        {
+          "kind": "minutes",
+          "label": null,
+          "target_words": 1000,
+          "insert_depths": []
+        },
+        {
+          "kind": "emails",
+          "label": null,
+          "target_words": 800,
+          "insert_depths": []
+        }
+      ],
+      "buried_operative_facts": [
+        "Schedule C lines C-1 through C-6 with the six itemized amounts (interrogatory-response section, depth ~0.66)",
+        "Line C-5 county general assistance of $4,800.00, eligibility based on a determination of financial need",
+        "Line C-6 child support of $14,400.00 actually received for a child of a prior relationship who is not a child of this proceeding",
+        "Preparer note establishing that $214,000.00 supersedes the earlier $186,000.00 base salary"
+      ],
+      "distractor_facts": [
+        "The superseded $186,000.00 base salary stated in the original Income and Expense Declaration and in correspondence item 018A at depth ~0.22"
+      ],
+      "source_ids": [
+        "STAT-CAL-FAM-CODE-4058"
+      ],
+      "criteria_count": 5,
+      "proposition_count": 3
+    },
+    {
+      "task_id": "longcontext-004",
+      "anchor": "FAM 4320(a)-(b), (c), (f), (i)(4) spousal-support factors spread through buried declaration paragraphs",
+      "task_seed": 20284484,
+      "packet_words": 44519,
+      "packet_characters": 324742,
+      "turn_characters": 325959,
+      "section_plan": [
+        {
+          "kind": "exhibits",
+          "label": null,
+          "target_words": 3600,
+          "insert_depths": [
+            0.18
+          ]
+        },
+        {
+          "kind": "billing",
+          "label": null,
+          "target_words": 6200,
+          "insert_depths": []
+        },
+        {
+          "kind": "correspondence",
+          "label": null,
+          "target_words": 9800,
+          "insert_depths": []
+        },
+        {
+          "kind": "ledger",
+          "label": null,
+          "target_words": 6400,
+          "insert_depths": []
+        },
+        {
+          "kind": "declaration",
+          "label": "DECLARATION OF BEATRIZ OYELOWO-KRISHNAMURTHY IN SUPPORT OF REQUEST FOR ORDER — CONTINUED PARAGRAPHS",
+          "target_words": 8600,
+          "insert_depths": [
+            0.28,
+            0.55,
+            0.86
+          ]
+        },
+        {
+          "kind": "depo",
+          "label": null,
+          "target_words": 4200,
+          "insert_depths": []
+        },
+        {
+          "kind": "discovery",
+          "label": null,
+          "target_words": 2600,
+          "insert_depths": []
+        },
+        {
+          "kind": "minutes",
+          "label": null,
+          "target_words": 1000,
+          "insert_depths": []
+        },
+        {
+          "kind": "emails",
+          "label": null,
+          "target_words": 800,
+          "insert_depths": []
+        }
+      ],
+      "buried_operative_facts": [
+        "Date of marriage June 8, 1999 confirmed by certified Certificate of Registry of Marriage; date of separation January 30, 2024 (declaration insert, depth ~0.28 of the declaration section)",
+        "Petitioner left nursing in 2003 to devote time to domestic duties; license lapsed 2008; nine-month refresher program costing $18,400 and roughly two years to entry-level wage (declaration insert, depth ~0.55)",
+        "Petitioner worked full time and paid Respondent’s dental school tuition 1999-2003; Respondent licensed 2004 (declaration insert, depth ~0.55)",
+        "September 12, 2019 restraining order after hearing under Family Code section 6340 following a contested evidentiary hearing, on findings of intentionally caused bodily injury (declaration insert, depth ~0.86)"
+      ],
+      "distractor_facts": [
+        "Originally filed FL-100 reciting a June 8, 2009 date of marriage, corrected by the Amended Petition and the certified marriage certificate (exhibit insert, depth ~0.18)"
+      ],
+      "source_ids": [
+        "STAT-CAL-FAM-CODE-4320",
+        "STAT-CAL-FAM-CODE-4320-B"
+      ],
+      "criteria_count": 5,
+      "proposition_count": 5
+    },
+    {
+      "task_id": "longcontext-005",
+      "anchor": "FAM 3044(a)-(b), (f)(2) custody presumption triggered by a DVRO finding buried in the minute-order section",
+      "task_seed": 20292403,
+      "packet_words": 29795,
+      "packet_characters": 215789,
+      "turn_characters": 217170,
+      "section_plan": [
+        {
+          "kind": "correspondence",
+          "label": null,
+          "target_words": 7000,
+          "insert_depths": []
+        },
+        {
+          "kind": "declaration",
+          "label": null,
+          "target_words": 5200,
+          "insert_depths": [
+            0.4
+          ]
+        },
+        {
+          "kind": "exhibits",
+          "label": null,
+          "target_words": 2400,
+          "insert_depths": []
+        },
+        {
+          "kind": "billing",
+          "label": null,
+          "target_words": 4000,
+          "insert_depths": []
+        },
+        {
+          "kind": "ledger",
+          "label": null,
+          "target_words": 2800,
+          "insert_depths": []
+        },
+        {
+          "kind": "depo",
+          "label": null,
+          "target_words": 3000,
+          "insert_depths": []
+        },
+        {
+          "kind": "discovery",
+          "label": null,
+          "target_words": 2000,
+          "insert_depths": []
+        },
+        {
+          "kind": "minutes",
+          "label": null,
+          "target_words": 1400,
+          "insert_depths": [
+            0.25,
+            0.78
+          ]
+        },
+        {
+          "kind": "emails",
+          "label": null,
+          "target_words": 900,
+          "insert_depths": []
+        }
+      ],
+      "buried_operative_facts": [
+        "March 6, 2023 Findings and Order After Hearing in Case No. 23-DV-00418 expressly finding that Respondent perpetrated domestic violence, made on evidence received at a contested hearing and not on a custody evaluator’s conclusions (minute-order section, depth ~0.78)",
+        "Respondent seeks joint legal and joint physical custody and relies on an April 3, 2025 batterer’s intervention program completion certificate (declaration section, depth ~0.40)"
+      ],
+      "distractor_facts": [
+        "November 2, 2021 denial of an unrelated civil harassment petition for failure to appear, which expressly makes no findings of abuse (minute-order section, depth ~0.25)"
+      ],
+      "source_ids": [
+        "STAT-CAL-FAM-CODE-3044",
+        "STAT-CAL-FAM-CODE-3044-B"
+      ],
+      "criteria_count": 5,
+      "proposition_count": 5
+    },
+    {
+      "task_id": "longcontext-006",
+      "anchor": "FAM 1615(a)(1), (c), (c)(1), (c)(2)(B) premarital agreement execution timeline buried in a correspondence file",
+      "task_seed": 20300322,
+      "packet_words": 51652,
+      "packet_characters": 374381,
+      "turn_characters": 375684,
+      "section_plan": [
+        {
+          "kind": "exhibits",
+          "label": null,
+          "target_words": 4200,
+          "insert_depths": []
+        },
+        {
+          "kind": "billing",
+          "label": null,
+          "target_words": 7200,
+          "insert_depths": []
+        },
+        {
+          "kind": "correspondence",
+          "label": "CORRESPONDENCE FILE — PREMARITAL AGREEMENT NEGOTIATION AND LITIGATION",
+          "target_words": 14000,
+          "insert_depths": [
+            0.2,
+            0.63,
+            0.79
+          ]
+        },
+        {
+          "kind": "declaration",
+          "label": null,
+          "target_words": 8600,
+          "insert_depths": []
+        },
+        {
+          "kind": "ledger",
+          "label": null,
+          "target_words": 6000,
+          "insert_depths": []
+        },
+        {
+          "kind": "depo",
+          "label": null,
+          "target_words": 5200,
+          "insert_depths": []
+        },
+        {
+          "kind": "discovery",
+          "label": null,
+          "target_words": 3200,
+          "insert_depths": []
+        },
+        {
+          "kind": "minutes",
+          "label": null,
+          "target_words": 1200,
+          "insert_depths": []
+        },
+        {
+          "kind": "emails",
+          "label": null,
+          "target_words": 900,
+          "insert_depths": []
+        }
+      ],
+      "buried_operative_facts": [
+        "FINAL EXECUTION VERSION first presented September 12, 2023 at 4:47 p.m., with substantive changes to Articles 7 and 11 (correspondence section, depth ~0.63)",
+        "Agreement signed September 18, 2023 per the notary journal excerpt, six calendar days after first presentation (correspondence section, depth ~0.79)",
+        "Advisement to seek independent legal counsel given in writing on September 12, 2023, the same day the final agreement was presented",
+        "No separate writing waiving representation by independent legal counsel and no writing memorializing the rights relinquished exists anywhere in the file"
+      ],
+      "distractor_facts": [
+        "Draft Version 3 circulated August 2, 2023, expressly labelled not final and superseded by substantive changes (correspondence section, depth ~0.20)"
+      ],
+      "source_ids": [
+        "STAT-CAL-FAM-CODE-1615"
+      ],
+      "criteria_count": 5,
+      "proposition_count": 5
+    },
+    {
+      "task_id": "longcontext-007",
+      "anchor": "FAM 2102(a)(1)-(2), 1100(b), 721(b) post-separation fiduciary duties applied to buried transactions",
+      "task_seed": 20308241,
+      "packet_words": 40277,
+      "packet_characters": 296983,
+      "turn_characters": 298283,
+      "section_plan": [
+        {
+          "kind": "correspondence",
+          "label": null,
+          "target_words": 8600,
+          "insert_depths": []
+        },
+        {
+          "kind": "exhibits",
+          "label": null,
+          "target_words": 3400,
+          "insert_depths": [
+            0.55
+          ]
+        },
+        {
+          "kind": "billing",
+          "label": null,
+          "target_words": 5600,
+          "insert_depths": []
+        },
+        {
+          "kind": "declaration",
+          "label": null,
+          "target_words": 5800,
+          "insert_depths": []
+        },
+        {
+          "kind": "ledger",
+          "label": "ACCOUNT LEDGER DETAIL — HARBORLINE SYSTEMS LLC OPERATING ACCOUNT AND PARTY ACCOUNTS",
+          "target_words": 6400,
+          "insert_depths": [
+            0.83
+          ]
+        },
+        {
+          "kind": "depo",
+          "label": null,
+          "target_words": 4400,
+          "insert_depths": []
+        },
+        {
+          "kind": "discovery",
+          "label": null,
+          "target_words": 2800,
+          "insert_depths": []
+        },
+        {
+          "kind": "minutes",
+          "label": null,
+          "target_words": 1200,
+          "insert_depths": []
+        },
+        {
+          "kind": "emails",
+          "label": null,
+          "target_words": 900,
+          "insert_depths": []
+        }
+      ],
+      "buried_operative_facts": [
+        "Stipulated date of separation February 14, 2024 (ledger-section extract, depth ~0.83)",
+        "June 27, 2024 assignment of a 40% community membership interest appraised at $1,410,000.00 to the respondent’s brother for $1.00, recited in part as a gift, with no written spousal consent",
+        "May 3, 2024 rollover equity opportunity arising from a November 2021 engagement begun during the marriage, subscribed May 22, 2024, with no written disclosure to the petitioner"
+      ],
+      "distractor_facts": [
+        "March 3, 2023 assignment of a 5% interest for $84,000.00 that predates separation and carries the petitioner’s endorsed written consent (exhibit insert, depth ~0.55)"
+      ],
+      "source_ids": [
+        "STAT-CAL-FAM-CODE-1100",
+        "STAT-CAL-FAM-CODE-2102",
+        "STAT-CAL-FAM-CODE-721"
+      ],
+      "criteria_count": 4,
+      "proposition_count": 4
+    },
+    {
+      "task_id": "longcontext-008",
+      "anchor": "FAM 7613(a)(1)-(2), (b)(1), (b)(2)(A) assisted-reproduction consent documents buried in an exhibit and declaration file",
+      "task_seed": 20316160,
+      "packet_words": 34289,
+      "packet_characters": 248092,
+      "turn_characters": 249432,
+      "section_plan": [
+        {
+          "kind": "billing",
+          "label": null,
+          "target_words": 4600,
+          "insert_depths": []
+        },
+        {
+          "kind": "correspondence",
+          "label": null,
+          "target_words": 7800,
+          "insert_depths": []
+        },
+        {
+          "kind": "exhibits",
+          "label": null,
+          "target_words": 3200,
+          "insert_depths": [
+            0.7
+          ]
+        },
+        {
+          "kind": "declaration",
+          "label": null,
+          "target_words": 5200,
+          "insert_depths": [
+            0.86
+          ]
+        },
+        {
+          "kind": "ledger",
+          "label": null,
+          "target_words": 4200,
+          "insert_depths": []
+        },
+        {
+          "kind": "depo",
+          "label": null,
+          "target_words": 3800,
+          "insert_depths": []
+        },
+        {
+          "kind": "discovery",
+          "label": null,
+          "target_words": 2400,
+          "insert_depths": []
+        },
+        {
+          "kind": "minutes",
+          "label": null,
+          "target_words": 1000,
+          "insert_depths": []
+        },
+        {
+          "kind": "emails",
+          "label": null,
+          "target_words": 800,
+          "insert_depths": []
+        }
+      ],
+      "buried_operative_facts": [
+        "April 29, 2022 Known Donor Agreement signed before conception by the donor and the woman conceiving, providing that the donor shall not be a parent (exhibit section, depth ~0.70)",
+        "May 4, 2022 written consent to assisted reproduction signed before conception by the woman conceiving and by the intended parent spouse (exhibit section, depth ~0.70)",
+        "Semen provided directly to the parties at home and not provided to a licensed physician and surgeon or to a licensed sperm bank; insemination performed at home (declaration section, depth ~0.86)"
+      ],
+      "distractor_facts": [
+        "A 2025 intake questionnaire stating that Golden Gate Cryobank was used, expressly corrected in the declaration as wrong"
+      ],
+      "source_ids": [
+        "STAT-CAL-FAM-CODE-7613"
+      ],
+      "criteria_count": 4,
+      "proposition_count": 4
+    },
+    {
+      "task_id": "longcontext-009",
+      "anchor": "FAM 2337(a)-(b), (c)(2), (c)(5), (c)(8) bifurcation of marital status and the conditions checklist",
+      "task_seed": 20324079,
+      "packet_words": 48201,
+      "packet_characters": 352135,
+      "turn_characters": 353472,
+      "section_plan": [
+        {
+          "kind": "exhibits",
+          "label": null,
+          "target_words": 4400,
+          "insert_depths": []
+        },
+        {
+          "kind": "correspondence",
+          "label": null,
+          "target_words": 10200,
+          "insert_depths": [
+            0.35
+          ]
+        },
+        {
+          "kind": "billing",
+          "label": null,
+          "target_words": 7200,
+          "insert_depths": []
+        },
+        {
+          "kind": "ledger",
+          "label": null,
+          "target_words": 6800,
+          "insert_depths": []
+        },
+        {
+          "kind": "declaration",
+          "label": null,
+          "target_words": 8200,
+          "insert_depths": [
+            0.31,
+            0.68
+          ]
+        },
+        {
+          "kind": "depo",
+          "label": null,
+          "target_words": 5000,
+          "insert_depths": []
+        },
+        {
+          "kind": "discovery",
+          "label": null,
+          "target_words": 2800,
+          "insert_depths": []
+        },
+        {
+          "kind": "minutes",
+          "label": null,
+          "target_words": 1200,
+          "insert_depths": []
+        },
+        {
+          "kind": "emails",
+          "label": null,
+          "target_words": 900,
+          "insert_depths": []
+        }
+      ],
+      "buried_operative_facts": [
+        "Proof of service showing the preliminary declaration of disclosure with a completed schedule of assets and debts was served with the noticed motion on August 15, 2025, and that no written stipulation to defer service exists (declaration section, depth ~0.31)",
+        "Petitioner is a named dependent on Respondent’s employer group health and medical plan with no coverage of her own (declaration section, depth ~0.68)",
+        "Petitioner is the contingent survivor annuitant under Respondent’s defined benefit plan and her survivor election rights terminate on entry of a status judgment unless the court orders otherwise",
+        "Respondent holds a Cobblestone Trust IRA in which the community has an interest, plus a nonprobate transfer account"
+      ],
+      "distractor_facts": [
+        "July 30, 2025 correspondence asserting that no preliminary declaration of disclosure had been served, which predates the August 15, 2025 service (correspondence section, depth ~0.35)",
+        "Final declaration of disclosure served October 2, 2025, a different document from the preliminary declaration of disclosure"
+      ],
+      "source_ids": [
+        "STAT-CAL-FAM-CODE-2337"
+      ],
+      "criteria_count": 5,
+      "proposition_count": 5
+    },
+    {
+      "task_id": "longcontext-010",
+      "anchor": "FAM 6320(a), (c) coercive control, 6203(a)(4) and (b) abuse, 6211(a) domestic violence, pattern spread across a correspondence and message file",
+      "task_seed": 20331998,
+      "packet_words": 56318,
+      "packet_characters": 417748,
+      "turn_characters": 419066,
+      "section_plan": [
+        {
+          "kind": "exhibits",
+          "label": null,
+          "target_words": 4800,
+          "insert_depths": []
+        },
+        {
+          "kind": "billing",
+          "label": null,
+          "target_words": 8200,
+          "insert_depths": []
+        },
+        {
+          "kind": "ledger",
+          "label": "ACCOUNT LEDGER DETAIL — CANYONMOUTH BANK JOINT CHECKING NO. xxxx-6612",
+          "target_words": 8600,
+          "insert_depths": [
+            0.47
+          ]
+        },
+        {
+          "kind": "correspondence",
+          "label": "CORRESPONDENCE FILE AND MESSAGE EXPORTS",
+          "target_words": 13000,
+          "insert_depths": [
+            0.12,
+            0.41,
+            0.88
+          ]
+        },
+        {
+          "kind": "declaration",
+          "label": null,
+          "target_words": 8800,
+          "insert_depths": []
+        },
+        {
+          "kind": "depo",
+          "label": null,
+          "target_words": 5400,
+          "insert_depths": []
+        },
+        {
+          "kind": "discovery",
+          "label": null,
+          "target_words": 3400,
+          "insert_depths": []
+        },
+        {
+          "kind": "minutes",
+          "label": null,
+          "target_words": 1600,
+          "insert_depths": [
+            0.3
+          ]
+        },
+        {
+          "kind": "emails",
+          "label": null,
+          "target_words": 1000,
+          "insert_depths": []
+        }
+      ],
+      "buried_operative_facts": [
+        "January 19, 2025 messages establishing app-based monitoring of Petitioner’s location and movements (correspondence section, depth ~0.12)",
+        "February 2, 2025 messages isolating Petitioner from her sister and friends (correspondence section, depth ~0.12)",
+        "March 4, 2025 custodian note: banking access removed, separate account closed, $60.00 weekly allowance transfers (ledger section, depth ~0.47)",
+        "May 16, 2025 messages destroying contraception and cancelling the medical appointment (correspondence section, depth ~0.41)",
+        "December 19, 2025 message threatening to report Petitioner and her mother to immigration unless she withdrew the Request for Order (correspondence section, depth ~0.88)",
+        "The parties married in 2016, separated in 2025, and remain spouses with no dissolution judgment entered"
+      ],
+      "distractor_facts": [
+        "July 22, 2019 minute order denying a prior restraining-order request as withdrawn, with no evidence taken and no findings made (minute-order section, depth ~0.30)"
+      ],
+      "source_ids": [
+        "STAT-CAL-FAM-CODE-6203",
+        "STAT-CAL-FAM-CODE-6211",
+        "STAT-CAL-FAM-CODE-6320"
+      ],
+      "criteria_count": 5,
+      "proposition_count": 5
+    }
+  ]
+}

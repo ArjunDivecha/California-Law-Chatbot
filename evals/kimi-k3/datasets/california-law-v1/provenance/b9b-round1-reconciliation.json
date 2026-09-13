@@ -1,0 +1,33 @@
+{
+ "date": "2026-07-27",
+ "round": 1,
+ "opus_approve": 109,
+ "gpt_approve": 103,
+ "dual_approved": 102,
+ "flagged_union": [
+  "drafting-011",
+  "multiturn-014",
+  "multiturn-015",
+  "research-016",
+  "research-017",
+  "research-018",
+  "research-020",
+  "research-021",
+  "research-022",
+  "research-023",
+  "research-029",
+  "verification-real-001",
+  "verification-real-002",
+  "verification-real-003",
+  "verification-real-006",
+  "verification-real-007",
+  "verification-real-008",
+  "verification-real-009"
+ ],
+ "defect_classes": {
+  "A_headnote_synopsis_excerpts": "CIT-REAL-7/8/10/12/13/14 records carry unquoted Held/synopsis text; dependent criteria must re-ground on verbatim opinion language",
+  "B_wrong_hard_failure_code": "FABRICATED_AUTHORITY on positive presence checks -> MISSED_CONTROLLING_CONTRARY_AUTHORITY (research-016/018/022/023/029)",
+  "C_status_not_entailed": "published/precedential criteria exceed quoted evidence; ground in Official-Reports index records or narrow (verification-real-001/002/003/007/008/009, research-023)",
+  "D_optional_branch": "multiturn-014/015 C4/C3 optional branch collides with not_contains assertion; delete branch"
+ }
+}

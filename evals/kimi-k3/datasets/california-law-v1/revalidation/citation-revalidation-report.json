@@ -1,0 +1,381 @@
+[
+  {
+    "entry_id": "real-1",
+    "index_in_file": 1,
+    "source_file_line": "tests/citation-eval-set.json:8",
+    "original_label": "real",
+    "revalidated_verdict": "confirmed",
+    "evidence_urls": [
+      "https://scocal.stanford.edu/opinion/navellier-v-sletten-32261",
+      "https://www.courtlistener.com/opinion/2519770/navellier-v-sletten/",
+      "https://law.justia.com/cases/california/supreme-court/4th/29/82.html"
+    ],
+    "notes": "Confirmed via Stanford's California Supreme Court Resources (scocal.stanford.edu), which is a primary-source archive of official CA Supreme Court opinions. Page confirms case name 'Navellier v. Sletten', official reporter citation '29 Cal.4th 82', Supreme Court of California, decided August 29, 2002, published opinion. CourtListener's own indexed title for this case (found via WebSearch, though direct WebFetch of the CourtListener page returned no extractable content/blocked rendering) also lists the parallel citation set including '29 Cal. 4th 82', '124 Cal. Rptr. 2d 530', '52 P.3d 703', consistent with the scocal.stanford.edu record. Topic (anti-SLAPP two-prong/special-motion-to-strike test) matches the fetched holding language exactly."
+  },
+  {
+    "entry_id": "real-2",
+    "index_in_file": 2,
+    "source_file_line": "tests/citation-eval-set.json:16",
+    "original_label": "real",
+    "revalidated_verdict": "confirmed",
+    "evidence_urls": [
+      "https://scocal.stanford.edu/opinion/taus-v-loftus-33698",
+      "https://www.courtlistener.com/opinion/2638169/taus-v-loftus/",
+      "https://en.wikipedia.org/wiki/Taus_v._Loftus"
+    ],
+    "notes": "Confirmed via triangulation of three independent sources since direct WebFetch of CourtListener and Justia pages returned empty/403 (bot-blocked rendering, not a content mismatch). (1) scocal.stanford.edu (Stanford's official CA Supreme Court opinion archive) confirms case name 'Taus v. Loftus', Supreme Court of California, docket S133805, decided February 26, 2007, published opinion, and gives a verbatim opening paragraph matching the case facts (Nicole Taus / repressed-memory case study). (2) CourtListener's own search-indexed page title (via WebSearch, not full WebFetch) explicitly lists the citation string '40 Cal. 4th 683' alongside parallel citations 151 P.3d 1185 and 54 Cal.Rptr.3d 775. (3) Wikipedia's case citation line independently states '40 Cal. 4th 683, 151 P.3d 1185' with the same court and decision date. All three agree on the exact reporter citation. Topic (anti-SLAPP / privacy, intrusion into private matters) matches."
+  },
+  {
+    "entry_id": "real-3",
+    "index_in_file": 3,
+    "source_file_line": "tests/citation-eval-set.json:24",
+    "original_label": "real",
+    "revalidated_verdict": "confirmed",
+    "evidence_urls": [
+      "https://www.animallawconference.org/wp-content/uploads/2024/09/Geiser-v.-Kuhns-13-Cal.5th-1238.pdf",
+      "https://law.justia.com/cases/california/supreme-court/2022/s262032.html",
+      "https://scocal.stanford.edu/opinion/geiser-v-kuhns-34699"
+    ],
+    "notes": "Strongly confirmed by directly fetching and reading a Casetext-sourced PDF of the full opinion (hosted at animallawconference.org, filename itself encodes '13 Cal.5th 1238'). The PDF's title block reads exactly: 'Geiser v. Kuhns / Supreme Court of California / Aug 29, 2022 / 13 Cal.5th 1238 (Cal. 2022)', docket S262032, caption 'Gregory GEISER, Plaintiff and Appellant, v. Peter KUHNS et al., Defendants and Appellants.', 'Opinion of the Court by Liu, J.' The exact reporter citation (volume 13, Cal.5th, page 1238) matches the expected citation precisely. Justia listing (law.justia.com/cases/california/supreme-court/2022/s262032.html) corroborates docket S262032 and 2022 California Supreme Court decision, though direct WebFetch of that Justia URL returned HTTP 403 (bot-blocked), so it was used only as a search-result corroboration, not a rendered fetch. Topic (anti-SLAPP two-step public-issue inquiry) matches the fetched opinion text verbatim (see excerpt in sources file)."
+  },
+  {
+    "entry_id": "real-4",
+    "index_in_file": 4,
+    "source_file_line": "tests/citation-eval-set.json:32",
+    "original_label": "real",
+    "revalidated_verdict": "confirmed",
+    "evidence_urls": [
+      "https://scocal.stanford.edu/opinion/williams-v-super-ct-34534",
+      "https://www.leagle.com/decision/incaco20170713043"
+    ],
+    "notes": "Confirmed via Stanford's California Supreme Court Resources archive (scocal.stanford.edu), a primary-source repository of official CA Supreme Court opinions. Page confirms case caption 'Williams v. Super. Ct.', docket S227228, Supreme Court of California, decided July 13, 2017, published opinion reversing the Court of Appeal, and gives a verbatim opening line about the PAGA representative wage-and-hour discovery dispute. Leagle's independent case page (found via search) corroborates the same case (Williams v. Marshalls of CA re: PAGA discovery of employee contact info), same decision date. The page title for the citation '3 Cal.5th 531' is embedded in the vLex search-result title ('398 P.3d 69, 220 Cal.Rptr.3d 472, 3 Cal.5th 531 (Cal. 2017)'), consistent with the scocal.stanford.edu record. Topic (discovery / privacy balancing) matches the fetched excerpt."
+  },
+  {
+    "entry_id": "real-5",
+    "index_in_file": 5,
+    "source_file_line": "tests/citation-eval-set.json:40",
+    "original_label": "real",
+    "revalidated_verdict": "confirmed",
+    "evidence_urls": [
+      "https://scocal.stanford.edu/opinion/coy-v-superior-court-29913",
+      "https://www.leagle.com/decision/196226858cal2d2101251"
+    ],
+    "notes": "Confirmed via Stanford's California Supreme Court Resources archive (scocal.stanford.edu). Page confirms case caption 'Coy v. Superior Court', citation '58 Cal.2d 210', Supreme Court of California, decided July 19, 1962, and gives a verbatim opening paragraph describing the writ-of-mandate proceeding to review denial of interrogatory-related discovery motions (petitioner Joe Coy v. Superior Court of Contra Costa County). Leagle's independently indexed decision page title ('COY v. SUPERIOR COURT | 58 Cal.2d 210') corroborates the exact reporter citation. Topic (purpose of discovery) matches the fetched case summary (discovery/interrogatory dispute)."
+  },
+  {
+    "entry_id": "real-6",
+    "index_in_file": 6,
+    "source_file_line": "tests/citation-eval-set.json:48",
+    "original_label": "real",
+    "revalidated_verdict": "confirmed",
+    "evidence_urls": [
+      "https://caselaw.findlaw.com/court/ca-court-of-appeal/1464765.html",
+      "https://www.quimbee.com/cases/stewart-v-colonial-western-agency-inc",
+      "https://law.justia.com/cases/california/court-of-appeal/4th/87/1006.html",
+      "https://www.leagle.com/decision/2001220105calrptr2d1151210",
+      "https://case-law.vlex.com/vid/stewart-v-colonial-western-885485424"
+    ],
+    "notes": "Case exists. FindLaw page was successfully fetched and confirms: case caption 'Mary Martha Stewart v. Colonial Western Agency, Inc.', Court of Appeal, Second District, Division 4, decided March 14, 2001, docket No. B139311, subject matter (deposition instruction-not-to-answer sanctions) matches the eval set's topic. Direct WebFetch of the CourtListener and Justia full-text opinion pages returned HTTP 403 (blocked), so the exact reporter citation '87 Cal.App.4th 1006' could not be pulled from a raw primary-source opinion page in this session. However, the citation '87 Cal.App.4th 1006, 105 Cal.Rptr.2d 115' is corroborated identically across at least 6 independent secondary legal databases (Quimbee, vLex, Lexis Advance, Leagle, Justia page title, Daily Journal Appellate Report), with no conflicting citation found anywhere. Confirmed on the strength of case-identity match (via FindLaw primary-ish fetch) plus unanimous cross-source citation corroboration."
+  },
+  {
+    "entry_id": "real-7",
+    "index_in_file": 7,
+    "source_file_line": "tests/citation-eval-set.json:56",
+    "original_label": "real",
+    "revalidated_verdict": "confirmed",
+    "evidence_urls": [
+      "https://scocal.stanford.edu/opinion/costco-v-super-ct-33789"
+    ],
+    "notes": "Directly fetched Stanford Law School's California Supreme Court Resources (scocal.stanford.edu), an academic archive of official CA Supreme Court opinions. Confirms: case caption 'Costco Wholesale Corporation v. Superior Court of Los Angeles County', citation '47 Cal.4th 725, 219 P.3d 736, 101 Cal.Rptr.3d 758' (exact match to expected reporter cite), Supreme Court of California, decided November 30, 2009, docket No. S163335, subject matter is attorney-client privilege re an outside-counsel opinion letter -- matches eval set topic exactly. courts.ca.gov's own opinions search did not surface an accessible archived page for a 2009 decision (their online opinion archive does not appear to retain a searchable public page this far back at the URL patterns tried); SCOCAL and multiple other secondary sources (Quimbee, Lexology, vLex) agree unanimously on the citation."
+  },
+  {
+    "entry_id": "real-8",
+    "index_in_file": 8,
+    "source_file_line": "tests/citation-eval-set.json:64",
+    "original_label": "real",
+    "revalidated_verdict": "confirmed",
+    "evidence_urls": [
+      "https://scocal.stanford.edu/opinion/cembrook-v-superior-court-29873",
+      "https://www.courtlistener.com/opinion/1156481/cembrook-v-superior-court/"
+    ],
+    "notes": "Directly fetched Stanford SCOCAL page. Confirms: case caption 'MICHAEL CEMBROOK, Petitioner, v. SUPERIOR COURT OF THE CITY AND COUNTY OF SAN FRANCISCO, Respondent; STERLING DRUG, INC., Real Party in Interest.', citation '56 Cal.2d 423' (exact match), Supreme Court of California, decided August 3, 1961, docket No. S.F. 20707, and a holding on ambiguity/vagueness objections to discovery matching the eval set's topic exactly ('neither ambiguity nor burden are of themselves sufficient grounds for denying the right to discovery in toto'). CourtListener also independently lists this case at the exact same citation (opinion ID 1156481), though the CourtListener page itself returned empty content when fetched directly (likely JS-rendering or bot-blocking) -- confirmation relies on the successfully fetched SCOCAL page plus the CourtListener search-index hit. courts.ca.gov's own archive does not go back to 1961."
+  },
+  {
+    "entry_id": "real-9",
+    "index_in_file": 9,
+    "source_file_line": "tests/citation-eval-set.json:72",
+    "original_label": "real",
+    "revalidated_verdict": "confirmed",
+    "evidence_urls": [
+      "https://scocal.stanford.edu/opinion/west-pico-furniture-co-v-superior-court-27069"
+    ],
+    "notes": "Directly fetched Stanford SCOCAL page. Confirms: case caption 'West Pico Furniture Co. v. Superior Court' (full caption: West Pico Furniture Company of Los Angeles, Petitioner, v. Superior Court of Los Angeles County, Respondent; Pacific Finance Loans, Real Party in Interest), citation '56 Cal.2d 407' (exact match), Supreme Court of California, decided August 3, 1961, docket No. L.A. 26171, and a holding on burden objections to interrogatories matching the eval set's topic exactly ('burden, alone, is not a ground for objection'). Note: a search also surfaced a distinct, later, unrelated case with a similar name -- 'West Pico Furniture Co. v. Pacific Finance Loans' (1970, a different dispute on CourtListener) -- which was correctly excluded; the 1961 discovery-objection case at 56 Cal.2d 407 is the one matching the eval entry. courts.ca.gov's own archive does not go back to 1961."
+  },
+  {
+    "entry_id": "real-10",
+    "index_in_file": 10,
+    "source_file_line": "tests/citation-eval-set.json:80",
+    "original_label": "real",
+    "revalidated_verdict": "confirmed",
+    "evidence_urls": [
+      "https://caselaw.findlaw.com/court/ca-court-of-appeal/1775082.html",
+      "https://law.justia.com/cases/california/court-of-appeal/4th/7/1384.html",
+      "https://www.leagle.com/decision/199213917calapp4th138411301.xml",
+      "https://case-law.vlex.com/vid/bridgestone-firestone-inc-v-891229459"
+    ],
+    "notes": "Case exists. FindLaw page was successfully fetched and confirms: verbatim caption 'BRIDGESTONE/FIRESTONE, INC., Petitioner, v. The SUPERIOR COURT of the County of Alameda, Respondent, Nathan RIOS, a Minor, etc., et al.', Court of Appeal, First District, Division 1, decided June 24, 1992, docket No. A053717, and holding on trade-secret discovery (prima facie necessity showing required) matching the eval set's topic exactly. Direct WebFetch of Justia and Leagle full-text pages returned HTTP 403 (blocked), so the exact reporter citation was not pulled from a raw primary-source page in this session, but '7 Cal.App.4th 1384' is corroborated identically across at least 5 independent secondary legal databases (Lexis Advance, Justia page title, Leagle page title/URL slug, vLex, lawlink.com) with no conflicting citation found anywhere."
+  },
+  {
+    "entry_id": "real-11",
+    "index_in_file": 11,
+    "source_file_line": "tests/citation-eval-set.json:88",
+    "original_label": "real",
+    "revalidated_verdict": "contradicted",
+    "evidence_urls": [
+      "https://www.courtlistener.com/c/cal-app-2d/269",
+      "https://law.justia.com/cases/california/court-of-appeal/2d/269/",
+      "https://law.justia.com/cases/california/court-of-appeal/2d/198/238.html",
+      "https://scocal.stanford.edu/opinion/estate-williams-26233"
+    ],
+    "notes": "The citation 269 Cal.App.2d 671 does NOT correspond to any 'Estate of Williams' case. CourtListener's volume index for Cal.App.2d vol. 269 shows the case at page 671 is 'People v. Timmons' (Crim. No. 15673), a criminal kidnapping-for-robbery / second-degree-robbery appeal filed February 14, 1969 (not 1968), affirmed; hearing denied April 1969; cert. denied June 1969. Neighboring pages in the same volume are Holmes v. Steele (269 Cal.App.2d 675) and Van Buskirk v. Todd (269 Cal.App.2d 680) -- no Estate of Williams anywhere nearby. Independent web searches for a genuine 'Estate of Williams' holographic-will/codicil case turn up only different, non-matching citations: Estate of Williams, 198 Cal.App.2d 238 (1961) (a holographic-will note-pad case, Second District), Estate of Williams, 73 Cal.App.3d 141, and Estate of Williams, 36 Cal.2d 289 (Cal. Supreme Ct., Oct. 31, 1950). None is 269 Cal.App.2d 671, and none is dated 1968. Both the case name and the reporter citation in the ground-truth entry are wrong -- this is a fabricated/miscited citation, not merely an uncertain match."
+  },
+  {
+    "entry_id": "real-12",
+    "index_in_file": 12,
+    "source_file_line": "tests/citation-eval-set.json:96",
+    "original_label": "real",
+    "revalidated_verdict": "confirmed",
+    "evidence_urls": [
+      "https://scocal.stanford.edu/opinion/re-marriage-lippel-31275",
+      "https://law.justia.com/cases/california/supreme-court/3d/51/1160.html",
+      "https://case-law.vlex.com/vid/marriage-of-lippel-in-891115433"
+    ],
+    "notes": "Confirmed via Stanford's California Supreme Court Resources (scocal.stanford.edu), a primary-source archive of official Cal. Supreme Court opinions. Case caption: 'In re the Marriage of ANGELA and RONALD LIPPEL. RONALD LIPPEL, Appellant, v. CITY AND COUNTY OF SAN FRANCISCO, Respondent.' Official citation exactly matches: 51 Cal.3d 1160 (parallel cites 276 Cal.Rptr. 290, 801 P.2d 1041). Court: Supreme Court of California, docket No. S013741, decided December 17, 1990. Holding concerns Code Civ. Proc. section 580 -- a default child-support order not requested in the petition is void for lack of notice. Reporter citation, case name, and court level all match the ground-truth entry exactly."
+  },
+  {
+    "entry_id": "real-13",
+    "index_in_file": 13,
+    "source_file_line": "tests/citation-eval-set.json:104",
+    "original_label": "real",
+    "revalidated_verdict": "confirmed",
+    "evidence_urls": [
+      "https://scocal.stanford.edu/opinion/briggs-v-eden-council-hope-opportunity-31951",
+      "https://law.justia.com/cases/california/supreme-court/4th/19/1106.html",
+      "https://www.casp.net/california-anti-slapp-first-amendment-law-resources/caselaw/california-supreme-court/briggs-v-echo/"
+    ],
+    "notes": "Confirmed via scocal.stanford.edu (Stanford's official Cal. Supreme Court opinion archive). Case caption: 'DAN BRIGGS et al., Plaintiffs and Appellants, v. EDEN COUNCIL FOR HOPE AND OPPORTUNITY, Defendant and Respondent.' Official citation exactly matches: 19 Cal.4th 1106 (parallel cites 81 Cal.Rptr.2d 471, 969 P.2d 564). Court: Supreme Court of California, docket S062156, decided January 21, 1999. Holding: a defendant moving under CCP section 425.16 (anti-SLAPP) based on a statement made in connection with an official proceeding need not separately show the statement concerned an issue of public significance. Matches ground truth exactly (case name, volume, reporter, page, topic)."
+  },
+  {
+    "entry_id": "real-14",
+    "index_in_file": 14,
+    "source_file_line": "tests/citation-eval-set.json:112",
+    "original_label": "real",
+    "revalidated_verdict": "confirmed",
+    "evidence_urls": [
+      "https://scocal.stanford.edu/opinion/equilon-enterprises-v-consumer-cause-inc-32260",
+      "https://www.courtlistener.com/opinion/2519835/equilon-enterprises-v-consumer-cause-inc/",
+      "https://law.justia.com/cases/california/supreme-court/4th/29/53.html"
+    ],
+    "notes": "Confirmed via scocal.stanford.edu (Stanford's official Cal. Supreme Court opinion archive) and corroborated by CourtListener's indexing of the same opinion (courtlistener.com/opinion/2519835, citing 52 P.3d 685, 124 Cal.Rptr.2d 507, 29 Cal.4th 53). Case caption: 'EQUILON ENTERPRISES, LLC, Plaintiff and Appellant, v. CONSUMER CAUSE, INC., Defendant and Respondent.' Official citation exactly matches: 29 Cal.4th 53. Court: Supreme Court of California, decided August 29, 2002. Holding: a defendant need not separately show the suit was brought with intent to chill protected activity to invoke the anti-SLAPP statute; only whether the claim arises from protected speech/petitioning and whether plaintiff shows probable success on the merits. Note: direct WebFetch of the CourtListener opinion page and the Justia page both returned blank/403 responses during this session (likely bot-blocking), so the verbatim text was pulled from the scocal.stanford.edu mirror, cross-checked against the CourtListener search-result metadata (parallel citations) and Justia's listing page, which agree on the volume/page/date."
+  },
+  {
+    "entry_id": "real-15",
+    "index_in_file": 15,
+    "source_file_line": "tests/citation-eval-set.json:120",
+    "original_label": "real",
+    "revalidated_verdict": "confirmed",
+    "evidence_urls": [
+      "https://case-law.vlex.com/vid/wilson-v-cable-news-889685986",
+      "https://scocal.stanford.edu/opinion/wilson-v-cable-news-network-inc-34638",
+      "https://law.justia.com/cases/california/supreme-court/2019/s239686.html"
+    ],
+    "notes": "Confirmed. vLex's case-law page for docket S239686 gives the exact official citation: 'Wilson v. Cable News Network, Inc., 7 Cal.5th 871, 444 P.3d 706, 249 Cal.Rptr.3d 569 (Cal. 2019)', decided July 22, 2019, matching the ground-truth entry exactly (case name, volume, reporter, page). Caption per that source: 'Stanley Wilson, Plaintiff and Appellant, v. Cable News Network, Inc., et al., Defendants and Respondents.' Opening line: 'Plaintiff Stanley Wilson began working for Cable News Network, Inc., in 1996, and wrote and produced stories for the network for more than 17 years.' Cross-checked against scocal.stanford.edu's case entry (same docket S239686, same decision date) and Justia's case listing page (law.justia.com/cases/california/supreme-court/2019/s239686.html). Direct WebFetch of CourtListener and Justia opinion pages returned 403/blocked during this session, so confirmation relies on the vLex mirror plus corroborating scocal/Justia metadata rather than a single canonical page -- but all sources agree on every element of the citation."
+  },
+  {
+    "entry_id": "real-16",
+    "index_in_file": 16,
+    "source_file_line": "tests/citation-eval-set.json:128",
+    "original_label": "real",
+    "revalidated_verdict": "confirmed",
+    "evidence_urls": [
+      "https://www.courtlistener.com/api/rest/v4/search/?q=citation%3A%2255%20Cal.%204th%20747%22&type=o",
+      "https://caselaw.findlaw.com/court/ca-supreme-court/1616426.html",
+      "https://scocal.stanford.edu/opinion/sargon-v-univ-southern-cal-34179"
+    ],
+    "notes": "CourtListener's search API returns exactly one Supreme Court opinion for citation '55 Cal. 4th 747': Sargon Enterprises, Inc. v. University of Southern California, decided/date_filed 2012-11-26, California Supreme Court, parallel citations 288 P.3d 1237 and 149 Cal.Rptr.3d 614 (matches Cal. Reporter parallel cite pattern). FindLaw (caselaw.findlaw.com/court/ca-supreme-court/1616426.html) republishes the opinion with matching caption 'SARGON ENTERPRISES INC v. UNIVERSITY OF SOUTHERN CALIFORNIA, No. S191550, Decided: November 26, 2012' and opening text matching the scocal.stanford.edu (Stanford Law's California Supreme Court Resources project) case summary verbatim. Case name, reporter volume/page (55 Cal.4th 747), court, and year all match exactly. courts.ca.gov's PDF opinion archive did not have a reachable URL for this 2012 docket (S191550) under the archive path pattern I tried (404), so I relied on CourtListener + FindLaw + scocal as corroborating sources rather than a courts.ca.gov PDF."
+  },
+  {
+    "entry_id": "real-17",
+    "index_in_file": 17,
+    "source_file_line": "tests/citation-eval-set.json:136",
+    "original_label": "real",
+    "revalidated_verdict": "confirmed",
+    "evidence_urls": [
+      "https://www.courtlistener.com/api/rest/v4/search/?q=citation%3A%2229%20Cal.%204th%2069%22&type=o",
+      "https://caselaw.findlaw.com/court/ca-supreme-court/1465114.html",
+      "https://scocal.stanford.edu/opinion/city-cotati-v-cashman-32298",
+      "https://www.courtlistener.com/opinion/2519876/city-of-cotati-v-cashman/"
+    ],
+    "notes": "CourtListener's search API returns exactly one match for citation '29 Cal.4th 69': City of Cotati v. Cashman, California Supreme Court, date_filed 2002-08-29, parallel citations 52 P.3d 695 and 124 Cal.Rptr.2d 519. FindLaw (caselaw.findlaw.com/court/ca-supreme-court/1465114.html) republishes the opinion with matching caption 'CITY OF COTATI, Plaintiff and Appellant, v. Gene CASHMAN et al., Defendants and Respondents. No. S099999. Decided: August 29, 2002' and opening sentence: 'We must decide in this case whether a municipality's state court action for declaratory relief respecting the constitutionality of a mobilehome park rent stabilization ordinance ... constitutes a strategic lawsuit against public participation (SLAPP) ... We conclude it does not.' This matches the anti-SLAPP/declaratory-judgment topic exactly. Case name, reporter volume/page (29 Cal.4th 69), court, and year all confirmed. Direct WebFetch of the courtlistener.com opinion page itself returned blank content (likely JS-rendered/blocked for automated fetch), so I relied on CourtListener's JSON search API plus FindLaw and scocal.stanford.edu as corroborating sources."
+  },
+  {
+    "entry_id": "real-18",
+    "index_in_file": 18,
+    "source_file_line": "tests/citation-eval-set.json:144",
+    "original_label": "real",
+    "revalidated_verdict": "confirmed",
+    "evidence_urls": [
+      "https://www4.courts.ca.gov/opinions/archive/S244157.PDF",
+      "https://www.courtlistener.com/api/rest/v4/search/?q=%22FilmOn.com%22%20%22DoubleVerify%22&type=o",
+      "https://www.courtlistener.com/opinion/4616996/filmoncom-inc-v-doubleverify-inc/"
+    ],
+    "notes": "Fetched the OFFICIAL California Supreme Court opinion PDF directly from courts.ca.gov's archive (www4.courts.ca.gov/opinions/archive/S244157.PDF) via Read tool. Cover page reads: 'IN THE SUPREME COURT OF CALIFORNIA / FILMON.COM INC., Plaintiff and Appellant, v. DOUBLEVERIFY INC., Defendant and Respondent. / S244157 / Second Appellate District, Division Three B264074 / Los Angeles County Superior Court BC561987 / May 6, 2019 / Justice Cuellar authored the opinion of the court, in which Chief Justice Cantil-Sakauye and Justices Chin, Corrigan, Liu, Kruger, and Groban concurred.' Body opens: 'FILMON.COM INC. v. DOUBLEVERIFY INC. S244157 Opinion of the Court by Cuellar, J. The Legislature enacted Code of Civil Procedure section 425.16 to address so-called strategic lawsuits against public participation (SLAPP)...' CourtListener's API independently confirms citation '7 Cal. 5th 133' with parallel cites 439 P.3d 1156 / 246 Cal.Rptr.3d 591, same date filed (2019-05-06), same court. This is the strongest-sourced confirmation of the five (direct official court PDF)."
+  },
+  {
+    "entry_id": "real-19",
+    "index_in_file": 19,
+    "source_file_line": "tests/citation-eval-set.json:152",
+    "original_label": "real",
+    "revalidated_verdict": "confirmed",
+    "evidence_urls": [
+      "https://www4.courts.ca.gov/opinions/archive/S225090.PDF",
+      "https://www.courtlistener.com/api/rest/v4/search/?q=%22Baral%20v.%20Schnitt%22&type=o"
+    ],
+    "notes": "Fetched the OFFICIAL California Supreme Court opinion PDF directly from courts.ca.gov's archive (www4.courts.ca.gov/opinions/archive/S225090.PDF) via Read tool. Caption block reads: 'Filed 8/1/16 / IN THE SUPREME COURT OF CALIFORNIA / ROBERT C. BARAL, Plaintiff and Respondent, v. DAVID SCHNITT, Defendant and Appellant. / S225090 / Ct.App. 2/1 B253620 / Los Angeles County Super. Ct. No. BC475350'. Filed date (8/1/16) matches the expected (2016) year and CourtListener's date_filed of 2016-08-01. CourtListener's API independently confirms citation '1 Cal. 5th 376' with parallel cites 376 P.3d 604 / 205 Cal.Rptr.3d 475, same court (California Supreme Court). Direct official-PDF confirmation plus independent CourtListener citation-database match; this is a strong, dual-sourced confirmation."
+  },
+  {
+    "entry_id": "real-20",
+    "index_in_file": 20,
+    "source_file_line": "tests/citation-eval-set.json:160",
+    "original_label": "real",
+    "revalidated_verdict": "confirmed",
+    "evidence_urls": [
+      "https://www.courtlistener.com/api/rest/v4/search/?q=citation%3A%2270%20Cal.%202d%2015%22&type=o",
+      "https://www.courtlistener.com/opinion/1312544/people-v-anderson/",
+      "https://en.wikipedia.org/wiki/People_v._Anderson_(1968)",
+      "https://law.justia.com/cases/california/supreme-court/2d/70/15.html"
+    ],
+    "notes": "IMPORTANT CAVEAT flagged by the task and independently verified: the citation as stated (case name 'People v. Anderson', year 1968, reporter '70 Cal.2d 15') IS a real, correctly-cited California Supreme Court opinion -- CourtListener's citation-search API returns exactly one match for '70 Cal.2d 15': People v. Anderson, date_filed 1968-12-23, parallel citations 447 P.2d 942 / 73 Cal.Rptr. 550, California Supreme Court. HOWEVER this is NOT the famous death-penalty/cruel-or-unusual-punishment case. That is a DIFFERENT case with the same name: People v. Anderson (1972) 6 Cal.3d 628, 493 P.2d 880 (which held the death penalty violated the CA Constitution's cruel-or-unusual-punishment clause; CourtListener opinion id 1260876). The 1968 case at 70 Cal.2d 15 instead concerns evidentiary standards for premeditation/deliberation in first-degree murder (the 'Anderson factors' -- planning activity, motive, and manner-of-killing evidence categories), arising from defendant Anderson's conviction for the 1962 murder of 10-year-old Victoria Hammond; he was sentenced to death and the case reached the Supreme Court on mandatory death-penalty review, but the holding is about premeditation proof, not death-penalty constitutionality. Wikipedia's own article on the 1968 case explicitly flags this ('Not to be confused with People v. Anderson (1972)'). So: citation text/case-name/reporter is CONFIRMED REAL and exact, but if the eval set's 'criminal / death penalty' topic tag was meant to signal the cruel-or-unusual-punishment holding, that holding belongs to the other Anderson case (6 Cal.3d 628), not to 70 Cal.2d 15. Could not obtain a clean verbatim excerpt of the 1968 opinion text itself from a reachable primary source: courts.ca.gov archive does not cover 1968 opinions (404), and both courtlistener.com and law.justia.com opinion pages returned blank/403 to WebFetch (likely bot-blocked or JS-rendered); only paraphrased snippets from CourtListener's search index and secondary summaries (Wikipedia, Quimbee, casemine) were obtainable."
+  },
+  {
+    "entry_id": "fake-1",
+    "index_in_file": 21,
+    "source_file_line": "tests/citation-eval-set.json:168",
+    "original_label": "fake",
+    "revalidated_verdict": "confirmed",
+    "evidence_urls": [
+      "https://scholar.google.com/scholar?q=%22Hendricks+v.+California+Probate+Bureau%22",
+      "https://www.courtlistener.com/c/cal-5th/7/"
+    ],
+    "notes": "Zero hits for 'Hendricks v. California Probate Bureau' on Google Scholar ('did not match any articles') and zero hits on CourtListener (site search returned only unrelated Hendricks v. Hendricks cases). Fetched the CourtListener volume-7-Cal.5th case list directly: page 871 begins Wilson v. Cable News Network, Inc. and the next case (People v. Young) does not begin until page 905 -- so page 904 falls inside the Wilson v. CNN opinion, not any 'Hendricks' case. Confirms fabrication/misattribution."
+  },
+  {
+    "entry_id": "fake-2",
+    "index_in_file": 22,
+    "source_file_line": "tests/citation-eval-set.json:174",
+    "original_label": "fake",
+    "revalidated_verdict": "confirmed",
+    "evidence_urls": [
+      "https://scholar.google.com/scholar?q=%22Foster+v.+State+Bar%22+%2243+Cal.3d%22",
+      "https://www.courtlistener.com/c/cal-3d/43/",
+      "https://law.justia.com/cases/california/supreme-court/3d/43/333.html"
+    ],
+    "notes": "Zero Google Scholar hits for 'Foster v. State Bar' + '43 Cal.3d'. Volume 43 Cal.3d case list (CourtListener) confirms People v. Bloyd begins at page 333 (per Justia: 43 Cal.3d 333) and the next case (People v. Jacobs) does not begin until page 472 -- so page 421 falls inside the Bloyd opinion. There is no Foster v. State Bar anywhere in that volume. This directly tests and confirms the dataset's claim that the volume/page is real but the case name is wrong."
+  },
+  {
+    "entry_id": "fake-3",
+    "index_in_file": 23,
+    "source_file_line": "tests/citation-eval-set.json:180",
+    "original_label": "fake",
+    "revalidated_verdict": "confirmed",
+    "evidence_urls": [
+      "https://scholar.google.com/scholar?q=%22Estate+of+Markham%22+%22228+Cal.App.4th%22",
+      "https://www.courtlistener.com/c/cal-app-4th/228/"
+    ],
+    "notes": "Zero Google Scholar hits for 'Estate of Markham' + '228 Cal.App.4th'. CourtListener's volume-228-Cal.App.4th case list shows the case beginning nearest page 1399 is People v. McGraw-Hill Companies, Inc. (2014) 228 Cal.App.4th 1382 (a lengthy consumer-fraud/antitrust opinion against the ratings agency, unrelated to probate) -- no 'Estate of Markham' entry appears in the volume at all. No case by this name exists in any California reporter series found."
+  },
+  {
+    "entry_id": "fake-4",
+    "index_in_file": 24,
+    "source_file_line": "tests/citation-eval-set.json:186",
+    "original_label": "fake",
+    "revalidated_verdict": "confirmed",
+    "evidence_urls": [
+      "https://scholar.google.com/scholar?q=%22Reyes+v.+Quincy+Investment+Group%22",
+      "https://www.courtlistener.com (site search)"
+    ],
+    "notes": "Google Scholar: 'did not match any articles' for 'Reyes v. Quincy Investment Group'. site:courtlistener.com search for the same name returned zero matching results (only unrelated Reyes v. Regus/Caleres/Resonetics federal dockets). Direct Scholar search on the bare citation '65 Cal.App.5th 778' also returned zero articles. Could not definitively identify which case actually occupies volume 65 Cal.App.5th page 778 (partial volume listings found cases at pages 265-278 and 793 but not a reliable entry at 778 itself, and one AI-summarized search result claiming 'People v. Superior Court (Lara)' at that cite could not be corroborated by a direct source and is treated as unreliable) -- so the misattribution target is unconfirmed, but the nonexistence of any case named 'Reyes v. Quincy Investment Group, LLC' is well supported by the total absence of the party names from Scholar, CourtListener, or general web search."
+  },
+  {
+    "entry_id": "fake-5",
+    "index_in_file": 25,
+    "source_file_line": "tests/citation-eval-set.json:192",
+    "original_label": "fake",
+    "revalidated_verdict": "confirmed",
+    "evidence_urls": [
+      "https://scholar.google.com/scholar?q=%22Hernandez+v.+California+Coastal+Commission%22",
+      "https://www.courtlistener.com/c/cal-4th/18/"
+    ],
+    "notes": "Zero Google Scholar hits for 'Hernandez v. California Coastal Commission'. CourtListener's volume-18-Cal.4th case list shows Broadman v. Commission on Judicial Performance begins at page 1079 and the next case (People v. Mendoza) begins at page 1114 -- so page 1107 falls inside the Broadman opinion (an unrelated judicial-discipline case), not any Hernandez v. Coastal Commission case. Confirms misattribution/fabrication."
+  },
+  {
+    "entry_id": "fake-6",
+    "index_in_file": 26,
+    "source_file_line": "tests/citation-eval-set.json:198",
+    "original_label": "fake",
+    "revalidated_verdict": "confirmed",
+    "evidence_urls": [
+      "https://scholar.google.com/scholar?q=%22In+re+Marriage+of+Aspen%22",
+      "https://www.courtlistener.com/c/cal-app-4th/195/"
+    ],
+    "notes": "Zero Google Scholar hits for 'In re Marriage of Aspen'. Direct search on the bare citation '195 Cal.App.4th 542' identifies the actual case at that citation as Haro v. City of Solana Beach (2011) 195 Cal.App.4th 542, 124 Cal.Rptr.3d 615 (Docket No. D057304) -- a municipal-validation/land-use case, not a family-law dissolution matter. This is a clean, strong confirmation that the real volume/page is misattributed to a fabricated family-law caption, exactly as the dataset states."
+  },
+  {
+    "entry_id": "fake-7",
+    "index_in_file": 27,
+    "source_file_line": "tests/citation-eval-set.json:204",
+    "original_label": "fake",
+    "revalidated_verdict": "confirmed",
+    "evidence_urls": [
+      "https://scholar.google.com/scholar?q=%22Volk+v.+San+Diego+Trust%22",
+      "https://www.courtlistener.com/c/cal-4th/8/"
+    ],
+    "notes": "Zero Google Scholar hits for 'Volk v. San Diego Trust'. CourtListener's volume-8-Cal.4th case list shows 20th Century Insurance Co. v. Garamendi begins at page 216 and the next case (In re Jasmon O.) does not begin until page 398 -- so page 217 falls inside the Garamendi opinion (an unrelated Northridge-earthquake insurance-regulation case), not any Volk v. San Diego Trust Co. case. Confirms fabrication/misattribution."
+  },
+  {
+    "entry_id": "fake-8",
+    "index_in_file": 28,
+    "source_file_line": "tests/citation-eval-set.json:210",
+    "original_label": "fake",
+    "revalidated_verdict": "confirmed",
+    "evidence_urls": [
+      "https://scholar.google.com/scholar?q=%22Goldman+v.+Department+of+Industrial+Relations%22",
+      "https://www.courtlistener.com/c/cal-app-4th/159/"
+    ],
+    "notes": "Zero Google Scholar hits for 'Goldman v. Department of Industrial Relations'. CourtListener's volume-159-Cal.App.4th listing shows City of Los Angeles v. 2000 Jeep Cherokee begins at page 1272 (72 Cal.Rptr.3d 252, decided 2/7/2008) and covers page 1281 -- an unrelated vehicle-forfeiture case, not an employment/DIR case. Confirms misattribution/fabrication."
+  },
+  {
+    "entry_id": "fake-9",
+    "index_in_file": 29,
+    "source_file_line": "tests/citation-eval-set.json:216",
+    "original_label": "fake",
+    "revalidated_verdict": "confirmed",
+    "evidence_urls": [
+      "https://scholar.google.com/scholar?q=%22Bell+v.+Bayside+Restaurant+Group%22",
+      "https://www.courtlistener.com/c/cal-5th/11/",
+      "https://www.courtlistener.com/c/cal-5th/"
+    ],
+    "notes": "Zero Google Scholar hits for 'Bell v. Bayside Restaurant Group'. IMPORTANT scope note per instructions: volume 11 of Cal.5th DOES exist -- CourtListener's Cal.5th index lists volumes 1 through at least 15 (and current 2026 California Supreme Court opinions are already being cited in the high-teens, e.g. 19 Cal.5th), so this is not a not-yet-existing-volume fabrication. However, the actual case at 11 Cal.5th 332 is People v. Steskal (2021) -- a juvenile-dependency notice-of-appeal case -- per CourtListener's volume-11 case list (page 332) and corroborating search results describing Steskal's late-notice-of-appeal holding. This is an unrelated criminal/dependency case, not a wage-and-hour matter, confirming the citation is misattributed/fabricated despite the volume itself being real."
+  },
+  {
+    "entry_id": "fake-10",
+    "index_in_file": 30,
+    "source_file_line": "tests/citation-eval-set.json:222",
+    "original_label": "fake",
+    "revalidated_verdict": "confirmed",
+    "evidence_urls": [
+      "https://scholar.google.com/scholar?q=%22Patel+v.+Mendocino+County%22"
+    ],
+    "notes": "Zero Google Scholar hits for 'Patel v. Mendocino County'; general web search also returned no matching case, only an unrelated 'Superior Court v. County of Mendocino' (1996) and unrelated 'Patel' cases (e.g., City of Long Beach v. Patel). Attempts to pin down the exact case occupying 134 Cal.App.4th page 88 produced inconsistent/unreliable page-order data from automated page summarization (a Cal.App.4th vol.134 listing showed cases clustered at very low page numbers -- Kayle v. Remery at p.1, Figueroa v. Northridge Hospital Medical Center at p.10, Cobb v. O'Connell at p.91 -- with no case at exactly page 88, and no Mendocino County matter appearing anywhere in the volume). Marking 'confirmed' on the strength of the total absence of the case name from every source searched, though the precise identity of whatever case (if any) occupies page 88 itself is not fully nailed down -- flagged as a minor residual uncertainty within an overall confirmed fabrication."
+  }
+]

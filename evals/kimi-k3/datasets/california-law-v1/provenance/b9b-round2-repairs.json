@@ -1,0 +1,158 @@
+{
+ "batch": "B9b round-2 repairs",
+ "date": "2026-07-28",
+ "input": "scratchpad attest/gpt56-round2.jsonl -- verifier-gpt-5.6-sol re-reviewed the 19 tasks the B9b round-1 repair rebuilt and returned 14 APPROVE / 5 REJECT",
+ "builders": [
+  "provenance/b9c-repair-sources.py  -- sources.jsonl edit step (CIT-REAL-12 excerpt extension)",
+  "provenance/b9c-repair.ts          -- tasks.jsonl rebuild step, via datasetTools/authorTasks.ts::assembleEvalTask"
+ ],
+ "run_order": [
+  "provenance/b9b-repair-sources.py  (round-1 registry edits)",
+  "provenance/b9c-repair-sources.py  (round-2 registry edit -- must run AFTER b9b's, which would otherwise revert CIT-REAL-12 to its shorter run-3 anchor)",
+  "provenance/b9b-repair.ts",
+  "provenance/b9c-repair.ts",
+  "review-bundles/buildBundles.ts"
+ ],
+ "round2_verdicts": {
+  "reviewed": 19,
+  "approve": 14,
+  "reject": 5,
+  "rejected_tasks": [
+   "research-018", "research-021", "research-023", "research-029",
+   "verification-real-005"
+  ],
+  "note": "Every APPROVE carried APPROVED_WITH_AGGREGATOR_CAVEAT_NOTED where an aggregator-hosted case record was in the packet; the verifier stated in each REJECT note that aggregator sourcing was NOT the rejection ground, so no re-excerpt of an aggregator record was required in round 2."
+ },
+ "class_1_incoherent_hard_failure_code_on_positive_year_check": {
+  "defect": "HARD_FAILURE_CODE_MISMATCH -- WRONG_EFFECTIVE_DATE attached to POSITIVE contains-<year> presence assertions. Failing to MENTION a year is not ASSERTING a wrong effective date; the code cannot be earned by failure of a presence check. Flagged on all four rejected research tasks.",
+  "changed": 4,
+  "treatment": "hard_failure_code deleted from the assertion. The assertions themselves are KEPT, still machine-checked and still counting toward all_pass -- they simply no longer carry a hard-failure classification.",
+  "assertions": [
+   {"assertion_id": "research-018-a4", "kind": "contains", "expected": "2002", "from": "WRONG_EFFECTIVE_DATE", "to": null},
+   {"assertion_id": "research-021-a4", "kind": "contains", "expected": "2001", "from": "WRONG_EFFECTIVE_DATE", "to": null},
+   {"assertion_id": "research-023-a3", "kind": "contains", "expected": "1992", "from": "WRONG_EFFECTIVE_DATE", "to": null},
+   {"assertion_id": "research-029-a4", "kind": "contains", "expected": "1990", "from": "WRONG_EFFECTIVE_DATE", "to": null}
+  ],
+  "not_changed": [
+   "research-018-a1/a2, research-023-a1, research-029-a2 keep MISSED_CONTROLLING_CONTRARY_AUTHORITY: those are positive CITATION checks on authority the packet itself proves genuine, so omission genuinely is a missed-authority failure.",
+   "research-021-a3 ('protective order') and research-029-a3 ('void') keep MISSED_CONTROLLING_CONTRARY_AUTHORITY: they are positive holding-language checks, not date checks, and neither verifier flagged them.",
+   "multiturn-014-a3 / multiturn-015-a3 keep FABRICATED_AUTHORITY: NEGATIVE (not_contains) assertions on invented captions, where emitting the string IS fabrication."
+  ],
+  "known_remaining_instance_out_of_scope": {
+   "assertion_id": "research-003-a3",
+   "detail": "contains '1985' mapped to WRONG_EFFECTIVE_DATE -- the identical defect class, in a task neither round-1 nor round-2 attestation reviewed. Left untouched so that every packet outside the five repaired tasks stays byte-identical apart from the dataset-hash binding row. Should be repaired in the next batch that legitimately touches research-003."
+  }
+ },
+ "class_2_pinpoint_too_short_for_the_criterion": {
+  "defect": "UNSUPPORTED_PROPOSITION / CRITERION_PROPOSITION_MISMATCH -- research-018 C4 asserts the Legislature's broad-construction command, but the pinpoint quote stopped at the 'disturbing increase in lawsuits' sentence and never reached it.",
+  "changed": 1,
+  "detail": {
+   "proposition_id": "research-018-p4",
+   "source_id": "STAT-CAL-CIV-PROC-CODE-425-16-A",
+   "excerpt_before": "The Legislature finds and declares that there has been a disturbing increase in lawsuits brought primarily to chill the valid exercise of the constitutional rights of freedom of speech and petition for the redress of grievances.",
+   "excerpt_after": "The Legislature finds and declares that there has been a disturbing increase in lawsuits brought primarily to chill the valid exercise of the constitutional rights of freedom of speech and petition for the redress of grievances. The Legislature finds and declares that it is in the public interest to encourage continued participation in matters of public significance, and that this participation should not be chilled through abuse of the judicial process. To this end, this section shall be construed broadly.",
+   "note": "One uninterrupted run of the registry excerpt, extended forward only. No registry edit was needed -- the broad-construction sentence was already inside the stored section 425.16(a) excerpt verbatim. The proposition text was widened to match; criterion C4 is unchanged."
+  }
+ },
+ "class_3_criterion_grounded_on_the_question_not_the_answer": {
+  "defect": "UNSUPPORTED_PROPOSITION / CRITERION_PROPOSITION_MISMATCH -- research-029 C2 asserted Lippel's due-process holding while its pinpoint quoted only the sentence in which the court POSES the question ('In this action we are asked to decide whether ...').",
+  "changed": 1,
+  "registry_edit": {
+   "source_id": "CIT-REAL-12",
+   "case": "In re Marriage of Lippel (1990) 51 Cal.3d 1160",
+   "cluster": 1442248,
+   "field": "html_lawbox",
+   "canonical_url": "https://www.courtlistener.com/opinion/1442248/in-re-marriage-of-lippel/",
+   "old_sha256": "43baed842f0344a2004de821408552a2965ba153062a67f843fb13e689551269",
+   "new_sha256": "0b6cfa9285832202be538b3c692359c462942857b1a7a0dd6ed201a08a8b770c",
+   "old_retrieved_at": "2026-07-27T23:59:00Z",
+   "new_retrieved_at": "2026-07-28T00:30:00Z",
+   "old_excerpt_chars": 1055,
+   "new_excerpt_chars": 2954,
+   "runs_before": 3,
+   "runs_after": 3,
+   "change": "Run 3's START anchor moved backwards inside the SAME uninterrupted passage of the opinion -- from 'We have long interpreted section 580 in accordance with its plain language.' to 'The issue we address is whether due process and section 580 permit ...' -- so the excerpt now carries the court's due-process answer in part II.A. Text was only ADDED: no run was removed or shortened, no ' ... ' join moved, and every proposition excerpt already grounded on this record (research-029-p3/p4, verification-real-006-p1/p2/p3) is still a verbatim substring of the longer excerpt.",
+   "text_source": "Same CourtListener full text used in the round-1 re-excerpt (REST API v4, token-authenticated, cluster 1442248, html_lawbox); each run re-asserted in code to be a whitespace-normalized substring of that text before the record was written.",
+   "aggregator_caveat": "Unchanged. Lippel is a pre-archive Supreme Court decision with NO official courts.ca.gov hosting (documented since B8a); the NO_OFFICIAL_HOSTING disclosure stays in discovery_notes and is still surfaced in the reviewer bundle caveat block."
+  },
+  "criterion": {
+   "criterion_id": "research-029-c2",
+   "before": "States, on the authority of In re Marriage of Lippel (1990) 51 Cal.3d 1160, that entering a default judgment ordering child support where the dissolution petition served on the respondent did not request it, and no notice of any such request was served, is a denial of due process as embodied in Code of Civil Procedure section 580.",
+   "after": "States, on the authority of In re Marriage of Lippel (1990) 51 Cal.3d 1160, that the court answered the due-process question it posed — whether it is a denial of due process, as embodied in Code of Civil Procedure section 580, to enter a default judgment ordering child support where the dissolution petition served on the respondent did not request it and no notice of any such request was served — by concluding that such a default judgment is void for lack of notice and therefore subject to collateral attack: due process forbids entering a judgment against a defendant who was not given proper notice of the existence of the lawsuit and of the specific relief sought in the complaint served on him, and California satisfies those due process requirements in default cases through section 580.",
+   "proposition_ids_before": ["research-029-p2"],
+   "proposition_ids_after": ["research-029-p2", "research-029-p5", "research-029-p6"],
+   "legal_content": "Equivalent. The criterion still requires the answer's legal substance (due-process defect, embodied in section 580, on a petition that never requested support); it now states it in the court's own terms and every clause is quoted underneath it."
+  },
+  "propositions": [
+   {"proposition_id": "research-029-p2", "action": "re-grounded", "excerpt_before": "the sentence posing the question only", "excerpt_after": "the same sentence PLUS 'For the reasons that follow, we conclude that such a default judgment is void for lack of notice and therefore subject to collateral attack by the husband.' (one uninterrupted run; the same excerpt verification-real-006-p2 already uses)"},
+   {"proposition_id": "research-029-p5", "action": "new", "excerpt": "It is a fundamental concept of due process that a judgment against a defendant cannot be entered unless he was given proper notice and an opportunity to defend. (U.S. Const., art. XIV; Mullane v. Central Hanover Bank (1950) 339 U.S. 306, 313-315 [94 L.Ed. 865, 872-874, 70 S.Ct. 652].) California satisfies these due process requirements in default cases through section 580."},
+   {"proposition_id": "research-029-p6", "action": "new", "excerpt": "It is fundamental to the concept of due process that a defendant be given notice of the existence of a lawsuit and notice of the specific relief which is sought in the complaint served upon him. ... The instant case is a prime example of the foregoing; the petition which was served on Ronald sought no monetary relief from him. Therefore, there was no incentive for Ronald to appear and defend. (stored as one uninterrupted run; the ' ... ' here is display elision in this note only)"}
+  ]
+ },
+ "class_4_publication_status_asked_but_not_entailed": {
+  "defect": "CRITERION_REQUIRES_OUTSIDE_LEGAL_MEMORY / AMBIGUOUS_AUTHORITY_STATUS -- verification-real-005's prompt asks whether Bridgestone/Firestone is 'a real published Court of Appeal decision', but the packet carried only the aggregator-hosted case caption plus an unproved authority-status field. No Official Reports index record and no rule grounded publication or citability.",
+  "changed": 1,
+  "new_index_records": 0,
+  "existing_index_records_reused": 1,
+  "route": "EXISTING CIT-INDEX-CAL-APP-4TH-7 (California Official Reports, volume 7 Cal.App.4th citation index, window covering page 1384) + CRC-8-1115 rule 8.1115(d) -- exactly how verification-real-002/003/007 and research-023-c3 were fixed in round 1. No fetch was required: the round-1 repair already ingested this index record and its discovery_notes already name verification-real-005 as a dependent, so the Official Reports volume-index page for Bridgestone's citation was in the registry before round 2 began.",
+  "index_record": {
+   "source_id": "CIT-INDEX-CAL-APP-4TH-7",
+   "url": "https://www.courtlistener.com/c/cal-app-4th/7/",
+   "sha256": "26b22922429f6b56992b5f3d004810bf8dd7cf89a2ad3f2a272d868e981d124f",
+   "role": "Official-reporter citation metadata only; no substantive legal proposition rests on it."
+  },
+  "criterion": {
+   "criterion_id": "verification-real-005-c1",
+   "before": "Confirms the citation corresponds to Bridgestone/Firestone, Inc. v. The Superior Court of Alameda County (Nathan Rios, a minor, et al., real parties in interest), Court of Appeal, First District, Division One, docket No. A053717, decided June 24, 1992.",
+   "after": "Confirms the citation corresponds to Bridgestone/Firestone, Inc. v. The Superior Court of Alameda County (Nathan Rios, a minor, et al., real parties in interest), Court of Appeal, First District, Division One, docket No. A053717, decided June 24, 1992, and states that the decision is published in the California Official Reports at 7 Cal.App.4th 1384 and, as a published California opinion, may be cited or relied on.",
+   "proposition_ids_before": ["verification-real-005-p1"],
+   "proposition_ids_after": ["verification-real-005-p1", "verification-real-005-p4", "verification-real-005-p5"],
+   "note": "The bare word 'published', which no packet excerpt stated, is replaced by the entailed 'published in the California Official Reports at 7 Cal.App.4th 1384 and ... may be cited or relied on' -- the same wording the round-1 status repair standardised on. The task's authority_status registry field is unchanged but is no longer what the criterion rests on."
+  },
+  "propositions": [
+   {"proposition_id": "verification-real-005-p4", "action": "new", "source_id": "CIT-INDEX-CAL-APP-4TH-7", "excerpt": "Bridgestone/Firestone, Inc. v. Superior Court | Date Filed: June 24th, 1992 | Citations: 7 Cal. App. 4th 1384, 9 Cal. Rptr. 2d 709, 92 Daily Journal DAR 8763, 1992 Cal. App. LEXIS 815, 92 Cal. Daily Op. Serv. 5610 | Docket Number: A053717"},
+   {"proposition_id": "verification-real-005-p5", "action": "new", "source_id": "CRC-8-1115", "excerpt": "A published California opinion may be cited or relied on as soon as it is certified for publication or ordered published."}
+  ]
+ },
+ "tasks_touched": {
+  "count": 6,
+  "rejected_and_repaired": [
+   "research-018", "research-021", "research-023", "research-029",
+   "verification-real-005"
+  ],
+  "rebuilt_only": [
+   {"task": "verification-real-006", "reason": "sole other dependent of CIT-REAL-12. No criterion, proposition or assertion edit; its three proposition excerpts are still verbatim substrings of the extended excerpt, and it was re-assembled only so its evidence packet and source_sha256 track the repaired record."}
+  ],
+  "task_content_sha256": [
+   {"task": "research-018", "old": "580837ee2b6f592d3bf0a273639b51a57f7e042c5a4bdde9249d1a007c4cce58", "new": "5ed469aee80d5a29b61e08e7236298aa41bccf3eb70758744a2a8874897c6a70"},
+   {"task": "research-021", "old": "d8046d6dd534125abcca1b91be88d8981d1bdeec2e2f52a67af909ea99c488e1", "new": "44f5a470b6e4b7c3c1d142c9c3e7e062d8d95dae0bd719c90c0f6c29fffe3ffe"},
+   {"task": "research-023", "old": "900b8ed0e62a2e46703993460ab6677d2d32ae214d1bbb8155fdcd19200be6d2", "new": "acd7d23e36d257a9369d0a274b7f9d0425bc469d9d4b0fa81f9b519a284994d2"},
+   {"task": "research-029", "old": "31422177dfcafd0aa3d0f425ff802b7d5fb5246ef8e65c630b3a961d348b4a18", "new": "914f5a1e4a588a7e3a1f9730ae07cdcbdf9c566b8ecdca8dad8d1f45c952e8cb"},
+   {"task": "verification-real-005", "old": "c63fb19842239eeaa008da753ffd7d8d590f1d768517198dcd9cd0072a979f9f", "new": "c8e8b9465f1244157f1f5f8f9dfb2f46d0ee24ff9d32d9ecd25a35b3fc9b583a"},
+   {"task": "verification-real-006", "old": "7484c088c6eec2ef096685febe0c131d5e65b47cc0039bb1c682048a00a0983f", "new": "aa5b7aad71435a83b40ae2cd307964e33276c5f375700aaebd2156a46a9ae232"}
+  ]
+ },
+ "collateral_updates": [
+  "provenance/b3-research-provenance.json -- task_content_sha256 refreshed for research-018/021/023/029 (the only lineage file that records task hashes for the touched tasks; b1-verification-provenance.json records none). Its as-authored deterministic_assertions hard_failure_code fields are left as authored, the same convention round 1 used.",
+  "review-bundles/ regenerated by review-bundles/buildBundles.ts.",
+  "calibration.jsonl untouched: no calibration pair keys off CIT-REAL-12 or any repaired task (b75-validate 60 pairs, 0 failures, 33 distinct source ids all resolved)."
+ ],
+ "review_bundle_byte_identity": {
+  "method": "sha256 / line-level diff of every review-bundles/tasks/<id>.md before and after, plus a field-level diff of every bundles.jsonl row",
+  "unmodified_tasks": 114,
+  "identical_except_the_single_dataset_hash_binding_line": 114,
+  "any_other_difference": 0,
+  "finding": "Unchanged from round 1: the builder stamps no timestamp and no randomness, so the only delta in an unmodified packet is the '| dataset_hash | <64 hex> |' row -- benchmarkDatasetHash() over the WHOLE dataset, the deliberate binding that makes an attestation stop counting when any task changes. bundles.jsonl rows for unmodified tasks differ only in the dataset_hash field; index.md differs only in the header hash and the 6 touched rows; manifest.json only in generated_from_dataset_hash; README.md byte-identical.",
+  "dataset_hash_before": "d35e3b59be58f689020c3eeecd52829e19a0d83437162a6956c46af893cbf0c5",
+  "dataset_hash_after": "a8b8be87cc0f08060b345f12a9123798b5e46b9199cac9f925f8907949957bdf"
+ },
+ "registry_counts": {"before": 93, "after": 93},
+ "validation": {
+  "tests/kimi-k3-eval.test.mjs": "45/45 PASS",
+  "verifySources --offline": "93/93 verified, drift_count 0, network_calls 0",
+  "eval:kimi --mode dry-run --dataset evals/kimi-k3/datasets/california-law-v1": "exit 0, validation_pass true, canonical_count_gate_pass true, 120 tasks, 120/120 primary-source grounded, 0 unsupported propositions, 0 errors, category counts unchanged (research 30 / drafting 25 / verification 20 / multi_turn 15 / abstention_adversarial 20 / long_context 10)",
+  "b75-validate.mjs": "validation_pass true, 60 pairs, 0 failures, 33 distinct source ids, 0 unresolved",
+  "idempotency": "re-running b9c-repair-sources.py then b9c-repair.ts reproduces sources.jsonl and tasks.jsonl byte for byte"
+ },
+ "open": "Round 3 of the cross-vendor machine attestation must re-review the 6 rebuilt tasks and, because the dataset hash moved again (d35e3b59 -> a8b8be87), re-issue attestations for all 120. research-003-a3 carries the class-1 defect and is queued for the next batch that touches research-003."
+}

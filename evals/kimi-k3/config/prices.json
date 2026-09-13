@@ -1,0 +1,41 @@
+{
+  "_provenance": {
+    "pinned_at": "2026-07-27",
+    "anthropic": "Anthropic first-party API rates (claude-api skill table, cached 2026-06-24); claude-sonnet-5 uses the $3/$15 list rate, not the $2/$10 introductory rate that expires 2026-08-31 — conservative for cost estimates",
+    "fireworks": "docs.fireworks.ai/serverless/pricing fetched 2026-07-27: Kimi K3 standard $3.00/$15.00 per MTok; US-only serverless endpoints priced at a documented 10% premium, giving $3.30/$16.50 for accounts/fireworks/routers/kimi-k3-us; accounts/fireworks/models/deepseek-v4-pro $1.74/$3.48 per MTok",
+    "deepseek": "api-docs.deepseek.com/quick_start/pricing fetched 2026-07-27: deepseek-v4-pro native cache-miss rates $0.435/$0.87 per MTok",
+    "openai": "gpt-5.6-sol $5/$30 per MTok corroborated 2026-07-27 by OpenRouter passthrough, aipricing.guru, and requesty.ai (openai.com pricing page blocks fetches); requests above 272K input tokens reprice to $10/$45 — eval judge calls stay far below that threshold"
+  },
+  "claude-fable-5": {
+    "input_usd_per_mtok": 10,
+    "output_usd_per_mtok": 50
+  },
+  "claude-opus-5": {
+    "input_usd_per_mtok": 5,
+    "output_usd_per_mtok": 25
+  },
+  "claude-sonnet-5": {
+    "input_usd_per_mtok": 3,
+    "output_usd_per_mtok": 15
+  },
+  "claude-haiku-4-5": {
+    "input_usd_per_mtok": 1,
+    "output_usd_per_mtok": 5
+  },
+  "accounts/fireworks/routers/kimi-k3-us": {
+    "input_usd_per_mtok": 3.3,
+    "output_usd_per_mtok": 16.5
+  },
+  "accounts/fireworks/models/deepseek-v4-pro": {
+    "input_usd_per_mtok": 1.74,
+    "output_usd_per_mtok": 3.48
+  },
+  "deepseek-v4-pro": {
+    "input_usd_per_mtok": 0.435,
+    "output_usd_per_mtok": 0.87
+  },
+  "gpt-5.6-sol": {
+    "input_usd_per_mtok": 5,
+    "output_usd_per_mtok": 30
+  }
+}

@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" width="96" height="96">
+  <!-- DancingElephant concept 02 "Arch" — body and legs as one arch, head bump, trunk swinging forward, front foot lifted. -->
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="0.35">
+      <stop offset="0" stop-color="#7C5CFC"/><stop offset="0.55" stop-color="#5C7CFC"/><stop offset="1" stop-color="#2DD4BF"/>
+    </linearGradient>
+  </defs>
+  <path d="M24,74 L24,40 Q24,18 43,17 Q52,16.5 55,21 Q59,16 68,17 Q82,20 82,44 L82,80"
+        fill="none" stroke="url(#g)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M24,40 Q24,58 15,66 Q9,71 5,65" fill="none" stroke="#7C5CFC" stroke-width="8" stroke-linecap="round"/>
+  <circle cx="46" cy="34" r="11" fill="#7C5CFC"/>
+</svg>

@@ -1,0 +1,69 @@
+{
+ "bundle_kind": "benchmark_reviewer_packets",
+ "dataset": "california-law-v1",
+ "spec_ref": "specs/CALC-KIMI-K3-GPT56-JUDGE-001.spec.md",
+ "generated_from_dataset_hash": "805e588a4c6979f364ef4cd9d854edee211bf83da0ab506ef0d39e60c1bbfce5",
+ "task_count": 120,
+ "packet_count": 120,
+ "files": {
+  "readme": "README.md",
+  "index": "index.md",
+  "machine_readable_bundles": "bundles.jsonl",
+  "packets_dir": "tasks/",
+  "attestation_tool": "../datasetTools/makeAttestation.ts"
+ },
+ "reviewers_required_per_task": 2,
+ "attestations_are_external": true,
+ "reason_codes": {
+  "APPROVE": [
+   "ENTAILED_AND_SELF_CONTAINED",
+   "APPROVED_WITH_AGGREGATOR_CAVEAT_NOTED"
+  ],
+  "REJECT": [
+   "UNSUPPORTED_PROPOSITION",
+   "CRITERION_REQUIRES_OUTSIDE_LEGAL_MEMORY",
+   "STALE_EFFECTIVE_DATE",
+   "AMBIGUOUS_AUTHORITY_STATUS",
+   "FAILED_SOURCE_HASH",
+   "EXCERPT_NOT_VERBATIM",
+   "CRITERION_PROPOSITION_MISMATCH",
+   "AGGREGATOR_SOURCE_NOT_ACCEPTABLE",
+   "ARCHIVED_SOURCE_NOT_ACCEPTABLE",
+   "PROMPT_CONTAINS_NONPUBLIC_MATERIAL"
+  ]
+ },
+ "aggregator_caveat_source_ids": [
+  "CIT-REAL-1",
+  "CIT-REAL-10",
+  "CIT-REAL-12",
+  "CIT-REAL-13",
+  "CIT-REAL-14",
+  "CIT-REAL-16",
+  "CIT-REAL-17",
+  "CIT-REAL-2",
+  "CIT-REAL-5",
+  "CIT-REAL-6",
+  "CIT-REAL-7",
+  "CIT-REAL-8",
+  "CIT-REAL-9"
+ ],
+ "archived_source_policy_decision_source_id": "CIT-REAL-16",
+ "tasks_with_any_caveat": [
+  "drafting-011",
+  "drafting-012",
+  "research-016",
+  "research-017",
+  "research-018",
+  "research-020",
+  "research-021",
+  "research-022",
+  "research-023",
+  "research-029",
+  "verification-real-002",
+  "verification-real-003",
+  "verification-real-004",
+  "verification-real-005",
+  "verification-real-006",
+  "verification-real-007"
+ ]
+}

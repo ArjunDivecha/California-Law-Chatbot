@@ -1,0 +1,228 @@
+{
+  "batch": "B8a",
+  "title": "case-source officiality audit",
+  "audit_date": "2026-07-27",
+  "spec_ref": "specs/CALC-KIMI-K3-GPT56-JUDGE-001.spec.md (aggregators permitted for discovery/citation metadata only; a case record whose excerpt grounds a substantive proposition must be anchored to an official source)",
+  "method": "Every CIT-REAL-* record in sources.jsonl hosted on a non-official domain was checked for the same opinion on an official California judicial-branch source (primarily https://www4.courts.ca.gov/opinions/archive/<docket>.PDF, the pattern already used by CIT-REAL-18/19/18-B/19-B; also courts.ca.gov/opinion/published/<date>/<docket>, courts.ca.gov site search, and the Wayback Machine for once-live official pages). Where an official source was found, the record's existing excerpt was compared against the fetched official text after whitespace normalization only (no other normalization, e.g. quote-mark style or letter case, was applied) to decide a verbatim match. Three sonnet subagents performed the fetching/comparison in parallel (per this repo's model-routing convention: source fetching/extraction on sonnet); this report reflects Fable-level synthesis and the final decision on each record. CIT-REAL-11 does not exist in the registry (never allocated) and is not an omission.",
+  "cit_index_determination": {
+    "records_checked": [
+      "CIT-INDEX-CAL-5TH-7", "CIT-INDEX-CAL-3D-43", "CIT-INDEX-CAL-APP-4TH-228",
+      "CIT-INDEX-CAL-4TH-18", "CIT-INDEX-CAL-APP-4TH-195", "CIT-INDEX-CAL-4TH-8",
+      "CIT-INDEX-CAL-APP-4TH-159", "CIT-INDEX-CAL-5TH-11", "CIT-INDEX-CAL-APP-2D-269"
+    ],
+    "determination": "SKIPPED_PER_INSTRUCTIONS — allowed aggregator use, not audited for re-anchoring",
+    "reasoning": "All 9 CIT-INDEX-* records are courtlistener.com official-reporter volume/citation-index pages, and each record's own publication_or_precedential_status field already states verbatim: 'Official-reporter citation index metadata (CourtListener); used for citation-metadata verification only, not as the source of a substantive legal proposition.' They exist to supply negative evidence (confirming that a fabricated or miscited case citation does not correspond to a real holding in that reporter volume/page window), not to ground an affirmative substantive proposition. This is exactly the discovery/citation-metadata aggregator use the spec permits (specs/CALC-KIMI-K3-GPT56-JUDGE-001.spec.md: 'CourtListener or other aggregators may assist discovery and citation metadata but cannot alone establish a proposition, effective date, or precedential status'). No re-anchoring action was taken or required for these 9 records."
+  },
+  "cit_real_summary_counts": {
+    "total_cit_real_records": 20,
+    "already_official": 4,
+    "re_anchored": 1,
+    "excerpt_mismatch": 2,
+    "no_official_hosting": 13
+  },
+  "records": [
+    {
+      "source_id": "CIT-REAL-1",
+      "case": "Navellier v. Sletten",
+      "old_canonical_url": "https://scocal.stanford.edu/opinion/navellier-v-sletten-32261",
+      "locator": "29 Cal.4th 82",
+      "disposition": "NO_OFFICIAL_HOSTING",
+      "new_canonical_url": null,
+      "notes": "Docket resolved to S095000 (cross-checked scocal.stanford.edu, CourtListener, Casemine — consistent). Tried https://www4.courts.ca.gov/opinions/archive/S095000.PDF and path variants (.pdf, /documents/, /cms/opinions/archive/, /opinions/archive/2002/) — all 404. supreme.courts.ca.gov case page — 404. appellatecases.courtinfo.ca.gov docket search — blocked by Cloudflare bot challenge (403) to both curl and WebFetch. Boundary-tested the live archive's real coverage window using known dockets: pre-2015 dockets (S171845 2011, S147345 2009, S140741 2011) all 404; 2017+ dockets (S227228, S235968) return 200. This 2002 opinion falls before that window. courts.ca.gov's own opinions page points historical researchers to a subscription LexisNexis database (not a .ca.gov domain), which does not qualify as official web hosting. Record left untouched (aggregator-hosted, caveat for reviewers)."
+    },
+    {
+      "source_id": "CIT-REAL-2",
+      "case": "Taus v. Loftus",
+      "old_canonical_url": "https://scocal.stanford.edu/opinion/taus-v-loftus-33698",
+      "locator": "40 Cal.4th 683",
+      "disposition": "NO_OFFICIAL_HOSTING",
+      "new_canonical_url": null,
+      "notes": "Docket S133805. Tried https://www4.courts.ca.gov/opinions/archive/S133805.PDF (and www./courts.ca.gov/lowercase variants) — 404. Wayback Machine CDX/availability query for that exact path — zero snapshots ever recorded (page never crawled, unlike the Sargon case below). Legacy 'archopinions.htm' pre-2015 archive page — retired/404. appellatecases.courtinfo.ca.gov — 403 (bot-blocked). WebSearch site:courts.ca.gov for S133805/Taus — no opinion-PDF hits. 2007 opinion, pre-archive-coverage era. Record left untouched."
+    },
+    {
+      "source_id": "CIT-REAL-3",
+      "case": "Geiser v. Kuhns",
+      "old_canonical_url": "https://www.animallawconference.org/wp-content/uploads/2024/09/Geiser-v.-Kuhns-13-Cal.5th-1238.pdf",
+      "locator": "13 Cal.5th 1238",
+      "disposition": "EXCERPT_MISMATCH",
+      "new_canonical_url": null,
+      "official_source_found": "https://www4.courts.ca.gov/opinions/archive/S262032.PDF (HTTP 200, fetched, 28 pp.)",
+      "notes": "Official source exists and is live, but the stored excerpt does not appear verbatim (whitespace-normalized only) in it. Two discrepancies found: (1) caption case — stored excerpt reads 'Gregory GEISER, Plaintiff and Appellant, v. Peter KUHNS et al., Defendants and Appellants.' (mixed case, aggregator convention); the official opinion's caption is fully capitalized: 'GREGORY GEISER, Plaintiff and Appellant, v. PETER KUHNS et al., Defendants and Appellants.' (2) quotation-mark style — stored excerpt uses single quotes ('a disturbing increase' / 'lawsuits brought primarily...'); the official opinion uses double quotes throughout (\"a disturbing increase\" ... \"lawsuits brought primarily to chill the valid exercise of the constitutional rights of freedom of speech and petition for the redress of grievances.\"). Word content is identical in both places; only case and quote-glyph differ, but the task's verbatim rule authorizes whitespace normalization only, not case-folding or quote-style normalization, so this is a genuine (if cosmetic) mismatch. Record NOT modified per instructions — flagged for reviewers, who may choose to correct the stored excerpt's typography to match the official opinion and then re-anchor in a follow-up pass, since the underlying legal content is confirmed accurate and the official PDF is live and reachable."
+    },
+    {
+      "source_id": "CIT-REAL-4",
+      "case": "Williams v. Superior Court",
+      "old_canonical_url": "https://scocal.stanford.edu/opinion/williams-v-super-ct-34534",
+      "locator": "3 Cal.5th 531",
+      "disposition": "re_anchored",
+      "new_canonical_url": "https://www4.courts.ca.gov/opinions/archive/S227228.PDF",
+      "notes": "APPLIED to sources.jsonl. Official PDF confirmed live (HTTP 200, 36 pp., docket S227228). Excerpt 'This is a representative action seeking civil penalties on behalf of the State of California and aggrieved employees statewide for alleged wage and hour violations.' verified as an exact verbatim substring (whitespace-normalized) of the official opinion text. canonical_url, retrieved_at, and discovery_notes were updated; source_id, locator, excerpt, and sha256 were left byte-identical. This is the only CIT-REAL record in the audit that both had a discoverable official source AND passed the strict verbatim check."
+    },
+    {
+      "source_id": "CIT-REAL-5",
+      "case": "Coy v. Superior Court",
+      "old_canonical_url": "https://scocal.stanford.edu/opinion/coy-v-superior-court-29913",
+      "locator": "58 Cal.2d 210",
+      "disposition": "NO_OFFICIAL_HOSTING",
+      "new_canonical_url": null,
+      "notes": "Docket resolved via WebSearch to S.F. No. 20976 (not S.F. 20707, which belongs to the unrelated Cembrook case below). Tried https://www4.courts.ca.gov/opinions/archive/SF20976.PDF, /S.F.20976.PDF, /S20976.PDF (all 404); courts.ca.gov/opinion/published/1962-07-19/sf20976 (404). 1962 predates both the modern Sxxxxxx docket-numbering convention and the electronic opinion archive entirely; courts.ca.gov's own historical-opinions pointer is the subscription LexisNexis database (non-.ca.gov). Record left untouched."
+    },
+    {
+      "source_id": "CIT-REAL-6",
+      "case": "Stewart v. Colonial Western Agency, Inc.",
+      "old_canonical_url": "https://caselaw.findlaw.com/court/ca-court-of-appeal/1464765.html",
+      "locator": "87 Cal.App.4th 1006",
+      "disposition": "NO_OFFICIAL_HOSTING",
+      "new_canonical_url": null,
+      "notes": "Docket B139311, Court of Appeal, Second District, Division 4, decided 2001-03-14. Tried https://www4.courts.ca.gov/opinions/archive/B139311.PDF/.pdf (404). Tried https://courts.ca.gov/opinion/published/2001-03-14/b139311 plus +/-1-day and uppercase-docket variants (all 404) — this URL scheme is confirmed real and populated for a different 2001 Court of Appeal case (B142625, decided 2001-05-31, resolves live), so its absence for B139311 is a genuine negative signal, not a broken URL guess. courts.ca.gov site search for 'B139311' and 'Stewart Colonial Western Agency' returned no results. appellatecases.courtinfo.ca.gov — 403 (bot-blocked; a human with a browser could still check this system manually, which this audit could not do). Record left untouched. Informational note (does not change disposition, since no official text was available to compare against): the double-quoted fragment in the stored excerpt is verbatim per FindLaw's served text, aside from a legitimate mid-sentence ellipsis eliding 'of the testimony or of the materials produced'."
+    },
+    {
+      "source_id": "CIT-REAL-7",
+      "case": "Costco Wholesale Corp. v. Superior Court",
+      "old_canonical_url": "https://scocal.stanford.edu/opinion/costco-v-super-ct-33789",
+      "locator": "47 Cal.4th 725",
+      "disposition": "NO_OFFICIAL_HOSTING",
+      "new_canonical_url": null,
+      "notes": "Docket S163335, decided 2009-11-30. Tried https://www4.courts.ca.gov/opinions/archive/S163335.PDF and path variants — all 404. appellatecases.courtinfo.ca.gov — 403 (bot-blocked). 2009 falls before the archive's empirically bounded live-coverage window (~2015+; see CIT-REAL-1 boundary test). Record left untouched. Note: the stored excerpt is itself a paraphrase/metadata blob with one short quoted fragment rather than a contiguous opinion quote — this was not independently re-verified since no official text was reachable to compare against."
+    },
+    {
+      "source_id": "CIT-REAL-8",
+      "case": "Cembrook v. Superior Court",
+      "old_canonical_url": "https://scocal.stanford.edu/opinion/cembrook-v-superior-court-29873",
+      "locator": "56 Cal.2d 423",
+      "disposition": "NO_OFFICIAL_HOSTING",
+      "new_canonical_url": null,
+      "notes": "Docket S.F. 20707, decided 1961-08-03. Tried https://www4.courts.ca.gov/opinions/archive/SF20707.PDF and lowercase .pdf variant (404); courts.ca.gov/opinion/published/1961-08-03/sf20707 (404). WebSearch for .ca.gov hosting of 'Cembrook v. Superior Court' 'S.F. 20707' surfaced only Leagle/Casemine/scocal — no official result. 1961 predates both the modern docket-numbering convention and the electronic archive. Record left untouched."
+    },
+    {
+      "source_id": "CIT-REAL-9",
+      "case": "West Pico Furniture Co. v. Superior Court",
+      "old_canonical_url": "https://scocal.stanford.edu/opinion/west-pico-furniture-co-v-superior-court-27069",
+      "locator": "56 Cal.2d 407",
+      "disposition": "NO_OFFICIAL_HOSTING",
+      "new_canonical_url": null,
+      "notes": "Docket L.A. 26171, decided 1961-08-03 (same-day companion decision to Cembrook). Tried https://www4.courts.ca.gov/opinions/archive/LA26171.PDF and lowercase .pdf variant — 404. WebSearch for .ca.gov hosting of 'West Pico Furniture' 'L.A. 26171' surfaced only scocal/Justia/Leagle/FindLaw/vLex/CaseMine — no official result. Same 1961 pre-archive reasoning as CIT-REAL-8. Record left untouched."
+    },
+    {
+      "source_id": "CIT-REAL-10",
+      "case": "Bridgestone/Firestone, Inc. v. Superior Court",
+      "old_canonical_url": "https://caselaw.findlaw.com/court/ca-court-of-appeal/1775082.html",
+      "locator": "7 Cal.App.4th 1384",
+      "disposition": "NO_OFFICIAL_HOSTING",
+      "new_canonical_url": null,
+      "notes": "Docket A053717, Court of Appeal, First District, Division 1, decided 1992-06-24. Tried https://www4.courts.ca.gov/opinions/archive/A053717.PDF and lowercase .pdf, plus /opinions/1992/A053717.PDF and /opinions/archive/1992/A053717.PDF year-subfolder variants — all 404. Tried courts.ca.gov/opinion/published/1992-06-24/a053717 plus +/-1-day and uppercase-docket variants — all 404. courts.ca.gov site search for 'A053717' and 'Bridgestone Firestone Superior Court' — 'We are unable to find a result for you.' appellatecases.courtinfo.ca.gov — 403 (bot-blocked). WebSearch found only an unrelated 2013 unpublished opinion citing Bridgestone/Firestone as precedent, not the case itself. Record left untouched."
+    },
+    {
+      "source_id": "CIT-REAL-12",
+      "case": "In re Marriage of Lippel",
+      "old_canonical_url": "https://scocal.stanford.edu/opinion/re-marriage-lippel-31275",
+      "locator": "51 Cal.3d 1160",
+      "disposition": "NO_OFFICIAL_HOSTING",
+      "new_canonical_url": null,
+      "notes": "Docket S013741, decided 1990-12-17. Tried https://www4.courts.ca.gov/opinions/archive/S013741.PDF — 404. Wayback Machine CDX exact-match query on that path — zero snapshots ever recorded (unlike CIT-REAL-16 below, this URL was never crawled at any point in web history, consistent with a 1990 opinion predating the web-based PDF archive entirely). appellatecases.courtinfo.ca.gov — 403 (bot-blocked). courts.ca.gov confirms pre-web-era opinions exist only in bound Official Reports volumes. Record left untouched."
+    },
+    {
+      "source_id": "CIT-REAL-13",
+      "case": "Briggs v. Eden Council for Hope and Opportunity",
+      "old_canonical_url": "https://scocal.stanford.edu/opinion/briggs-v-eden-council-hope-opportunity-31951",
+      "locator": "19 Cal.4th 1106",
+      "disposition": "NO_OFFICIAL_HOSTING",
+      "new_canonical_url": null,
+      "notes": "Docket S062156, decided 1999-01-21. Tried https://www4.courts.ca.gov/opinions/archive/S062156.PDF and path variants — all 404. appellatecases.courtinfo.ca.gov — 403 (bot-blocked). 1999 falls well before the archive's empirically bounded live-coverage window (~2015+). Record left untouched — note this case is also reused by B4 drafting tasks (see PLAN.md B4 status-log entry acknowledging the open B8a obligation), which remains open after this audit since no official hosting was found."
+    },
+    {
+      "source_id": "CIT-REAL-14",
+      "case": "Equilon Enterprises, LLC v. Consumer Cause, Inc.",
+      "old_canonical_url": "https://www.courtlistener.com/opinion/2519835/equilon-enterprises-v-consumer-cause-inc/",
+      "locator": "29 Cal.4th 53",
+      "disposition": "NO_OFFICIAL_HOSTING",
+      "new_canonical_url": null,
+      "notes": "Docket resolved to S094877 (cross-checked scocal.stanford.edu, CASP.net, vLex, CourtListener, FindLaw — consistent). Tried https://www4.courts.ca.gov/opinions/archive/S094877.PDF and path variants — all 404. appellatecases.courtinfo.ca.gov — 403 (bot-blocked). 2002 opinion, pre-archive-coverage era. Record left untouched; the courtlistener.com canonical_url remains the only accessible copy found."
+    },
+    {
+      "source_id": "CIT-REAL-15",
+      "case": "Wilson v. Cable News Network, Inc.",
+      "old_canonical_url": "https://case-law.vlex.com/vid/wilson-v-cable-news-889685986",
+      "locator": "7 Cal.5th 871",
+      "disposition": "EXCERPT_MISMATCH",
+      "new_canonical_url": null,
+      "official_source_found": "https://www4.courts.ca.gov/opinions/archive/S239686.PDF (HTTP 200, fetched, 42 pp.)",
+      "notes": "Official source exists and is live. The single quoted factual sentence in the stored excerpt — 'Plaintiff Stanley Wilson began working for Cable News Network, Inc., in 1996, and wrote and produced stories for the network for more than 17 years.' — IS verbatim in the official opinion (Part I). However, the rest of the stored excerpt is not: the caption block and reporter-citation string are vLex citation-service metadata, not court text (the official caption differs in case/formatting), and the excerpt's 'Held:' sentence is a paraphrase, not verbatim opinion language — the official opinion's actual holding reads 'We hold otherwise. The statute contains no exception for discrimination or retaliation claims, and ... the plaintiff's allegations about the defendant's invidious motives will not shield the claim from the same preliminary screening for minimal merit that would apply to any other claim arising from protected activity,' whereas the stored excerpt's 'Held:' clause inserts the word 'categorical' and restructures the sentence. Because the excerpt field as a whole does not pass verbatim, this is EXCERPT_MISMATCH, not re_anchored. Record NOT modified — flagged for reviewers, who could re-anchor to the confirmed-live official PDF above once the excerpt is trimmed to only the verbatim-verified sentence or corrected to quote the opinion's actual holding language."
+    },
+    {
+      "source_id": "CIT-REAL-16",
+      "case": "Sargon Enterprises, Inc. v. University of Southern California",
+      "old_canonical_url": "https://caselaw.findlaw.com/court/ca-supreme-court/1616426.html",
+      "locator": "55 Cal.4th 747",
+      "disposition": "NO_OFFICIAL_HOSTING",
+      "new_canonical_url": null,
+      "notes": "SPECIAL CASE — flagging for reviewer attention. Docket S191550, decided 2012-11-26. https://www4.courts.ca.gov/opinions/archive/S191550.PDF returns 404 TODAY, confirming the pre-existing discovery_notes on this record. However, the Wayback Machine's availability API shows this exact official path was live and crawled: http://www.courts.ca.gov/opinions/archive/S191550.PDF, captured 2014-04-15, HTTP 200. That Wayback capture was fetched directly and confirmed to be the genuine 44-page slip opinion (docket S191550, filed 11/26/12); the stored excerpt's quoted proposition ('A small dental implant company that had net profits of $101,000 in 1998 has sued a university for breach of a contract...') is an exact verbatim match (whitespace-normalized) against that archived official text. Disposition kept as NO_OFFICIAL_HOSTING rather than re_anchored because there is currently no live, directly-resolving .ca.gov URL to set as canonical_url — pointing canonical_url at a web.archive.org mirror would substitute one non-.ca.gov domain for another, even though the underlying content is verified-authentic official text. Recommend to reviewers as a strong candidate for a follow-up 'historical-official, archived-only' re-anchoring policy decision (not made unilaterally here)."
+    },
+    {
+      "source_id": "CIT-REAL-17",
+      "case": "City of Cotati v. Cashman",
+      "old_canonical_url": "https://caselaw.findlaw.com/court/ca-supreme-court/1465114.html",
+      "locator": "29 Cal.4th 69",
+      "disposition": "NO_OFFICIAL_HOSTING",
+      "new_canonical_url": null,
+      "notes": "Docket verification: S099999 in the stored excerpt is CORRECT, not a placeholder — independently confirmed via scocal.stanford.edu's own case-title metadata, CASP.net, vLex, and CourtListener/Justia references, all consistently giving S099999. California Supreme Court dockets are sequential case numbers and this one happens to land on repeating 9s; no evidence of a substituted/wrong docket was found. Tried https://www4.courts.ca.gov/opinions/archive/S099999.PDF and path variants — all 404. appellatecases.courtinfo.ca.gov — 403 (bot-blocked). 2002 opinion (decided the same day as Navellier and Equilon), pre-archive-coverage era. Record left untouched."
+    },
+    {
+      "source_id": "CIT-REAL-18",
+      "case": "FilmOn.com Inc. v. DoubleVerify Inc.",
+      "old_canonical_url": "https://www4.courts.ca.gov/opinions/archive/S244157.PDF",
+      "locator": "7 Cal.5th 133",
+      "disposition": "already_official",
+      "new_canonical_url": null,
+      "notes": "Already anchored to www4.courts.ca.gov before this audit (ingested in B1 as an official-PDF fetch). No action needed."
+    },
+    {
+      "source_id": "CIT-REAL-18-B",
+      "case": "FilmOn.com Inc. v. DoubleVerify Inc. (dicta window, slip opn. pp. 14-15)",
+      "old_canonical_url": "https://www4.courts.ca.gov/opinions/archive/S244157.PDF",
+      "locator": "7 Cal.5th 133, 147 (slip opn. at pp. 14-15)",
+      "disposition": "already_official",
+      "new_canonical_url": null,
+      "notes": "Added in B7.5 as a direct official courts.ca.gov slip-opinion fetch (curl + pdftotext -layout + ingestSources.ts); the B7.5 status log explicitly notes it does not inherit the open B8a obligation. Confirmed correct. No action needed."
+    },
+    {
+      "source_id": "CIT-REAL-19",
+      "case": "Baral v. Schnitt",
+      "old_canonical_url": "https://www4.courts.ca.gov/opinions/archive/S225090.PDF",
+      "locator": "1 Cal.5th 376",
+      "disposition": "already_official",
+      "new_canonical_url": null,
+      "notes": "Already anchored to www4.courts.ca.gov before this audit (ingested in B1 as an official-PDF fetch). No action needed."
+    },
+    {
+      "source_id": "CIT-REAL-19-B",
+      "case": "Baral v. Schnitt (Mann-rule window, slip opn. p. 16)",
+      "old_canonical_url": "https://www4.courts.ca.gov/opinions/archive/S225090.PDF",
+      "locator": "Baral v. Schnitt (2016) 1 Cal.5th 376, 393 (slip opn. at p. 16)",
+      "disposition": "already_official",
+      "new_canonical_url": null,
+      "notes": "Added in B7.5 as a direct official courts.ca.gov slip-opinion fetch; the B7.5 status log explicitly notes it does not inherit the open B8a obligation. Confirmed correct. No action needed."
+    }
+  ],
+  "changes_applied_to_sources_jsonl": [
+    {
+      "source_id": "CIT-REAL-4",
+      "fields_changed": ["canonical_url", "retrieved_at", "discovery_notes"],
+      "fields_preserved_byte_identical": ["source_id", "locator", "excerpt", "sha256"],
+      "old_canonical_url": "https://scocal.stanford.edu/opinion/williams-v-super-ct-34534",
+      "new_canonical_url": "https://www4.courts.ca.gov/opinions/archive/S227228.PDF"
+    }
+  ],
+  "verification": {
+    "backup_path": "/private/tmp/claude-501/-Users-arjundivecha-Dropbox-AAA-Backup-A-Working-California-Law-Chatbot/b4ee7987-310b-456b-a455-a50fcb9e9dd4/scratchpad/b8a/sources.jsonl.bak",
+    "edit_method": "atomic (temp file write + os.replace), single line touched, git diff confirms 1 line changed of 88",
+    "verifySources_offline": "88/88 verified, drift_count 0, drift_source_ids []",
+    "kimi_k3_eval_test": "45/45 checks PASS (tests/kimi-k3-eval.test.mjs)",
+    "eval_kimi_dry_run": "exit 0; validation_pass true; canonical_count_gate_pass true; task_count 120; primary_source_grounded_tasks 120; unsupported_propositions 0; category_counts unchanged (research 30 / drafting 25 / verification 20 / multi_turn 15 / abstention_adversarial 20 / long_context 10)"
+  },
+  "residual_open_items_for_b8": [
+    "13 CIT-REAL-* records remain aggregator-hosted with NO_OFFICIAL_HOSTING confirmed after real attempts (mostly pre-2015 California Supreme Court opinions and pre-1993 Court of Appeal opinions that predate the electronic archive) — these should carry an explicit aggregator caveat in the B8 reviewer bundles rather than be treated as fully primary-source-anchored.",
+    "2 records (CIT-REAL-3, CIT-REAL-15) have a live official source available but their stored excerpt fails strict verbatim comparison on typography/paraphrase grounds — B8 or a follow-up pass should decide whether to correct the excerpt text (case/quote-style for CIT-REAL-3; trim-to-verbatim-sentence or requote for CIT-REAL-15) and then re-anchor, since the underlying legal content in both cases was independently confirmed accurate.",
+    "1 record (CIT-REAL-16) has verified-authentic official content only via a Wayback Machine capture of a now-dead courts.ca.gov URL; needs a reviewer/architecture decision on whether an archived capture of an official source may serve as a canonical_url before this can move past NO_OFFICIAL_HOSTING."
+  ]
+}

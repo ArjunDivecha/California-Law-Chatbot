@@ -1,0 +1,240 @@
+{
+ "batch": "B8b",
+ "title": "Excerpt repair and official re-anchoring of the two B8a EXCERPT_MISMATCH case records",
+ "repair_date": "2026-07-27",
+ "spec_ref": "specs/CALC-KIMI-K3-GPT56-JUDGE-001.spec.md",
+ "predecessor": "provenance/b8a-officiality-audit.json (residual_open_items_for_b8, item 2)",
+ "method": {
+  "fetching": "Raw curl of the official California Courts opinion-archive PDFs, converted with `pdftotext -layout`. No LLM was used to transcribe any excerpt: every excerpt segment below is a contiguous run of the converted official text and is asserted in code, before any file is written, to be a whitespace-normalized substring of that conversion.",
+  "joining": "Non-contiguous official runs inside one excerpt are joined with ' ... ', the convention already used throughout sources.jsonl.",
+  "rebuild": "Affected tasks were re-assembled by evals/kimi-k3/datasetTools/authorTasks.ts::assembleEvalTask, the same code path that authored B1-B7, so the SOURCE_ENTAILMENT_FAILED guard, the evidence packet, and task_content_sha256 were all recomputed rather than hand-edited. Nothing non-entailed remains.",
+  "atomicity": "sources.jsonl and tasks.jsonl were each rewritten via temp-file-then-rename (os.replace / journal.ts atomicWriteFileSync). Pre-edit backups of sources.jsonl, tasks.jsonl and b3-research-provenance.json were taken in the session scratchpad before any write.",
+  "reproducible_builders": [
+   "provenance/b8b-repair-sources.py",
+   "provenance/b8b-repair.ts"
+  ],
+  "idempotence": "Re-running provenance/b8b-repair.ts against the repaired dataset reproduced tasks.jsonl byte for byte (sha256 5fabc39abbcb6b99d4d6aadf60f6b4a1d9c4b95495b55e14f85d01dcece90b80)."
+ },
+ "source_records": [
+  {
+   "source_id": "CIT-REAL-3",
+   "case": "Geiser v. Kuhns",
+   "action": "RE_ANCHORED_AND_EXCERPT_REPLACED",
+   "old_canonical_url": "https://www.animallawconference.org/wp-content/uploads/2024/09/Geiser-v.-Kuhns-13-Cal.5th-1238.pdf",
+   "new_canonical_url": "https://www4.courts.ca.gov/opinions/archive/S262032.PDF",
+   "http_status": 200,
+   "pages": 28,
+   "old_sha256": "f6cde733adc8a33d014800bccb8e7a9c67ded2eae7c712a9be70bbc1406f2f0c",
+   "new_sha256": "6bbcbc14bea2827ef2326760912b35eb28088743544bc5eaed5ed55d73571302",
+   "retrieved_at": "2026-07-27T23:30:00Z",
+   "locator_unchanged": "13 Cal.5th 1238",
+   "what_was_wrong": "The stored excerpt came from an aggregator reproduction (animallawconference.org, Casetext-sourced). Word content matched the official opinion but the caption was rendered in aggregator mixed case ('Gregory GEISER ... Peter KUHNS') and the internal quotations used ASCII single quotes; the official opinion capitalizes the caption fully and uses curly double quotation marks. The dataset's verbatim rule authorizes whitespace normalization only, so this was a genuine mismatch.",
+   "new_excerpt_segments": [
+    "IN THE SUPREME COURT OF CALIFORNIA GREGORY GEISER, Plaintiff and Appellant, v. PETER KUHNS et al., Defendants and Appellants. S262032 Second Appellate District, Division Five B279738 Los Angeles County Superior Court BS161018, BS16019, BS161020",
+    "August 29, 2022 Justice Liu authored the opinion of the Court, in which Chief Justice Cantil-Sakauye and Justices Corrigan, Kruger, Groban, Jenkins, and Guerrero concurred.",
+    "Opinion of the Court by Liu, J.",
+    "The Legislature enacted Code of Civil Procedure section 425.16 to combat “a disturbing increase” in Strategic Lawsuits Against Public Participation (SLAPPs): “lawsuits brought primarily to chill the valid exercise of the constitutional rights of freedom of speech and petition for the redress of grievances.”"
+   ],
+   "legal_content_delta": "None. The same legislative-purpose proposition is now quoted in the court's own typography, and the docket/date/authorship block was added so that the record's own text establishes court, docket, filing date, and the fact that the opinion is an opinion of the Court."
+  },
+  {
+   "source_id": "CIT-REAL-15",
+   "case": "Wilson v. Cable News Network, Inc.",
+   "action": "RE_ANCHORED_AND_EXCERPT_REPLACED",
+   "old_canonical_url": "https://case-law.vlex.com/vid/wilson-v-cable-news-889685986",
+   "new_canonical_url": "https://www4.courts.ca.gov/opinions/archive/S239686.PDF",
+   "http_status": 200,
+   "pages": 42,
+   "old_sha256": "627eeff87f8e1a2ad5bb297525298c0b8706f3f6c139083945fa8ee323ba993a",
+   "new_sha256": "02bed79ca633b7235ca34c0732e47515ee4b99c45665456d5adf163c136795c4",
+   "retrieved_at": "2026-07-27T23:30:00Z",
+   "locator_unchanged": "7 Cal.5th 871",
+   "what_was_wrong": "The stored vLex-derived excerpt mixed one genuinely verbatim opinion sentence with (a) citation-service caption/parallel-reporter metadata that is not court text and (b) a PARAPHRASED 'Held:' clause that inserted the word 'categorical', which the opinion never uses. This is the more serious of the two findings: a substantive holding proposition rested on paraphrase.",
+   "new_excerpt_segments": [
+    "IN THE SUPREME COURT OF CALIFORNIA STANLEY WILSON, Plaintiff and Appellant, v. CABLE NEWS NETWORK, INC., et al., Defendants and Respondents. S239686 Second Appellate District, Division One B264944 Los Angeles County Superior Court BC559720",
+    "July 22, 2019 Justice Kruger authored the opinion of the Court, in which Chief Justice Cantil-Sakauye and Justices Chin, Corrigan, Liu, Cuéllar, and Groban concurred.",
+    "Opinion of the Court by Kruger, J.",
+    "Plaintiff Stanley Wilson began working for Cable News Network, Inc., in 1996, and wrote and produced stories for the network for more than 17 years.",
+    "We hold otherwise. The statute contains no exception for discrimination or retaliation claims, and in some cases the actions a plaintiff alleges in support of his or her claim may qualify as protected speech or petitioning activity under section 425.16. In such cases, the plaintiff’s allegations about the defendant’s invidious motives will not shield the claim from the same preliminary screening for minimal merit that would apply to any other claim arising from protected activity."
+   ],
+   "legal_content_delta": "Equivalent, and now exact. The paraphrase 'no categorical exception for employment discrimination and retaliation claims' is replaced by the court's own words: 'The statute contains no exception for discrimination or retaliation claims ... the plaintiff's allegations about the defendant's invidious motives will not shield the claim from the same preliminary screening for minimal merit that would apply to any other claim arising from protected activity.' The parallel-reporter citation string, which is not court text, was removed from the excerpt; the official-reports cite 7 Cal.5th 871 remains in the record's locator field and is now separately source-entailed via CIT-INDEX-CAL-5TH-7 (see criterion changes)."
+  }
+ ],
+ "new_source_record": {
+  "source_id": "CIT-META-GEISER-CAL5TH-1238",
+  "canonical_url": "https://www.govinfo.gov/content/pkg/USCOURTS-cand-3_25-cv-03001/pdf/USCOURTS-cand-3_25-cv-03001-1.pdf",
+  "sha256": "f94724d1fb67fd80cf8795b8bf57df1e8ff3beeee301429b62eca23ce81500e2",
+  "role": "CITATION METADATA ONLY. Grounds the official-reports page cite '13 Cal.5th 1238' for criterion verification-real-001-c1. No substantive California-law proposition rests on it, and the record's publication_or_precedential_status field says so.",
+  "why_needed": "The official Geiser slip opinion is a slip opinion; it is filed before the Official Reports assign a volume and page, so it cannot state its own reporter cite. Criterion verification-real-001-c1 asserts that cite.",
+  "aggregator_route_tried_and_failed": {
+   "courtlistener_volume_index": "https://www.courtlistener.com/c/cal-5th/13/ indexes only 11 entries for volume 13 Cal.5th, the highest being 13 Cal. 5th 974 -- Geiser at page 1238 is not indexed, so no CIT-INDEX-* record of the B1 kind could be built.",
+   "courtlistener_page_lookup": "https://www.courtlistener.com/c/cal-5th/13/1238/ -> HTTP 404",
+   "courtlistener_search_and_api": "search page -> HTTP 403, /api/rest/v4/clusters/ -> HTTP 401 (unauthenticated)"
+  },
+  "route_used": "Full-text search of the official U.S. Government Publishing Office govinfo API (POST https://api.govinfo.gov/search, query \"13 Cal. 5th 1238\") returned exactly one document, USCOURTS-cand-3_25-cv-03001-1 (Tayts v. Gacutan, N.D.Cal. Jan. 16, 2026), whose text reads: 'In Geiser v. Kuhns, 13 Cal. 5th 1238, 1253-54 (2022), the California Supreme Court clarified ...'. An official federal judicial document is a strictly stronger source for the citation-metadata role than the aggregator the spec already permits for it.",
+  "extraction_rule": "curl the govinfo.gov permalink; `pdftotext` (no -layout); drop every line consisting solely of digits (the CM/ECF line-number gutter); join remaining lines with single spaces; assert the excerpt is a whitespace-normalized substring of the result."
+ },
+ "affected_tasks": [
+  {
+   "task_id": "verification-real-001",
+   "source": "CIT-REAL-3",
+   "old_task_content_sha256": "24348368442b3819054b987f3b79272602f92de9ceae627c9a638471d889885e",
+   "new_task_content_sha256": "ad5d6d5881976a5c368c40175a3f7ebb94c18c44334f53d580d590c70553f648",
+   "evidence_source_ids": ["CIT-REAL-3", "CIT-META-GEISER-CAL5TH-1238"],
+   "criteria_before": 3,
+   "criteria_after": 3,
+   "propositions_before": 3,
+   "propositions_after": 4,
+   "changes": [
+    {
+     "criterion_id": "verification-real-001-c1",
+     "change": "REWORDED_AND_STRENGTHENED",
+     "before": "Confirms that a real decision is reported at 13 Cal.5th 1238 and that its caption is Geiser v. Kuhns.",
+     "after": "Confirms that a real California Supreme Court decision captioned Geiser v. Kuhns (GREGORY GEISER, Plaintiff and Appellant, v. PETER KUHNS et al., Defendants and Appellants), docket No. S262032, is reported at 13 Cal.5th 1238.",
+     "rationale": "Legal content preserved. The caption is now stated in the official opinion's own casing, the docket is added because the official record states it, and the reporter-page element -- which previously rested only on the record's locator field -- is now source-entailed by new proposition p4."
+    },
+    {
+     "proposition_id": "verification-real-001-p1",
+     "change": "EXCERPT_REPLACED_WITH_OFFICIAL_TEXT",
+     "before_excerpt": "Gregory GEISER, Plaintiff and Appellant, v. Peter KUHNS et al., Defendants and Appellants.",
+     "after_excerpt": "GREGORY GEISER, Plaintiff and Appellant, v. PETER KUHNS et al., Defendants and Appellants. S262032"
+    },
+    {
+     "proposition_id": "verification-real-001-p2",
+     "change": "EXCERPT_UNCHANGED_TEXT_CLARIFIED",
+     "excerpt": "Opinion of the Court by Liu, J.",
+     "note": "This segment was already verbatim in the official opinion; only the proposition wording was tightened to say 'an opinion of the Court -- a published, precedential opinion of the California Supreme Court'."
+    },
+    {
+     "proposition_id": "verification-real-001-p3",
+     "change": "EXCERPT_REQUOTED_IN_OFFICIAL_TYPOGRAPHY",
+     "before_excerpt": "The Legislature enacted Code of Civil Procedure section 425.16 to combat 'a disturbing increase' in Strategic Lawsuits Against Public Participation (SLAPPs)",
+     "after_excerpt": "The Legislature enacted Code of Civil Procedure section 425.16 to combat “a disturbing increase” in Strategic Lawsuits Against Public Participation (SLAPPs): “lawsuits brought primarily to chill the valid exercise of the constitutional rights of freedom of speech and petition for the redress of grievances.”"
+    },
+    {
+     "proposition_id": "verification-real-001-p4",
+     "change": "ADDED",
+     "source_id": "CIT-META-GEISER-CAL5TH-1238",
+     "excerpt": "In Geiser v. Kuhns, 13 Cal. 5th 1238, 1253–54 (2022), the California Supreme Court clarified",
+     "rationale": "Gives the reporter-page element of c1 a real source-entailed grounding instead of leaving it on record metadata alone."
+    }
+   ],
+   "deterministic_assertions_unchanged": ["verification-real-001-a1 citation ['Geiser']", "verification-real-001-a2 contains ['2022']"]
+  },
+  {
+   "task_id": "verification-real-008",
+   "source": "CIT-REAL-15",
+   "old_task_content_sha256": "5b2c72353b9e973a7b91f8fe5eac2998ec4044b66760f07fc143c98aa3a57f82",
+   "new_task_content_sha256": "9f26b430659c62dd6f9a40d80076098b7ff7030d302b85dc91fa320243f65888",
+   "evidence_source_ids": ["CIT-REAL-15", "CIT-INDEX-CAL-5TH-7"],
+   "criteria_before": 3,
+   "criteria_after": 3,
+   "propositions_before": 2,
+   "propositions_after": 4,
+   "changes": [
+    {
+     "criterion_id": "verification-real-008-c1",
+     "change": "REGROUNDED",
+     "before": "Confirms the citation 7 Cal.5th 871 corresponds to Wilson v. Cable News Network, Inc., No. S239686, decided July 22, 2019.",
+     "after": "Confirms that the official-reports citation 7 Cal.5th 871 corresponds to Wilson v. Cable News Network, Inc., California Supreme Court docket No. S239686, decided July 22, 2019.",
+     "rationale": "Legal content identical. Previously grounded on a vLex citation-metadata string embedded in a case record's excerpt; now grounded on three propositions -- the official caption/docket block (p1), the official filing-date and authorship line (p3), and the CourtListener volume-7 Cal.5th citation-index window (p4), which is an existing registry record already marked 'used for citation-metadata verification only'."
+    },
+    {
+     "criterion_id": "verification-real-008-c2",
+     "change": "REWORDED_TO_OFFICIAL_LANGUAGE",
+     "before": "States the holding that the anti-SLAPP statute contains no categorical exception for employment discrimination and retaliation claims.",
+     "after": "States the holding that the anti-SLAPP statute contains no exception for discrimination or retaliation claims, and that where the alleged actions qualify as protected speech or petitioning activity the plaintiff's allegations of invidious motive will not shield the claim from the same preliminary screening for minimal merit that applies to any other claim arising from protected activity.",
+     "rationale": "The word 'categorical' was the paraphrase flagged by B8a; the official holding is broader and is now quoted exactly. Legally equivalent for grading purposes and strictly more faithful."
+    },
+    {
+     "criterion_id": "verification-real-008-c3",
+     "change": "REWORDED",
+     "before": "Identifies the decision as a published, precedential California Supreme Court opinion.",
+     "after": "Identifies the decision as a published, precedential opinion of the California Supreme Court (an opinion of the Court authored by Justice Kruger).",
+     "rationale": "Now entailed by the official caption block ('IN THE SUPREME COURT OF CALIFORNIA') and the official authorship line ('Justice Kruger authored the opinion of the Court, in which ... concurred')."
+    },
+    {
+     "proposition_id": "verification-real-008-p1",
+     "change": "EXCERPT_REPLACED_WITH_OFFICIAL_TEXT",
+     "before_excerpt": "Wilson v. Cable News Network, Inc., 7 Cal.5th 871, 444 P.3d 706, 249 Cal.Rptr.3d 569 (Cal. 2019), No. S239686, decided July 22, 2019.",
+     "after_excerpt": "IN THE SUPREME COURT OF CALIFORNIA STANLEY WILSON, Plaintiff and Appellant, v. CABLE NEWS NETWORK, INC., et al., Defendants and Respondents. S239686"
+    },
+    {
+     "proposition_id": "verification-real-008-p2",
+     "change": "PARAPHRASE_REPLACED_WITH_OFFICIAL_HOLDING",
+     "before_excerpt": "the anti-SLAPP statute (Code Civ. Proc. section 425.16) contains no categorical exception for employment discrimination and retaliation claims; such claims may still be screened for minimal merit if they arise from protected activity.",
+     "after_excerpt": "We hold otherwise. The statute contains no exception for discrimination or retaliation claims, and in some cases the actions a plaintiff alleges in support of his or her claim may qualify as protected speech or petitioning activity under section 425.16. In such cases, the plaintiff’s allegations about the defendant’s invidious motives will not shield the claim from the same preliminary screening for minimal merit that would apply to any other claim arising from protected activity."
+    },
+    {
+     "proposition_id": "verification-real-008-p3",
+     "change": "ADDED",
+     "source_id": "CIT-REAL-15",
+     "excerpt": "July 22, 2019 Justice Kruger authored the opinion of the Court, in which Chief Justice Cantil-Sakauye and Justices Chin, Corrigan, Liu, Cuéllar, and Groban concurred.",
+     "rationale": "Restores the filing-date and precedential-status grounding that the removed vLex metadata string used to carry, from official text."
+    },
+    {
+     "proposition_id": "verification-real-008-p4",
+     "change": "ADDED",
+     "source_id": "CIT-INDEX-CAL-5TH-7",
+     "excerpt": "Wilson v. Cable News Network, Inc. | Date Filed: July 22nd, 2019 | Citations: 444 P.3d 706, 249 Cal. Rptr. 3d 569, 7 Cal. 5th 871 | Docket Number: S239686",
+     "rationale": "Restores the official-reports page cite from an existing registry record whose declared role is citation-metadata verification only -- the aggregator use the spec expressly permits."
+    }
+   ],
+   "deterministic_assertions_unchanged": ["verification-real-008-a1 citation ['Wilson']", "verification-real-008-a2 contains ['2019']"]
+  },
+  {
+   "task_id": "research-018",
+   "source": "CIT-REAL-15",
+   "old_task_content_sha256": "7b3bf24b587b0fb730c06b31cb03649e0eb91dd68fd78969e65b36da4076cdf8",
+   "new_task_content_sha256": "08deaf5fd2cd5de4d68165f1dc3699a103a6223aa82f7c347304f7ec6db50774",
+   "evidence_source_ids": ["CIT-REAL-17", "CIT-REAL-19", "CIT-REAL-15", "STAT-CAL-CIV-PROC-CODE-425-16-A"],
+   "criteria_before": 4,
+   "criteria_after": 4,
+   "propositions_before": 4,
+   "propositions_after": 4,
+   "changes": [
+    {
+     "criterion_id": "research-018-c3",
+     "change": "REWORDED_TO_OFFICIAL_LANGUAGE",
+     "before": "States, on the authority of Wilson v. Cable News Network, Inc. (2019) 7 Cal.5th 871, that the anti-SLAPP statute contains no categorical exception for employment discrimination and retaliation claims and such claims may still be screened for minimal merit if they arise from protected activity.",
+     "after": "States, on the authority of Wilson v. Cable News Network, Inc. (2019) 7 Cal.5th 871, that the anti-SLAPP statute contains no exception for discrimination or retaliation claims, and that where the alleged actions qualify as protected activity such claims remain subject to the same preliminary screening for minimal merit that applies to any other claim arising from protected activity.",
+     "rationale": "Same paraphrase fix as verification-real-008-c2. The criterion still answers the associate's 'employment claims are categorically exempt' premise in the prompt, now in the court's own words."
+    },
+    {
+     "proposition_id": "research-018-p3",
+     "change": "PARAPHRASE_REPLACED_WITH_OFFICIAL_HOLDING",
+     "after_excerpt": "We hold otherwise. The statute contains no exception for discrimination or retaliation claims, and in some cases the actions a plaintiff alleges in support of his or her claim may qualify as protected speech or petitioning activity under section 425.16. In such cases, the plaintiff’s allegations about the defendant’s invidious motives will not shield the claim from the same preliminary screening for minimal merit that would apply to any other claim arising from protected activity."
+    }
+   ],
+   "deterministic_assertions_unchanged": [
+    "research-018-a1 citation ['1 Cal.5th 376'] FABRICATED_AUTHORITY",
+    "research-018-a2 citation ['7 Cal.5th 871'] MISSED_CONTROLLING_CONTRARY_AUTHORITY",
+    "research-018-a3 contains ['construed broadly']",
+    "research-018-a4 contains ['2002'] WRONG_EFFECTIVE_DATE"
+   ],
+   "note": "research-018-a2 still expects the string '7 Cal.5th 871'. That value is the CIT-REAL-15 record's locator field, unchanged by this repair, and is now additionally source-entailed inside verification-real-008 via CIT-INDEX-CAL-5TH-7."
+  }
+ ],
+ "criteria_dropped_for_lack_of_official_support": [],
+ "downstream_artifacts_updated": [
+  {
+   "file": "provenance/b3-research-provenance.json",
+   "change": "research-018 task_content_sha256 updated 7b3bf24b... -> 08deaf5f..."
+  }
+ ],
+ "not_affected": {
+  "calibration.jsonl": "The only calibration pair touching either record is mech-transpose-004, which uses CIT-REAL-15's LOCATOR field ('7 Cal.5th 871' -> '871 Cal.5th 7'), not its excerpt; its registry_anchors map is empty. b75-validate.mjs re-ran clean after the repair (60 pairs, 0 failures).",
+  "b1-verification-provenance.json": "Stores no task_content_sha256 values, so no update was required.",
+  "other_117_tasks": "Byte-identical; only three lines of tasks.jsonl changed (git diff confirms 3 changed lines)."
+ },
+ "verification": {
+  "verifySources_offline": "89/89 verified, drift_count 0 (registry grew 88 -> 89 with CIT-META-GEISER-CAL5TH-1238); all three touched records recompute their stored sha256 exactly.",
+  "tests": "tests/kimi-k3-eval.test.mjs 45/45 PASS",
+  "dry_run": "yarn eval:kimi --mode dry-run --dataset evals/kimi-k3/datasets/california-law-v1 -> exit 0, validation_pass true, canonical_count_gate_pass true, 120 tasks, 120/120 primary-source grounded, 0 unsupported propositions, 0 errors, category counts unchanged",
+  "b75_validate": "validation_pass true, 60 pairs, 0 failures"
+ },
+ "residual": {
+  "no_official_hosting_records": 13,
+  "wayback_only_record": "CIT-REAL-16 (Sargon v. USC) still needs the reviewer policy decision recorded in b8a; unchanged by this repair."
+ }
+}

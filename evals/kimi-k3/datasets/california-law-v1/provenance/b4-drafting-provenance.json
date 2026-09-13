@@ -1,0 +1,349 @@
+{
+ "batch": "B4",
+ "category": "drafting",
+ "authored_at": "2026-07-27",
+ "note": "Lineage record for the 25 batch-B4 California family-law drafting tasks (drafting-001..025), all category drafting, workflow draft, track frozen_evidence, data_class synthetic, expected_tools []. Each task is a realistic drafting request for a California family-law / LGBTQ practice and is graded only on legally material content, never on style: every material criterion names a rule the draft must state correctly and is tied to a proposition whose authoritative_excerpt is a verbatim substring of a source excerpt already in sources.jsonl. Proposition excerpts were sliced programmatically out of the registered source bytes by literal start/end markers (scratchpad b4/buildTasks.mjs pick()), never retyped, and the source-entailment guard in datasetTools/authorTasks.ts enforced this at authoring time. All party names, dates, amounts and fact patterns in the prompts are synthetic and invented for the eval; no client information, no real person, and no invented legal authority appears anywhere in the batch. Deterministic assertions are limited to statute/citation numbers and short literal phrases the draft must contain.",
+ "synthetic_data_statement": "data_class synthetic. Every prompt opens with an explicit statement that the parties, dates and facts are synthetic. No name in the batch corresponds to a known real person, and no factual detail derives from a client file.",
+ "new_source_records": {
+  "count": 8,
+  "source_ids": [
+   "STAT-CAL-CIV-PROC-CODE-2015-5",
+   "STAT-CAL-FAM-CODE-1611",
+   "STAT-CAL-FAM-CODE-299",
+   "STAT-CAL-FAM-CODE-2104",
+   "STAT-CAL-FAM-CODE-2105",
+   "STAT-CAL-FAM-CODE-6203",
+   "STAT-CAL-FAM-CODE-6345",
+   "STAT-CAL-FAM-CODE-4059"
+  ],
+  "harvest_method": "Raw curl GET (User-Agent Mozilla/5.0) of the official leginfo.legislature.ca.gov codes_displaySection.xhtml page for each section (scratchpad b4/raw/*.html), tag-stripped and whitespace-normalized with the same normalizer datasetTools/verifySources.ts applies, sliced to a contiguous subdivision window between literal markers (scratchpad b4/buildSources.mjs), then ingested via datasetTools/ingestSources.ts, which recomputed each sha256 from the excerpt bytes. Effective dates were taken verbatim from each page history line and recorded in discovery_notes. All eight are official leginfo pages; no aggregator-hosted record was added.",
+  "retrieved_at": "2026-07-27T21:30:00Z",
+  "live_verification": "datasetTools/verifySources.ts --live over the eight new records on 2026-07-27: 8/8 live_excerpt_found, drift 0. Whole-registry offline verification after ingestion: 86/86, drift 0."
+ },
+ "case_source_officiality": {
+  "b8a_note": "Two pre-existing CIT-REAL-* case records are reused by this batch and remain subject to the open B8a officiality audit: CIT-REAL-13 (Briggs v. Eden Council for Hope and Opportunity, 19 Cal.4th 1106, excerpt hosted at scocal.stanford.edu) in drafting-011, and CIT-REAL-1 (Navellier v. Sletten, 29 Cal.4th 82, same host) in drafting-012. No new aggregator-hosted case excerpt was added. Each dependent criterion is confined to what that record own excerpt states — for Briggs, the single held proposition that a movant need not separately demonstrate public significance; for Navellier, the standard sentence the record carries plus the citation itself. When B8a re-anchors these two records to the official California Courts opinion archive, drafting-011-c4 and drafting-012-c5 inherit the new locator and hash without any change to their wording."
+ },
+ "grounding_rule": "No criterion requires outside legal memory. Every material criterion in this batch can be verified against the frozen evidence packet attached to its own task.",
+ "hard_failure_assertions": {
+  "MALFORMED_DELIVERABLE": [
+   "drafting-001-a4",
+   "drafting-008-a4"
+  ],
+  "MALFORMED_DELIVERABLE_grounding": "Used only where the prompt explicitly instructs the drafter to close the declaration with the certification California requires in place of a sworn affidavit, and the task carries a criterion and proposition grounded in Cal. Civ. Proc. Code section 2015.5 (STAT-CAL-CIV-PROC-CODE-2015-5, fetched and ingested in this batch). The assertion checks for the two literal recitals the statute prescribes.",
+  "WRONG_EFFECTIVE_DATE": [
+   "drafting-014-a3",
+   "drafting-016-a3"
+  ],
+  "WRONG_EFFECTIVE_DATE_grounding": "Each date is stated verbatim in the excerpt for that task: FAM 1615(c)(2)(B) (agreements executed on or after January 1, 2020) and FAM 852(e) (transmutations made before January 1, 1985).",
+  "MISSED_CONTROLLING_CONTRARY_AUTHORITY": [
+   "drafting-002-a3"
+  ],
+  "MISSED_CONTROLLING_CONTRARY_AUTHORITY_grounding": "FAM 4058(b)(3) — incarceration or involuntary institutionalization shall not be treated as voluntary unemployment — is inside drafting-002 own evidence packet and cuts against the position the prompt asks the drafter to argue."
+ },
+ "no_wrong_jurisdiction_assertion": "No WRONG_JURISDICTION assertion was written; nothing in the registry grounds one for these drafting requests.",
+ "coverage": {
+  "declarations_and_points_and_authorities": [
+   "drafting-001",
+   "drafting-002",
+   "drafting-003",
+   "drafting-004",
+   "drafting-005",
+   "drafting-006",
+   "drafting-007",
+   "drafting-008",
+   "drafting-009",
+   "drafting-010",
+   "drafting-011",
+   "drafting-012"
+  ],
+  "agreements_and_clauses": [
+   "drafting-013",
+   "drafting-014",
+   "drafting-015",
+   "drafting-016",
+   "drafting-017",
+   "drafting-018",
+   "drafting-019",
+   "drafting-020",
+   "drafting-021"
+  ],
+  "client_facing_letters_and_memos": [
+   "drafting-022",
+   "drafting-023",
+   "drafting-024",
+   "drafting-025"
+  ]
+ },
+ "tasks": {
+  "drafting-001": {
+   "deliverable": "Draft the child-support section of a declaration in support of a Request for Order for our client Rosalind Qui…",
+   "source_ids": [
+    "STAT-CAL-FAM-CODE-4055",
+    "STAT-CAL-FAM-CODE-4055-B",
+    "STAT-CAL-FAM-CODE-4058",
+    "STAT-CAL-CIV-PROC-CODE-2015-5"
+   ],
+   "material_criteria": 5,
+   "propositions": 5,
+   "hard_failure_assertions": [
+    "drafting-001-a4:MALFORMED_DELIVERABLE"
+   ]
+  },
+  "drafting-002": {
+   "deliverable": "Our client Perpetua Okonkwo-Feathering asks the court to base child support on the other parent’s earning capa…",
+   "source_ids": [
+    "STAT-CAL-FAM-CODE-4058"
+   ],
+   "material_criteria": 4,
+   "propositions": 4,
+   "hard_failure_assertions": [
+    "drafting-002-a3:MISSED_CONTROLLING_CONTRARY_AUTHORITY"
+   ]
+  },
+  "drafting-003": {
+   "deliverable": "Our client Ignatius Barrow-Whitlock is the support obligor for three children. He nets roughly $1,750 per mont…",
+   "source_ids": [
+    "STAT-CAL-FAM-CODE-4055-D",
+    "STAT-CAL-FAM-CODE-4059"
+   ],
+   "material_criteria": 5,
+   "propositions": 6,
+   "hard_failure_assertions": []
+  },
+  "drafting-004": {
+   "deliverable": "Marisela Vasquez-Threadgill and Bernadette Vasquez-Threadgill were married for 22 years. Marisela left a hospi…",
+   "source_ids": [
+    "STAT-CAL-FAM-CODE-4320",
+    "STAT-CAL-FAM-CODE-4320-B"
+   ],
+   "material_criteria": 5,
+   "propositions": 6,
+   "hard_failure_assertions": []
+  },
+  "drafting-005": {
+   "deliverable": "Our client Wilhelmina Strout-Adeyemi seeks spousal support from her former wife, Odalys Strout-Adeyemi. During…",
+   "source_ids": [
+    "STAT-CAL-FAM-CODE-4320-B",
+    "STAT-CAL-FAM-CODE-6211"
+   ],
+   "material_criteria": 5,
+   "propositions": 5,
+   "hard_failure_assertions": []
+  },
+  "drafting-006": {
+   "deliverable": "Our client Delphine Marchetti-Oyelaran has $2,300 in savings and works as a school aide; her spouse Gaspard Ma…",
+   "source_ids": [
+    "STAT-CAL-FAM-CODE-2030",
+    "STAT-CAL-FAM-CODE-2030-B",
+    "STAT-CAL-FAM-CODE-2032"
+   ],
+   "material_criteria": 5,
+   "propositions": 5,
+   "hard_failure_assertions": []
+  },
+  "drafting-007": {
+   "deliverable": "Judgment was entered in the Halloway-Ibarra dissolution and the other side has appealed the property character…",
+   "source_ids": [
+    "STAT-CAL-FAM-CODE-2030-B",
+    "STAT-CAL-FAM-CODE-2032"
+   ],
+   "material_criteria": 4,
+   "propositions": 4,
+   "hard_failure_assertions": []
+  },
+  "drafting-008": {
+   "deliverable": "Yolanda Persimmon-Vail lived with her former partner Rennata Coyle-Persimmon for six years and they separated …",
+   "source_ids": [
+    "STAT-CAL-FAM-CODE-6203",
+    "STAT-CAL-FAM-CODE-6211",
+    "STAT-CAL-FAM-CODE-6300",
+    "STAT-CAL-CIV-PROC-CODE-2015-5"
+   ],
+   "material_criteria": 5,
+   "propositions": 5,
+   "hard_failure_assertions": [
+    "drafting-008-a4:MALFORMED_DELIVERABLE"
+   ]
+  },
+  "drafting-009": {
+   "deliverable": "Our client Devendra Ashworth-Nakamura (they/them) reports no physical violence by their spouse Corbin Ashworth…",
+   "source_ids": [
+    "STAT-CAL-FAM-CODE-6320"
+   ],
+   "material_criteria": 5,
+   "propositions": 6,
+   "hard_failure_assertions": []
+  },
+  "drafting-010": {
+   "deliverable": "The contested hearing on Hyacinth Duvall-Perez’s restraining order request against Marcus Duvall is set for ne…",
+   "source_ids": [
+    "STAT-CAL-FAM-CODE-6345"
+   ],
+   "material_criteria": 5,
+   "propositions": 5,
+   "hard_failure_assertions": []
+  },
+  "drafting-011": {
+   "deliverable": "We represent Corvina Delacroix-Ng, who has been sued for defamation by her former stepfather. Every statement …",
+   "source_ids": [
+    "STAT-CAL-CIV-PROC-CODE-425-16-A",
+    "STAT-CAL-CIV-PROC-CODE-425-16-E",
+    "CIT-REAL-13"
+   ],
+   "material_criteria": 5,
+   "propositions": 5,
+   "hard_failure_assertions": []
+  },
+  "drafting-012": {
+   "deliverable": "Same matter, second section. Corvina Delacroix-Ng was served with the defamation complaint 41 days ago, opposi…",
+   "source_ids": [
+    "STAT-CAL-CIV-PROC-CODE-425-16-E",
+    "STAT-CAL-CIV-PROC-CODE-425-16-A",
+    "CIT-REAL-1"
+   ],
+   "material_criteria": 5,
+   "propositions": 5,
+   "hard_failure_assertions": []
+  },
+  "drafting-013": {
+   "deliverable": "Ines Baptiste-Okoro and Marguerite Rowanwood are engaged and each has retained separate counsel. They want a p…",
+   "source_ids": [
+    "STAT-CAL-FAM-CODE-1612",
+    "STAT-CAL-FAM-CODE-1611"
+   ],
+   "material_criteria": 5,
+   "propositions": 4,
+   "hard_failure_assertions": []
+  },
+  "drafting-014": {
+   "deliverable": "Theodora Ainsley-Mbeki and Juniper Calloway plan to sign a premarital agreement on 1 September 2026 and marry …",
+   "source_ids": [
+    "STAT-CAL-FAM-CODE-1615"
+   ],
+   "material_criteria": 5,
+   "propositions": 5,
+   "hard_failure_assertions": [
+    "drafting-014-a3:WRONG_EFFECTIVE_DATE"
+   ]
+  },
+  "drafting-015": {
+   "deliverable": "Same engagement, different article. Theodora Ainsley-Mbeki holds a closely held business and does not want to …",
+   "source_ids": [
+    "STAT-CAL-FAM-CODE-1615"
+   ],
+   "material_criteria": 4,
+   "propositions": 4,
+   "hard_failure_assertions": []
+  },
+  "drafting-016": {
+   "deliverable": "Our client Ottoline Bergstrom-Ruiz owned a Long Beach condominium before her 2014 marriage to Salvador Bergstr…",
+   "source_ids": [
+    "STAT-CAL-FAM-CODE-852",
+    "STAT-CAL-FAM-CODE-852-B",
+    "STAT-CAL-FAM-CODE-770"
+   ],
+   "material_criteria": 5,
+   "propositions": 5,
+   "hard_failure_assertions": [
+    "drafting-016-a3:WRONG_EFFECTIVE_DATE"
+   ]
+  },
+  "drafting-017": {
+   "deliverable": "Draft the property characterization recitals for the marital settlement agreement of Anthea Villalobos-Kearn a…",
+   "source_ids": [
+    "STAT-CAL-FAM-CODE-760",
+    "STAT-CAL-FAM-CODE-770",
+    "STAT-CAL-FAM-CODE-771",
+    "STAT-CAL-FAM-CODE-2550"
+   ],
+   "material_criteria": 5,
+   "propositions": 5,
+   "hard_failure_assertions": []
+  },
+  "drafting-018": {
+   "deliverable": "Our client Beatrix Ferraro-Nwosu used $180,000 of inherited funds for the down payment on the family residence…",
+   "source_ids": [
+    "STAT-CAL-FAM-CODE-2640",
+    "STAT-CAL-FAM-CODE-2550"
+   ],
+   "material_criteria": 5,
+   "propositions": 4,
+   "hard_failure_assertions": []
+  },
+  "drafting-019": {
+   "deliverable": "Solveig Ahn-Bracamonte will carry a child conceived through assisted reproduction using sperm donated by the c…",
+   "source_ids": [
+    "STAT-CAL-FAM-CODE-7613"
+   ],
+   "material_criteria": 4,
+   "propositions": 4,
+   "hard_failure_assertions": []
+  },
+  "drafting-020": {
+   "deliverable": "Esperanza Quiller and Fenwick Adeyemi-Quiller were never married to each other. They jointly control four cryo…",
+   "source_ids": [
+    "STAT-CAL-FAM-CODE-7613"
+   ],
+   "material_criteria": 5,
+   "propositions": 5,
+   "hard_failure_assertions": []
+  },
+  "drafting-021": {
+   "deliverable": "Intended parents Ilona Vantablack-Reyes and Desmond Vantablack-Reyes have matched with gestational carrier Geo…",
+   "source_ids": [
+    "STAT-CAL-FAM-CODE-7962",
+    "STAT-CAL-FAM-CODE-7962-B"
+   ],
+   "material_criteria": 5,
+   "propositions": 5,
+   "hard_failure_assertions": []
+  },
+  "drafting-022": {
+   "deliverable": "Write the client letter to Josephine Marchbanks-Oyelowo explaining her financial duties to her spouse now that…",
+   "source_ids": [
+    "STAT-CAL-FAM-CODE-721",
+    "STAT-CAL-FAM-CODE-1100",
+    "STAT-CAL-FAM-CODE-2102"
+   ],
+   "material_criteria": 5,
+   "propositions": 5,
+   "hard_failure_assertions": []
+  },
+  "drafting-023": {
+   "deliverable": "Draft the internal file memorandum for the Ashgrove-Nakashima dissolution setting out the disclosure calendar …",
+   "source_ids": [
+    "STAT-CAL-FAM-CODE-2104",
+    "STAT-CAL-FAM-CODE-2105"
+   ],
+   "material_criteria": 5,
+   "propositions": 6,
+   "hard_failure_assertions": []
+  },
+  "drafting-024": {
+   "deliverable": "Our client Adaeze Kirkbride-Olawale wants her marital status terminated now so she can remarry in the spring, …",
+   "source_ids": [
+    "STAT-CAL-FAM-CODE-2337"
+   ],
+   "material_criteria": 5,
+   "propositions": 5,
+   "hard_failure_assertions": []
+  },
+  "drafting-025": {
+   "deliverable": "Two clients, one letter each. Nadia Threlfall-Osei and Camille Bruckner-Osei want to register as domestic part…",
+   "source_ids": [
+    "STAT-CAL-FAM-CODE-297",
+    "STAT-CAL-FAM-CODE-298",
+    "STAT-CAL-FAM-CODE-299"
+   ],
+   "material_criteria": 5,
+   "propositions": 7,
+   "hard_failure_assertions": []
+  }
+ },
+ "verification": {
+  "author_tool": "datasetTools/authorTasks.ts --input scratchpad/b4/b4-tasks.json → appended 25",
+  "tests": "./node_modules/.bin/tsx tests/kimi-k3-eval.test.mjs → 40/40 PASS",
+  "dry_run": "yarn eval:kimi --mode dry-run --dataset evals/kimi-k3/datasets/california-law-v1 → exit 0, 75 tasks (30 research / 25 drafting / 20 verification), validation_pass true, 75/75 primary-source grounded, 0 unsupported propositions, 0 errors, 45 tasks remaining",
+  "sources": "verifySources --offline 86/86 drift 0; --live over the 8 new records 8/8 drift 0"
+ }
+}

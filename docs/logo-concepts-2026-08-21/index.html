@@ -1,0 +1,455 @@
+<!--
+  DancingElephant — Logo Concepts (2026-08-21)
+  What: Six replacement logo directions for the DancingElephant rebrand, presented
+  light-mode with small-size legibility tests. Built by Claude Code.
+  Inputs:  /Users/arjundivecha/Dropbox/AAA Backup/A Working/California-Law-Chatbot/docs/DancingElephant Logo.png (current logo, for reference)
+           /Users/arjundivecha/Dropbox/AAA Backup/A Working/California-Law-Chatbot/docs/dancingelephant-design-prompt.md (brand spec)
+  Outputs: This page (also published as a Claude Artifact); standalone SVGs in this folder.
+-->
+<title>DancingElephant Logo Concepts</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600&display=swap">
+<style>
+  :root {
+    --bg: #FCFBF9;
+    --card: #FFFFFF;
+    --ink: #2A2233;
+    --ink-soft: #6B6376;
+    --line: #E9E5E0;
+    --violet: #7C5CFC;
+    --teal: #2DD4BF;
+    --amber: #E8A05C;
+    --plum: #241D2E;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Inter', -apple-system, 'Segoe UI', sans-serif;
+    font-size: 15px;
+    line-height: 1.55;
+    padding: 56px 32px 80px;
+  }
+  .wrap { max-width: 1060px; margin: 0 auto; }
+  .eyebrow {
+    font-size: 12px; font-weight: 600; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--violet); margin-bottom: 14px;
+  }
+  h1 {
+    font-family: 'Fraunces', Georgia, serif;
+    font-weight: 500; font-size: 40px; line-height: 1.1;
+    letter-spacing: -0.01em; text-wrap: balance; margin-bottom: 14px;
+  }
+  .lede { color: var(--ink-soft); max-width: 62ch; margin-bottom: 44px; }
+  .lede strong { color: var(--ink); font-weight: 600; }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(460px, 1fr)); gap: 22px; }
+  @media (max-width: 540px) { .grid { grid-template-columns: 1fr; } }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 26px 26px 24px;
+    display: flex; flex-direction: column; gap: 18px;
+  }
+  .card-head { display: flex; align-items: baseline; gap: 10px; }
+  .num {
+    font-family: 'Fraunces', Georgia, serif; font-size: 15px; font-weight: 600;
+    color: var(--violet); font-variant-numeric: tabular-nums;
+  }
+  .card h2 {
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: 21px; font-weight: 500; letter-spacing: -0.005em;
+  }
+  .tag {
+    margin-left: auto; font-size: 11px; font-weight: 600; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--ink-soft);
+    border: 1px solid var(--line); border-radius: 99px; padding: 3px 10px; white-space: nowrap;
+  }
+  .stage {
+    display: flex; align-items: center; justify-content: center;
+    background: var(--bg);
+    border: 1px solid var(--line); border-radius: 10px;
+    height: 208px;
+  }
+  .tests { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  .test {
+    display: flex; align-items: center; gap: 9px;
+    border: 1px solid var(--line); border-radius: 8px;
+    background: var(--card); padding: 8px 12px;
+  }
+  .test .lbl { font-size: 11px; color: var(--ink-soft); letter-spacing: 0.04em; }
+  .chip-dark {
+    display: flex; align-items: center; gap: 9px;
+    background: var(--plum); border-radius: 8px; padding: 8px 14px;
+  }
+  .chip-dark .word { font-family: 'Fraunces', Georgia, serif; font-size: 15px; color: #F5F2EE; }
+  .why { color: var(--ink-soft); font-size: 13.5px; }
+  .why strong { color: var(--ink); font-weight: 600; }
+
+  .wordmark { font-family: 'Fraunces', Georgia, serif; letter-spacing: -0.015em; white-space: nowrap; }
+  .wordmark .a { font-weight: 300; color: var(--ink); }
+  .wordmark .b { font-weight: 600; color: var(--violet); }
+
+  footer { margin-top: 48px; color: var(--ink-soft); font-size: 13px; max-width: 70ch; }
+</style>
+
+<div class="wrap">
+  <div class="eyebrow">Brand exploration · 21 Aug 2026</div>
+  <h1>Twelve marks for DancingElephant</h1>
+  <p class="lede">Replacements for the current thin-line elephant. Every concept is tested at
+  <strong>28&nbsp;px</strong> (sidebar) and <strong>16&nbsp;px</strong> (favicon) — the sizes where the
+  current logo dissolves — and shown once on the dark-plum lockup. Concepts 1–2 keep the animal, 3 nods to it;
+  4–6 keep only the idea (the line that never breaks, memory, verification). Round two (07–12)
+  pushes wider: literal marks (a footprint, a chat-bubble elephant, a faceted head) and
+  lawyer-insider abstractions (a pilcrow, a seal, an ear-as-fingerprint). All vector, all
+  drawn from the committed palette: violet <code>#7C5CFC</code>, teal <code>#2DD4BF</code>,
+  amber <code>#E8A05C</code>, plum-ink <code>#2A2233</code>.</p>
+
+  <div class="grid">
+
+    <!-- 1. Solid geometric elephant head -->
+    <div class="card">
+      <div class="card-head"><span class="num">01</span><h2>Totem</h2><span class="tag">Solid elephant</span></div>
+      <div class="stage">
+        <svg width="150" height="150" viewBox="0 0 96 96" aria-label="Solid front-facing elephant head">
+          <use href="#mark-totem"/>
+        </svg>
+      </div>
+      <div class="tests">
+        <div class="test"><svg width="28" height="28" viewBox="0 0 96 96"><use href="#mark-totem"/></svg><span class="lbl">28 px</span></div>
+        <div class="test"><svg width="16" height="16" viewBox="0 0 96 96"><use href="#mark-totem"/></svg><span class="lbl">16 px</span></div>
+        <div class="chip-dark"><svg width="22" height="22" viewBox="0 0 96 96"><use href="#mark-totem-dark"/></svg><span class="word">DancingElephant</span></div>
+      </div>
+      <p class="why"><strong>The safe, strong pick.</strong> A front-facing head built from three circles and a
+      trunk — solid violet, no gradient needed. Reads instantly at 16&nbsp;px, works one-color for
+      embossing, court filings, favicons. Heavy trustworthiness first, dance second.</p>
+    </div>
+
+    <!-- 2. Arch elephant -->
+    <div class="card">
+      <div class="card-head"><span class="num">02</span><h2>Arch</h2><span class="tag">Refined line elephant</span></div>
+      <div class="stage">
+        <svg width="150" height="150" viewBox="0 0 96 96" aria-label="Bold line elephant built from a single arch, trunk swinging forward">
+          <use href="#mark-arch"/>
+        </svg>
+      </div>
+      <div class="tests">
+        <div class="test"><svg width="28" height="28" viewBox="0 0 96 96"><use href="#mark-arch"/></svg><span class="lbl">28 px</span></div>
+        <div class="test"><svg width="16" height="16" viewBox="0 0 96 96"><use href="#mark-arch"/></svg><span class="lbl">16 px</span></div>
+        <div class="chip-dark"><svg width="22" height="22" viewBox="0 0 96 96"><use href="#mark-arch"/></svg><span class="word">DancingElephant</span></div>
+      </div>
+      <p class="why"><strong>The current idea, done right.</strong> The whole animal reduced to one arch —
+      back and both legs in a single stroke, trunk swinging forward mid-step, front foot lifted.
+      Four times the current stroke weight, so the gradient finally has something to live on.</p>
+    </div>
+
+    <!-- 3. e-monogram -->
+    <div class="card">
+      <div class="card-head"><span class="num">03</span><h2>The&nbsp;e</h2><span class="tag">Monogram</span></div>
+      <div class="stage">
+        <svg width="150" height="150" viewBox="0 0 96 96" aria-label="Lowercase e monogram whose terminal curls like a trunk">
+          <use href="#mark-e"/>
+        </svg>
+      </div>
+      <div class="tests">
+        <div class="test"><svg width="28" height="28" viewBox="0 0 96 96"><use href="#mark-e"/></svg><span class="lbl">28 px</span></div>
+        <div class="test"><svg width="16" height="16" viewBox="0 0 96 96"><use href="#mark-e"/></svg><span class="lbl">16 px</span></div>
+        <div class="chip-dark"><svg width="22" height="22" viewBox="0 0 96 96"><use href="#mark-e"/></svg><span class="word">DancingElephant</span></div>
+      </div>
+      <p class="why"><strong>The clever one.</strong> A lowercase <em>e</em> whose terminal lifts and curls —
+      exactly the gesture of a raised trunk. Elephant-adjacent without drawing an animal;
+      the most app-icon-ready of the six.</p>
+    </div>
+
+    <!-- 4. Thread → check -->
+    <div class="card">
+      <div class="card-head"><span class="num">04</span><h2>Thread</h2><span class="tag">Abstract · no elephant</span></div>
+      <div class="stage">
+        <svg width="188" height="150" viewBox="0 0 120 96" aria-label="A continuous line that ties a knot and ends in a checkmark">
+          <use href="#mark-thread"/>
+        </svg>
+      </div>
+      <div class="tests">
+        <div class="test"><svg width="34" height="28" viewBox="0 0 120 96"><use href="#mark-thread"/></svg><span class="lbl">28 px</span></div>
+        <div class="test"><svg width="20" height="16" viewBox="0 0 120 96"><use href="#mark-thread"/></svg><span class="lbl">16 px</span></div>
+        <div class="chip-dark"><svg width="27" height="22" viewBox="0 0 120 96"><use href="#mark-thread"/></svg><span class="word">DancingElephant</span></div>
+      </div>
+      <p class="why"><strong>The brand promise, literally.</strong> One line ties a knot — the old
+      memory ritual, an elephant never forgets — and resolves into a checkmark: verified.
+      Purple→teal gradient maps memory→verification. Zero animal, all meaning.</p>
+    </div>
+
+    <!-- 5. Wordmark -->
+    <div class="card">
+      <div class="card-head"><span class="num">05</span><h2>Wordmark</h2><span class="tag">Type-first</span></div>
+      <div class="stage">
+        <div style="display:flex; flex-direction:column; align-items:center; gap:12px;">
+          <div class="wordmark" style="font-size:34px;"><span class="a">dancing</span><span class="b">elephant</span></div>
+          <svg width="120" height="12" viewBox="0 0 120 12" aria-hidden="true">
+            <path d="M2,7 C30,3 60,11 88,6 C100,4 110,5 118,6" fill="none" stroke="url(#grad-underline)" stroke-width="3" stroke-linecap="round"/>
+          </svg>
+        </div>
+      </div>
+      <div class="tests">
+        <div class="test"><span class="wordmark" style="font-size:15px;"><span class="a">dancing</span><span class="b">elephant</span></span><span class="lbl">sidebar</span></div>
+        <div class="chip-dark"><span class="wordmark" style="font-size:15px;"><span class="a" style="color:#F5F2EE;">dancing</span><span class="b" style="color:#A78BFF;">elephant</span></span></div>
+      </div>
+      <p class="why"><strong>The conservative legal-tech play.</strong> No mark at all — a two-weight
+      Fraunces wordmark, light/semibold at the seam of the compound word, over a single
+      hand-drawn gradient rule (the one line, reduced to a signature). Pairs with concept 03
+      or 06 as the square icon.</p>
+    </div>
+
+    <!-- 6. App-icon curl -->
+    <div class="card">
+      <div class="card-head"><span class="num">06</span><h2>Curl</h2><span class="tag">Icon tile</span></div>
+      <div class="stage">
+        <svg width="150" height="150" viewBox="0 0 96 96" aria-label="Dark plum rounded tile with a single gradient trunk curl">
+          <use href="#mark-curl"/>
+        </svg>
+      </div>
+      <div class="tests">
+        <div class="test"><svg width="28" height="28" viewBox="0 0 96 96"><use href="#mark-curl"/></svg><span class="lbl">28 px</span></div>
+        <div class="test"><svg width="16" height="16" viewBox="0 0 96 96"><use href="#mark-curl"/></svg><span class="lbl">16 px</span></div>
+        <div class="chip-dark"><svg width="22" height="22" viewBox="0 0 96 96"><use href="#mark-curl"/></svg><span class="word">DancingElephant</span></div>
+      </div>
+      <p class="why"><strong>The Linear-grade tile.</strong> The only place the dark plum survives from the
+      old logo: a rounded app tile carrying one gesture — a checkmark whose tail curls like a trunk
+      remembering. Verification and memory in a single stroke; built for the dock, the favicon,
+      the Tauri icon set, and it pairs naturally with wordmark 05.</p>
+    </div>
+
+    <!-- 7. Footprint -->
+    <div class="card">
+      <div class="card-head"><span class="num">07</span><h2>Footprint</h2><span class="tag">Solid · literal</span></div>
+      <div class="stage">
+        <svg width="150" height="150" viewBox="0 0 96 96" aria-label="Elephant footprint: gradient pad with four toenails">
+          <use href="#mark-footprint"/>
+        </svg>
+      </div>
+      <div class="tests">
+        <div class="test"><svg width="28" height="28" viewBox="0 0 96 96"><use href="#mark-footprint"/></svg><span class="lbl">28 px</span></div>
+        <div class="test"><svg width="16" height="16" viewBox="0 0 96 96"><use href="#mark-footprint"/></svg><span class="lbl">16 px</span></div>
+        <div class="chip-dark"><svg width="22" height="22" viewBox="0 0 96 96"><use href="#mark-footprint"/></svg><span class="word">DancingElephant</span></div>
+      </div>
+      <p class="why"><strong>An elephant leaves a record.</strong> The footprint is the audit trail —
+      every step verifiable, nothing erased. The most ownable shape of the twelve: unmistakable
+      at 16&nbsp;px, and no legal-tech competitor has anything like it.</p>
+    </div>
+
+    <!-- 8. Bubble -->
+    <div class="card">
+      <div class="card-head"><span class="num">08</span><h2>Bubble</h2><span class="tag">Chat · literal</span></div>
+      <div class="stage">
+        <svg width="150" height="150" viewBox="0 0 96 96" aria-label="Chat bubble shaped like an elephant head, trunk as the bubble tail">
+          <use href="#mark-bubble"/>
+        </svg>
+      </div>
+      <div class="tests">
+        <div class="test"><svg width="28" height="28" viewBox="0 0 96 96"><use href="#mark-bubble"/></svg><span class="lbl">28 px</span></div>
+        <div class="test"><svg width="16" height="16" viewBox="0 0 96 96"><use href="#mark-bubble"/></svg><span class="lbl">16 px</span></div>
+        <div class="chip-dark"><svg width="22" height="22" viewBox="0 0 96 96"><use href="#mark-bubble"/></svg><span class="word">DancingElephant</span></div>
+      </div>
+      <p class="why"><strong>The product, literally.</strong> A chat bubble that is an elephant head —
+      side ears, and the trunk is the bubble's tail. The friendliest of the twelve; the one to pick
+      if approachability should lead. The one to skip if "never cute" is a hard line.</p>
+    </div>
+
+    <!-- 9. Earprint -->
+    <div class="card">
+      <div class="card-head"><span class="num">09</span><h2>Earprint</h2><span class="tag">Abstract · privacy</span></div>
+      <div class="stage">
+        <svg width="150" height="150" viewBox="0 0 96 96" aria-label="Concentric arcs reading as both an elephant ear and a fingerprint">
+          <use href="#mark-earprint"/>
+        </svg>
+      </div>
+      <div class="tests">
+        <div class="test"><svg width="28" height="28" viewBox="0 0 96 96"><use href="#mark-earprint"/></svg><span class="lbl">28 px</span></div>
+        <div class="test"><svg width="16" height="16" viewBox="0 0 96 96"><use href="#mark-earprint"/></svg><span class="lbl">16 px</span></div>
+        <div class="chip-dark"><svg width="22" height="22" viewBox="0 0 96 96"><use href="#mark-earprint"/></svg><span class="word">DancingElephant</span></div>
+      </div>
+      <p class="why"><strong>Ear as fingerprint.</strong> Concentric arcs that read as an elephant's ear
+      and a fingerprint at once — pointing straight at the product's core trust feature:
+      client identity protected on-device before anything leaves the browser.</p>
+    </div>
+
+    <!-- 10. Facet -->
+    <div class="card">
+      <div class="card-head"><span class="num">10</span><h2>Facet</h2><span class="tag">Geometric elephant</span></div>
+      <div class="stage">
+        <svg width="150" height="150" viewBox="0 0 96 96" aria-label="Low-poly faceted elephant head with descending trunk">
+          <use href="#mark-facet"/>
+        </svg>
+      </div>
+      <div class="tests">
+        <div class="test"><svg width="28" height="28" viewBox="0 0 96 96"><use href="#mark-facet"/></svg><span class="lbl">28 px</span></div>
+        <div class="test"><svg width="16" height="16" viewBox="0 0 96 96"><use href="#mark-facet"/></svg><span class="lbl">16 px</span></div>
+        <div class="chip-dark"><svg width="22" height="22" viewBox="0 0 96 96"><use href="#mark-facet"/></svg><span class="word">DancingElephant</span></div>
+      </div>
+      <p class="why"><strong>Cut like a gem.</strong> The head built from flat planes — precision,
+      structure, engineering. The sharpest departure from the soft-and-rounded default of
+      legal-tech branding; reads modern without a gradient doing the work.</p>
+    </div>
+
+    <!-- 11. Pilcrow -->
+    <div class="card">
+      <div class="card-head"><span class="num">11</span><h2>Pilcrow</h2><span class="tag">Lawyer-insider</span></div>
+      <div class="stage">
+        <svg width="150" height="150" viewBox="0 0 96 96" aria-label="Paragraph mark whose stem finishes in a trunk-like flick">
+          <use href="#mark-pilcrow"/>
+        </svg>
+      </div>
+      <div class="tests">
+        <div class="test"><svg width="28" height="28" viewBox="0 0 96 96"><use href="#mark-pilcrow"/></svg><span class="lbl">28 px</span></div>
+        <div class="test"><svg width="16" height="16" viewBox="0 0 96 96"><use href="#mark-pilcrow"/></svg><span class="lbl">16 px</span></div>
+        <div class="chip-dark"><svg width="22" height="22" viewBox="0 0 96 96"><use href="#mark-pilcrow"/></svg><span class="word">DancingElephant</span></div>
+      </div>
+      <p class="why"><strong>The mark every lawyer already knows.</strong> The paragraph symbol —
+      the atom of legal citation — with one stem finishing in a trunk's flick. Says "we live in
+      your documents" to attorneys; everyone else just sees a confident glyph.</p>
+    </div>
+
+    <!-- 12. Seal -->
+    <div class="card">
+      <div class="card-head"><span class="num">12</span><h2>Seal</h2><span class="tag">Badge · premium</span></div>
+      <div class="stage">
+        <svg width="150" height="150" viewBox="0 0 96 96" aria-label="Solid gradient circle with a negative-space trunk curl">
+          <use href="#mark-seal"/>
+        </svg>
+      </div>
+      <div class="tests">
+        <div class="test"><svg width="28" height="28" viewBox="0 0 96 96"><use href="#mark-seal"/></svg><span class="lbl">28 px</span></div>
+        <div class="test"><svg width="16" height="16" viewBox="0 0 96 96"><use href="#mark-seal"/></svg><span class="lbl">16 px</span></div>
+        <div class="chip-dark"><svg width="22" height="22" viewBox="0 0 96 96"><use href="#mark-seal"/></svg><span class="word">DancingElephant</span></div>
+      </div>
+      <p class="why"><strong>The notary's seal.</strong> A solid gradient disc with the trunk curl
+      carved out in negative space — authority, certification, a stamp on the record.
+      The most premium-feeling mark of the twelve, and flawless at every size.</p>
+    </div>
+
+  </div>
+
+  <footer>
+    Source SVGs live next to this file in <code>docs/logo-concepts-2026-08-21/</code>.
+    All twelve respect the brand spec's do-nots: no rainbow, no pink, no mascot illustration,
+    no dark-mode app surfaces (the plum tile is the mark itself, not a canvas).
+  </footer>
+</div>
+
+<!-- ======= Shared defs: all marks defined once, reused at every size ======= -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <linearGradient id="grad-main" x1="0" y1="0" x2="1" y2="0.35">
+      <stop offset="0" stop-color="#7C5CFC"/>
+      <stop offset="0.55" stop-color="#5C7CFC"/>
+      <stop offset="1" stop-color="#2DD4BF"/>
+    </linearGradient>
+    <linearGradient id="grad-underline" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#7C5CFC"/>
+      <stop offset="1" stop-color="#2DD4BF"/>
+    </linearGradient>
+
+    <!-- 01 Totem: solid front-facing elephant head -->
+    <g id="mark-totem">
+      <g fill="#7C5CFC">
+        <circle cx="20" cy="47" r="14.5"/>
+        <circle cx="76" cy="47" r="14.5"/>
+        <circle cx="48" cy="37" r="26"/>
+        <path d="M40,50 L56,50 L56,76 Q56,86 47,86 Q39,86 39,77 Q39,73 42,73 Q45,73 45,77 Q45,80 47,80 Q50,80 50,76 L50,50 Z"/>
+        <path d="M40,46 L56,46 L56,62 L40,62 Z"/>
+      </g>
+      <circle cx="39" cy="34" r="3.2" fill="#FCFBF9"/>
+      <circle cx="57" cy="34" r="3.2" fill="#FCFBF9"/>
+    </g>
+    <!-- dark variant: eyes punched in plum -->
+    <g id="mark-totem-dark">
+      <g fill="#A78BFF">
+        <circle cx="20" cy="47" r="14.5"/>
+        <circle cx="76" cy="47" r="14.5"/>
+        <circle cx="48" cy="37" r="26"/>
+        <path d="M40,50 L56,50 L56,76 Q56,86 47,86 Q39,86 39,77 Q39,73 42,73 Q45,73 45,77 Q45,80 47,80 Q50,80 50,76 L50,50 Z"/>
+        <path d="M40,46 L56,46 L56,62 L40,62 Z"/>
+      </g>
+      <circle cx="39" cy="34" r="3.2" fill="#241D2E"/>
+      <circle cx="57" cy="34" r="3.2" fill="#241D2E"/>
+    </g>
+
+    <!-- 02 Arch: body+legs as one arch, head bump, trunk swinging forward, front foot lifted -->
+    <g id="mark-arch">
+      <path d="M24,74 L24,40 Q24,18 43,17 Q52,16.5 55,21 Q59,16 68,17 Q82,20 82,44 L82,80"
+            fill="none" stroke="url(#grad-main)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M24,40 Q24,58 15,66 Q9,71 5,65" fill="none" stroke="#7C5CFC" stroke-width="8" stroke-linecap="round"/>
+      <circle cx="46" cy="34" r="11" fill="#7C5CFC"/>
+    </g>
+
+    <!-- 03 The e: lowercase e whose aperture terminal lifts like a trunk -->
+    <g id="mark-e" fill="none" stroke="#7C5CFC" stroke-width="10" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M33,42 L66,42 Q66,25 47,25 Q27,25 27,47 Q27,69 48,69 Q59,69 66,61 Q71,55 73,49"/>
+    </g>
+
+    <!-- 04 Thread: knot → checkmark, one line -->
+    <g id="mark-thread" fill="none" stroke="url(#grad-main)" stroke-width="7" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M10,46 Q22,46 30,40 Q40,32 48,34 Q56,37 51,44 Q45,51 39,45 Q34,38 42,31 Q51,23 61,28 L78,64 L110,20"/>
+    </g>
+
+    <!-- 06 Curl: plum tile + checkmark whose tail curls like a trunk -->
+    <g id="mark-curl">
+      <rect x="4" y="4" width="88" height="88" rx="20" fill="#241D2E"/>
+      <path d="M22,52 L40,68 Q54,44 64,35 Q73,28 75,36 Q76,43 69,42"
+            fill="none" stroke="url(#grad-main)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+
+    <!-- 07 Footprint: gradient pad, four toenails -->
+    <g id="mark-footprint">
+      <ellipse cx="48" cy="58" rx="28" ry="24" fill="url(#grad-main)"/>
+      <circle cx="21" cy="35" r="6.5" fill="#7C5CFC"/>
+      <circle cx="37" cy="27" r="6.5" fill="#7C5CFC"/>
+      <circle cx="56" cy="26" r="6.5" fill="#5C7CFC"/>
+      <circle cx="73" cy="33" r="6.5" fill="#2DD4BF"/>
+    </g>
+
+    <!-- 08 Bubble: chat bubble as elephant head, trunk as tail -->
+    <g id="mark-bubble">
+      <circle cx="17" cy="38" r="10" fill="#5C7CFC"/>
+      <circle cx="79" cy="38" r="10" fill="#2DD4BF"/>
+      <path d="M34,16 L62,16 Q80,16 80,34 L80,42 Q80,60 62,60 L34,60 Q16,60 16,42 L16,34 Q16,16 34,16 Z" fill="#7C5CFC"/>
+      <path d="M42,60 L54,60 Q54,74 46,80 Q40,84 36,80 Q42,78 42,70 Z" fill="#7C5CFC"/>
+      <circle cx="37" cy="37" r="3.4" fill="#FCFBF9"/>
+      <circle cx="59" cy="37" r="3.4" fill="#FCFBF9"/>
+    </g>
+
+    <!-- 09 Earprint: concentric arcs, ear + fingerprint -->
+    <g id="mark-earprint" fill="none" stroke-linecap="round" transform="rotate(-24 48 48)">
+      <path d="M70,18 A32,32 0 1 0 74,72" stroke="#7C5CFC" stroke-width="8"/>
+      <path d="M62,33 A17,17 0 1 0 65,60" stroke="#5C7CFC" stroke-width="8"/>
+      <path d="M55,44 A7,7 0 1 0 56,52" stroke="#2DD4BF" stroke-width="8"/>
+    </g>
+
+    <!-- 10 Facet: low-poly elephant head, side profile -->
+    <g id="mark-facet">
+      <polygon points="24,22 62,16 56,42" fill="#7C5CFC"/>
+      <polygon points="24,22 56,42 26,52" fill="#8D72FF"/>
+      <polygon points="62,16 88,34 56,42" fill="#2DD4BF"/>
+      <polygon points="56,42 88,34 66,58 56,54" fill="#5C7CFC"/>
+      <polygon points="26,52 56,42 56,54 40,58" fill="#6A4BE8"/>
+      <polygon points="26,52 40,58 28,88 20,84" fill="#7C5CFC"/>
+      <circle cx="36" cy="32" r="3" fill="#FCFBF9"/>
+    </g>
+
+    <!-- 11 Pilcrow: paragraph mark, one stem ends in a trunk flick -->
+    <g id="mark-pilcrow" fill="none" stroke-width="8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M50,18 Q31,18 31,33 Q31,48 50,48" stroke="#7C5CFC"/>
+      <path d="M50,14 L50,78" stroke="#7C5CFC"/>
+      <path d="M66,14 L66,66 Q66,78 56,74" stroke="url(#grad-main)"/>
+      <path d="M44,14 L72,14" stroke="#7C5CFC"/>
+    </g>
+
+    <!-- 12 Seal: gradient disc, negative-space trunk curl -->
+    <g id="mark-seal">
+      <circle cx="48" cy="48" r="40" fill="url(#grad-main)"/>
+      <path d="M32,76 Q30,48 47,38 Q61,31 63,43 Q64,53 55,51 Q48,49 52,42" fill="none" stroke="#FCFBF9" stroke-width="8.5" stroke-linecap="round"/>
+    </g>
+  </defs>
+</svg>

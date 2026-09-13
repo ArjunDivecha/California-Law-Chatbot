@@ -1,0 +1,211 @@
+[
+  {
+    "entry_id": "real-1",
+    "canonical_url": "https://scocal.stanford.edu/opinion/navellier-v-sletten-32261",
+    "locator": "29 Cal.4th 82",
+    "jurisdiction": "California",
+    "authority_kind": "case law - California Supreme Court",
+    "publication_or_precedential_status": "Published opinion (precedential)",
+    "effective_date_or_decision_date": "2002-08-29",
+    "excerpt": "A cause of action against a person arising from any act of that person in furtherance of the person's right of petition or free speech under the United States or California Constitution in connection with a public issue shall be subject to a special motion to strike, unless the court determines that the plaintiff has established that there is a probability that the plaintiff will prevail on the claim.",
+    "discovery_notes": "Found via WebSearch for the exact citation string plus courtlistener; confirmed by WebFetch of scocal.stanford.edu (Stanford Law's official CA Supreme Court opinion archive), which returned case caption, citation 29 Cal.4th 82, court, exact decision date (Aug 29, 2002), and a verbatim holding excerpt describing the anti-SLAPP two-prong special-motion-to-strike standard, matching the stated topic. CourtListener's own indexed page title (surfaced via WebSearch, not directly renderable via WebFetch, which returned empty content) additionally lists the parallel citations 124 Cal.Rptr.2d 530 and 52 P.3d 703 alongside 29 Cal. 4th 82, corroborating the same volume/page."
+  },
+  {
+    "entry_id": "real-2",
+    "canonical_url": "https://scocal.stanford.edu/opinion/taus-v-loftus-33698",
+    "locator": "40 Cal.4th 683",
+    "jurisdiction": "California",
+    "authority_kind": "case law - California Supreme Court",
+    "publication_or_precedential_status": "Published opinion (precedential)",
+    "effective_date_or_decision_date": "2007-02-26",
+    "excerpt": "Plaintiff in this action, Nicole Taus, was the unnamed subject of a 'case study' set forth in a prominent scholarly article describing her apparent recovery of a long-repressed memory of childhood abuse.",
+    "discovery_notes": "Found via WebSearch for '\"Taus v. Loftus\" \"40 Cal.4th 683\" courtlistener'; primary confirmation via WebFetch of scocal.stanford.edu (docket S133805, Supreme Court of California, decided Feb 26, 2007, published), which supplied the verbatim opening paragraph above. Direct WebFetch of the CourtListener and Justia pages for this case returned no content / HTTP 403 (bot-blocked rendering), so the exact reporter citation '40 Cal.4th 683' was corroborated instead via two independent secondary indexes surfaced through WebSearch/WebFetch: CourtListener's own search-result page title ('...54 Cal. Rptr. 3d 775, 40 Cal. 4th 683...') and Wikipedia's case-citation line ('40 Cal. 4th 683, 151 P.3d 1185'), both agreeing with the target citation and with scocal's case identity, court, and date."
+  },
+  {
+    "entry_id": "real-3",
+    "canonical_url": "https://www.animallawconference.org/wp-content/uploads/2024/09/Geiser-v.-Kuhns-13-Cal.5th-1238.pdf",
+    "locator": "13 Cal.5th 1238",
+    "jurisdiction": "California",
+    "authority_kind": "case law - California Supreme Court",
+    "publication_or_precedential_status": "Published opinion (precedential)",
+    "effective_date_or_decision_date": "2022-08-29",
+    "excerpt": "Gregory GEISER, Plaintiff and Appellant, v. Peter KUHNS et al., Defendants and Appellants. ... Opinion of the Court by Liu, J. ... The Legislature enacted Code of Civil Procedure section 425.16 to combat 'a disturbing increase' in Strategic Lawsuits Against Public Participation (SLAPPs): 'lawsuits brought primarily to chill the valid exercise of the constitutional rights of freedom of speech and petition for the redress of grievances.'",
+    "discovery_notes": "Found via WebSearch for the exact citation string; the animallawconference.org PDF (a Casetext-sourced reproduction, filename literally encodes '13-Cal.5th-1238') was directly fetched via WebFetch/Read and its title block explicitly states 'Supreme Court of California / Aug 29, 2022 / 13 Cal.5th 1238 (Cal. 2022)', docket S262032 -- an exact match on volume, reporter abbreviation, and starting page. Corroborated by Justia's docket listing (law.justia.com/cases/california/supreme-court/2022/s262032.html, found via WebSearch; direct WebFetch of that URL returned HTTP 403) and scocal.stanford.edu (scocal.stanford.edu/opinion/geiser-v-kuhns-34699, listed as decided Mon 08/29/2022, matching). Topic (anti-SLAPP two-step public-issue inquiry) matches the fetched opinion text verbatim, including its discussion of the FilmOn two-step test."
+  },
+  {
+    "entry_id": "real-4",
+    "canonical_url": "https://scocal.stanford.edu/opinion/williams-v-super-ct-34534",
+    "locator": "3 Cal.5th 531",
+    "jurisdiction": "California",
+    "authority_kind": "case law - California Supreme Court",
+    "publication_or_precedential_status": "Published opinion (precedential)",
+    "effective_date_or_decision_date": "2017-07-13",
+    "excerpt": "This is a representative action seeking civil penalties on behalf of the State of California and aggrieved employees statewide for alleged wage and hour violations.",
+    "discovery_notes": "Found via WebSearch for '\"Williams v. Superior Court\" \"3 Cal.5th 531\" courtlistener'; confirmed via WebFetch of scocal.stanford.edu (docket S227228, Supreme Court of California, decided July 13, 2017, published opinion granting Williams's writ petition against Marshalls of CA re: PAGA representative-action discovery of statewide employee contact information). The reporter citation 3 Cal.5th 531 was corroborated by the vLex search-result title ('398 P.3d 69, 220 Cal.Rptr.3d 472, 3 Cal.5th 531 (Cal. 2017)') and Leagle's decision page (leagle.com/decision/incaco20170713043), both surfaced via WebSearch and agreeing on case identity/date. Topic (discovery / privacy balancing) matches: this is the leading CA Supreme Court case narrowing the 'good cause' showing needed before ordering disclosure of contact information in PAGA/class discovery, balancing employee privacy against discovery needs."
+  },
+  {
+    "entry_id": "real-5",
+    "canonical_url": "https://scocal.stanford.edu/opinion/coy-v-superior-court-29913",
+    "locator": "58 Cal.2d 210",
+    "jurisdiction": "California",
+    "authority_kind": "case law - California Supreme Court",
+    "publication_or_precedential_status": "Published opinion (precedential)",
+    "effective_date_or_decision_date": "1962-07-19",
+    "excerpt": "This is a proceeding to review by writ of mandate an order of the respondent court denying petitioner's motion to amend his complaint and also denying his several motions to require answers to certain interrogatories.",
+    "discovery_notes": "Found via WebSearch for '\"Coy v. Superior Court\" \"58 Cal.2d 210\" courtlistener'; confirmed via WebFetch of scocal.stanford.edu, which returned case caption 'Coy v. Superior Court', citation 58 Cal.2d 210, Supreme Court of California, decided July 19, 1962, and the verbatim opening excerpt above (petitioner Joe Coy v. Superior Court of Contra Costa County, real party in interest Lou Wolcher, re: interrogatories in an abuse-of-process action). Corroborated by Leagle's independently indexed decision page title ('COY v. SUPERIOR COURT | 58 Cal.2d 210...', leagle.com/decision/196226858cal2d2101251) found via WebSearch. This is a well-known, frequently cited California discovery-law case on the liberal purposes of pretrial discovery, matching the stated topic."
+  },
+  {
+    "entry_id": "real-6",
+    "canonical_url": "https://caselaw.findlaw.com/court/ca-court-of-appeal/1464765.html",
+    "locator": "87 Cal.App.4th 1006",
+    "jurisdiction": "California",
+    "authority_kind": "case law - California Court of Appeal",
+    "publication_or_precedential_status": "Published/certified for publication (widely cited discovery precedent on deposition instruct-not-to-answer sanctions)",
+    "effective_date_or_decision_date": "2001-03-14",
+    "excerpt": "Mary Martha Stewart v. Colonial Western Agency, Inc. -- Court of Appeal, Second District, Division 4, California, Docket No. B139311, decided March 14, 2001. Holding, as fetched from FindLaw: \"Objections to the competency of the deponent, or to the relevancy, materiality, or admissibility at trial ... are unnecessary\" at depositions; counsel must seek a protective order rather than instruct a deponent not to answer on relevance grounds alone.",
+    "discovery_notes": "Found via WebSearch, verified via direct WebFetch of caselaw.findlaw.com/court/ca-court-of-appeal/1464765.html (case caption, court, docket, and date confirmed directly from the fetched page; a substantive holding quote was also pulled verbatim from that fetch). The reporter citation '87 Cal.App.4th 1006' itself was not visible on the FindLaw page content that was returned, but is corroborated unanimously across Quimbee, vLex, Lexis Advance, Leagle, and Justia (page title '87 Cal. App. 4th 1006'). WebFetch attempts to CourtListener and Justia's full opinion text returned HTTP 403."
+  },
+  {
+    "entry_id": "real-7",
+    "canonical_url": "https://scocal.stanford.edu/opinion/costco-v-super-ct-33789",
+    "locator": "47 Cal.4th 725",
+    "jurisdiction": "California",
+    "authority_kind": "case law - California Supreme Court",
+    "publication_or_precedential_status": "Published, precedential (California Supreme Court opinion)",
+    "effective_date_or_decision_date": "2009-11-30",
+    "excerpt": "Costco Wholesale Corporation v. Superior Court of Los Angeles County. Citation: 47 Cal.4th 725, 219 P.3d 736, 101 Cal.Rptr.3d 758. Docket No. S163335. As fetched: \"the entire communication, including its recitation or summary of factual material, is privileged\" -- holding that an attorney opinion letter to a corporate client is privileged in full and in camera review/redacted disclosure to determine privilege violates Evidence Code section 915(a).",
+    "discovery_notes": "Directly fetched scocal.stanford.edu (Stanford Law School's California Supreme Court Resources), an academic archive of official CA Supreme Court opinions -- treated as a high-quality near-primary source given courts.ca.gov's own online archive did not surface an accessible page for this 2009 opinion via the URL patterns tried. Citation and holding corroborated by Quimbee, Lexology, and vLex."
+  },
+  {
+    "entry_id": "real-8",
+    "canonical_url": "https://scocal.stanford.edu/opinion/cembrook-v-superior-court-29873",
+    "locator": "56 Cal.2d 423",
+    "jurisdiction": "California",
+    "authority_kind": "case law - California Supreme Court",
+    "publication_or_precedential_status": "Published, precedential (California Supreme Court opinion)",
+    "effective_date_or_decision_date": "1961-08-03",
+    "excerpt": "MICHAEL CEMBROOK, Petitioner, v. SUPERIOR COURT OF THE CITY AND COUNTY OF SAN FRANCISCO, Respondent; STERLING DRUG, INC., Real Party in Interest. 56 Cal.2d 423. Docket No. S.F. 20707. As fetched: \"neither ambiguity nor burden are of themselves sufficient grounds for denying the right to discovery in toto\" -- objections based on ambiguity may, if present in sufficient degree, constitute an abuse of the discovery process, but courts must narrow rather than deny outright.",
+    "discovery_notes": "Directly fetched scocal.stanford.edu. Also independently located on CourtListener at https://www.courtlistener.com/opinion/1156481/cembrook-v-superior-court/ (same citation, via WebSearch index hit), though a direct WebFetch of the CourtListener page itself returned no retrievable body content. courts.ca.gov's public archive does not extend back to 1961."
+  },
+  {
+    "entry_id": "real-9",
+    "canonical_url": "https://scocal.stanford.edu/opinion/west-pico-furniture-co-v-superior-court-27069",
+    "locator": "56 Cal.2d 407",
+    "jurisdiction": "California",
+    "authority_kind": "case law - California Supreme Court",
+    "publication_or_precedential_status": "Published, precedential (California Supreme Court opinion)",
+    "effective_date_or_decision_date": "1961-08-03",
+    "excerpt": "West Pico Furniture Company of Los Angeles, Petitioner, v. Superior Court of Los Angeles County, Respondent; Pacific Finance Loans, Real Party in Interest. 56 Cal.2d 407. Docket No. L.A. 26171. As fetched: \"burden, alone, is not a ground for objection\" and \"the trial court is not empowered to sustain an objection in toto, when the same is predicated upon burden, unless such is the only method of rendering substantial justice.\"",
+    "discovery_notes": "Directly fetched scocal.stanford.edu. Same-day companion decision to Cembrook v. Superior Court (both decided Aug 3, 1961 by the CA Supreme Court). Care was taken to distinguish this 1961 discovery case from an unrelated, later-styled case ('West Pico Furniture Co. v. Pacific Finance Loans', 1970) that surfaced in one CourtListener search result -- that 1970 case was excluded as a false match. courts.ca.gov's public archive does not extend back to 1961."
+  },
+  {
+    "entry_id": "real-10",
+    "canonical_url": "https://caselaw.findlaw.com/court/ca-court-of-appeal/1775082.html",
+    "locator": "7 Cal.App.4th 1384",
+    "jurisdiction": "California",
+    "authority_kind": "case law - California Court of Appeal",
+    "publication_or_precedential_status": "Published/certified for publication (leading trade-secret discovery precedent, Evidence Code section 1060)",
+    "effective_date_or_decision_date": "1992-06-24",
+    "excerpt": "BRIDGESTONE/FIRESTONE, INC., Petitioner, v. The SUPERIOR COURT of the County of Alameda, Respondent, Nathan RIOS, a Minor, etc., et al., Real Parties in Interest. Court of Appeal, First District, Division 1, Docket No. A053717, decided June 24, 1992. As fetched: the party seeking trade-secret discovery must show \"the information sought is relevant and necessary to the proof of, or defense against, a material element of one or more causes of action\" and that it is \"essential to a fair resolution of the lawsuit.\"",
+    "discovery_notes": "Found via WebSearch, verified via direct WebFetch of caselaw.findlaw.com/court/ca-court-of-appeal/1775082.html (case caption, court, docket, date, and a substantive holding quote confirmed directly from the fetched page). The reporter citation '7 Cal.App.4th 1384' itself was not visible in the FindLaw page content returned, but is corroborated unanimously across Lexis Advance, Justia (page title), Leagle (page title/URL slug), vLex, and lawlink.com. WebFetch attempts to Justia's and Leagle's full opinion text returned HTTP 403."
+  },
+  {
+    "entry_id": "real-12",
+    "canonical_url": "https://scocal.stanford.edu/opinion/re-marriage-lippel-31275",
+    "locator": "51 Cal.3d 1160",
+    "jurisdiction": "California",
+    "authority_kind": "case law - California Supreme Court",
+    "publication_or_precedential_status": "Published / precedential (Cal. Supreme Court opinion, official reports)",
+    "effective_date_or_decision_date": "1990-12-17",
+    "excerpt": "In re the Marriage of ANGELA and RONALD LIPPEL. RONALD LIPPEL, Appellant, v. CITY AND COUNTY OF SAN FRANCISCO, Respondent. [51 Cal.3d 1160, 276 Cal.Rptr. 290, 801 P.2d 1041, No. S013741, Dec. 17, 1990] Held: entry of a default child-support order not requested in the dissolution petition violates Code of Civil Procedure section 580 and due process; the judgment is void as to that unrequested relief and subject to collateral attack. 'A plaintiff cannot be granted more relief than is asked for in the complaint.'",
+    "discovery_notes": "Found via WebSearch for the exact quoted citation string, which returned scocal.stanford.edu (Stanford Law's official California Supreme Court Resources archive), Justia (law.justia.com/cases/california/supreme-court/3d/51/1160.html), and vLex as concurring sources. WebFetch of the scocal.stanford.edu opinion page returned the case caption, docket number S013741, decision date, and holding directly from the primary-source mirror. All three sources agree on the citation, caption, and date; no contradictions found."
+  },
+  {
+    "entry_id": "real-13",
+    "canonical_url": "https://scocal.stanford.edu/opinion/briggs-v-eden-council-hope-opportunity-31951",
+    "locator": "19 Cal.4th 1106",
+    "jurisdiction": "California",
+    "authority_kind": "case law - California Supreme Court",
+    "publication_or_precedential_status": "Published / precedential (Cal. Supreme Court opinion, official reports)",
+    "effective_date_or_decision_date": "1999-01-21",
+    "excerpt": "DAN BRIGGS et al., Plaintiffs and Appellants, v. EDEN COUNCIL FOR HOPE AND OPPORTUNITY, Defendant and Respondent. [19 Cal.4th 1106, 81 Cal.Rptr.2d 471, 969 P.2d 564, No. S062156, Jan. 21, 1999.] Held: Under Code of Civil Procedure section 425.16 (anti-SLAPP), a defendant moving to strike a cause of action arising from a statement made before, or in connection with an issue under consideration by, a legally authorized official proceeding need not separately demonstrate that the statement concerned an issue of public significance.",
+    "discovery_notes": "Found via WebSearch for the exact quoted citation string, returning scocal.stanford.edu, Justia (law.justia.com/cases/california/supreme-court/4th/19/1106.html), casp.net (California Anti-SLAPP Project case summary), and vLex, all in agreement. WebFetch of the scocal.stanford.edu page confirmed caption, docket S062156, decision date, and holding. This is a foundational, widely-cited anti-SLAPP Supreme Court case; multiple independent secondary sources (law firm summaries, the CA Anti-SLAPP Project) corroborate the citation with no discrepancies."
+  },
+  {
+    "entry_id": "real-14",
+    "canonical_url": "https://www.courtlistener.com/opinion/2519835/equilon-enterprises-v-consumer-cause-inc/",
+    "locator": "29 Cal.4th 53",
+    "jurisdiction": "California",
+    "authority_kind": "case law - California Supreme Court",
+    "publication_or_precedential_status": "Published / precedential (Cal. Supreme Court opinion, official reports)",
+    "effective_date_or_decision_date": "2002-08-29",
+    "excerpt": "EQUILON ENTERPRISES, LLC, Plaintiff and Appellant, v. CONSUMER CAUSE, INC., Defendant and Respondent. 29 Cal.4th 53, 52 P.3d 685, 124 Cal.Rptr.2d 507 (Cal. 2002), decided August 29, 2002. Held: a defendant invoking the anti-SLAPP statute (Code Civ. Proc. section 425.16) need not separately show the suit was brought with intent to chill the defendant's exercise of constitutional rights; the statute applies based on whether the challenged cause of action arises from protected speech or petitioning activity, subject to the plaintiff's opportunity to show a probability of prevailing on the merits.",
+    "discovery_notes": "Found via WebSearch of the exact citation string, which returned the CourtListener opinion page directly (courtlistener.com/opinion/2519835) with parallel citations (52 P.3d 685, 124 Cal.Rptr.2d 507, 29 Cal.4th 53), plus scocal.stanford.edu, Justia, and California Anti-SLAPP Project (casp.net) pages in agreement. WebFetch of scocal.stanford.edu returned caption, citation, court, date, and holding. Note: direct WebFetch of the CourtListener opinion page itself and the Justia page both returned blank/403 during this session (apparent bot-blocking), so the verbatim excerpt above is assembled from the scocal.stanford.edu mirror text plus the parallel-citation metadata surfaced in CourtListener's own search snippet -- both independently agree on volume/reporter/page/date, so confidence is high despite not being able to render the CourtListener page body directly."
+  },
+  {
+    "entry_id": "real-15",
+    "canonical_url": "https://case-law.vlex.com/vid/wilson-v-cable-news-889685986",
+    "locator": "7 Cal.5th 871",
+    "jurisdiction": "California",
+    "authority_kind": "case law - California Supreme Court",
+    "publication_or_precedential_status": "Published / precedential (Cal. Supreme Court opinion, official reports)",
+    "effective_date_or_decision_date": "2019-07-22",
+    "excerpt": "Stanley Wilson, Plaintiff and Appellant, v. Cable News Network, Inc., et al., Defendants and Respondents. Wilson v. Cable News Network, Inc., 7 Cal.5th 871, 444 P.3d 706, 249 Cal.Rptr.3d 569 (Cal. 2019), No. S239686, decided July 22, 2019. 'Plaintiff Stanley Wilson began working for Cable News Network, Inc., in 1996, and wrote and produced stories for the network for more than 17 years.' Held: the anti-SLAPP statute (Code Civ. Proc. section 425.16) contains no categorical exception for employment discrimination and retaliation claims; such claims may still be screened for minimal merit if they arise from protected activity.",
+    "discovery_notes": "Found via WebSearch for the exact quoted citation string. The vLex case-law mirror (case-law.vlex.com/vid/wilson-v-cable-news-889685986) was fetchable and returned the exact official citation with all three parallel reporters (7 Cal.5th 871, 444 P.3d 706, 249 Cal.Rptr.3d 569), matching the ground-truth reporter cite exactly. Cross-checked against scocal.stanford.edu's case entry (docket S239686, same decision date July 22, 2019) and Justia's case listing (law.justia.com/cases/california/supreme-court/2019/s239686.html). Direct WebFetch attempts on the CourtListener and Justia opinion pages themselves both returned HTTP 403 during this session (bot-blocking), so the canonical_url points to the vLex mirror that was actually fetched successfully and yielded the verbatim excerpt; scocal and Justia listings corroborate without contradiction."
+  },
+  {
+    "entry_id": "real-16",
+    "canonical_url": "https://caselaw.findlaw.com/court/ca-supreme-court/1616426.html",
+    "locator": "55 Cal.4th 747",
+    "jurisdiction": "California",
+    "authority_kind": "case law - California Supreme Court",
+    "publication_or_precedential_status": "Published / precedential (routinely cited opinion establishing California's expert-testimony gatekeeping standard; no depublication or subsequent history found)",
+    "effective_date_or_decision_date": "2012-11-26",
+    "excerpt": "SARGON ENTERPRISES INC v. UNIVERSITY OF SOUTHERN CALIFORNIA, No. S191550, Decided: November 26, 2012. \"A small dental implant company that had net profits of $101,000 in 1998 has sued a university for breach of a contract for the university to clinically test a new implant the company had patented. The company seeks damages for lost profits beginning in 1998, ranging from $200 million to over $1 billion.\"",
+    "discovery_notes": "Found via WebSearch for the citation string, then confirmed the exact reporter cite (55 Cal.4th 747) against CourtListener's citation-search API (returns a single matching opinion, date_filed 2012-11-26, California Supreme Court, parallel cites 288 P.3d 1237 / 149 Cal.Rptr.3d 614). Retrieved caption + opening text from caselaw.findlaw.com (which republishes full opinion text) and cross-checked wording against an independent scocal.stanford.edu (Stanford's California Supreme Court Resources) summary -- both gave the identical opening sentence, which is good corroboration of accuracy. Caveat: FindLaw content was retrieved through the WebFetch tool (an LLM-mediated HTML extraction), not raw HTML I inspected byte-for-byte, so treat the quoted excerpt as high-confidence rather than machine-verified-byte-exact. Could not reach the official courts.ca.gov PDF archive for this 2012 docket (404 under the archive URL pattern I tried)."
+  },
+  {
+    "entry_id": "real-17",
+    "canonical_url": "https://caselaw.findlaw.com/court/ca-supreme-court/1465114.html",
+    "locator": "29 Cal.4th 69",
+    "jurisdiction": "California",
+    "authority_kind": "case law - California Supreme Court",
+    "publication_or_precedential_status": "Published / precedential (companion anti-SLAPP case to Equilon Enterprises v. Consumer Cause and Navellier v. Sletten, both also 29 Cal.4th, same decision day)",
+    "effective_date_or_decision_date": "2002-08-29",
+    "excerpt": "CITY OF COTATI, Plaintiff and Appellant, v. Gene CASHMAN et al., Defendants and Respondents. No. S099999. Decided: August 29, 2002. \"We must decide in this case whether a municipality's state court action for declaratory relief respecting the constitutionality of a mobilehome park rent stabilization ordinance, filed in response to a federal court declaratory relief action brought by park owners respecting the same ordinance, constitutes a strategic lawsuit against public participation (SLAPP) within the purview of Code of Civil Procedure section 425.16... We conclude it does not.\"",
+    "discovery_notes": "Confirmed exact reporter cite (29 Cal.4th 69) via CourtListener's citation-search API (single match, date_filed 2002-08-29, California Supreme Court, parallel cites 52 P.3d 695 / 124 Cal.Rptr.2d 519). Caption and opening holding sentence retrieved from caselaw.findlaw.com; wording matches the case summary independently given by scocal.stanford.edu and CourtListener's own opinion page title. Direct WebFetch of the courtlistener.com opinion page itself returned blank/unrenderable content (likely blocked for automated non-browser fetch), so relied on the CourtListener JSON search API plus FindLaw/scocal as corroborating sources instead of the raw courtlistener.com HTML page."
+  },
+  {
+    "entry_id": "real-18",
+    "canonical_url": "https://www4.courts.ca.gov/opinions/archive/S244157.PDF",
+    "locator": "7 Cal.5th 133",
+    "jurisdiction": "California",
+    "authority_kind": "case law - California Supreme Court",
+    "publication_or_precedential_status": "Published / precedential official slip opinion (courts.ca.gov opinion archive copy)",
+    "effective_date_or_decision_date": "2019-05-06",
+    "excerpt": "IN THE SUPREME COURT OF CALIFORNIA. FILMON.COM INC., Plaintiff and Appellant, v. DOUBLEVERIFY INC., Defendant and Respondent. S244157. Second Appellate District, Division Three B264074. Los Angeles County Superior Court BC561987. May 6, 2019. Justice Cuellar authored the opinion of the court, in which Chief Justice Cantil-Sakauye and Justices Chin, Corrigan, Liu, Kruger, and Groban concurred. -- FILMON.COM INC. v. DOUBLEVERIFY INC. S244157 Opinion of the Court by Cuellar, J. The Legislature enacted Code of Civil Procedure section 425.16 to address so-called strategic lawsuits against public participation (SLAPP).",
+    "discovery_notes": "Located the official California Supreme Court opinion PDF directly on the courts.ca.gov opinion archive (redirected from courts.ca.gov to www4.courts.ca.gov/opinions/archive/S244157.PDF) and read it with the Read/PDF tool (not WebFetch, which cannot parse raw PDF binary). This is the strongest possible primary source -- the court's own filed opinion, cover page and first page transcribed directly above. Independently cross-checked the reporter citation 7 Cal.5th 133 (with parallel cites 439 P.3d 1156 / 246 Cal.Rptr.3d 591) via CourtListener's search API, same date filed (2019-05-06), same docket number S244157. Fully confirmed with no discrepancies."
+  },
+  {
+    "entry_id": "real-19",
+    "canonical_url": "https://www4.courts.ca.gov/opinions/archive/S225090.PDF",
+    "locator": "1 Cal.5th 376",
+    "jurisdiction": "California",
+    "authority_kind": "case law - California Supreme Court",
+    "publication_or_precedential_status": "Published / precedential official slip opinion (courts.ca.gov opinion archive copy); overruled the Court of Appeal's 'Mann rule' approach to mixed causes of action",
+    "effective_date_or_decision_date": "2016-08-01",
+    "excerpt": "Filed 8/1/16. IN THE SUPREME COURT OF CALIFORNIA. ROBERT C. BARAL, Plaintiff and Respondent, v. DAVID SCHNITT, Defendant and Appellant. S225090. Ct.App. 2/1 B253620. Los Angeles County Super. Ct. No. BC475350. -- California's anti-SLAPP statute provides that '[a] cause of action against a person arising from any act of that person in furtherance of the person's right of petition or free speech ... shall be subject to a special motion to strike, unless the court determines ... there is a probability that the plaintiff will prevail on the claim.' (Code Civ. Proc., section 425.16, subd. (b)(1).) This case raises a question that has perplexed the Courts of Appeal: How does the special motion to strike operate against a so-called 'mixed cause of action' that combines allegations of activity protected by the statute with allegations of unprotected activity?",
+    "discovery_notes": "Located the official California Supreme Court opinion PDF directly on the courts.ca.gov opinion archive (redirected to www4.courts.ca.gov/opinions/archive/S225090.PDF) and read it with the Read/PDF tool. This is a direct primary-source transcription of the court's own filed opinion (filed 8/1/16, matching the 2016 decision year). Independently cross-checked the reporter citation 1 Cal.5th 376 (parallel cites 376 P.3d 604 / 205 Cal.Rptr.3d 475) via CourtListener's search API, same court, same date filed. Fully confirmed with no discrepancies."
+  },
+  {
+    "entry_id": "real-20",
+    "canonical_url": "https://www.courtlistener.com/opinion/1312544/people-v-anderson/",
+    "locator": "70 Cal.2d 15",
+    "jurisdiction": "California",
+    "authority_kind": "case law - California Supreme Court",
+    "publication_or_precedential_status": "Published / precedential (this 1968 opinion is the source of the 'Anderson factors' for premeditation/deliberation; it is NOT the 1972 death-penalty/cruel-or-unusual-punishment case of the same name -- that is a separate opinion, People v. Anderson (1972) 6 Cal.3d 628, 493 P.2d 880)",
+    "effective_date_or_decision_date": "1968-12-23",
+    "excerpt": "[No verbatim excerpt available: the 1968 opinion text was not reachable from any fetched source in this session \u2014 courts.ca.gov's PDF archive does not cover 1968 opinions (404), and courtlistener.com / law.justia.com opinion pages returned blank/403. See discovery_notes for the citation-existence verification, which IS source-backed.]",
+    "discovery_notes": "Citation exists and is exact: CourtListener's citation-search API returns a single match for '70 Cal.2d 15' -- People v. Anderson, date_filed 1968-12-23, California Supreme Court, parallel citations 447 P.2d 942 / 73 Cal.Rptr. 550. IMPORTANT: this is a different case from the famous death-penalty/cruel-or-unusual-punishment 'People v. Anderson,' which is (1972) 6 Cal.3d 628, 493 P.2d 880 (CourtListener opinion id 1260876) -- confirmed by Wikipedia's article on the 1968 case, which explicitly notes 'Not to be confused with People v. Anderson (1972).' If the eval set's 'criminal / death penalty' topic tag was meant to point at the cruel-or-unusual-punishment holding, it belongs to the 1972 case, not this one. Attempted to fetch the primary opinion text directly: courts.ca.gov's PDF archive does not cover 1968 opinions (404 on the archive URL pattern that worked for 2016/2019 dockets); WebFetch on both the courtlistener.com opinion page and law.justia.com's page for this case returned blank content / HTTP 403 respectively (likely bot-blocked or JS-rendered), so no clean verbatim quote of the opinion body was obtainable -- only paraphrased case-brief-style summaries from CourtListener's search snippet, Wikipedia, Quimbee, and Casemine, none of which I am treating as verbatim opinion text."
+  }
+]

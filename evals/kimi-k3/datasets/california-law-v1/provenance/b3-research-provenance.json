@@ -1,0 +1,583 @@
+{
+ "batch": "B3",
+ "category": "research",
+ "authored_at": "2026-07-27",
+ "note": "Lineage record for the 15 batch-B3 California procedure/evidence and case-law research tasks (research-016..030), all track frozen_evidence, data_class public, expected_tools []. Every material criterion is tied to a proposition whose authoritative_excerpt is a verbatim substring of a source excerpt already in sources.jsonl -- either an official leginfo.legislature.ca.gov code page window or one of the CIT-REAL-* California case records revalidated in batch B1. Proposition excerpts were sliced programmatically out of the registered source bytes (scratchpad buildTasks.mjs pick()), never retyped, and the source-entailment guard in datasetTools/authorTasks.ts enforced this at authoring time. No case holding was stated beyond what the registered case excerpt itself says: e.g. City of Cotati is carried only for its own conclusion that the described declaratory relief action is not a SLAPP, and Baral is carried only for the mixed-cause-of-action question the opinion frames, not for the rationale or remedy. Fact patterns in the prompts are synthetic hypotheticals written for the eval; they contain no client information.",
+ "new_source_records": {
+  "count": 12,
+  "source_ids": [
+   "STAT-CAL-CIV-PROC-CODE-425-16-A",
+   "STAT-CAL-CIV-PROC-CODE-425-16-E",
+   "STAT-CAL-EVID-CODE-1152-B",
+   "STAT-CAL-EVID-CODE-1119",
+   "STAT-CAL-CIV-PROC-CODE-2017-010",
+   "STAT-CAL-FAM-CODE-2030-B",
+   "STAT-CAL-FAM-CODE-2032",
+   "STAT-CAL-PROB-CODE-21382",
+   "STAT-CAL-FAM-CODE-298",
+   "STAT-CAL-FAM-CODE-6300",
+   "STAT-CAL-CIV-PROC-CODE-580",
+   "STAT-CAL-EVID-CODE-980"
+  ],
+  "harvest_method": "Raw curl GET (User-Agent Mozilla/5.0) of the official leginfo.legislature.ca.gov codes_displaySection.xhtml page for each section, tag-stripped and whitespace-normalized with the same normalizer datasetTools/verifySources.ts applies, then sliced to a contiguous subdivision window and ingested via datasetTools/ingestSources.ts. Effective dates were taken verbatim from each page history line (recorded in the record discovery_notes). STAT-CAL-CIV-PROC-CODE-425-16-A/-E, STAT-CAL-EVID-CODE-1152-B and STAT-CAL-FAM-CODE-2030-B are additional excerpt windows of leginfo pages already represented in the registry; the other eight are new sections. No case-law record was added: all case authority in this batch reuses CIT-REAL-* records already revalidated in B1.",
+  "retrieved_at": "2026-07-27T20:30:00Z"
+ },
+ "case_law_grounding": "Nine tasks cite California case law, all from CIT-REAL-* registry records whose excerpts were fetched from official or near-primary opinion sources in B1 (scocal.stanford.edu, www4.courts.ca.gov opinion-archive PDFs, caselaw.findlaw.com). Case propositions quote only the holding language present in the registered excerpt: Navellier 29 Cal.4th 82 (CIT-REAL-1), Equilon 29 Cal.4th 53 (CIT-REAL-14), Briggs 19 Cal.4th 1106 (CIT-REAL-13), City of Cotati 29 Cal.4th 69 (CIT-REAL-17), Baral 1 Cal.5th 376 (CIT-REAL-19), Wilson v. CNN 7 Cal.5th 871 (CIT-REAL-15), Costco 47 Cal.4th 725 (CIT-REAL-7), Stewart v. Colonial Western 87 Cal.App.4th 1006 (CIT-REAL-6), Cembrook 56 Cal.2d 423 (CIT-REAL-8), West Pico 56 Cal.2d 407 (CIT-REAL-9), Bridgestone/Firestone 7 Cal.App.4th 1384 (CIT-REAL-10), and In re Marriage of Lippel 51 Cal.3d 1160 (CIT-REAL-12).",
+ "hard_failure_code_policy": "FABRICATED_AUTHORITY is attached only to citation assertions naming a real reporter citation that is in the task evidence packet. MISSED_CONTROLLING_CONTRARY_AUTHORITY is attached only where the omitted authority is itself in that task evidence packet (Equilon in 016, Briggs in 017, Wilson in 018, EVID 1119 in 019, Costco in 020, Stewart in 021, West Pico in 022, FAM 2032 in 025, PROB 21382 in 026, Lippel void/collateral-attack holding in 029, EVID 917 in 030). WRONG_EFFECTIVE_DATE is attached only where the authority date is stated verbatim inside the registered excerpt: City of Cotati \"Decided: August 29, 2002\" (018), Stewart \"decided March 14, 2001\" (021), Bridgestone/Firestone \"decided June 24, 1992\" (023), Lippel \"Dec. 17, 1990\" (029). No WRONG_JURISDICTION assertion was written -- nothing in the registry grounds one for these questions.",
+ "distinct_from_b2": "B2 covered substantive Family Code doctrine (property characterization, support, custody, parentage, premarital agreements, fiduciary disclosure). B3 covers civil procedure and evidence as applied in a family-law practice (anti-SLAPP, settlement/mediation exclusion, privilege presumptions, deposition and discovery scope, default-judgment limits) plus three Family Code topics B2 did not touch (bifurcation under FAM 2337, need-based fees under FAM 2030/2032, domestic partnership formation under FAM 297/298) and DVPA ex parte mechanics under FAM 6300, which is a different question from the B2 FAM 6211/6320 relationship-scope and coercive-control task.",
+ "entries": [
+  {
+   "task_id": "research-016",
+   "topic": "Anti-SLAPP special motion to strike aimed at a suit arising from DVRO filings (CCP 425.16(b)(1), (e); Navellier; Equilon)",
+   "evidence_source_ids": [
+    "STAT-CAL-CIV-PROC-CODE-425-16",
+    "STAT-CAL-CIV-PROC-CODE-425-16-E",
+    "CIT-REAL-1",
+    "CIT-REAL-14"
+   ],
+   "statutory_locators": [
+    "Cal. Civ. Proc. Code § 425.16",
+    "Cal. Civ. Proc. Code § 425.16(e)-(j)",
+    "29 Cal.4th 82",
+    "29 Cal.4th 53"
+   ],
+   "material_criteria": 4,
+   "propositions": 5,
+   "deterministic_assertions": [
+    {
+     "assertion_id": "research-016-a1",
+     "kind": "statute",
+     "hard_failure_code": null
+    },
+    {
+     "assertion_id": "research-016-a2",
+     "kind": "contains",
+     "hard_failure_code": null
+    },
+    {
+     "assertion_id": "research-016-a3",
+     "kind": "citation",
+     "hard_failure_code": "FABRICATED_AUTHORITY"
+    },
+    {
+     "assertion_id": "research-016-a4",
+     "kind": "citation",
+     "hard_failure_code": "MISSED_CONTROLLING_CONTRARY_AUTHORITY"
+    }
+   ],
+   "transformation": "none -- every proposition excerpt is a verbatim substring of the cited registered source excerpt, sliced programmatically; prompt fact pattern is a synthetic hypothetical",
+   "task_content_sha256": "9d85ab42bfaddb08734c694ac1831fa1705dbeb43d6cd35da188f1c13818ab87"
+  },
+  {
+   "task_id": "research-017",
+   "topic": "Anti-SLAPP motion mechanics: 60-day window, discovery stay, fee shifting, appealability (CCP 425.16(a), (c), (f), (g), (i)); Briggs",
+   "evidence_source_ids": [
+    "STAT-CAL-CIV-PROC-CODE-425-16-E",
+    "STAT-CAL-CIV-PROC-CODE-425-16-A",
+    "CIT-REAL-13"
+   ],
+   "statutory_locators": [
+    "Cal. Civ. Proc. Code § 425.16(e)-(j)",
+    "Cal. Civ. Proc. Code § 425.16(a), (b)(2)-(d)",
+    "19 Cal.4th 1106"
+   ],
+   "material_criteria": 5,
+   "propositions": 5,
+   "deterministic_assertions": [
+    {
+     "assertion_id": "research-017-a1",
+     "kind": "statute",
+     "hard_failure_code": null
+    },
+    {
+     "assertion_id": "research-017-a2",
+     "kind": "contains",
+     "hard_failure_code": null
+    },
+    {
+     "assertion_id": "research-017-a3",
+     "kind": "contains",
+     "hard_failure_code": null
+    },
+    {
+     "assertion_id": "research-017-a4",
+     "kind": "citation",
+     "hard_failure_code": "MISSED_CONTROLLING_CONTRARY_AUTHORITY"
+    }
+   ],
+   "transformation": "none -- every proposition excerpt is a verbatim substring of the cited registered source excerpt, sliced programmatically; prompt fact pattern is a synthetic hypothetical",
+   "task_content_sha256": "22933fb282940c5a349f240eda443eab7651cd21ea3292cde3cb69ff1c0b9a83"
+  },
+  {
+   "task_id": "research-018",
+   "topic": "Limits on anti-SLAPP: what does not arise from protected activity, mixed causes of action, no employment-claim carve-out (City of Cotati; Baral; Wilson; CCP 425.16(a))",
+   "evidence_source_ids": [
+    "CIT-REAL-17",
+    "CIT-REAL-19",
+    "CIT-REAL-15",
+    "STAT-CAL-CIV-PROC-CODE-425-16-A"
+   ],
+   "statutory_locators": [
+    "29 Cal.4th 69",
+    "1 Cal.5th 376",
+    "7 Cal.5th 871",
+    "Cal. Civ. Proc. Code § 425.16(a), (b)(2)-(d)"
+   ],
+   "material_criteria": 4,
+   "propositions": 4,
+   "deterministic_assertions": [
+    {
+     "assertion_id": "research-018-a1",
+     "kind": "citation",
+     "hard_failure_code": "FABRICATED_AUTHORITY"
+    },
+    {
+     "assertion_id": "research-018-a2",
+     "kind": "citation",
+     "hard_failure_code": "MISSED_CONTROLLING_CONTRARY_AUTHORITY"
+    },
+    {
+     "assertion_id": "research-018-a3",
+     "kind": "contains",
+     "hard_failure_code": null
+    },
+    {
+     "assertion_id": "research-018-a4",
+     "kind": "contains",
+     "hard_failure_code": "WRONG_EFFECTIVE_DATE"
+    }
+   ],
+   "transformation": "none -- every proposition excerpt is a verbatim substring of the cited registered source excerpt, sliced programmatically; prompt fact pattern is a synthetic hypothetical",
+   "task_content_sha256": "5ed469aee80d5a29b61e08e7236298aa41bccf3eb70758744a2a8874897c6a70"
+  },
+  {
+   "task_id": "research-019",
+   "topic": "Settlement-offer inadmissibility and mediation confidentiality (EVID 1152(a)-(c), 1119)",
+   "evidence_source_ids": [
+    "STAT-CAL-EVID-CODE-1152",
+    "STAT-CAL-EVID-CODE-1152-B",
+    "STAT-CAL-EVID-CODE-1119"
+   ],
+   "statutory_locators": [
+    "Cal. Evid. Code § 1152",
+    "Cal. Evid. Code § 1152(b)-(c)",
+    "Cal. Evid. Code § 1119"
+   ],
+   "material_criteria": 5,
+   "propositions": 6,
+   "deterministic_assertions": [
+    {
+     "assertion_id": "research-019-a1",
+     "kind": "statute",
+     "hard_failure_code": null
+    },
+    {
+     "assertion_id": "research-019-a2",
+     "kind": "statute",
+     "hard_failure_code": "MISSED_CONTROLLING_CONTRARY_AUTHORITY"
+    },
+    {
+     "assertion_id": "research-019-a3",
+     "kind": "contains",
+     "hard_failure_code": null
+    }
+   ],
+   "transformation": "none -- every proposition excerpt is a verbatim substring of the cited registered source excerpt, sliced programmatically; prompt fact pattern is a synthetic hypothetical",
+   "task_content_sha256": "b3332b337664b94fda82ca5f7e4ea877492b34d12125984c08fab33b7dcc5a26"
+  },
+  {
+   "task_id": "research-020",
+   "topic": "Privilege presumption, burden of proof, electronic communications, and the Costco entire-communication rule (EVID 917; Costco v. Superior Court)",
+   "evidence_source_ids": [
+    "STAT-CAL-EVID-CODE-917",
+    "CIT-REAL-7"
+   ],
+   "statutory_locators": [
+    "Cal. Evid. Code § 917",
+    "47 Cal.4th 725"
+   ],
+   "material_criteria": 4,
+   "propositions": 4,
+   "deterministic_assertions": [
+    {
+     "assertion_id": "research-020-a1",
+     "kind": "statute",
+     "hard_failure_code": null
+    },
+    {
+     "assertion_id": "research-020-a2",
+     "kind": "contains",
+     "hard_failure_code": null
+    },
+    {
+     "assertion_id": "research-020-a3",
+     "kind": "citation",
+     "hard_failure_code": "MISSED_CONTROLLING_CONTRARY_AUTHORITY"
+    }
+   ],
+   "transformation": "none -- every proposition excerpt is a verbatim substring of the cited registered source excerpt, sliced programmatically; prompt fact pattern is a synthetic hypothetical",
+   "task_content_sha256": "2ef0b32cd18565e66cbbf459686dbf89332e28394a2e7e4979da13ecfe953bfa"
+  },
+  {
+   "task_id": "research-021",
+   "topic": "Deposition availability and scope, and improper instructions not to answer (CCP 2025.010, 2017.010; Stewart v. Colonial Western Agency)",
+   "evidence_source_ids": [
+    "STAT-CAL-CIV-PROC-CODE-2025-010",
+    "STAT-CAL-CIV-PROC-CODE-2017-010",
+    "CIT-REAL-6"
+   ],
+   "statutory_locators": [
+    "Cal. Civ. Proc. Code § 2025.010",
+    "Cal. Civ. Proc. Code § 2017.010",
+    "87 Cal.App.4th 1006"
+   ],
+   "material_criteria": 4,
+   "propositions": 4,
+   "deterministic_assertions": [
+    {
+     "assertion_id": "research-021-a1",
+     "kind": "statute",
+     "hard_failure_code": null
+    },
+    {
+     "assertion_id": "research-021-a2",
+     "kind": "statute",
+     "hard_failure_code": null
+    },
+    {
+     "assertion_id": "research-021-a3",
+     "kind": "contains",
+     "hard_failure_code": "MISSED_CONTROLLING_CONTRARY_AUTHORITY"
+    },
+    {
+     "assertion_id": "research-021-a4",
+     "kind": "contains",
+     "hard_failure_code": "WRONG_EFFECTIVE_DATE"
+    }
+   ],
+   "transformation": "none -- every proposition excerpt is a verbatim substring of the cited registered source excerpt, sliced programmatically; prompt fact pattern is a synthetic hypothetical",
+   "task_content_sha256": "40c114a6909b93033c07a13a78f383bd6aba2e4292709d56b20e7ca82f028ff6"
+  },
+  {
+   "task_id": "research-022",
+   "topic": "Burden and ambiguity as discovery objections (Cembrook; West Pico Furniture; CCP 2017.010)",
+   "evidence_source_ids": [
+    "CIT-REAL-8",
+    "CIT-REAL-9",
+    "STAT-CAL-CIV-PROC-CODE-2017-010"
+   ],
+   "statutory_locators": [
+    "56 Cal.2d 423",
+    "56 Cal.2d 407",
+    "Cal. Civ. Proc. Code § 2017.010"
+   ],
+   "material_criteria": 4,
+   "propositions": 5,
+   "deterministic_assertions": [
+    {
+     "assertion_id": "research-022-a1",
+     "kind": "citation",
+     "hard_failure_code": "FABRICATED_AUTHORITY"
+    },
+    {
+     "assertion_id": "research-022-a2",
+     "kind": "citation",
+     "hard_failure_code": "MISSED_CONTROLLING_CONTRARY_AUTHORITY"
+    },
+    {
+     "assertion_id": "research-022-a3",
+     "kind": "contains",
+     "hard_failure_code": null
+    }
+   ],
+   "transformation": "none -- every proposition excerpt is a verbatim substring of the cited registered source excerpt, sliced programmatically; prompt fact pattern is a synthetic hypothetical",
+   "task_content_sha256": "a39900170c298a79af899c02e254b404cb2b49553c1ebe259accbb72ee97cd3e"
+  },
+  {
+   "task_id": "research-023",
+   "topic": "Trade-secret discovery showing in a business-valuation dispute (Bridgestone/Firestone v. Superior Court; CCP 2017.010)",
+   "evidence_source_ids": [
+    "CIT-REAL-10",
+    "STAT-CAL-CIV-PROC-CODE-2017-010"
+   ],
+   "statutory_locators": [
+    "7 Cal.App.4th 1384",
+    "Cal. Civ. Proc. Code § 2017.010"
+   ],
+   "material_criteria": 4,
+   "propositions": 4,
+   "deterministic_assertions": [
+    {
+     "assertion_id": "research-023-a1",
+     "kind": "citation",
+     "hard_failure_code": "FABRICATED_AUTHORITY"
+    },
+    {
+     "assertion_id": "research-023-a2",
+     "kind": "contains",
+     "hard_failure_code": null
+    },
+    {
+     "assertion_id": "research-023-a3",
+     "kind": "contains",
+     "hard_failure_code": "WRONG_EFFECTIVE_DATE"
+    }
+   ],
+   "transformation": "none -- every proposition excerpt is a verbatim substring of the cited registered source excerpt, sliced programmatically; prompt fact pattern is a synthetic hypothetical",
+   "task_content_sha256": "acd7d23e36d257a9369d0a274b7f9d0425bc469d9d4b0fa81f9b519a284994d2"
+  },
+  {
+   "task_id": "research-024",
+   "topic": "Bifurcation and early termination of marital status, including the FAM 2337 conditions list",
+   "evidence_source_ids": [
+    "STAT-CAL-FAM-CODE-2337"
+   ],
+   "statutory_locators": [
+    "Cal. Fam. Code § 2337"
+   ],
+   "material_criteria": 5,
+   "propositions": 6,
+   "deterministic_assertions": [
+    {
+     "assertion_id": "research-024-a1",
+     "kind": "statute",
+     "hard_failure_code": null
+    },
+    {
+     "assertion_id": "research-024-a2",
+     "kind": "contains",
+     "hard_failure_code": null
+    },
+    {
+     "assertion_id": "research-024-a3",
+     "kind": "contains",
+     "hard_failure_code": null
+    }
+   ],
+   "transformation": "none -- every proposition excerpt is a verbatim substring of the cited registered source excerpt, sliced programmatically; prompt fact pattern is a synthetic hypothetical",
+   "task_content_sha256": "46c10e7bf942f4444f4b33b79f68e81b90fc1979e8bef3714b64d18c368c2e3c"
+  },
+  {
+   "task_id": "research-025",
+   "topic": "Need-based attorney fee awards and the just-and-reasonable standard (FAM 2030, 2032)",
+   "evidence_source_ids": [
+    "STAT-CAL-FAM-CODE-2030",
+    "STAT-CAL-FAM-CODE-2030-B",
+    "STAT-CAL-FAM-CODE-2032"
+   ],
+   "statutory_locators": [
+    "Cal. Fam. Code § 2030",
+    "Cal. Fam. Code § 2030(a)(2)-(e)",
+    "Cal. Fam. Code § 2032"
+   ],
+   "material_criteria": 5,
+   "propositions": 6,
+   "deterministic_assertions": [
+    {
+     "assertion_id": "research-025-a1",
+     "kind": "statute",
+     "hard_failure_code": null
+    },
+    {
+     "assertion_id": "research-025-a2",
+     "kind": "statute",
+     "hard_failure_code": "MISSED_CONTROLLING_CONTRARY_AUTHORITY"
+    },
+    {
+     "assertion_id": "research-025-a3",
+     "kind": "contains",
+     "hard_failure_code": null
+    }
+   ],
+   "transformation": "none -- every proposition excerpt is a verbatim substring of the cited registered source excerpt, sliced programmatically; prompt fact pattern is a synthetic hypothetical",
+   "task_content_sha256": "5ca1b92c421d4a7dfbded77f465b718443d85e38a71c88b5d4b738f56d67b04d"
+  },
+  {
+   "task_id": "research-026",
+   "topic": "Donative-transfer presumption of fraud or undue influence and its statutory exceptions (PROB 21380, 21382)",
+   "evidence_source_ids": [
+    "STAT-CAL-PROB-CODE-21380",
+    "STAT-CAL-PROB-CODE-21382"
+   ],
+   "statutory_locators": [
+    "Cal. Prob. Code § 21380",
+    "Cal. Prob. Code § 21382"
+   ],
+   "material_criteria": 5,
+   "propositions": 6,
+   "deterministic_assertions": [
+    {
+     "assertion_id": "research-026-a1",
+     "kind": "statute",
+     "hard_failure_code": null
+    },
+    {
+     "assertion_id": "research-026-a2",
+     "kind": "statute",
+     "hard_failure_code": "MISSED_CONTROLLING_CONTRARY_AUTHORITY"
+    },
+    {
+     "assertion_id": "research-026-a3",
+     "kind": "contains",
+     "hard_failure_code": null
+    }
+   ],
+   "transformation": "none -- every proposition excerpt is a verbatim substring of the cited registered source excerpt, sliced programmatically; prompt fact pattern is a synthetic hypothetical",
+   "task_content_sha256": "5852d305fc994e670548d7ebe88fa02f1b9283f731fa6ba84701122ae3be94c6"
+  },
+  {
+   "task_id": "research-027",
+   "topic": "Formation requirements for a California registered domestic partnership (FAM 297, 298)",
+   "evidence_source_ids": [
+    "STAT-CAL-FAM-CODE-297",
+    "STAT-CAL-FAM-CODE-298"
+   ],
+   "statutory_locators": [
+    "Cal. Fam. Code § 297",
+    "Cal. Fam. Code § 298"
+   ],
+   "material_criteria": 5,
+   "propositions": 5,
+   "deterministic_assertions": [
+    {
+     "assertion_id": "research-027-a1",
+     "kind": "statute",
+     "hard_failure_code": null
+    },
+    {
+     "assertion_id": "research-027-a2",
+     "kind": "statute",
+     "hard_failure_code": null
+    },
+    {
+     "assertion_id": "research-027-a3",
+     "kind": "contains",
+     "hard_failure_code": null
+    },
+    {
+     "assertion_id": "research-027-a4",
+     "kind": "contains",
+     "hard_failure_code": null
+    }
+   ],
+   "transformation": "none -- every proposition excerpt is a verbatim substring of the cited registered source excerpt, sliced programmatically; prompt fact pattern is a synthetic hypothetical",
+   "task_content_sha256": "118e1a7f0e21498b2ff24cb0536c86a80902188540fa479719678e5ffe9851e5"
+  },
+  {
+   "task_id": "research-028",
+   "topic": "DVPA ex parte restraining order mechanics: evidentiary showing, no-notice rule, clerk filing duty (FAM 6300, 6320)",
+   "evidence_source_ids": [
+    "STAT-CAL-FAM-CODE-6300",
+    "STAT-CAL-FAM-CODE-6320"
+   ],
+   "statutory_locators": [
+    "Cal. Fam. Code § 6300",
+    "Cal. Fam. Code § 6320"
+   ],
+   "material_criteria": 5,
+   "propositions": 5,
+   "deterministic_assertions": [
+    {
+     "assertion_id": "research-028-a1",
+     "kind": "statute",
+     "hard_failure_code": null
+    },
+    {
+     "assertion_id": "research-028-a2",
+     "kind": "statute",
+     "hard_failure_code": null
+    },
+    {
+     "assertion_id": "research-028-a3",
+     "kind": "contains",
+     "hard_failure_code": null
+    },
+    {
+     "assertion_id": "research-028-a4",
+     "kind": "contains",
+     "hard_failure_code": null
+    }
+   ],
+   "transformation": "none -- every proposition excerpt is a verbatim substring of the cited registered source excerpt, sliced programmatically; prompt fact pattern is a synthetic hypothetical",
+   "task_content_sha256": "875f68f4f8f4200c06d986ec9ac4d20d3593796473eb6904312b475d69d573ef"
+  },
+  {
+   "task_id": "research-029",
+   "topic": "Limits on relief in a default dissolution judgment (CCP 580; In re Marriage of Lippel)",
+   "evidence_source_ids": [
+    "STAT-CAL-CIV-PROC-CODE-580",
+    "CIT-REAL-12"
+   ],
+   "statutory_locators": [
+    "Cal. Civ. Proc. Code § 580",
+    "51 Cal.3d 1160"
+   ],
+   "material_criteria": 4,
+   "propositions": 4,
+   "deterministic_assertions": [
+    {
+     "assertion_id": "research-029-a1",
+     "kind": "statute",
+     "hard_failure_code": null
+    },
+    {
+     "assertion_id": "research-029-a2",
+     "kind": "citation",
+     "hard_failure_code": "FABRICATED_AUTHORITY"
+    },
+    {
+     "assertion_id": "research-029-a3",
+     "kind": "contains",
+     "hard_failure_code": "MISSED_CONTROLLING_CONTRARY_AUTHORITY"
+    },
+    {
+     "assertion_id": "research-029-a4",
+     "kind": "contains",
+     "hard_failure_code": "WRONG_EFFECTIVE_DATE"
+    }
+   ],
+   "transformation": "none -- every proposition excerpt is a verbatim substring of the cited registered source excerpt, sliced programmatically; prompt fact pattern is a synthetic hypothetical",
+   "task_content_sha256": "914f5a1e4a588a7e3a1f9730ae07cdcbdf9c566b8ecdca8dad8d1f45c952e8cb"
+  },
+  {
+   "task_id": "research-030",
+   "topic": "Confidential marital communications privilege asserted at a deposition (EVID 980, 917; CCP 2017.010)",
+   "evidence_source_ids": [
+    "STAT-CAL-EVID-CODE-980",
+    "STAT-CAL-EVID-CODE-917",
+    "STAT-CAL-CIV-PROC-CODE-2017-010"
+   ],
+   "statutory_locators": [
+    "Cal. Evid. Code § 980",
+    "Cal. Evid. Code § 917",
+    "Cal. Civ. Proc. Code § 2017.010"
+   ],
+   "material_criteria": 4,
+   "propositions": 5,
+   "deterministic_assertions": [
+    {
+     "assertion_id": "research-030-a1",
+     "kind": "statute",
+     "hard_failure_code": null
+    },
+    {
+     "assertion_id": "research-030-a2",
+     "kind": "statute",
+     "hard_failure_code": "MISSED_CONTROLLING_CONTRARY_AUTHORITY"
+    },
+    {
+     "assertion_id": "research-030-a3",
+     "kind": "contains",
+     "hard_failure_code": null
+    },
+    {
+     "assertion_id": "research-030-a4",
+     "kind": "contains",
+     "hard_failure_code": null
+    }
+   ],
+   "transformation": "none -- every proposition excerpt is a verbatim substring of the cited registered source excerpt, sliced programmatically; prompt fact pattern is a synthetic hypothetical",
+   "task_content_sha256": "780a6676706a98ec5986a4582748fbecd2baa8ad5c6419adc5430e8be3dbfafb"
+  }
+ ]
+}

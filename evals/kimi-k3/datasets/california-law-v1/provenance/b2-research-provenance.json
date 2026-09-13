@@ -1,0 +1,541 @@
+{
+ "batch": "B2",
+ "category": "research",
+ "authored_at": "2026-07-27",
+ "note": "Lineage record for the 15 batch-B2 California family-law research tasks (research-001..015), all track frozen_evidence, data_class public, expected_tools []. Every material criterion is tied to a proposition whose authoritative_excerpt is a verbatim substring of an official leginfo.legislature.ca.gov Family Code excerpt already in sources.jsonl; the source-entailment guard in datasetTools/authorTasks.ts enforced this at authoring time. No case law, secondary source, or model memory was used, and no citation or statutory text was paraphrased into a proposition excerpt. Fact patterns in the prompts are synthetic hypotheticals written for the eval; they contain no client information.",
+ "new_source_records": {
+  "count": 8,
+  "source_ids": [
+   "STAT-CAL-FAM-CODE-4055-B",
+   "STAT-CAL-FAM-CODE-4055-D",
+   "STAT-CAL-FAM-CODE-3044-B",
+   "STAT-CAL-FAM-CODE-4320-B",
+   "STAT-CAL-FAM-CODE-852-B",
+   "STAT-CAL-FAM-CODE-297-5-B",
+   "STAT-CAL-FAM-CODE-7962-B",
+   "STAT-CAL-FAM-CODE-721"
+  ],
+  "harvest_method": "Raw curl GET of the official leginfo.legislature.ca.gov codes_displaySection.xhtml page for each Family Code section, tag-stripped and whitespace-normalized with the same normalizer datasetTools/verifySources.ts applies, then sliced to a contiguous subdivision window and ingested via datasetTools/ingestSources.ts. Each new record is a second (or, for FAM 4055, a second and third) excerpt window of a leginfo page already represented in the registry, except STAT-CAL-FAM-CODE-721 which is a new section.",
+  "retrieved_at": "2026-07-27T18:00:00Z"
+ },
+ "effective_date_layering": "Five tasks carry an explicit effective/operative-date criterion backed by verbatim statutory date text: FAM 4055(d) and FAM 4058(d) (operative September 1, 2024), FAM 3044(i) (effective January 1, 2026), FAM 1615(c)(2)(B) (agreements executed on or after January 1, 2020), and FAM 852(e) (no application to transmutations made before January 1, 1985). No WRONG_JURISDICTION assertion was written for this batch: no registry excerpt supports a jurisdiction trap for these questions, and an ungrounded one would violate the entailment rule.",
+ "entries": [
+  {
+   "task_id": "research-001",
+   "topic": "Community vs separate property characterization at acquisition (FAM 760, 770)",
+   "evidence_source_ids": [
+    "STAT-CAL-FAM-CODE-760",
+    "STAT-CAL-FAM-CODE-770"
+   ],
+   "statutory_locators": [
+    "Cal. Fam. Code § 760",
+    "Cal. Fam. Code § 770"
+   ],
+   "material_criteria": 5,
+   "propositions": 4,
+   "deterministic_assertions": [
+    {
+     "assertion_id": "research-001-a1",
+     "kind": "statute",
+     "hard_failure_code": null
+    },
+    {
+     "assertion_id": "research-001-a2",
+     "kind": "statute",
+     "hard_failure_code": null
+    },
+    {
+     "assertion_id": "research-001-a3",
+     "kind": "contains",
+     "hard_failure_code": null
+    }
+   ],
+   "effective_date_criterion": null,
+   "transformation": "none -- every proposition excerpt is a verbatim substring of the cited official leginfo Family Code excerpt; prompt fact pattern is a synthetic hypothetical",
+   "task_content_sha256": "afc8f14fa1727ad8cbad756aaca97ce3afdb0540524c30681a5ea0a4972653b8"
+  },
+  {
+   "task_id": "research-002",
+   "topic": "Post-separation earnings and the minor-child carve-out (FAM 771, 760)",
+   "evidence_source_ids": [
+    "STAT-CAL-FAM-CODE-771",
+    "STAT-CAL-FAM-CODE-760"
+   ],
+   "statutory_locators": [
+    "Cal. Fam. Code § 771",
+    "Cal. Fam. Code § 760"
+   ],
+   "material_criteria": 4,
+   "propositions": 3,
+   "deterministic_assertions": [
+    {
+     "assertion_id": "research-002-a1",
+     "kind": "statute",
+     "hard_failure_code": null
+    },
+    {
+     "assertion_id": "research-002-a2",
+     "kind": "contains",
+     "hard_failure_code": null
+    },
+    {
+     "assertion_id": "research-002-a3",
+     "kind": "statute",
+     "hard_failure_code": null
+    }
+   ],
+   "effective_date_criterion": null,
+   "transformation": "none -- every proposition excerpt is a verbatim substring of the cited official leginfo Family Code excerpt; prompt fact pattern is a synthetic hypothetical",
+   "task_content_sha256": "9fc7638b4c60eb1b02bfa5269b9577781024545d1f2bdbf1be58c35bcf0332b7"
+  },
+  {
+   "task_id": "research-003",
+   "topic": "Transmutation writing requirement, recording, and exceptions (FAM 852)",
+   "evidence_source_ids": [
+    "STAT-CAL-FAM-CODE-852",
+    "STAT-CAL-FAM-CODE-852-B"
+   ],
+   "statutory_locators": [
+    "Cal. Fam. Code § 852",
+    "Cal. Fam. Code § 852(b)-(e)"
+   ],
+   "material_criteria": 4,
+   "propositions": 4,
+   "deterministic_assertions": [
+    {
+     "assertion_id": "research-003-a1",
+     "kind": "statute",
+     "hard_failure_code": null
+    },
+    {
+     "assertion_id": "research-003-a2",
+     "kind": "contains",
+     "hard_failure_code": null
+    },
+    {
+     "assertion_id": "research-003-a3",
+     "kind": "contains",
+     "hard_failure_code": "WRONG_EFFECTIVE_DATE"
+    }
+   ],
+   "effective_date_criterion": "FAM 852(e) pre-January 1, 1985 carve-out (assertion research-003-a3, WRONG_EFFECTIVE_DATE)",
+   "transformation": "none -- every proposition excerpt is a verbatim substring of the cited official leginfo Family Code excerpt; prompt fact pattern is a synthetic hypothetical",
+   "task_content_sha256": "25d550e1c96c95f82ef88530c769570ad45c472a7fd3f44b10e684ddc1046ead"
+  },
+  {
+   "task_id": "research-004",
+   "topic": "Separate-property contribution reimbursement and equal division (FAM 2640, 2550)",
+   "evidence_source_ids": [
+    "STAT-CAL-FAM-CODE-2640",
+    "STAT-CAL-FAM-CODE-2550"
+   ],
+   "statutory_locators": [
+    "Cal. Fam. Code § 2640",
+    "Cal. Fam. Code § 2550"
+   ],
+   "material_criteria": 5,
+   "propositions": 5,
+   "deterministic_assertions": [
+    {
+     "assertion_id": "research-004-a1",
+     "kind": "statute",
+     "hard_failure_code": null
+    },
+    {
+     "assertion_id": "research-004-a2",
+     "kind": "statute",
+     "hard_failure_code": null
+    },
+    {
+     "assertion_id": "research-004-a3",
+     "kind": "contains",
+     "hard_failure_code": null
+    }
+   ],
+   "effective_date_criterion": null,
+   "transformation": "none -- every proposition excerpt is a verbatim substring of the cited official leginfo Family Code excerpt; prompt fact pattern is a synthetic hypothetical",
+   "task_content_sha256": "e33e2c684cff284dacdf07c8d97ad66bcf6a4694ffc21b756fbe44cf0cd69d91"
+  },
+  {
+   "task_id": "research-005",
+   "topic": "Spousal support circumstances the court must consider (FAM 4320)",
+   "evidence_source_ids": [
+    "STAT-CAL-FAM-CODE-4320",
+    "STAT-CAL-FAM-CODE-4320-B"
+   ],
+   "statutory_locators": [
+    "Cal. Fam. Code § 4320",
+    "Cal. Fam. Code § 4320(c)-(n)"
+   ],
+   "material_criteria": 5,
+   "propositions": 6,
+   "deterministic_assertions": [
+    {
+     "assertion_id": "research-005-a1",
+     "kind": "statute",
+     "hard_failure_code": null
+    },
+    {
+     "assertion_id": "research-005-a2",
+     "kind": "contains",
+     "hard_failure_code": null
+    },
+    {
+     "assertion_id": "research-005-a3",
+     "kind": "statute",
+     "hard_failure_code": null
+    }
+   ],
+   "effective_date_criterion": null,
+   "transformation": "none -- every proposition excerpt is a verbatim substring of the cited official leginfo Family Code excerpt; prompt fact pattern is a synthetic hypothetical",
+   "task_content_sha256": "5159188e875fcb353ac400d21931734a8c52b8d35d59e7a3f3c663d3be7c9ced"
+  },
+  {
+   "task_id": "research-006",
+   "topic": "Statewide uniform child support guideline formula and its components (FAM 4055)",
+   "evidence_source_ids": [
+    "STAT-CAL-FAM-CODE-4055",
+    "STAT-CAL-FAM-CODE-4055-B",
+    "STAT-CAL-FAM-CODE-4055-D"
+   ],
+   "statutory_locators": [
+    "Cal. Fam. Code § 4055",
+    "Cal. Fam. Code § 4055(b)(1)-(2)",
+    "Cal. Fam. Code § 4055(b)(5)-(d)"
+   ],
+   "material_criteria": 5,
+   "propositions": 6,
+   "deterministic_assertions": [
+    {
+     "assertion_id": "research-006-a1",
+     "kind": "statute",
+     "hard_failure_code": null
+    },
+    {
+     "assertion_id": "research-006-a2",
+     "kind": "contains",
+     "hard_failure_code": "WRONG_EFFECTIVE_DATE"
+    },
+    {
+     "assertion_id": "research-006-a3",
+     "kind": "statute",
+     "hard_failure_code": null
+    }
+   ],
+   "effective_date_criterion": "FAM 4055(d) operative September 1, 2024 (assertion research-006-a2, WRONG_EFFECTIVE_DATE)",
+   "transformation": "none -- every proposition excerpt is a verbatim substring of the cited official leginfo Family Code excerpt; prompt fact pattern is a synthetic hypothetical",
+   "task_content_sha256": "3da79514227fbc0df713b8127de8a8f495910ea5daa796d114bce2de6bae2627"
+  },
+  {
+   "task_id": "research-007",
+   "topic": "Annual gross income, earning capacity, and exclusions (FAM 4058)",
+   "evidence_source_ids": [
+    "STAT-CAL-FAM-CODE-4058"
+   ],
+   "statutory_locators": [
+    "Cal. Fam. Code § 4058"
+   ],
+   "material_criteria": 5,
+   "propositions": 6,
+   "deterministic_assertions": [
+    {
+     "assertion_id": "research-007-a1",
+     "kind": "statute",
+     "hard_failure_code": null
+    },
+    {
+     "assertion_id": "research-007-a2",
+     "kind": "contains",
+     "hard_failure_code": "WRONG_EFFECTIVE_DATE"
+    },
+    {
+     "assertion_id": "research-007-a3",
+     "kind": "contains",
+     "hard_failure_code": null
+    }
+   ],
+   "effective_date_criterion": "FAM 4058(d) operative September 1, 2024 (assertion research-007-a2, WRONG_EFFECTIVE_DATE)",
+   "transformation": "none -- every proposition excerpt is a verbatim substring of the cited official leginfo Family Code excerpt; prompt fact pattern is a synthetic hypothetical",
+   "task_content_sha256": "3e5576dde8ea2cb77ff2edea47d6c3742ac23d5bb86f5f61628d86e5b94c1acc"
+  },
+  {
+   "task_id": "research-008",
+   "topic": "Best-interests factors and the prohibited-considerations bar (FAM 3011, 3020)",
+   "evidence_source_ids": [
+    "STAT-CAL-FAM-CODE-3020",
+    "STAT-CAL-FAM-CODE-3011"
+   ],
+   "statutory_locators": [
+    "Cal. Fam. Code § 3020",
+    "Cal. Fam. Code § 3011"
+   ],
+   "material_criteria": 5,
+   "propositions": 5,
+   "deterministic_assertions": [
+    {
+     "assertion_id": "research-008-a1",
+     "kind": "statute",
+     "hard_failure_code": null
+    },
+    {
+     "assertion_id": "research-008-a2",
+     "kind": "statute",
+     "hard_failure_code": null
+    },
+    {
+     "assertion_id": "research-008-a3",
+     "kind": "contains",
+     "hard_failure_code": null
+    }
+   ],
+   "effective_date_criterion": null,
+   "transformation": "none -- every proposition excerpt is a verbatim substring of the cited official leginfo Family Code excerpt; prompt fact pattern is a synthetic hypothetical",
+   "task_content_sha256": "26f94c43e3741476b869234751418411b75f58d44c968f74356bbfdc005c8475"
+  },
+  {
+   "task_id": "research-009",
+   "topic": "Domestic-violence custody presumption and rebuttal (FAM 3044)",
+   "evidence_source_ids": [
+    "STAT-CAL-FAM-CODE-3044",
+    "STAT-CAL-FAM-CODE-3044-B"
+   ],
+   "statutory_locators": [
+    "Cal. Fam. Code § 3044",
+    "Cal. Fam. Code § 3044(a) (final sentence)-(i)"
+   ],
+   "material_criteria": 5,
+   "propositions": 6,
+   "deterministic_assertions": [
+    {
+     "assertion_id": "research-009-a1",
+     "kind": "statute",
+     "hard_failure_code": null
+    },
+    {
+     "assertion_id": "research-009-a2",
+     "kind": "contains",
+     "hard_failure_code": "WRONG_EFFECTIVE_DATE"
+    },
+    {
+     "assertion_id": "research-009-a3",
+     "kind": "contains",
+     "hard_failure_code": null
+    }
+   ],
+   "effective_date_criterion": "FAM 3044(i) effective January 1, 2026 (assertion research-009-a2, WRONG_EFFECTIVE_DATE)",
+   "transformation": "none -- every proposition excerpt is a verbatim substring of the cited official leginfo Family Code excerpt; prompt fact pattern is a synthetic hypothetical",
+   "task_content_sha256": "023b29926e7b6040f9892b9756bed410918877e0f5426d04730739b9377ff87f"
+  },
+  {
+   "task_id": "research-010",
+   "topic": "DVPA relationship scope and abuse definition incl. coercive control (FAM 6211, 6320)",
+   "evidence_source_ids": [
+    "STAT-CAL-FAM-CODE-6211",
+    "STAT-CAL-FAM-CODE-6320"
+   ],
+   "statutory_locators": [
+    "Cal. Fam. Code § 6211",
+    "Cal. Fam. Code § 6320"
+   ],
+   "material_criteria": 5,
+   "propositions": 6,
+   "deterministic_assertions": [
+    {
+     "assertion_id": "research-010-a1",
+     "kind": "statute",
+     "hard_failure_code": null
+    },
+    {
+     "assertion_id": "research-010-a2",
+     "kind": "statute",
+     "hard_failure_code": null
+    },
+    {
+     "assertion_id": "research-010-a3",
+     "kind": "contains",
+     "hard_failure_code": null
+    }
+   ],
+   "effective_date_criterion": null,
+   "transformation": "none -- every proposition excerpt is a verbatim substring of the cited official leginfo Family Code excerpt; prompt fact pattern is a synthetic hypothetical",
+   "task_content_sha256": "539509796a65bd448ad63a7741761dec7c17b5d9eab1da50a55cde28e758b760"
+  },
+  {
+   "task_id": "research-011",
+   "topic": "Presumed parentage for a non-birth domestic partner (FAM 7611, 297.5)",
+   "evidence_source_ids": [
+    "STAT-CAL-FAM-CODE-7611",
+    "STAT-CAL-FAM-CODE-297-5-B",
+    "STAT-CAL-FAM-CODE-297-5"
+   ],
+   "statutory_locators": [
+    "Cal. Fam. Code § 7611",
+    "Cal. Fam. Code § 297.5(b)-(k)",
+    "Cal. Fam. Code § 297.5"
+   ],
+   "material_criteria": 4,
+   "propositions": 5,
+   "deterministic_assertions": [
+    {
+     "assertion_id": "research-011-a1",
+     "kind": "statute",
+     "hard_failure_code": null
+    },
+    {
+     "assertion_id": "research-011-a2",
+     "kind": "statute",
+     "hard_failure_code": null
+    },
+    {
+     "assertion_id": "research-011-a3",
+     "kind": "contains",
+     "hard_failure_code": null
+    }
+   ],
+   "effective_date_criterion": null,
+   "transformation": "none -- every proposition excerpt is a verbatim substring of the cited official leginfo Family Code excerpt; prompt fact pattern is a synthetic hypothetical",
+   "task_content_sha256": "c27cea27fcc96347e06d226c900b2af1c809a5f033e98ec98c8bba5a33f33909"
+  },
+  {
+   "task_id": "research-012",
+   "topic": "Assisted reproduction consent and known-donor parentage (FAM 7613)",
+   "evidence_source_ids": [
+    "STAT-CAL-FAM-CODE-7613"
+   ],
+   "statutory_locators": [
+    "Cal. Fam. Code § 7613"
+   ],
+   "material_criteria": 5,
+   "propositions": 5,
+   "deterministic_assertions": [
+    {
+     "assertion_id": "research-012-a1",
+     "kind": "statute",
+     "hard_failure_code": null
+    },
+    {
+     "assertion_id": "research-012-a2",
+     "kind": "contains",
+     "hard_failure_code": null
+    },
+    {
+     "assertion_id": "research-012-a3",
+     "kind": "contains",
+     "hard_failure_code": null
+    }
+   ],
+   "effective_date_criterion": null,
+   "transformation": "none -- every proposition excerpt is a verbatim substring of the cited official leginfo Family Code excerpt; prompt fact pattern is a synthetic hypothetical",
+   "task_content_sha256": "70a0a92cc8c2ef521a28b1090bdc374e07e70139ece7959adc3a22099a7cb228"
+  },
+  {
+   "task_id": "research-013",
+   "topic": "Gestational-carrier agreement formalities and pre-birth parentage (FAM 7962)",
+   "evidence_source_ids": [
+    "STAT-CAL-FAM-CODE-7962",
+    "STAT-CAL-FAM-CODE-7962-B"
+   ],
+   "statutory_locators": [
+    "Cal. Fam. Code § 7962",
+    "Cal. Fam. Code § 7962(b)-(f)"
+   ],
+   "material_criteria": 5,
+   "propositions": 6,
+   "deterministic_assertions": [
+    {
+     "assertion_id": "research-013-a1",
+     "kind": "statute",
+     "hard_failure_code": null
+    },
+    {
+     "assertion_id": "research-013-a2",
+     "kind": "contains",
+     "hard_failure_code": null
+    },
+    {
+     "assertion_id": "research-013-a3",
+     "kind": "contains",
+     "hard_failure_code": null
+    }
+   ],
+   "effective_date_criterion": null,
+   "transformation": "none -- every proposition excerpt is a verbatim substring of the cited official leginfo Family Code excerpt; prompt fact pattern is a synthetic hypothetical",
+   "task_content_sha256": "f0796c041f92b7b96ef47ed490b9ecf994a3c2ed29c3fdd784ff88c4be892874"
+  },
+  {
+   "task_id": "research-014",
+   "topic": "Premarital agreement enforceability and the seven-day rule (FAM 1612, 1615)",
+   "evidence_source_ids": [
+    "STAT-CAL-FAM-CODE-1612",
+    "STAT-CAL-FAM-CODE-1615"
+   ],
+   "statutory_locators": [
+    "Cal. Fam. Code § 1612",
+    "Cal. Fam. Code § 1615"
+   ],
+   "material_criteria": 5,
+   "propositions": 5,
+   "deterministic_assertions": [
+    {
+     "assertion_id": "research-014-a1",
+     "kind": "statute",
+     "hard_failure_code": null
+    },
+    {
+     "assertion_id": "research-014-a2",
+     "kind": "statute",
+     "hard_failure_code": null
+    },
+    {
+     "assertion_id": "research-014-a3",
+     "kind": "contains",
+     "hard_failure_code": null
+    },
+    {
+     "assertion_id": "research-014-a4",
+     "kind": "contains",
+     "hard_failure_code": "WRONG_EFFECTIVE_DATE"
+    }
+   ],
+   "effective_date_criterion": "FAM 1615(c)(2)(B) agreements executed on or after January 1, 2020 (assertion research-014-a4, WRONG_EFFECTIVE_DATE)",
+   "transformation": "none -- every proposition excerpt is a verbatim substring of the cited official leginfo Family Code excerpt; prompt fact pattern is a synthetic hypothetical",
+   "task_content_sha256": "0889a85da1b0d3e9d737d343a34952488008d2609f57a0e385d774e176f21df2"
+  },
+  {
+   "task_id": "research-015",
+   "topic": "Post-separation fiduciary and disclosure duties (FAM 2102, 721, 1100)",
+   "evidence_source_ids": [
+    "STAT-CAL-FAM-CODE-2102",
+    "STAT-CAL-FAM-CODE-721",
+    "STAT-CAL-FAM-CODE-1100"
+   ],
+   "statutory_locators": [
+    "Cal. Fam. Code § 2102",
+    "Cal. Fam. Code § 721",
+    "Cal. Fam. Code § 1100"
+   ],
+   "material_criteria": 5,
+   "propositions": 5,
+   "deterministic_assertions": [
+    {
+     "assertion_id": "research-015-a1",
+     "kind": "statute",
+     "hard_failure_code": null
+    },
+    {
+     "assertion_id": "research-015-a2",
+     "kind": "statute",
+     "hard_failure_code": null
+    },
+    {
+     "assertion_id": "research-015-a3",
+     "kind": "contains",
+     "hard_failure_code": null
+    }
+   ],
+   "effective_date_criterion": null,
+   "transformation": "none -- every proposition excerpt is a verbatim substring of the cited official leginfo Family Code excerpt; prompt fact pattern is a synthetic hypothetical",
+   "task_content_sha256": "4e0824689d37a14859a6fe40f7e3d6c1162c4faf5131c595fe415b872464a337"
+  }
+ ]
+}

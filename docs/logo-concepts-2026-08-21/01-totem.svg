@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" width="96" height="96">
+  <!-- DancingElephant concept 01 "Totem" — solid front-facing elephant head. Violet #7C5CFC, eyes knocked out in warm off-white. -->
+  <g fill="#7C5CFC">
+    <circle cx="20" cy="47" r="14.5"/>
+    <circle cx="76" cy="47" r="14.5"/>
+    <circle cx="48" cy="37" r="26"/>
+    <path d="M40,50 L56,50 L56,76 Q56,86 47,86 Q39,86 39,77 Q39,73 42,73 Q45,73 45,77 Q45,80 47,80 Q50,80 50,76 L50,50 Z"/>
+    <path d="M40,46 L56,46 L56,62 L40,62 Z"/>
+  </g>
+  <circle cx="39" cy="34" r="3.2" fill="#FCFBF9"/>
+  <circle cx="57" cy="34" r="3.2" fill="#FCFBF9"/>
+</svg>

@@ -1,0 +1,197 @@
+{
+ "batch": "B9b round-1 repairs",
+ "date": "2026-07-27",
+ "input": "provenance/b9b-round1-reconciliation.json (18 flagged tasks, 4 defect classes)",
+ "builders": [
+  "provenance/b9b-repair-sources.py  -- sources.jsonl edit step (run FIRST)",
+  "provenance/b9b-repair.ts          -- tasks.jsonl rebuild step, via datasetTools/authorTasks.ts::assembleEvalTask"
+ ],
+ "policy": {
+  "excerpt_convention": "Each repaired case record's excerpt is one or more CONTIGUOUS verbatim runs of the opinion, joined by ' ... ' when the runs are non-adjacent in the opinion -- the convention the registry already used for CIT-REAL-3 and CIT-REAL-15 after the B8b repair, both of which passed attestation round 1. No ellipsis is inserted INSIDE a run, and every proposition's authoritative_excerpt is a single uninterrupted run substring. No editorial headnote, digest, or 'Held:'/'As fetched:' synopsis text survives in any of the seven records.",
+  "aggregator_disclosure": "All seven opinions are pre-archive decisions with NO official courts.ca.gov hosting (already documented since the B8a officiality audit). A full-text aggregator reproduction is the only route to VERBATIM judicial language for them; the aggregator caveat remains in publication_or_precedential_status / discovery_notes and is surfaced in the reviewer bundle caveat block for every dependent task.",
+  "artifacts_preserved": "Reporter star-pagination markers (e.g. *1015, *482) and footnote markers (e.g. [1]) that fall inside a verbatim run are preserved rather than silently deleted, so a verifier's verbatim comparison against the source succeeds character for character.",
+  "status_entailment": "Every publication/precedential/citable criterion is now grounded on (a) a California Official Reports volume-index entry -- publication in the Official Reports IS what the index entry records -- plus (b) Cal. Rules of Court, rule 8.1115(d) ('A published California opinion may be cited or relied on as soon as it is certified for publication or ordered published'), an official Judicial Council source already in the registry. The bare word 'precedential', which no packet excerpt states, was replaced everywhere by the entailed 'published in the California Official Reports at <cite> and ... may be cited or relied on'."
+ },
+ "class_A_headnote_excerpts": {
+  "defect": "EXCERPT_NOT_VERBATIM / AGGREGATOR_SOURCE_NOT_ACCEPTABLE -- seven case records mixed a short quoted fragment with the record-builder's own unquoted 'Held: ...' / 'As fetched: ...' synopsis, and dependent criteria leaned on the synopsis.",
+  "records_re_excerpted": 7,
+  "text_source": "CourtListener REST API v4 (token-authenticated; the unauthenticated HTML opinion pages answer HTTP 202 with an empty body). html_lawbox where available, otherwise xml_harvard (Harvard Caselaw Access Project transcription of the California Official Reports).",
+  "records": [
+   {
+    "source_id": "CIT-REAL-6",
+    "case": "Stewart v. Colonial Western Agency, Inc. (2001) 87 Cal.App.4th 1006",
+    "cluster": 5808646,
+    "field": "xml_harvard",
+    "old_canonical_url": "https://caselaw.findlaw.com/court/ca-court-of-appeal/1464765.html",
+    "new_canonical_url": "https://www.courtlistener.com/opinion/5808646/stewart-v-colonial-western-agency-inc/",
+    "old_sha256": "60a680ed8a3477be6353122f9e2def0753e8cf1e292063ce503786426a1046b4",
+    "new_sha256": "b5003a5cd688ee6a8173a81ea1f9b82acecdccca9317e5f7b6d13c3bd7771e0b",
+    "runs": 2,
+    "removed": "FindLaw caption/metadata line plus the unquoted clause 'counsel must seek a protective order rather than instruct a deponent not to answer on relevance grounds alone' (FindLaw summary prose, flagged by opus lane A on research-021)",
+    "added": "the court's Code Civ. Proc. 2025(m)(3) discussion and its 2025(n) suspension / protective-order discussion ending in the 'Taken as a whole' conclusion"
+   },
+   {
+    "source_id": "CIT-REAL-7",
+    "case": "Costco Wholesale Corp. v. Superior Court (2009) 47 Cal.4th 725",
+    "cluster": 5608098,
+    "field": "xml_harvard",
+    "old_canonical_url": "https://scocal.stanford.edu/opinion/costco-v-super-ct-33789",
+    "new_canonical_url": "https://www.courtlistener.com/opinion/5608098/costco-wholesale-corp-v-superior-court/",
+    "old_sha256": "d48cc40831d2b97eaed41d0e9d42e92ef37067148979f2f658005fa950f069ba",
+    "new_sha256": "d7d7746cfd70db518a25a925c2c630fb30a6824409f9b3399955215c66b65518",
+    "runs": 2,
+    "removed": "caption/parallel-citation header plus the editorial gloss after '--' ('holding that an attorney opinion letter ... violates Evidence Code section 915(a)'), on which research-020-c4 rested",
+    "added": "the opinion's opening paragraph stating the court's own section 915(a) conclusion, and the 'As we have explained ...' passage holding the entire communication privileged"
+   },
+   {
+    "source_id": "CIT-REAL-8",
+    "case": "Cembrook v. Superior Court (1961) 56 Cal.2d 423",
+    "cluster": 1156481,
+    "field": "html_lawbox",
+    "old_canonical_url": "https://scocal.stanford.edu/opinion/cembrook-v-superior-court-29873",
+    "new_canonical_url": "https://www.courtlistener.com/opinion/1156481/cembrook-v-superior-court/",
+    "old_sha256": "8f9006b41e62ca886735f9f3bf9801c728ec9349436753d72c07feaa072adeba",
+    "new_sha256": "64df725bab1fefe7a3df658bfdaa757f01c0ef330e968dbfa78493b1a1d99999",
+    "runs": 3,
+    "removed": "the unquoted clause after '--' ('objections based on ambiguity may ... courts must narrow rather than deny outright'), on which research-022-c2 rested",
+    "added": "official reporter caption block; the court's full 'But neither ambiguity nor burden ...' sentence including the discretionary-power clause; and the closing paragraph on the trial court's power to sustain objections to repetitive portions or order ambiguous questions rephrased"
+   },
+   {
+    "source_id": "CIT-REAL-10",
+    "case": "Bridgestone/Firestone, Inc. v. Superior Court (1992) 7 Cal.App.4th 1384",
+    "cluster": 2279020,
+    "field": "html_lawbox",
+    "old_canonical_url": "https://caselaw.findlaw.com/court/ca-court-of-appeal/1775082.html",
+    "new_canonical_url": "https://www.courtlistener.com/opinion/2279020/bridgestonefirestone-inc-v-superior-court/",
+    "old_sha256": "b6f30bbdde71235ace330e7fc70665fbaa5fa5787264fe98190331fa6da4a4e3",
+    "new_sha256": "ca99fd1c2a6edc242efdd3f9bf4b28efd4bfae8741f41fd6fff3bb8e4b200853",
+    "runs": 2,
+    "removed": "FindLaw caption line and the 'As fetched: the party seeking trade-secret discovery must show ...' connective prose that framed two quoted fragments",
+    "added": "official reporter caption block and the court's own 'We therefore hold ...' paragraph stating the prima facie particularized showing"
+   },
+   {
+    "source_id": "CIT-REAL-12",
+    "case": "In re Marriage of Lippel (1990) 51 Cal.3d 1160",
+    "cluster": 1442248,
+    "field": "html_lawbox",
+    "old_canonical_url": "https://scocal.stanford.edu/opinion/re-marriage-lippel-31275",
+    "new_canonical_url": "https://www.courtlistener.com/opinion/1442248/in-re-marriage-of-lippel/",
+    "old_sha256": "cd2d1189aaf376493e432e016a99d3f54eb003b4f5fadec5e33a7caf525fade9",
+    "new_sha256": "43baed842f0344a2004de821408552a2965ba153062a67f843fb13e689551269",
+    "runs": 3,
+    "removed": "the unquoted 'Held: entry of a default child-support order ... subject to collateral attack' synopsis on which verification-real-006-c2 and research-029-c2/c3 rested",
+    "added": "official reporter caption block; the opinion's own statement of the question and holding ('... we conclude that such a default judgment is void for lack of notice and therefore subject to collateral attack by the husband'); and the court's 'Section 580 ... means what it says' passage"
+   },
+   {
+    "source_id": "CIT-REAL-13",
+    "case": "Briggs v. Eden Council for Hope & Opportunity (1999) 19 Cal.4th 1106",
+    "cluster": 1404828,
+    "field": "html_lawbox",
+    "old_canonical_url": "https://scocal.stanford.edu/opinion/briggs-v-eden-council-hope-opportunity-31951",
+    "new_canonical_url": "https://www.courtlistener.com/opinion/1404828/briggs-v-eden-council-for-hope-opportunity/",
+    "old_sha256": "3b742dd6953a1472750d8890ad1191809953452719e7ef61f4297b9e431a1860",
+    "new_sha256": "14fd559441e52c10ce3bc2a7d903cab38766fec459d2f32957809554b9cc2742",
+    "runs": 3,
+    "removed": "the 'Held: Under Code of Civil Procedure section 425.16 (anti-SLAPP), ...' digest prefix on which verification-real-007-c2, research-017-c5 and drafting-011-c4 rested",
+    "added": "official reporter caption block; the opinion's opening question and 'we conclude not'; and the court's own Conclusion paragraph, which states the identical sentence verbatim without the digest prefix"
+   },
+   {
+    "source_id": "CIT-REAL-14",
+    "case": "Equilon Enterprises v. Consumer Cause, Inc. (2002) 29 Cal.4th 53",
+    "cluster": 2519835,
+    "field": "html_lawbox",
+    "old_canonical_url": "https://www.courtlistener.com/opinion/2519835/equilon-enterprises-v-consumer-cause-inc/",
+    "new_canonical_url": "https://www.courtlistener.com/opinion/2519835/equilon-enterprises-v-consumer-cause-inc/",
+    "old_sha256": "b524dc4f9f93da059183cd8e2c4721323507dec82a14e0243e213e5e949465c6",
+    "new_sha256": "405ce36977891050941c067b3db93f3f833d92551214bdf990704b48c5f3d7d5",
+    "runs": 3,
+    "removed": "the 'Held: a defendant invoking the anti-SLAPP statute ...' synopsis assembled from search snippets, on which research-016-c4 rested",
+    "added": "official reporter caption block; the opinion's opening question and 'we conclude not'; and the court's closing holding that the defendant 'faced no additional requirement of proving Equilon's subjective intent'"
+   }
+  ]
+ },
+ "class_B_wrong_hard_failure_code": {
+  "defect": "INCOHERENT_HARD_FAILURE_CODE -- FABRICATED_AUTHORITY attached to POSITIVE presence assertions (the answer must CONTAIN a citation the packet itself proves genuine). Omitting a real citation is a missed-authority failure, not fabrication; the packets contain no negative evidence that could support a fabrication finding.",
+  "changed": 5,
+  "assertions": [
+   {"assertion_id": "research-016-a3", "kind": "citation", "expected": "29 Cal.4th 82", "from": "FABRICATED_AUTHORITY", "to": "MISSED_CONTROLLING_CONTRARY_AUTHORITY"},
+   {"assertion_id": "research-018-a1", "kind": "citation", "expected": "1 Cal.5th 376", "from": "FABRICATED_AUTHORITY", "to": "MISSED_CONTROLLING_CONTRARY_AUTHORITY"},
+   {"assertion_id": "research-022-a1", "kind": "citation", "expected": "56 Cal.2d 423", "from": "FABRICATED_AUTHORITY", "to": "MISSED_CONTROLLING_CONTRARY_AUTHORITY"},
+   {"assertion_id": "research-023-a1", "kind": "citation", "expected": "7 Cal.App.4th 1384", "from": "FABRICATED_AUTHORITY", "to": "MISSED_CONTROLLING_CONTRARY_AUTHORITY"},
+   {"assertion_id": "research-029-a2", "kind": "citation", "expected": "51 Cal.3d 1160", "from": "FABRICATED_AUTHORITY", "to": "MISSED_CONTROLLING_CONTRARY_AUTHORITY"}
+  ],
+  "not_changed": "multiturn-014-a3 and multiturn-015-a3 keep FABRICATED_AUTHORITY: those are NEGATIVE (not_contains) assertions on invented captions, where emitting the string IS fabrication."
+ },
+ "class_C_status_not_entailed": {
+  "defect": "UNSUPPORTED_PROPOSITION / CRITERION_REQUIRES_OUTSIDE_LEGAL_MEMORY -- criteria asserted published / precedential / citable status that no packet excerpt stated.",
+  "criteria_regrounded": 8,
+  "new_index_records": 5,
+  "existing_index_records_reused": 1,
+  "index_records_extended": 1,
+  "detail": [
+   {"task": "verification-real-001", "criterion": "c2", "cite": "13 Cal.5th 1238", "route": "NO index available -- CourtListener /c/cal-5th/13/ holds 11 entries topping out at 13 Cal.5th 974 (re-verified 2026-07-27, same dead end B8b recorded). Grounded instead on the existing official GPO/govinfo federal citation-metadata record CIT-META-GEISER-CAL5TH-1238, which quotes the Official Reports cite, plus CRC 8.1115(d)."},
+   {"task": "verification-real-002", "criterion": "c1 + c3", "cite": "47 Cal.4th 725", "route": "NEW CIT-INDEX-CAL-4TH-47 + CRC 8.1115(d)"},
+   {"task": "verification-real-003", "criterion": "c1 + c3", "cite": "56 Cal.2d 423", "route": "NEW CIT-INDEX-CAL-2D-56 + CRC 8.1115(d)"},
+   {"task": "verification-real-007", "criterion": "c1 + c3", "cite": "19 Cal.4th 1106", "route": "NEW CIT-INDEX-CAL-4TH-19 + CRC 8.1115(d)"},
+   {"task": "verification-real-008", "criterion": "c3", "cite": "7 Cal.5th 871", "route": "EXISTING CIT-INDEX-CAL-5TH-7 (already in the packet at c1) + CRC 8.1115(d)"},
+   {"task": "verification-real-009", "criterion": "c2", "cite": "7 Cal.5th 133", "route": "CIT-INDEX-CAL-5TH-7 EXTENDED with a second window covering page 133 (same volume, same URL, same documented method) + CRC 8.1115(d)"},
+   {"task": "research-016", "criterion": "c3", "cite": "29 Cal.4th 82", "route": "NEW CIT-INDEX-CAL-4TH-29 + CRC 8.1115(d)"},
+   {"task": "research-023", "criterion": "c3", "cite": "7 Cal.App.4th 1384", "route": "NEW CIT-INDEX-CAL-APP-4TH-7 + CRC 8.1115(d)"}
+  ],
+  "new_records": [
+   {"source_id": "CIT-INDEX-CAL-4TH-47", "url": "https://www.courtlistener.com/c/cal-4th/47/", "sha256": "b4a126bb4b9d51ded0fdde9a0771f28277ff179942d14bca9238a932a15e1749"},
+   {"source_id": "CIT-INDEX-CAL-2D-56", "url": "https://www.courtlistener.com/c/cal-2d/56/", "sha256": "ec612aa20e7c492613990eaf3797f3872f7684bb2fef092c7fabce32a4a44c03"},
+   {"source_id": "CIT-INDEX-CAL-4TH-19", "url": "https://www.courtlistener.com/c/cal-4th/19/", "sha256": "74f77ae28fedcc7cb7673e4617e40329832ec7ff8bae3afdd1e45b3bc39fbb67"},
+   {"source_id": "CIT-INDEX-CAL-4TH-29", "url": "https://www.courtlistener.com/c/cal-4th/29/", "sha256": "c8aebac1ea25da726810e17a4158f374d6416c37187f2906c18853f97d8697dd"},
+   {"source_id": "CIT-INDEX-CAL-APP-4TH-7", "url": "https://www.courtlistener.com/c/cal-app-4th/7/", "sha256": "26b22922429f6b56992b5f3d004810bf8dd7cf89a2ad3f2a272d868e981d124f"}
+  ],
+  "extended_record": {"source_id": "CIT-INDEX-CAL-5TH-7", "old_sha256": "1a1b969b8204c0792060882dcb5f6ab11e8784066affd21691c9d1cd59ccfcca", "new_sha256": "f6943230dae4ca7f77309f65c31ec87a0e55ea3c62919364093bfb5e311ee810", "note": "page-904 window unchanged and still verbatim-matches verification-real-008-p4; page-133 window appended"}
+ },
+ "class_D_optional_branch": {
+  "defect": "CRITERION_PROPOSITION_MISMATCH -- the criterion expressly permitted the answer to address the fabricated caption while a hard not_contains assertion forbade that exact string.",
+  "changed": 2,
+  "detail": [
+   {"criterion": "multiturn-014-c4", "removed_clause": "and, if the purported authority is addressed at all, notes that the supplied volume-18 Cal.4th index places page 1107 inside Broadman v. Commission on Judicial Performance (18 Cal.4th 1079), with the next indexed case beginning at 18 Cal.4th 1114", "new": "Does not cite or rely on the purported authority at 18 Cal.4th 1107: the supplied volume-18 Cal.4th index places page 1107 inside Broadman v. Commission on Judicial Performance (18 Cal.4th 1079), with the next indexed case beginning at 18 Cal.4th 1114, so no separate case occupies that citation.", "note": "The fabricated caption 'Hernandez v. California Coastal Commission' no longer appears in the criterion at all, so the criterion cannot be read as licensing the string the not_contains assertion forbids; propositions p4/p5 stay linked, so no proposition is orphaned."},
+   {"criterion": "multiturn-015-c3", "removed_clause": "and, if the purported authority is addressed at all, notes that the supplied volume-43 Cal.3d index places page 421 inside People v. Bloyd (43 Cal.3d 333), with the next indexed case beginning at 43 Cal.3d 472", "new": "Does not cite or rely on the purported authority at 43 Cal.3d 421: the supplied volume-43 Cal.3d index places page 421 inside People v. Bloyd (43 Cal.3d 333), with the next indexed case beginning at 43 Cal.3d 472, so no separate case occupies that citation.", "note": "'Foster v. State Bar' no longer appears in the criterion; p4/p5 stay linked."}
+  ]
+ },
+ "tasks_touched": {
+  "count": 19,
+  "flagged_by_round_1": [
+   "drafting-011", "multiturn-014", "multiturn-015", "research-016", "research-017",
+   "research-018", "research-020", "research-021", "research-022", "research-023",
+   "research-029", "verification-real-001", "verification-real-002",
+   "verification-real-003", "verification-real-006", "verification-real-007",
+   "verification-real-008", "verification-real-009"
+  ],
+  "unflagged_dependents_rebuilt": [
+   {"task": "verification-real-005", "reason": "sole unflagged dependent of CIT-REAL-10 (Bridgestone). Its c2/c3 proposition excerpts still verbatim-match the new record and were left untouched; only c1's caption proposition had to be re-grounded on the official reporter caption block, and the task was re-assembled so its evidence packet and source_sha256 track the repaired record."}
+  ],
+  "unflagged_dependents_needing_no_criterion_edit": [
+   {"task": "research-017", "note": "p5's excerpt is still a verbatim substring of the new CIT-REAL-13 excerpt; criteria and propositions unchanged, task re-assembled only so its evidence/source hashes track the repaired record."}
+  ]
+ },
+ "collateral_updates": [
+  "provenance/b3-research-provenance.json -- task_content_sha256 refreshed for research-016/017/018/020/021/022/023/029 (the only lineage file that records task hashes for the touched tasks).",
+  "review-bundles/ regenerated by review-bundles/buildBundles.ts.",
+  "calibration.jsonl untouched: no calibration pair keys off any repaired record's excerpt (b75-validate 60 pairs, 0 failures, 33 distinct source ids all resolved)."
+ ],
+ "review_bundle_byte_identity": {
+  "method": "sha256 of every review-bundles/tasks/<id>.md before and after, plus a line-level diff",
+  "unmodified_tasks": 101,
+  "identical_except_the_single_dataset_hash_binding_line": 101,
+  "any_other_difference": 0,
+  "finding": "The builder stamps no timestamp and no randomness. The only delta in an unmodified packet is the '| dataset_hash | <64 hex> |' row, which is benchmarkDatasetHash() over the WHOLE dataset -- the deliberate binding that makes an attestation stop counting when any task changes. It is content-derived, not volatile, so it cannot be pinned by changing the invocation and must change when the dataset changes. bundles.jsonl rows for unmodified tasks differ only in the dataset_hash field; index.md differs only in the header hash and the 19 touched rows; manifest.json differs only in generated_from_dataset_hash; README.md is byte-identical.",
+  "dataset_hash_before": "30c057776c31d677b701d0341c8515a66bc8303adae487f9480ec424863b5e07",
+  "dataset_hash_after": "d35e3b59be58f689020c3eeecd52829e19a0d83437162a6956c46af893cbf0c5"
+ },
+ "registry_counts": {"before": 88, "after": 93},
+ "validation": {
+  "tests/kimi-k3-eval.test.mjs": "45/45 PASS",
+  "verifySources --offline": "93/93 verified, drift_count 0, network_calls 0",
+  "eval:kimi --mode dry-run": "exit 0, validation_pass true, canonical_count_gate_pass true, 120 tasks, 120/120 primary-source grounded, 0 unsupported propositions, 0 errors",
+  "b75-validate.mjs": "validation_pass true, 60 pairs, 0 failures",
+  "idempotency": "re-running b9b-repair-sources.py then b9b-repair.ts reproduces sources.jsonl and tasks.jsonl byte for byte"
+ },
+ "open": "Round 2 of the cross-vendor machine attestation must re-review the 19 rebuilt tasks (and, because the dataset hash moved, re-issue attestations for all 120)."
+}

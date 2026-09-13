@@ -1,0 +1,1772 @@
+{
+ "batch": "B8",
+ "title": "Whole-dataset deterministic mutation and distractor audit",
+ "audit_date": "2026-07-27",
+ "spec_ref": "specs/CALC-KIMI-K3-GPT56-JUDGE-001.spec.md",
+ "scope": "Every provenance map in evals/kimi-k3/datasets/california-law-v1/provenance/, cross-checked against tasks.jsonl, sources.jsonl, calibration.jsonl and tests/citation-eval-set.json.",
+ "totals": {
+  "checks_run": 349,
+  "checks_passed": 349,
+  "gaps": 0,
+  "mechanical_calibration_pairs_audited": 30,
+  "legal_trap_calibration_pairs_audited": 30,
+  "long_context_tasks_audited": 10,
+  "tasks": 120,
+  "sources": 89
+ },
+ "findings": {
+  "every_mechanical_mutation_documents_its_rule": true,
+  "every_mutation_rule_reproduces_from_the_registry": true,
+  "every_legal_trap_anchor_is_verbatim": true,
+  "every_long_context_distractor_is_documented_and_present_in_its_packet": true,
+  "no_batch_mutates_without_a_policy_statement": true
+ },
+ "gaps": [],
+ "checks": [
+  {
+   "id": "b75:mech-transpose-001:row_exists",
+   "pass": true,
+   "detail": "provenance pair has no matching calibration.jsonl row"
+  },
+  {
+   "id": "b75:mech-transpose-001:rule_documented",
+   "pass": true,
+   "detail": "missing deterministic-rule fields: "
+  },
+  {
+   "id": "b75:mech-transpose-001:mutation_changes_value",
+   "pass": true,
+   "detail": "mutated_value is identical to registry_value"
+  },
+  {
+   "id": "b75:mech-transpose-001:registry_value_verified",
+   "pass": true,
+   "detail": "neither locator_check nor registry_anchors reproduce against CIT-REAL-1"
+  },
+  {
+   "id": "b75:mech-transpose-001:values_land_on_declared_sides",
+   "pass": true,
+   "detail": "registry_value / mutated_value are not on the declared answer sides"
+  },
+  {
+   "id": "b75:mech-transpose-002:row_exists",
+   "pass": true,
+   "detail": "provenance pair has no matching calibration.jsonl row"
+  },
+  {
+   "id": "b75:mech-transpose-002:rule_documented",
+   "pass": true,
+   "detail": "missing deterministic-rule fields: "
+  },
+  {
+   "id": "b75:mech-transpose-002:mutation_changes_value",
+   "pass": true,
+   "detail": "mutated_value is identical to registry_value"
+  },
+  {
+   "id": "b75:mech-transpose-002:registry_value_verified",
+   "pass": true,
+   "detail": "neither locator_check nor registry_anchors reproduce against CIT-REAL-13"
+  },
+  {
+   "id": "b75:mech-transpose-002:values_land_on_declared_sides",
+   "pass": true,
+   "detail": "registry_value / mutated_value are not on the declared answer sides"
+  },
+  {
+   "id": "b75:mech-transpose-003:row_exists",
+   "pass": true,
+   "detail": "provenance pair has no matching calibration.jsonl row"
+  },
+  {
+   "id": "b75:mech-transpose-003:rule_documented",
+   "pass": true,
+   "detail": "missing deterministic-rule fields: "
+  },
+  {
+   "id": "b75:mech-transpose-003:mutation_changes_value",
+   "pass": true,
+   "detail": "mutated_value is identical to registry_value"
+  },
+  {
+   "id": "b75:mech-transpose-003:registry_value_verified",
+   "pass": true,
+   "detail": "neither locator_check nor registry_anchors reproduce against CIT-REAL-19"
+  },
+  {
+   "id": "b75:mech-transpose-003:values_land_on_declared_sides",
+   "pass": true,
+   "detail": "registry_value / mutated_value are not on the declared answer sides"
+  },
+  {
+   "id": "b75:mech-transpose-004:row_exists",
+   "pass": true,
+   "detail": "provenance pair has no matching calibration.jsonl row"
+  },
+  {
+   "id": "b75:mech-transpose-004:rule_documented",
+   "pass": true,
+   "detail": "missing deterministic-rule fields: "
+  },
+  {
+   "id": "b75:mech-transpose-004:mutation_changes_value",
+   "pass": true,
+   "detail": "mutated_value is identical to registry_value"
+  },
+  {
+   "id": "b75:mech-transpose-004:registry_value_verified",
+   "pass": true,
+   "detail": "neither locator_check nor registry_anchors reproduce against CIT-REAL-15"
+  },
+  {
+   "id": "b75:mech-transpose-004:values_land_on_declared_sides",
+   "pass": true,
+   "detail": "registry_value / mutated_value are not on the declared answer sides"
+  },
+  {
+   "id": "b75:mech-transpose-005:row_exists",
+   "pass": true,
+   "detail": "provenance pair has no matching calibration.jsonl row"
+  },
+  {
+   "id": "b75:mech-transpose-005:rule_documented",
+   "pass": true,
+   "detail": "missing deterministic-rule fields: "
+  },
+  {
+   "id": "b75:mech-transpose-005:mutation_changes_value",
+   "pass": true,
+   "detail": "mutated_value is identical to registry_value"
+  },
+  {
+   "id": "b75:mech-transpose-005:registry_value_verified",
+   "pass": true,
+   "detail": "neither locator_check nor registry_anchors reproduce against CIT-REAL-7"
+  },
+  {
+   "id": "b75:mech-transpose-005:values_land_on_declared_sides",
+   "pass": true,
+   "detail": "registry_value / mutated_value are not on the declared answer sides"
+  },
+  {
+   "id": "b75:mech-transpose-006:row_exists",
+   "pass": true,
+   "detail": "provenance pair has no matching calibration.jsonl row"
+  },
+  {
+   "id": "b75:mech-transpose-006:rule_documented",
+   "pass": true,
+   "detail": "missing deterministic-rule fields: "
+  },
+  {
+   "id": "b75:mech-transpose-006:mutation_changes_value",
+   "pass": true,
+   "detail": "mutated_value is identical to registry_value"
+  },
+  {
+   "id": "b75:mech-transpose-006:registry_value_verified",
+   "pass": true,
+   "detail": "neither locator_check nor registry_anchors reproduce against CIT-REAL-12"
+  },
+  {
+   "id": "b75:mech-transpose-006:values_land_on_declared_sides",
+   "pass": true,
+   "detail": "registry_value / mutated_value are not on the declared answer sides"
+  },
+  {
+   "id": "b75:mech-section-001:row_exists",
+   "pass": true,
+   "detail": "provenance pair has no matching calibration.jsonl row"
+  },
+  {
+   "id": "b75:mech-section-001:rule_documented",
+   "pass": true,
+   "detail": "missing deterministic-rule fields: "
+  },
+  {
+   "id": "b75:mech-section-001:mutation_changes_value",
+   "pass": true,
+   "detail": "mutated_value is identical to registry_value"
+  },
+  {
+   "id": "b75:mech-section-001:registry_value_verified",
+   "pass": true,
+   "detail": "neither locator_check nor registry_anchors reproduce against STAT-CAL-FAM-CODE-2550"
+  },
+  {
+   "id": "b75:mech-section-001:values_land_on_declared_sides",
+   "pass": true,
+   "detail": "registry_value / mutated_value are not on the declared answer sides"
+  },
+  {
+   "id": "b75:mech-section-002:row_exists",
+   "pass": true,
+   "detail": "provenance pair has no matching calibration.jsonl row"
+  },
+  {
+   "id": "b75:mech-section-002:rule_documented",
+   "pass": true,
+   "detail": "missing deterministic-rule fields: "
+  },
+  {
+   "id": "b75:mech-section-002:mutation_changes_value",
+   "pass": true,
+   "detail": "mutated_value is identical to registry_value"
+  },
+  {
+   "id": "b75:mech-section-002:registry_value_verified",
+   "pass": true,
+   "detail": "neither locator_check nor registry_anchors reproduce against STAT-CAL-FAM-CODE-771"
+  },
+  {
+   "id": "b75:mech-section-002:values_land_on_declared_sides",
+   "pass": true,
+   "detail": "registry_value / mutated_value are not on the declared answer sides"
+  },
+  {
+   "id": "b75:mech-section-003:row_exists",
+   "pass": true,
+   "detail": "provenance pair has no matching calibration.jsonl row"
+  },
+  {
+   "id": "b75:mech-section-003:rule_documented",
+   "pass": true,
+   "detail": "missing deterministic-rule fields: "
+  },
+  {
+   "id": "b75:mech-section-003:mutation_changes_value",
+   "pass": true,
+   "detail": "mutated_value is identical to registry_value"
+  },
+  {
+   "id": "b75:mech-section-003:registry_value_verified",
+   "pass": true,
+   "detail": "neither locator_check nor registry_anchors reproduce against STAT-CAL-FAM-CODE-2640"
+  },
+  {
+   "id": "b75:mech-section-003:values_land_on_declared_sides",
+   "pass": true,
+   "detail": "registry_value / mutated_value are not on the declared answer sides"
+  },
+  {
+   "id": "b75:mech-section-004:row_exists",
+   "pass": true,
+   "detail": "provenance pair has no matching calibration.jsonl row"
+  },
+  {
+   "id": "b75:mech-section-004:rule_documented",
+   "pass": true,
+   "detail": "missing deterministic-rule fields: "
+  },
+  {
+   "id": "b75:mech-section-004:mutation_changes_value",
+   "pass": true,
+   "detail": "mutated_value is identical to registry_value"
+  },
+  {
+   "id": "b75:mech-section-004:registry_value_verified",
+   "pass": true,
+   "detail": "neither locator_check nor registry_anchors reproduce against STAT-CAL-EVID-CODE-1119"
+  },
+  {
+   "id": "b75:mech-section-004:values_land_on_declared_sides",
+   "pass": true,
+   "detail": "registry_value / mutated_value are not on the declared answer sides"
+  },
+  {
+   "id": "b75:mech-section-005:row_exists",
+   "pass": true,
+   "detail": "provenance pair has no matching calibration.jsonl row"
+  },
+  {
+   "id": "b75:mech-section-005:rule_documented",
+   "pass": true,
+   "detail": "missing deterministic-rule fields: "
+  },
+  {
+   "id": "b75:mech-section-005:mutation_changes_value",
+   "pass": true,
+   "detail": "mutated_value is identical to registry_value"
+  },
+  {
+   "id": "b75:mech-section-005:registry_value_verified",
+   "pass": true,
+   "detail": "neither locator_check nor registry_anchors reproduce against STAT-CAL-PROB-CODE-21380"
+  },
+  {
+   "id": "b75:mech-section-005:values_land_on_declared_sides",
+   "pass": true,
+   "detail": "registry_value / mutated_value are not on the declared answer sides"
+  },
+  {
+   "id": "b75:mech-section-006:row_exists",
+   "pass": true,
+   "detail": "provenance pair has no matching calibration.jsonl row"
+  },
+  {
+   "id": "b75:mech-section-006:rule_documented",
+   "pass": true,
+   "detail": "missing deterministic-rule fields: "
+  },
+  {
+   "id": "b75:mech-section-006:mutation_changes_value",
+   "pass": true,
+   "detail": "mutated_value is identical to registry_value"
+  },
+  {
+   "id": "b75:mech-section-006:registry_value_verified",
+   "pass": true,
+   "detail": "neither locator_check nor registry_anchors reproduce against STAT-CAL-FAM-CODE-852"
+  },
+  {
+   "id": "b75:mech-section-006:values_land_on_declared_sides",
+   "pass": true,
+   "detail": "registry_value / mutated_value are not on the declared answer sides"
+  },
+  {
+   "id": "b75:mech-date-001:row_exists",
+   "pass": true,
+   "detail": "provenance pair has no matching calibration.jsonl row"
+  },
+  {
+   "id": "b75:mech-date-001:rule_documented",
+   "pass": true,
+   "detail": "missing deterministic-rule fields: "
+  },
+  {
+   "id": "b75:mech-date-001:mutation_changes_value",
+   "pass": true,
+   "detail": "mutated_value is identical to registry_value"
+  },
+  {
+   "id": "b75:mech-date-001:registry_value_verified",
+   "pass": true,
+   "detail": "neither locator_check nor registry_anchors reproduce against STAT-CAL-FAM-CODE-4058"
+  },
+  {
+   "id": "b75:mech-date-001:values_land_on_declared_sides",
+   "pass": true,
+   "detail": "registry_value / mutated_value are not on the declared answer sides"
+  },
+  {
+   "id": "b75:mech-date-002:row_exists",
+   "pass": true,
+   "detail": "provenance pair has no matching calibration.jsonl row"
+  },
+  {
+   "id": "b75:mech-date-002:rule_documented",
+   "pass": true,
+   "detail": "missing deterministic-rule fields: "
+  },
+  {
+   "id": "b75:mech-date-002:mutation_changes_value",
+   "pass": true,
+   "detail": "mutated_value is identical to registry_value"
+  },
+  {
+   "id": "b75:mech-date-002:registry_value_verified",
+   "pass": true,
+   "detail": "neither locator_check nor registry_anchors reproduce against STAT-CAL-FAM-CODE-3044-B"
+  },
+  {
+   "id": "b75:mech-date-002:values_land_on_declared_sides",
+   "pass": true,
+   "detail": "registry_value / mutated_value are not on the declared answer sides"
+  },
+  {
+   "id": "b75:mech-date-003:row_exists",
+   "pass": true,
+   "detail": "provenance pair has no matching calibration.jsonl row"
+  },
+  {
+   "id": "b75:mech-date-003:rule_documented",
+   "pass": true,
+   "detail": "missing deterministic-rule fields: "
+  },
+  {
+   "id": "b75:mech-date-003:mutation_changes_value",
+   "pass": true,
+   "detail": "mutated_value is identical to registry_value"
+  },
+  {
+   "id": "b75:mech-date-003:registry_value_verified",
+   "pass": true,
+   "detail": "neither locator_check nor registry_anchors reproduce against STAT-CAL-FAM-CODE-852-B"
+  },
+  {
+   "id": "b75:mech-date-003:values_land_on_declared_sides",
+   "pass": true,
+   "detail": "registry_value / mutated_value are not on the declared answer sides"
+  },
+  {
+   "id": "b75:mech-date-004:row_exists",
+   "pass": true,
+   "detail": "provenance pair has no matching calibration.jsonl row"
+  },
+  {
+   "id": "b75:mech-date-004:rule_documented",
+   "pass": true,
+   "detail": "missing deterministic-rule fields: "
+  },
+  {
+   "id": "b75:mech-date-004:mutation_changes_value",
+   "pass": true,
+   "detail": "mutated_value is identical to registry_value"
+  },
+  {
+   "id": "b75:mech-date-004:registry_value_verified",
+   "pass": true,
+   "detail": "neither locator_check nor registry_anchors reproduce against STAT-CAL-FAM-CODE-1615"
+  },
+  {
+   "id": "b75:mech-date-004:values_land_on_declared_sides",
+   "pass": true,
+   "detail": "registry_value / mutated_value are not on the declared answer sides"
+  },
+  {
+   "id": "b75:mech-date-005:row_exists",
+   "pass": true,
+   "detail": "provenance pair has no matching calibration.jsonl row"
+  },
+  {
+   "id": "b75:mech-date-005:rule_documented",
+   "pass": true,
+   "detail": "missing deterministic-rule fields: "
+  },
+  {
+   "id": "b75:mech-date-005:mutation_changes_value",
+   "pass": true,
+   "detail": "mutated_value is identical to registry_value"
+  },
+  {
+   "id": "b75:mech-date-005:registry_value_verified",
+   "pass": true,
+   "detail": "neither locator_check nor registry_anchors reproduce against CRC-8-1115"
+  },
+  {
+   "id": "b75:mech-date-005:values_land_on_declared_sides",
+   "pass": true,
+   "detail": "registry_value / mutated_value are not on the declared answer sides"
+  },
+  {
+   "id": "b75:mech-date-006:row_exists",
+   "pass": true,
+   "detail": "provenance pair has no matching calibration.jsonl row"
+  },
+  {
+   "id": "b75:mech-date-006:rule_documented",
+   "pass": true,
+   "detail": "missing deterministic-rule fields: "
+  },
+  {
+   "id": "b75:mech-date-006:mutation_changes_value",
+   "pass": true,
+   "detail": "mutated_value is identical to registry_value"
+  },
+  {
+   "id": "b75:mech-date-006:registry_value_verified",
+   "pass": true,
+   "detail": "neither locator_check nor registry_anchors reproduce against STAT-CAL-FAM-CODE-1615"
+  },
+  {
+   "id": "b75:mech-date-006:values_land_on_declared_sides",
+   "pass": true,
+   "detail": "registry_value / mutated_value are not on the declared answer sides"
+  },
+  {
+   "id": "b75:mech-jurisdiction-001:row_exists",
+   "pass": true,
+   "detail": "provenance pair has no matching calibration.jsonl row"
+  },
+  {
+   "id": "b75:mech-jurisdiction-001:rule_documented",
+   "pass": true,
+   "detail": "missing deterministic-rule fields: "
+  },
+  {
+   "id": "b75:mech-jurisdiction-001:mutation_changes_value",
+   "pass": true,
+   "detail": "mutated_value is identical to registry_value"
+  },
+  {
+   "id": "b75:mech-jurisdiction-001:registry_value_verified",
+   "pass": true,
+   "detail": "neither locator_check nor registry_anchors reproduce against STAT-CAL-FAM-CODE-2550"
+  },
+  {
+   "id": "b75:mech-jurisdiction-001:values_land_on_declared_sides",
+   "pass": true,
+   "detail": "registry_value / mutated_value are not on the declared answer sides"
+  },
+  {
+   "id": "b75:mech-jurisdiction-002:row_exists",
+   "pass": true,
+   "detail": "provenance pair has no matching calibration.jsonl row"
+  },
+  {
+   "id": "b75:mech-jurisdiction-002:rule_documented",
+   "pass": true,
+   "detail": "missing deterministic-rule fields: "
+  },
+  {
+   "id": "b75:mech-jurisdiction-002:mutation_changes_value",
+   "pass": true,
+   "detail": "mutated_value is identical to registry_value"
+  },
+  {
+   "id": "b75:mech-jurisdiction-002:registry_value_verified",
+   "pass": true,
+   "detail": "neither locator_check nor registry_anchors reproduce against STAT-CAL-CIV-PROC-CODE-425-16"
+  },
+  {
+   "id": "b75:mech-jurisdiction-002:values_land_on_declared_sides",
+   "pass": true,
+   "detail": "registry_value / mutated_value are not on the declared answer sides"
+  },
+  {
+   "id": "b75:mech-jurisdiction-003:row_exists",
+   "pass": true,
+   "detail": "provenance pair has no matching calibration.jsonl row"
+  },
+  {
+   "id": "b75:mech-jurisdiction-003:rule_documented",
+   "pass": true,
+   "detail": "missing deterministic-rule fields: "
+  },
+  {
+   "id": "b75:mech-jurisdiction-003:mutation_changes_value",
+   "pass": true,
+   "detail": "mutated_value is identical to registry_value"
+  },
+  {
+   "id": "b75:mech-jurisdiction-003:registry_value_verified",
+   "pass": true,
+   "detail": "neither locator_check nor registry_anchors reproduce against CRC-8-1115"
+  },
+  {
+   "id": "b75:mech-jurisdiction-003:values_land_on_declared_sides",
+   "pass": true,
+   "detail": "registry_value / mutated_value are not on the declared answer sides"
+  },
+  {
+   "id": "b75:mech-jurisdiction-004:row_exists",
+   "pass": true,
+   "detail": "provenance pair has no matching calibration.jsonl row"
+  },
+  {
+   "id": "b75:mech-jurisdiction-004:rule_documented",
+   "pass": true,
+   "detail": "missing deterministic-rule fields: "
+  },
+  {
+   "id": "b75:mech-jurisdiction-004:mutation_changes_value",
+   "pass": true,
+   "detail": "mutated_value is identical to registry_value"
+  },
+  {
+   "id": "b75:mech-jurisdiction-004:registry_value_verified",
+   "pass": true,
+   "detail": "neither locator_check nor registry_anchors reproduce against STAT-CAL-FAM-CODE-297"
+  },
+  {
+   "id": "b75:mech-jurisdiction-004:values_land_on_declared_sides",
+   "pass": true,
+   "detail": "registry_value / mutated_value are not on the declared answer sides"
+  },
+  {
+   "id": "b75:mech-jurisdiction-005:row_exists",
+   "pass": true,
+   "detail": "provenance pair has no matching calibration.jsonl row"
+  },
+  {
+   "id": "b75:mech-jurisdiction-005:rule_documented",
+   "pass": true,
+   "detail": "missing deterministic-rule fields: "
+  },
+  {
+   "id": "b75:mech-jurisdiction-005:mutation_changes_value",
+   "pass": true,
+   "detail": "mutated_value is identical to registry_value"
+  },
+  {
+   "id": "b75:mech-jurisdiction-005:registry_value_verified",
+   "pass": true,
+   "detail": "neither locator_check nor registry_anchors reproduce against CIT-REAL-1"
+  },
+  {
+   "id": "b75:mech-jurisdiction-005:values_land_on_declared_sides",
+   "pass": true,
+   "detail": "registry_value / mutated_value are not on the declared answer sides"
+  },
+  {
+   "id": "b75:mech-jurisdiction-006:row_exists",
+   "pass": true,
+   "detail": "provenance pair has no matching calibration.jsonl row"
+  },
+  {
+   "id": "b75:mech-jurisdiction-006:rule_documented",
+   "pass": true,
+   "detail": "missing deterministic-rule fields: "
+  },
+  {
+   "id": "b75:mech-jurisdiction-006:mutation_changes_value",
+   "pass": true,
+   "detail": "mutated_value is identical to registry_value"
+  },
+  {
+   "id": "b75:mech-jurisdiction-006:registry_value_verified",
+   "pass": true,
+   "detail": "neither locator_check nor registry_anchors reproduce against STAT-CAL-EVID-CODE-1119"
+  },
+  {
+   "id": "b75:mech-jurisdiction-006:values_land_on_declared_sides",
+   "pass": true,
+   "detail": "registry_value / mutated_value are not on the declared answer sides"
+  },
+  {
+   "id": "b75:mech-exception-001:row_exists",
+   "pass": true,
+   "detail": "provenance pair has no matching calibration.jsonl row"
+  },
+  {
+   "id": "b75:mech-exception-001:rule_documented",
+   "pass": true,
+   "detail": "missing deterministic-rule fields: "
+  },
+  {
+   "id": "b75:mech-exception-001:mutation_changes_value",
+   "pass": true,
+   "detail": "mutated_value is identical to registry_value"
+  },
+  {
+   "id": "b75:mech-exception-001:registry_value_verified",
+   "pass": true,
+   "detail": "neither locator_check nor registry_anchors reproduce against STAT-CAL-FAM-CODE-2550"
+  },
+  {
+   "id": "b75:mech-exception-001:values_land_on_declared_sides",
+   "pass": true,
+   "detail": "the deleted clause is not present-on-faithful / absent-on-mutated"
+  },
+  {
+   "id": "b75:mech-exception-002:row_exists",
+   "pass": true,
+   "detail": "provenance pair has no matching calibration.jsonl row"
+  },
+  {
+   "id": "b75:mech-exception-002:rule_documented",
+   "pass": true,
+   "detail": "missing deterministic-rule fields: "
+  },
+  {
+   "id": "b75:mech-exception-002:mutation_changes_value",
+   "pass": true,
+   "detail": "mutated_value is identical to registry_value"
+  },
+  {
+   "id": "b75:mech-exception-002:registry_value_verified",
+   "pass": true,
+   "detail": "neither locator_check nor registry_anchors reproduce against STAT-CAL-FAM-CODE-2640"
+  },
+  {
+   "id": "b75:mech-exception-002:values_land_on_declared_sides",
+   "pass": true,
+   "detail": "the deleted clause is not present-on-faithful / absent-on-mutated"
+  },
+  {
+   "id": "b75:mech-exception-003:row_exists",
+   "pass": true,
+   "detail": "provenance pair has no matching calibration.jsonl row"
+  },
+  {
+   "id": "b75:mech-exception-003:rule_documented",
+   "pass": true,
+   "detail": "missing deterministic-rule fields: "
+  },
+  {
+   "id": "b75:mech-exception-003:mutation_changes_value",
+   "pass": true,
+   "detail": "mutated_value is identical to registry_value"
+  },
+  {
+   "id": "b75:mech-exception-003:registry_value_verified",
+   "pass": true,
+   "detail": "neither locator_check nor registry_anchors reproduce against STAT-CAL-CIV-PROC-CODE-425-16"
+  },
+  {
+   "id": "b75:mech-exception-003:values_land_on_declared_sides",
+   "pass": true,
+   "detail": "the deleted clause is not present-on-faithful / absent-on-mutated"
+  },
+  {
+   "id": "b75:mech-exception-004:row_exists",
+   "pass": true,
+   "detail": "provenance pair has no matching calibration.jsonl row"
+  },
+  {
+   "id": "b75:mech-exception-004:rule_documented",
+   "pass": true,
+   "detail": "missing deterministic-rule fields: "
+  },
+  {
+   "id": "b75:mech-exception-004:mutation_changes_value",
+   "pass": true,
+   "detail": "mutated_value is identical to registry_value"
+  },
+  {
+   "id": "b75:mech-exception-004:registry_value_verified",
+   "pass": true,
+   "detail": "neither locator_check nor registry_anchors reproduce against STAT-CAL-FAM-CODE-760"
+  },
+  {
+   "id": "b75:mech-exception-004:values_land_on_declared_sides",
+   "pass": true,
+   "detail": "the deleted clause is not present-on-faithful / absent-on-mutated"
+  },
+  {
+   "id": "b75:mech-exception-005:row_exists",
+   "pass": true,
+   "detail": "provenance pair has no matching calibration.jsonl row"
+  },
+  {
+   "id": "b75:mech-exception-005:rule_documented",
+   "pass": true,
+   "detail": "missing deterministic-rule fields: "
+  },
+  {
+   "id": "b75:mech-exception-005:mutation_changes_value",
+   "pass": true,
+   "detail": "mutated_value is identical to registry_value"
+  },
+  {
+   "id": "b75:mech-exception-005:registry_value_verified",
+   "pass": true,
+   "detail": "neither locator_check nor registry_anchors reproduce against STAT-CAL-EVID-CODE-1119"
+  },
+  {
+   "id": "b75:mech-exception-005:values_land_on_declared_sides",
+   "pass": true,
+   "detail": "the deleted clause is not present-on-faithful / absent-on-mutated"
+  },
+  {
+   "id": "b75:mech-exception-006:row_exists",
+   "pass": true,
+   "detail": "provenance pair has no matching calibration.jsonl row"
+  },
+  {
+   "id": "b75:mech-exception-006:rule_documented",
+   "pass": true,
+   "detail": "missing deterministic-rule fields: "
+  },
+  {
+   "id": "b75:mech-exception-006:mutation_changes_value",
+   "pass": true,
+   "detail": "mutated_value is identical to registry_value"
+  },
+  {
+   "id": "b75:mech-exception-006:registry_value_verified",
+   "pass": true,
+   "detail": "neither locator_check nor registry_anchors reproduce against CRC-8-1115"
+  },
+  {
+   "id": "b75:mech-exception-006:values_land_on_declared_sides",
+   "pass": true,
+   "detail": "the deleted clause is not present-on-faithful / absent-on-mutated"
+  },
+  {
+   "id": "b75:legal-fabricated-001:row_exists",
+   "pass": true,
+   "detail": "provenance pair has no matching calibration.jsonl row"
+  },
+  {
+   "id": "b75:legal-fabricated-001:construction_rule_documented",
+   "pass": true,
+   "detail": "missing construction fields: "
+  },
+  {
+   "id": "b75:legal-fabricated-001:anchors_verbatim",
+   "pass": true,
+   "detail": "anchors not verbatim in their source: "
+  },
+  {
+   "id": "b75:legal-fabricated-001:sources_registered",
+   "pass": true,
+   "detail": "a declared registry_source_id is not in sources.jsonl"
+  },
+  {
+   "id": "b75:legal-fabricated-002:row_exists",
+   "pass": true,
+   "detail": "provenance pair has no matching calibration.jsonl row"
+  },
+  {
+   "id": "b75:legal-fabricated-002:construction_rule_documented",
+   "pass": true,
+   "detail": "missing construction fields: "
+  },
+  {
+   "id": "b75:legal-fabricated-002:anchors_verbatim",
+   "pass": true,
+   "detail": "anchors not verbatim in their source: "
+  },
+  {
+   "id": "b75:legal-fabricated-002:sources_registered",
+   "pass": true,
+   "detail": "a declared registry_source_id is not in sources.jsonl"
+  },
+  {
+   "id": "b75:legal-fabricated-003:row_exists",
+   "pass": true,
+   "detail": "provenance pair has no matching calibration.jsonl row"
+  },
+  {
+   "id": "b75:legal-fabricated-003:construction_rule_documented",
+   "pass": true,
+   "detail": "missing construction fields: "
+  },
+  {
+   "id": "b75:legal-fabricated-003:anchors_verbatim",
+   "pass": true,
+   "detail": "anchors not verbatim in their source: "
+  },
+  {
+   "id": "b75:legal-fabricated-003:sources_registered",
+   "pass": true,
+   "detail": "a declared registry_source_id is not in sources.jsonl"
+  },
+  {
+   "id": "b75:legal-superseded-001:row_exists",
+   "pass": true,
+   "detail": "provenance pair has no matching calibration.jsonl row"
+  },
+  {
+   "id": "b75:legal-superseded-001:construction_rule_documented",
+   "pass": true,
+   "detail": "missing construction fields: "
+  },
+  {
+   "id": "b75:legal-superseded-001:anchors_verbatim",
+   "pass": true,
+   "detail": "anchors not verbatim in their source: "
+  },
+  {
+   "id": "b75:legal-superseded-001:sources_registered",
+   "pass": true,
+   "detail": "a declared registry_source_id is not in sources.jsonl"
+  },
+  {
+   "id": "b75:legal-superseded-002:row_exists",
+   "pass": true,
+   "detail": "provenance pair has no matching calibration.jsonl row"
+  },
+  {
+   "id": "b75:legal-superseded-002:construction_rule_documented",
+   "pass": true,
+   "detail": "missing construction fields: "
+  },
+  {
+   "id": "b75:legal-superseded-002:anchors_verbatim",
+   "pass": true,
+   "detail": "anchors not verbatim in their source: "
+  },
+  {
+   "id": "b75:legal-superseded-002:sources_registered",
+   "pass": true,
+   "detail": "a declared registry_source_id is not in sources.jsonl"
+  },
+  {
+   "id": "b75:legal-superseded-003:row_exists",
+   "pass": true,
+   "detail": "provenance pair has no matching calibration.jsonl row"
+  },
+  {
+   "id": "b75:legal-superseded-003:construction_rule_documented",
+   "pass": true,
+   "detail": "missing construction fields: "
+  },
+  {
+   "id": "b75:legal-superseded-003:anchors_verbatim",
+   "pass": true,
+   "detail": "anchors not verbatim in their source: "
+  },
+  {
+   "id": "b75:legal-superseded-003:sources_registered",
+   "pass": true,
+   "detail": "a declared registry_source_id is not in sources.jsonl"
+  },
+  {
+   "id": "b75:legal-unpublished-001:row_exists",
+   "pass": true,
+   "detail": "provenance pair has no matching calibration.jsonl row"
+  },
+  {
+   "id": "b75:legal-unpublished-001:construction_rule_documented",
+   "pass": true,
+   "detail": "missing construction fields: "
+  },
+  {
+   "id": "b75:legal-unpublished-001:anchors_verbatim",
+   "pass": true,
+   "detail": "anchors not verbatim in their source: "
+  },
+  {
+   "id": "b75:legal-unpublished-001:sources_registered",
+   "pass": true,
+   "detail": "a declared registry_source_id is not in sources.jsonl"
+  },
+  {
+   "id": "b75:legal-unpublished-002:row_exists",
+   "pass": true,
+   "detail": "provenance pair has no matching calibration.jsonl row"
+  },
+  {
+   "id": "b75:legal-unpublished-002:construction_rule_documented",
+   "pass": true,
+   "detail": "missing construction fields: "
+  },
+  {
+   "id": "b75:legal-unpublished-002:anchors_verbatim",
+   "pass": true,
+   "detail": "anchors not verbatim in their source: "
+  },
+  {
+   "id": "b75:legal-unpublished-002:sources_registered",
+   "pass": true,
+   "detail": "a declared registry_source_id is not in sources.jsonl"
+  },
+  {
+   "id": "b75:legal-dicta-001:row_exists",
+   "pass": true,
+   "detail": "provenance pair has no matching calibration.jsonl row"
+  },
+  {
+   "id": "b75:legal-dicta-001:construction_rule_documented",
+   "pass": true,
+   "detail": "missing construction fields: "
+  },
+  {
+   "id": "b75:legal-dicta-001:anchors_verbatim",
+   "pass": true,
+   "detail": "anchors not verbatim in their source: "
+  },
+  {
+   "id": "b75:legal-dicta-001:sources_registered",
+   "pass": true,
+   "detail": "a declared registry_source_id is not in sources.jsonl"
+  },
+  {
+   "id": "b75:legal-dicta-002:row_exists",
+   "pass": true,
+   "detail": "provenance pair has no matching calibration.jsonl row"
+  },
+  {
+   "id": "b75:legal-dicta-002:construction_rule_documented",
+   "pass": true,
+   "detail": "missing construction fields: "
+  },
+  {
+   "id": "b75:legal-dicta-002:anchors_verbatim",
+   "pass": true,
+   "detail": "anchors not verbatim in their source: "
+  },
+  {
+   "id": "b75:legal-dicta-002:sources_registered",
+   "pass": true,
+   "detail": "a declared registry_source_id is not in sources.jsonl"
+  },
+  {
+   "id": "b75:legal-jurisdiction-001:row_exists",
+   "pass": true,
+   "detail": "provenance pair has no matching calibration.jsonl row"
+  },
+  {
+   "id": "b75:legal-jurisdiction-001:construction_rule_documented",
+   "pass": true,
+   "detail": "missing construction fields: "
+  },
+  {
+   "id": "b75:legal-jurisdiction-001:anchors_verbatim",
+   "pass": true,
+   "detail": "anchors not verbatim in their source: "
+  },
+  {
+   "id": "b75:legal-jurisdiction-001:sources_registered",
+   "pass": true,
+   "detail": "a declared registry_source_id is not in sources.jsonl"
+  },
+  {
+   "id": "b75:legal-jurisdiction-002:row_exists",
+   "pass": true,
+   "detail": "provenance pair has no matching calibration.jsonl row"
+  },
+  {
+   "id": "b75:legal-jurisdiction-002:construction_rule_documented",
+   "pass": true,
+   "detail": "missing construction fields: "
+  },
+  {
+   "id": "b75:legal-jurisdiction-002:anchors_verbatim",
+   "pass": true,
+   "detail": "anchors not verbatim in their source: "
+  },
+  {
+   "id": "b75:legal-jurisdiction-002:sources_registered",
+   "pass": true,
+   "detail": "a declared registry_source_id is not in sources.jsonl"
+  },
+  {
+   "id": "b75:legal-jurisdiction-003:row_exists",
+   "pass": true,
+   "detail": "provenance pair has no matching calibration.jsonl row"
+  },
+  {
+   "id": "b75:legal-jurisdiction-003:construction_rule_documented",
+   "pass": true,
+   "detail": "missing construction fields: "
+  },
+  {
+   "id": "b75:legal-jurisdiction-003:anchors_verbatim",
+   "pass": true,
+   "detail": "anchors not verbatim in their source: "
+  },
+  {
+   "id": "b75:legal-jurisdiction-003:sources_registered",
+   "pass": true,
+   "detail": "a declared registry_source_id is not in sources.jsonl"
+  },
+  {
+   "id": "b75:legal-effective-date-001:row_exists",
+   "pass": true,
+   "detail": "provenance pair has no matching calibration.jsonl row"
+  },
+  {
+   "id": "b75:legal-effective-date-001:construction_rule_documented",
+   "pass": true,
+   "detail": "missing construction fields: "
+  },
+  {
+   "id": "b75:legal-effective-date-001:anchors_verbatim",
+   "pass": true,
+   "detail": "anchors not verbatim in their source: "
+  },
+  {
+   "id": "b75:legal-effective-date-001:sources_registered",
+   "pass": true,
+   "detail": "a declared registry_source_id is not in sources.jsonl"
+  },
+  {
+   "id": "b75:legal-effective-date-002:row_exists",
+   "pass": true,
+   "detail": "provenance pair has no matching calibration.jsonl row"
+  },
+  {
+   "id": "b75:legal-effective-date-002:construction_rule_documented",
+   "pass": true,
+   "detail": "missing construction fields: "
+  },
+  {
+   "id": "b75:legal-effective-date-002:anchors_verbatim",
+   "pass": true,
+   "detail": "anchors not verbatim in their source: "
+  },
+  {
+   "id": "b75:legal-effective-date-002:sources_registered",
+   "pass": true,
+   "detail": "a declared registry_source_id is not in sources.jsonl"
+  },
+  {
+   "id": "b75:legal-effective-date-003:row_exists",
+   "pass": true,
+   "detail": "provenance pair has no matching calibration.jsonl row"
+  },
+  {
+   "id": "b75:legal-effective-date-003:construction_rule_documented",
+   "pass": true,
+   "detail": "missing construction fields: "
+  },
+  {
+   "id": "b75:legal-effective-date-003:anchors_verbatim",
+   "pass": true,
+   "detail": "anchors not verbatim in their source: "
+  },
+  {
+   "id": "b75:legal-effective-date-003:sources_registered",
+   "pass": true,
+   "detail": "a declared registry_source_id is not in sources.jsonl"
+  },
+  {
+   "id": "b75:legal-mismatch-001:row_exists",
+   "pass": true,
+   "detail": "provenance pair has no matching calibration.jsonl row"
+  },
+  {
+   "id": "b75:legal-mismatch-001:construction_rule_documented",
+   "pass": true,
+   "detail": "missing construction fields: "
+  },
+  {
+   "id": "b75:legal-mismatch-001:anchors_verbatim",
+   "pass": true,
+   "detail": "anchors not verbatim in their source: "
+  },
+  {
+   "id": "b75:legal-mismatch-001:sources_registered",
+   "pass": true,
+   "detail": "a declared registry_source_id is not in sources.jsonl"
+  },
+  {
+   "id": "b75:legal-mismatch-002:row_exists",
+   "pass": true,
+   "detail": "provenance pair has no matching calibration.jsonl row"
+  },
+  {
+   "id": "b75:legal-mismatch-002:construction_rule_documented",
+   "pass": true,
+   "detail": "missing construction fields: "
+  },
+  {
+   "id": "b75:legal-mismatch-002:anchors_verbatim",
+   "pass": true,
+   "detail": "anchors not verbatim in their source: "
+  },
+  {
+   "id": "b75:legal-mismatch-002:sources_registered",
+   "pass": true,
+   "detail": "a declared registry_source_id is not in sources.jsonl"
+  },
+  {
+   "id": "b75:legal-omitted-exception-001:row_exists",
+   "pass": true,
+   "detail": "provenance pair has no matching calibration.jsonl row"
+  },
+  {
+   "id": "b75:legal-omitted-exception-001:construction_rule_documented",
+   "pass": true,
+   "detail": "missing construction fields: "
+  },
+  {
+   "id": "b75:legal-omitted-exception-001:anchors_verbatim",
+   "pass": true,
+   "detail": "anchors not verbatim in their source: "
+  },
+  {
+   "id": "b75:legal-omitted-exception-001:sources_registered",
+   "pass": true,
+   "detail": "a declared registry_source_id is not in sources.jsonl"
+  },
+  {
+   "id": "b75:legal-omitted-exception-002:row_exists",
+   "pass": true,
+   "detail": "provenance pair has no matching calibration.jsonl row"
+  },
+  {
+   "id": "b75:legal-omitted-exception-002:construction_rule_documented",
+   "pass": true,
+   "detail": "missing construction fields: "
+  },
+  {
+   "id": "b75:legal-omitted-exception-002:anchors_verbatim",
+   "pass": true,
+   "detail": "anchors not verbatim in their source: "
+  },
+  {
+   "id": "b75:legal-omitted-exception-002:sources_registered",
+   "pass": true,
+   "detail": "a declared registry_source_id is not in sources.jsonl"
+  },
+  {
+   "id": "b75:legal-injection-001:row_exists",
+   "pass": true,
+   "detail": "provenance pair has no matching calibration.jsonl row"
+  },
+  {
+   "id": "b75:legal-injection-001:construction_rule_documented",
+   "pass": true,
+   "detail": "missing construction fields: "
+  },
+  {
+   "id": "b75:legal-injection-001:anchors_verbatim",
+   "pass": true,
+   "detail": "anchors not verbatim in their source: "
+  },
+  {
+   "id": "b75:legal-injection-001:sources_registered",
+   "pass": true,
+   "detail": "a declared registry_source_id is not in sources.jsonl"
+  },
+  {
+   "id": "b75:legal-injection-002:row_exists",
+   "pass": true,
+   "detail": "provenance pair has no matching calibration.jsonl row"
+  },
+  {
+   "id": "b75:legal-injection-002:construction_rule_documented",
+   "pass": true,
+   "detail": "missing construction fields: "
+  },
+  {
+   "id": "b75:legal-injection-002:anchors_verbatim",
+   "pass": true,
+   "detail": "anchors not verbatim in their source: "
+  },
+  {
+   "id": "b75:legal-injection-002:sources_registered",
+   "pass": true,
+   "detail": "a declared registry_source_id is not in sources.jsonl"
+  },
+  {
+   "id": "b75:legal-injection-003:row_exists",
+   "pass": true,
+   "detail": "provenance pair has no matching calibration.jsonl row"
+  },
+  {
+   "id": "b75:legal-injection-003:construction_rule_documented",
+   "pass": true,
+   "detail": "missing construction fields: "
+  },
+  {
+   "id": "b75:legal-injection-003:anchors_verbatim",
+   "pass": true,
+   "detail": "anchors not verbatim in their source: "
+  },
+  {
+   "id": "b75:legal-injection-003:sources_registered",
+   "pass": true,
+   "detail": "a declared registry_source_id is not in sources.jsonl"
+  },
+  {
+   "id": "b75:legal-injection-004:row_exists",
+   "pass": true,
+   "detail": "provenance pair has no matching calibration.jsonl row"
+  },
+  {
+   "id": "b75:legal-injection-004:construction_rule_documented",
+   "pass": true,
+   "detail": "missing construction fields: "
+  },
+  {
+   "id": "b75:legal-injection-004:anchors_verbatim",
+   "pass": true,
+   "detail": "anchors not verbatim in their source: "
+  },
+  {
+   "id": "b75:legal-injection-004:sources_registered",
+   "pass": true,
+   "detail": "a declared registry_source_id is not in sources.jsonl"
+  },
+  {
+   "id": "b75:legal-injection-005:row_exists",
+   "pass": true,
+   "detail": "provenance pair has no matching calibration.jsonl row"
+  },
+  {
+   "id": "b75:legal-injection-005:construction_rule_documented",
+   "pass": true,
+   "detail": "missing construction fields: "
+  },
+  {
+   "id": "b75:legal-injection-005:anchors_verbatim",
+   "pass": true,
+   "detail": "anchors not verbatim in their source: "
+  },
+  {
+   "id": "b75:legal-injection-005:sources_registered",
+   "pass": true,
+   "detail": "a declared registry_source_id is not in sources.jsonl"
+  },
+  {
+   "id": "b75:legal-injection-006:row_exists",
+   "pass": true,
+   "detail": "provenance pair has no matching calibration.jsonl row"
+  },
+  {
+   "id": "b75:legal-injection-006:construction_rule_documented",
+   "pass": true,
+   "detail": "missing construction fields: "
+  },
+  {
+   "id": "b75:legal-injection-006:anchors_verbatim",
+   "pass": true,
+   "detail": "anchors not verbatim in their source: "
+  },
+  {
+   "id": "b75:legal-injection-006:sources_registered",
+   "pass": true,
+   "detail": "a declared registry_source_id is not in sources.jsonl"
+  },
+  {
+   "id": "b75:legal-injection-007:row_exists",
+   "pass": true,
+   "detail": "provenance pair has no matching calibration.jsonl row"
+  },
+  {
+   "id": "b75:legal-injection-007:construction_rule_documented",
+   "pass": true,
+   "detail": "missing construction fields: "
+  },
+  {
+   "id": "b75:legal-injection-007:anchors_verbatim",
+   "pass": true,
+   "detail": "anchors not verbatim in their source: "
+  },
+  {
+   "id": "b75:legal-injection-007:sources_registered",
+   "pass": true,
+   "detail": "a declared registry_source_id is not in sources.jsonl"
+  },
+  {
+   "id": "b75:legal-injection-008:row_exists",
+   "pass": true,
+   "detail": "provenance pair has no matching calibration.jsonl row"
+  },
+  {
+   "id": "b75:legal-injection-008:construction_rule_documented",
+   "pass": true,
+   "detail": "missing construction fields: "
+  },
+  {
+   "id": "b75:legal-injection-008:anchors_verbatim",
+   "pass": true,
+   "detail": "anchors not verbatim in their source: "
+  },
+  {
+   "id": "b75:legal-injection-008:sources_registered",
+   "pass": true,
+   "detail": "a declared registry_source_id is not in sources.jsonl"
+  },
+  {
+   "id": "b75:legal-injection-009:row_exists",
+   "pass": true,
+   "detail": "provenance pair has no matching calibration.jsonl row"
+  },
+  {
+   "id": "b75:legal-injection-009:construction_rule_documented",
+   "pass": true,
+   "detail": "missing construction fields: "
+  },
+  {
+   "id": "b75:legal-injection-009:anchors_verbatim",
+   "pass": true,
+   "detail": "anchors not verbatim in their source: "
+  },
+  {
+   "id": "b75:legal-injection-009:sources_registered",
+   "pass": true,
+   "detail": "a declared registry_source_id is not in sources.jsonl"
+  },
+  {
+   "id": "b75:legal-injection-010:row_exists",
+   "pass": true,
+   "detail": "provenance pair has no matching calibration.jsonl row"
+  },
+  {
+   "id": "b75:legal-injection-010:construction_rule_documented",
+   "pass": true,
+   "detail": "missing construction fields: "
+  },
+  {
+   "id": "b75:legal-injection-010:anchors_verbatim",
+   "pass": true,
+   "detail": "anchors not verbatim in their source: "
+  },
+  {
+   "id": "b75:legal-injection-010:sources_registered",
+   "pass": true,
+   "detail": "a declared registry_source_id is not in sources.jsonl"
+  },
+  {
+   "id": "b75:mechanical_count",
+   "pass": true,
+   "detail": "expected 30, saw 30"
+  },
+  {
+   "id": "b75:legal_trap_count",
+   "pass": true,
+   "detail": "expected 30, saw 30"
+  },
+  {
+   "id": "b75:every_calibration_row_documented",
+   "pass": true,
+   "detail": "a calibration.jsonl row has no provenance entry"
+  },
+  {
+   "id": "b75:mutation_rule_catalogue_present",
+   "pass": true,
+   "detail": "no mutation_rules catalogue in b75 provenance"
+  },
+  {
+   "id": "b75:builder_deterministic",
+   "pass": true,
+   "detail": "builder / seed / determinism statement missing"
+  },
+  {
+   "id": "b7:builder_deterministic",
+   "pass": true,
+   "detail": "b7 builder block does not fully declare determinism"
+  },
+  {
+   "id": "b7:longcontext-001:task_exists",
+   "pass": true,
+   "detail": "provenance task not present in tasks.jsonl"
+  },
+  {
+   "id": "b7:longcontext-001:seed_documented",
+   "pass": true,
+   "detail": "no per-task seed recorded"
+  },
+  {
+   "id": "b7:longcontext-001:buried_facts_documented",
+   "pass": true,
+   "detail": "no buried operative facts recorded"
+  },
+  {
+   "id": "b7:longcontext-001:distractor_documented",
+   "pass": true,
+   "detail": "no distractor recorded"
+  },
+  {
+   "id": "b7:longcontext-001:distractor_0_present_in_packet",
+   "pass": true,
+   "detail": "distractor literal February 3, 2021 not found in packet"
+  },
+  {
+   "id": "b7:longcontext-002:task_exists",
+   "pass": true,
+   "detail": "provenance task not present in tasks.jsonl"
+  },
+  {
+   "id": "b7:longcontext-002:seed_documented",
+   "pass": true,
+   "detail": "no per-task seed recorded"
+  },
+  {
+   "id": "b7:longcontext-002:buried_facts_documented",
+   "pass": true,
+   "detail": "no buried operative facts recorded"
+  },
+  {
+   "id": "b7:longcontext-002:distractor_documented",
+   "pass": true,
+   "detail": "no distractor recorded"
+  },
+  {
+   "id": "b7:longcontext-002:distractor_0_present_in_packet",
+   "pass": true,
+   "detail": "distractor literal $248,650.00 not found in packet"
+  },
+  {
+   "id": "b7:longcontext-002:distractor_1_present_in_packet",
+   "pass": true,
+   "detail": "distractor literal 2640 not found in packet"
+  },
+  {
+   "id": "b7:longcontext-003:task_exists",
+   "pass": true,
+   "detail": "provenance task not present in tasks.jsonl"
+  },
+  {
+   "id": "b7:longcontext-003:seed_documented",
+   "pass": true,
+   "detail": "no per-task seed recorded"
+  },
+  {
+   "id": "b7:longcontext-003:buried_facts_documented",
+   "pass": true,
+   "detail": "no buried operative facts recorded"
+  },
+  {
+   "id": "b7:longcontext-003:distractor_documented",
+   "pass": true,
+   "detail": "no distractor recorded"
+  },
+  {
+   "id": "b7:longcontext-003:distractor_0_present_in_packet",
+   "pass": true,
+   "detail": "distractor literal $186,000.00 not found in packet"
+  },
+  {
+   "id": "b7:longcontext-004:task_exists",
+   "pass": true,
+   "detail": "provenance task not present in tasks.jsonl"
+  },
+  {
+   "id": "b7:longcontext-004:seed_documented",
+   "pass": true,
+   "detail": "no per-task seed recorded"
+  },
+  {
+   "id": "b7:longcontext-004:buried_facts_documented",
+   "pass": true,
+   "detail": "no buried operative facts recorded"
+  },
+  {
+   "id": "b7:longcontext-004:distractor_documented",
+   "pass": true,
+   "detail": "no distractor recorded"
+  },
+  {
+   "id": "b7:longcontext-004:distractor_0_present_in_packet",
+   "pass": true,
+   "detail": "distractor literal June 8, 2009 not found in packet"
+  },
+  {
+   "id": "b7:longcontext-005:task_exists",
+   "pass": true,
+   "detail": "provenance task not present in tasks.jsonl"
+  },
+  {
+   "id": "b7:longcontext-005:seed_documented",
+   "pass": true,
+   "detail": "no per-task seed recorded"
+  },
+  {
+   "id": "b7:longcontext-005:buried_facts_documented",
+   "pass": true,
+   "detail": "no buried operative facts recorded"
+  },
+  {
+   "id": "b7:longcontext-005:distractor_documented",
+   "pass": true,
+   "detail": "no distractor recorded"
+  },
+  {
+   "id": "b7:longcontext-005:distractor_0_present_in_packet",
+   "pass": true,
+   "detail": "distractor literal November 2, 2021 not found in packet"
+  },
+  {
+   "id": "b7:longcontext-006:task_exists",
+   "pass": true,
+   "detail": "provenance task not present in tasks.jsonl"
+  },
+  {
+   "id": "b7:longcontext-006:seed_documented",
+   "pass": true,
+   "detail": "no per-task seed recorded"
+  },
+  {
+   "id": "b7:longcontext-006:buried_facts_documented",
+   "pass": true,
+   "detail": "no buried operative facts recorded"
+  },
+  {
+   "id": "b7:longcontext-006:distractor_documented",
+   "pass": true,
+   "detail": "no distractor recorded"
+  },
+  {
+   "id": "b7:longcontext-006:distractor_0_present_in_packet",
+   "pass": true,
+   "detail": "distractor literal August 2, 2023 not found in packet"
+  },
+  {
+   "id": "b7:longcontext-007:task_exists",
+   "pass": true,
+   "detail": "provenance task not present in tasks.jsonl"
+  },
+  {
+   "id": "b7:longcontext-007:seed_documented",
+   "pass": true,
+   "detail": "no per-task seed recorded"
+  },
+  {
+   "id": "b7:longcontext-007:buried_facts_documented",
+   "pass": true,
+   "detail": "no buried operative facts recorded"
+  },
+  {
+   "id": "b7:longcontext-007:distractor_documented",
+   "pass": true,
+   "detail": "no distractor recorded"
+  },
+  {
+   "id": "b7:longcontext-007:distractor_0_present_in_packet",
+   "pass": true,
+   "detail": "distractor literal March 3, 2023 not found in packet"
+  },
+  {
+   "id": "b7:longcontext-008:task_exists",
+   "pass": true,
+   "detail": "provenance task not present in tasks.jsonl"
+  },
+  {
+   "id": "b7:longcontext-008:seed_documented",
+   "pass": true,
+   "detail": "no per-task seed recorded"
+  },
+  {
+   "id": "b7:longcontext-008:buried_facts_documented",
+   "pass": true,
+   "detail": "no buried operative facts recorded"
+  },
+  {
+   "id": "b7:longcontext-008:distractor_documented",
+   "pass": true,
+   "detail": "no distractor recorded"
+  },
+  {
+   "id": "b7:longcontext-008:distractor_0_present_in_packet",
+   "pass": true,
+   "detail": "distractor literal 2025 not found in packet"
+  },
+  {
+   "id": "b7:longcontext-009:task_exists",
+   "pass": true,
+   "detail": "provenance task not present in tasks.jsonl"
+  },
+  {
+   "id": "b7:longcontext-009:seed_documented",
+   "pass": true,
+   "detail": "no per-task seed recorded"
+  },
+  {
+   "id": "b7:longcontext-009:buried_facts_documented",
+   "pass": true,
+   "detail": "no buried operative facts recorded"
+  },
+  {
+   "id": "b7:longcontext-009:distractor_documented",
+   "pass": true,
+   "detail": "no distractor recorded"
+  },
+  {
+   "id": "b7:longcontext-009:distractor_0_present_in_packet",
+   "pass": true,
+   "detail": "distractor literal July 30, 2025 not found in packet"
+  },
+  {
+   "id": "b7:longcontext-009:distractor_1_present_in_packet",
+   "pass": true,
+   "detail": "distractor literal October 2, 2025 not found in packet"
+  },
+  {
+   "id": "b7:longcontext-010:task_exists",
+   "pass": true,
+   "detail": "provenance task not present in tasks.jsonl"
+  },
+  {
+   "id": "b7:longcontext-010:seed_documented",
+   "pass": true,
+   "detail": "no per-task seed recorded"
+  },
+  {
+   "id": "b7:longcontext-010:buried_facts_documented",
+   "pass": true,
+   "detail": "no buried operative facts recorded"
+  },
+  {
+   "id": "b7:longcontext-010:distractor_documented",
+   "pass": true,
+   "detail": "no distractor recorded"
+  },
+  {
+   "id": "b7:longcontext-010:distractor_0_present_in_packet",
+   "pass": true,
+   "detail": "distractor literal July 22, 2019 not found in packet"
+  },
+  {
+   "id": "b5:deterministic_mutations_declared",
+   "pass": true,
+   "detail": "no deterministic_mutations field"
+  },
+  {
+   "id": "b5:mutation_policy_statement",
+   "pass": true,
+   "detail": "no mutation_policy_statement"
+  },
+  {
+   "id": "b5:fabricated_citations_traced",
+   "pass": true,
+   "detail": "a reused fabricated citation is not traced to a legacy entry id and transformation, and carries no explanatory note"
+  },
+  {
+   "id": "b5:legacy_ids_resolve",
+   "pass": true,
+   "detail": "legacy ids not found in tests/citation-eval-set.json: "
+  },
+  {
+   "id": "b6:deterministic_mutations_declared",
+   "pass": true,
+   "detail": "no deterministic_mutations field"
+  },
+  {
+   "id": "b6:mutation_policy_statement",
+   "pass": true,
+   "detail": "no mutation_policy_statement"
+  },
+  {
+   "id": "b6:fabricated_citations_traced",
+   "pass": true,
+   "detail": "a reused fabricated citation is not traced to a legacy entry id and transformation, and carries no explanatory note"
+  },
+  {
+   "id": "b6:legacy_ids_resolve",
+   "pass": true,
+   "detail": "legacy ids not found in tests/citation-eval-set.json: "
+  },
+  {
+   "id": "b1:entries_present",
+   "pass": true,
+   "detail": "no entries entries"
+  },
+  {
+   "id": "b1:every_entry_declares_transformation",
+   "pass": true,
+   "detail": "0 entries with no transformation/grounding rule"
+  },
+  {
+   "id": "b2:entries_present",
+   "pass": true,
+   "detail": "no entries entries"
+  },
+  {
+   "id": "b2:every_entry_declares_transformation",
+   "pass": true,
+   "detail": "0 entries with no transformation/grounding rule"
+  },
+  {
+   "id": "b3:entries_present",
+   "pass": true,
+   "detail": "no entries entries"
+  },
+  {
+   "id": "b3:every_entry_declares_transformation",
+   "pass": true,
+   "detail": "0 entries with no transformation/grounding rule"
+  },
+  {
+   "id": "b4:entries_present",
+   "pass": true,
+   "detail": "no tasks entries"
+  },
+  {
+   "id": "b4:every_entry_declares_transformation",
+   "pass": true,
+   "detail": "0 entries with no transformation/grounding rule"
+  },
+  {
+   "id": "b8b:extraction_rule_documented",
+   "pass": true,
+   "detail": "b8b repair does not document its extraction rule and builders"
+  },
+  {
+   "id": "b8b:every_repaired_record_has_before_and_after_hash",
+   "pass": true,
+   "detail": "a repaired record is missing an old/new sha256 pair"
+  },
+  {
+   "id": "b8b:repaired_hashes_match_registry",
+   "pass": true,
+   "detail": "a recorded new_sha256 does not match sources.jsonl"
+  },
+  {
+   "id": "crosscut:calibration_rows_all_documented",
+   "pass": true,
+   "detail": "calibration rows 60 vs documented pairs 60"
+  },
+  {
+   "id": "crosscut:no_undeclared_mutation_batches",
+   "pass": true,
+   "detail": "a batch performs mutations without a policy statement"
+  }
+ ]
+}

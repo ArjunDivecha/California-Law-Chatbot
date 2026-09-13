@@ -1,0 +1,8 @@
+{
+ "batch": "B9a",
+ "date": "2026-07-27",
+ "record": "CIT-REAL-16 (Sargon Enterprises v. USC, 55 Cal.4th 747, S191550)",
+ "disposition": "removed_unused",
+ "rationale": "referenced by zero tasks, zero calibration pairs, zero bundles; official archive PDF 404s (2012 predates window); only verification path was a Wayback capture of a dead official page; conservative rule: no Wayback-anchored or unofficial record remains in the canonical registry when it grounds nothing",
+ "registry_count_after": 88
+}

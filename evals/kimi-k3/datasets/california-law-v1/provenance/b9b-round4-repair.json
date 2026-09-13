@@ -1,0 +1,162 @@
+{
+ "batch": "B9b round-4 repair",
+ "date": "2026-07-28",
+ "input": "scratchpad attest/gpt56-round4.jsonl -- verifier-gpt-5.6-sol re-reviewed the two tasks the round-3 micro-repair rebuilt. research-029 APPROVE (ENTAILED_AND_SELF_CONTAINED, APPROVED_WITH_AGGREGATOR_CAVEAT_NOTED). research-021 REJECT (UNSUPPORTED_PROPOSITION, CRITERION_REQUIRES_OUTSIDE_LEGAL_MEMORY, AMBIGUOUS_AUTHORITY_STATUS).",
+ "rejection_note_verbatim": "C4 attributes the quoted rules to Stewart (2001) 87 Cal.App.4th 1006 and labels the decision published/certified, but the case excerpt contains no caption, court, citation, decision date/year, or publication language. Those attribution and status claims therefore require reliance on ungrounded metadata or outside knowledge. The aggregator caveat is noted and is not itself the rejection ground.",
+ "builders": [
+  "provenance/b9e-repair-sources.py -- registry: extends the CIT-REAL-6 excerpt and emits the CIT-INDEX-CAL-APP-4TH-87 candidate",
+  "datasetTools/ingestSources.ts --input <emitted candidate> -- registry: appends CIT-INDEX-CAL-APP-4TH-87",
+  "provenance/b9e-repair.ts -- tasks: rebuilds research-021 through datasetTools/authorTasks.ts::assembleEvalTask",
+  "provenance/b9d-round3-repair.ts -- NEW, no dataset effect: preserves the round-3 micro-repairs (commit ca1a9f1) in the provenance chain; they had been applied by an ad-hoc scratchpad script and were not reproducible from provenance"
+ ],
+ "run_order": [
+  "provenance/b9b-repair-sources.py",
+  "provenance/b9c-repair-sources.py",
+  "provenance/b9e-repair-sources.py --texts <dir> --emit <candidate.json>",
+  "datasetTools/ingestSources.ts --input <candidate.json>",
+  "provenance/b9b-repair.ts",
+  "provenance/b9c-repair.ts",
+  "provenance/b9d-round3-repair.ts",
+  "provenance/b9e-repair.ts",
+  "review-bundles/buildBundles.ts"
+ ],
+ "run_order_note": "b9b-repair-sources.py rewrites CIT-REAL-6 and CIT-REAL-12 from its own shorter anchors, so it must never run after b9c/b9e-repair-sources.py.",
+ "round4_verdicts": {
+  "reviewed": 2,
+  "approve": 1,
+  "reject": 1,
+  "rejected_tasks": ["research-021"],
+  "note": "The aggregator-hosting caveat on CIT-REAL-6 was expressly noted by the verifier and expressly disclaimed as a rejection ground, so no case record needed re-anchoring for officiality this round."
+ },
+ "defect": {
+  "class": "ATTRIBUTION AND PUBLICATION STATUS NOT ENTAILED BY THE PACKET",
+  "detail": "research-021 C4 named 'Stewart v. Colonial Western Agency, Inc. (2001) 87 Cal.App.4th 1006' as the authority and the evidence packet labelled the record 'Published/certified for publication', but the stored CIT-REAL-6 excerpt was only the two substantive rules passages: it contained no caption, no court, no reporter citation, no filing date and no publication language. A reviewer had to supply the identity and the status from outside the packet. The substantive half of C4 -- what the deposition rules are -- was never in doubt and its two pinpoints (p4, p5) are untouched."
+ },
+ "registry_edit_a_excerpt_extension": {
+  "source_id": "CIT-REAL-6",
+  "case": "Stewart v. Colonial Western Agency, Inc. (2001) 87 Cal.App.4th 1006",
+  "cluster": 5808646,
+  "field": "xml_harvard",
+  "canonical_url": "https://www.courtlistener.com/opinion/5808646/stewart-v-colonial-western-agency-inc/",
+  "old_sha256": "b5003a5cd688ee6a8173a81ea1f9b82acecdccca9317e5f7b6d13c3bd7771e0b",
+  "new_sha256": "5793f53141636ace7047d9936c1311916a590bf97a9819db196e5c856fd29636",
+  "old_retrieved_at": "2026-07-27T23:59:00Z",
+  "new_retrieved_at": "2026-07-28T03:00:00Z",
+  "old_excerpt_chars": 1583,
+  "new_excerpt_chars": 2056,
+  "runs_before": 2,
+  "runs_after": 4,
+  "change": "The opinion's own opening identification passage was added in FRONT of the two round-1 runs ('Opinion CURRY, J.— Background This is an appeal from an order imposing sanctions in the amount of $2,400 on appellant Colonial Western Agency, Inc.'s counsel. The underlying matter involves a complaint by respondent Mary Martha Stewart against Colonial Western.'), and the opinion's Disposition and concurrence block was added at the END ('Disposition The January 18, 2000, order imposing sanctions on Colonial Western's counsel as corrected nunc pro tunc on September 20, 2000, is affirmed. Vogel (C. S.), P. J., and Hastings, J., concurred.'). Text was only ADDED and only at the ends: the two round-1 runs and the ' ... ' join between them are byte-identical, so p4 and p5 are still verbatim substrings.",
+  "text_source": "Same CourtListener full text used in the round-1 re-excerpt (REST API v4, token-authenticated, cluster 5808646, xml_harvard; scratchpad b9brepair/cl_stewart_harvard.txt). Each of the four runs is located by an explicit start/end anchor pair, sliced out of the full text, asserted in code to be a whitespace-normalized substring of it, and asserted to be in document order. Nothing transcribed by hand.",
+  "what_the_source_cannot_supply": "NO official-reporter caption block exists in this record. Cluster 5808646 stores only xml_harvard and html_with_citations, both of which begin at 'Opinion CURRY, J.—', and the cluster's headmatter field is the empty string (verified by direct API fetch on 2026-07-28, scratchpad b9br4/cluster_5808646.json). Unlike the html_lawbox records repaired in round 1 (Cembrook, Bridgestone, Lippel, Briggs, Equilon) there is therefore no verbatim run stating the caption, the court, the reporter citation or the filing date; those four facts are grounded by registry edit B instead.",
+  "aggregator_caveat": "Unchanged. Stewart is a pre-archive Court of Appeal decision with NO official courts.ca.gov hosting (documented since B8a); the NO_OFFICIAL_HOSTING caveat stays disclosed and is still surfaced in the reviewer bundle."
+ },
+ "registry_edit_b_new_index_record": {
+  "source_id": "CIT-INDEX-CAL-APP-4TH-87",
+  "action": "new",
+  "ingested_by": "datasetTools/ingestSources.ts (candidate emitted by provenance/b9e-repair-sources.py --emit)",
+  "canonical_url": "https://www.courtlistener.com/c/cal-app-4th/87/",
+  "locator": "California Official Reports, volume 87 Cal.App.4th citation index (window covering page 1006)",
+  "sha256": "b51ce03f0d5e18fbd30a113598f482d6b7eb8245f5668a2b32c4192cbde97e38",
+  "excerpt_chars": 1332,
+  "entries_indexed": 100,
+  "window_pages": [953, 991, 1006, 1037, 1050],
+  "target_entry": "Stewart v. Colonial Western Agency, Inc. | Date Filed: March 14th, 2001 | Citations: 87 Cal. App. 4th 1006, 105 Cal. Rptr. 2d 115, 2001 Daily Journal DAR 2663, 2001 Cal. App. LEXIS 197, 2001 Cal. Daily Op. Serv. 2090 | Docket Number: No. B139311",
+  "method": "Identical to the nine B7 index records and the five added in round 1: raw curl of the volume index (not LLM-mediated), every <article> block parsed for the case name and the page's own literal 'Date Filed:', 'Citations:' and 'Docket Number:' values, sorted by official-reporter starting page, the entries bracketing page 1006 transcribed verbatim and joined by ' ;; '.",
+  "role": "Official-reporter citation metadata only. It supplies the caption, citation, filing date and docket number the opinion text lacks, and -- because an entry in the California Official Reports index is what publication in the Official Reports consists of -- the publication half of the status claim. No substantive legal proposition rests on it.",
+  "precedent": "Exactly the route round 1 used for research-023 C3 and verification-real-002/003/007, and round 2 for verification-real-005 C1; every one of those was APPROVED by both vendors afterwards."
+ },
+ "task_repair": {
+  "task_id": "research-021",
+  "criterion": {
+   "criterion_id": "research-021-c4",
+   "before": "States, on the authority of Stewart v. Colonial Western Agency, Inc. (2001) 87 Cal.App.4th 1006, that objections to the relevancy, materiality, or admissibility at trial of deposition testimony are unnecessary and are not waived by failure to make them at the deposition, and that a deponent must not be prevented by counsel from answering a question unless it pertains to privileged matters or deposing counsel's conduct has reached a stage warranting suspension of the deposition to permit a motion for a protective order.",
+   "after": "States, on the authority of Stewart v. Colonial Western Agency, Inc. — the appellate opinion published in the California Official Reports at 87 Cal.App.4th 1006, filed March 14, 2001 in docket No. B139311, and citable as a published California opinion — that objections to the competency of the deponent, or to the relevancy, materiality, or admissibility at trial of the testimony or of the materials produced, are unnecessary and are not waived by failure to make them before or during the deposition, and that a deponent must not be prevented by counsel from answering a question unless it pertains to privileged matters or deposing counsel's conduct has reached a stage where suspension of the deposition to permit a motion for a protective order is warranted.",
+   "proposition_ids_before": ["research-021-p4", "research-021-p5"],
+   "proposition_ids_after": ["research-021-p4", "research-021-p5", "research-021-p6", "research-021-p7", "research-021-p8", "research-021-p9"],
+   "legal_content": "Equivalent on the substance. The bare parenthetical '(2001) 87 Cal.App.4th 1006', which rested on registry metadata alone, is replaced by the entailed 'published in the California Official Reports at 87 Cal.App.4th 1006, filed March 14, 2001 in docket No. B139311, and citable as a published California opinion', every clause of which is quoted underneath the criterion. The rule wording is also tightened to the court's own phrasing ('competency of the deponent', 'or of the materials produced', 'before or during the deposition').",
+   "deliberate_omission": "The criterion does NOT say 'Court of Appeal'. No packet excerpt uses that phrase -- the index page carries no court label and the opinion text carries no caption -- so the criterion says 'appellate opinion published in the California Official Reports at 87 Cal.App.4th 1006', which p6 (appeal from an order, authoring justice), p7 (a presiding justice plus two associate justices) and p8 (the Official Reports volume index) do entail."
+  },
+  "propositions": [
+   {
+    "proposition_id": "research-021-p4",
+    "action": "unchanged",
+    "source_id": "CIT-REAL-6",
+    "note": "Still a verbatim substring of the extended excerpt; its attribution to Stewart (2001) 87 Cal.App.4th 1006 is now grounded by p8."
+   },
+   {
+    "proposition_id": "research-021-p5",
+    "action": "unchanged",
+    "source_id": "CIT-REAL-6",
+    "note": "Still a verbatim substring of the extended excerpt."
+   },
+   {
+    "proposition_id": "research-021-p6",
+    "action": "new",
+    "source_id": "CIT-REAL-6",
+    "excerpt": "Opinion CURRY, J.— Background This is an appeal from an order imposing sanctions in the amount of $2,400 on appellant Colonial Western Agency, Inc.’s counsel. The underlying matter involves a complaint by respondent Mary Martha Stewart against Colonial Western.",
+    "grounds": "authoring justice, appellate posture, and both party names, in the court's own words"
+   },
+   {
+    "proposition_id": "research-021-p7",
+    "action": "new",
+    "source_id": "CIT-REAL-6",
+    "excerpt": "Disposition The January 18, 2000, order imposing sanctions on Colonial Western’s counsel as corrected nunc pro tunc on September 20, 2000, is affirmed. Vogel (C. S.), P. J., and Hastings, J., concurred.",
+    "grounds": "the three-justice appellate panel (a presiding justice plus two associate justices) and the disposition"
+   },
+   {
+    "proposition_id": "research-021-p8",
+    "action": "new",
+    "source_id": "CIT-INDEX-CAL-APP-4TH-87",
+    "excerpt": "Stewart v. Colonial Western Agency, Inc. | Date Filed: March 14th, 2001 | Citations: 87 Cal. App. 4th 1006, 105 Cal. Rptr. 2d 115, 2001 Daily Journal DAR 2663, 2001 Cal. App. LEXIS 197, 2001 Cal. Daily Op. Serv. 2090 | Docket Number: No. B139311",
+    "grounds": "case caption, reporter citation, filing date (also grounding the contains-'2001' assertion a4), docket number, and publication in the California Official Reports"
+   },
+   {
+    "proposition_id": "research-021-p9",
+    "action": "new",
+    "source_id": "CRC-8-1115",
+    "excerpt": "A published California opinion may be cited or relied on as soon as it is certified for publication or ordered published.",
+    "grounds": "citability of a published California opinion"
+   }
+  ],
+  "unchanged": "Criteria C1-C3, all four deterministic assertions (a1, a2, a3, a4 -- including the round-3 removal of a3's hard_failure_code), the prompt, the turns, expected_tools, data_class and propositions p1-p5.",
+  "task_content_sha256": {
+   "old": "da1b8dbdc567e763a12c0d9f01d25dbbaa7950ad55f0bdd6436f4761105657ce",
+   "new": "40c114a6909b93033c07a13a78f383bd6aba2e4292709d56b20e7ca82f028ff6",
+   "recomputed_by": "datasetTools/authorTasks.ts::assembleEvalTask, then re-checked in b9e-repair.ts against the canonical evals/kimi-k3/integrity.ts::taskContentHash helper (the script throws if the two disagree)"
+  }
+ },
+ "tasks_touched": {
+  "count": 1,
+  "detail": "research-021 only. It is the sole dependent of CIT-REAL-6 in the dataset, CIT-INDEX-CAL-APP-4TH-87 is new, and CRC-8-1115 was not edited, so no other task's evidence packet moves."
+ },
+ "collateral_updates": [
+  "provenance/b3-research-provenance.json -- research-021 task_content_sha256 refreshed to 40c114a6…. It had been left at 44f5a470… (the round-2 value): round 3 changed research-021's hash and did not refresh the lineage file. Per the round-1/round-2 convention the as-authored deterministic_assertions hard_failure_code fields in that file are left as authored.",
+  "provenance/b9d-round3-repair.ts -- NEW. Round 3 was applied by an ad-hoc scratchpad script, so the documented rebuild chain could not reproduce the committed dataset. This script restates that logic; running it against the committed data is a verified no-op (fixes: 0, tasks.jsonl byte-identical).",
+  "provenance/b8a-officiality-audit.json -- NOT updated, matching the round-1 precedent when five CIT-INDEX records were added: the B8a audit is a point-in-time record and buildBundles.ts uses only its NO_OFFICIAL_HOSTING list, which CIT-INDEX records were never on."
+ ],
+ "review_bundle_byte_identity": {
+  "method": "line-level diff of every review-bundles/tasks/<id>.md before and after, plus a field-level diff of every bundles.jsonl row, manifest.json, index.md and README.md",
+  "unmodified_tasks": 119,
+  "identical_except_the_single_dataset_hash_binding_line": 119,
+  "any_other_difference": 0,
+  "bundles_jsonl": "the only row differing beyond dataset_hash is research-021 (task_content_sha256, propositions, proposition_hashes, evidence_source_ids, source_hashes)",
+  "index_md": "2 lines differ -- the header dataset hash and the research-021 row",
+  "manifest_json": "generated_from_dataset_hash only",
+  "readme_md": "byte-identical",
+  "dataset_hash_before": "4da090c209912ecebeeef222c4a5c9f41a5247ef59787273fe6227d209c3a948",
+  "dataset_hash_after": "805e588a4c6979f364ef4cd9d854edee211bf83da0ab506ef0d39e60c1bbfce5"
+ },
+ "registry_counts": {
+  "before": 93,
+  "after": 94
+ },
+ "validation": {
+  "tests/kimi-k3-eval.test.mjs": "45/45 PASS (exit 0)",
+  "verifySources --offline": "94/94 verified, drift_count 0, network_calls 0",
+  "eval:kimi --mode dry-run --dataset evals/kimi-k3/datasets/california-law-v1": "exit 0, validation_pass true, canonical_count_gate_pass true, 120 tasks, 120/120 primary-source grounded, 0 unsupported propositions, 0 errors",
+  "b75-validate.mjs": "exit 0, validation_pass true, 60 pairs, 0 failures, 33 distinct source ids, 0 unresolved",
+  "idempotency": "re-running b9e-repair-sources.py, b9e-repair.ts and b9d-round3-repair.ts reproduces sources.jsonl, tasks.jsonl and the emitted candidate byte for byte; re-running ingestSources.ts on the same candidate fails closed with DUPLICATE_SOURCE_ID and leaves sources.jsonl untouched"
+ },
+ "open": "Round 5 of the cross-vendor machine attestation must re-review research-021 substantively and re-attest all 120 tasks formally: the dataset hash moved from 4da090c2… to 805e588a…, so every round-4 attestation is now unbound."
+}
