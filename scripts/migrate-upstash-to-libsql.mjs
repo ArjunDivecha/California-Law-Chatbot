@@ -112,6 +112,9 @@ if (!execute) {
 const dst = new LibsqlKv({ url: process.env.TURSO_DATABASE_URL, authToken: process.env.TURSO_AUTH_TOKEN });
 await dst.init();
 
+/** Order-insensitive canonical form for comparing hashes. */
+function canon(obj) { return JSON.stringify(Object.fromEntries(Object.entries(obj ?? {}).sort())); }
+
 function hashToObject(flat) {
   // HGETALL over REST returns [field, value, field, value, ...]
   const o = {};
@@ -138,13 +141,13 @@ for (const e of entries) {
   let ok = true; let detail = '';
   if (e.type === 'string') { const v = await dst.get(e.key); ok = v === e.value; detail = ok ? '' : 'value differs'; }
   else if (e.type === 'list') { const v = await dst.lrange(e.key, 0, -1); ok = JSON.stringify(v) === JSON.stringify(e.value); detail = ok ? '' : `list ${v.length} vs ${e.value.length}`; }
-  else if (e.type === 'hash') { const v = await dst.hgetall(e.key); ok = JSON.stringify(v) === JSON.stringify(hashToObject(e.value)); detail = ok ? '' : 'hash differs'; }
+  else if (e.type === 'hash') { const v = await dst.hgetall(e.key); ok = canon(v) === canon(hashToObject(e.value)); detail = ok ? '' : 'hash differs'; }
   else if (e.type === 'zset') {
     const members = await dst.zrange(e.key, 0, -1);
     const src = []; for (let i = 0; i < e.value.length; i += 2) src.push(e.value[i]);
     ok = JSON.stringify([...members].sort()) === JSON.stringify([...src].sort()); detail = ok ? '' : 'zset members differ';
   }
-  if (ok && e.ttl > 0) { const t = await dst.ttl(e.key); if (Math.abs(t - e.ttl) > 30) { ok = false; detail = `ttl ${t} vs ${e.ttl}`; } }
+  if (ok && e.ttl > 0) { const [srcNow] = await pipe([['TTL', e.key]]); const t = await dst.ttl(e.key); if (Math.abs(t - srcNow) > 60) { ok = false; detail = `ttl ${t} vs ${srcNow}`; } }
   if (ok) report.verified += 1; else report.mismatches.push({ key: e.key, type: e.type, detail });
 }
 await dst.close();
