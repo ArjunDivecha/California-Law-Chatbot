@@ -6,8 +6,8 @@ repo_name: California-Law-Chatbot
 github_repo: ArjunDivecha/California-Law-Chatbot
 session_id: df440291-1732-4dc6-adfc-78ca5c06cba7
 source_file: df440291-1732-4dc6-adfc-78ca5c06cba7.jsonl
-exported_at: 2026-09-13T23:47:28.062173+00:00
-export_base_commit_sha: 6a945b324805728e3e30d5881efad80c0117cccf
+exported_at: 2026-09-14T00:03:50.387598+00:00
+export_base_commit_sha: 40c7c0b652d88319a1e6985a1ae4f4117379ad71
 redacted: true
 ---
 

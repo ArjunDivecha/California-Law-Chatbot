@@ -1,6 +1,8 @@
 # Moving the web app off Upstash Redis — plan (2026-09-13)
 
-Status: **proposal, not started.** Arjun's direction on 2026-09-13: the web app at
+Status: **DONE 2026-09-13** — steps 1–5 shipped (see CLAUDE.md “Current state”); step 6 (remove Upstash env/dependency, delete the database) is pending a soak period. Original plan follows.
+
+Original status line: proposal, not started. Arjun's direction on 2026-09-13: the web app at
 dancingelephant.ai should stop using Upstash, as the desktop app already has. This
 document is the plan; nothing chatbot-owned has been deleted or migrated yet.
 
