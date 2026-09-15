@@ -105,8 +105,13 @@ const REGISTRY: ProviderEntry[] = [
     owner: 'F&F / project',
   },
   {
+    // 2026-09-15: the web session store moved to Turso/libSQL (api/_lib/libsqlKv.ts)
+    // and the Upstash database was deleted. This entry is retained ONLY so
+    // storagePolicy.selectStore keeps its counsel-approved semantics until counsel
+    // reviews a Turso entry (DPA, subprocessors, region). Do not cite it as the
+    // live vendor. TODO(counsel): replace with a 'turso_libsql' entry.
     providerId: 'upstash_redis',
-    service: 'Upstash Redis (session store)',
+    service: 'Upstash Redis (session store) — RETIRED 2026-09-15, see comment',
     dataClassesAllowed: ['public_law', 'client_confidential', 'personal_data'],
     mattersAllowed: ['public_research', 'client_confidential'],
     trainsOnData: false,

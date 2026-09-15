@@ -327,41 +327,33 @@ await safeTest('F', 'F: tools surfaced in research turn', async () => {
 // GROUP G: Audit chain
 // =========================================================================
 console.log(`\n=== G. AUDIT CHAIN ===`);
-await safeTest('G', 'G: Upstash audit records', async () => {
+await safeTest('G', 'G: Turso audit records', async () => {
+  // Store moved from Upstash to Turso/libSQL on 2026-09-13; read it through the
+  // same adapter production uses.
   execSync('vercel env pull /tmp/v2-prod.local --environment=production --scope team_Ey1tbKTda2OYUXPoGEwh0VKi 2>&1 | tail -1');
   const envText = readFileSync('/tmp/v2-prod.local', 'utf8');
-  const URL = (envText.match(/^UPSTASH_REDIS_REST_URL="?(.*?)"?$/m) || [])[1];
-  const TOKEN = (envText.match(/^UPSTASH_REDIS_REST_TOKEN="?(.*?)"?$/m) || [])[1];
-  if (!URL || !TOKEN) { rec('G', 'G: Upstash', 'SKIP', 'no creds'); return; }
+  const URL = (envText.match(/^TURSO_DATABASE_URL="?(.*?)"?$/m) || [])[1];
+  const TOKEN = (envText.match(/^TURSO_AUTH_TOKEN="?(.*?)"?$/m) || [])[1];
+  if (!URL) { rec('G', 'G: Turso', 'SKIP', 'no creds'); return; }
+  const { LibsqlKv } = await import('../api/_lib/libsqlKv.ts');
+  const kv = new LibsqlKv({ url: URL, authToken: TOKEN });
   const today = new Date().toISOString().slice(0, 10);
 
-  const daily = await fetch(`${URL}/lrange/audit:${today}/0/20`, {
-    headers: { Authorization: `Bearer ${TOKEN}` },
-  }).then(r => r.json());
-  const dailyCount = Array.isArray(daily.result) ? daily.result.length : 0;
+  const daily = await kv.lrange(`audit:${today}`, 0, 20);
   rec('G', 'G1: audit:YYYY-MM-DD daily list has entries',
-    dailyCount > 0 ? 'PASS' : 'FAIL', `${dailyCount} entries`);
+    daily.length > 0 ? 'PASS' : 'FAIL', `${daily.length} entries`);
 
   let plaintextLeak = false;
-  for (const e of (daily.result || [])) {
+  for (const e of daily) {
     if (/Pennington-Smythe|Elm Grove|Mowry|John Smith|Theodore Roosevelt/.test(e)) plaintextLeak = true;
   }
   rec('G', 'G2: audit entries contain NO raw PII',
     !plaintextLeak ? 'PASS' : 'FAIL', '');
 
-  const env = await fetch(`${URL}/scan/0/match/audit_record_envelope:*/count/30`, {
-    method: 'POST', headers: { Authorization: `Bearer ${TOKEN}` },
-  }).then(r => r.json());
-  const envKeys = Array.isArray(env.result?.[1]) ? env.result[1].length : 0;
+  const envKeys = (await kv.keys()).filter((k) => k.startsWith('audit_record_envelope:')).length;
   rec('G', 'G3: envelope-encrypted records present',
     envKeys > 0 ? 'PASS' : 'FAIL', `${envKeys} keys`);
-
-  const sh = await fetch(`${URL}/scan/0/match/shadow:*/count/20`, {
-    method: 'POST', headers: { Authorization: `Bearer ${TOKEN}` },
-  }).then(r => r.json());
-  const shKeys = Array.isArray(sh.result?.[1]) ? sh.result[1].length : 0;
-  rec('G', 'G4: shadow:* keys present (V1 dual-fire)',
-    shKeys > 0 ? 'PASS' : 'INFO', `${shKeys} keys`);
+  await kv.close();
 }, 60000);
 
 // =========================================================================

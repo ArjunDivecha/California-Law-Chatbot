@@ -83,6 +83,4 @@ dotenv.config({ path: join(NEW_DIR, '.env') });
 })();
 
 // LOCAL-ONLY MODE: sever every cloud data-store.
-delete process.env.UPSTASH_REDIS_REST_URL;
-delete process.env.UPSTASH_REDIS_REST_TOKEN;
 delete process.env.BLOB_READ_WRITE_TOKEN;

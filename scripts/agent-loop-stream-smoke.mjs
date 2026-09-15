@@ -25,8 +25,8 @@ function loadEnvFallback() {
   const required = [
     'ANTHROPIC_API_KEY',
     'OPENAI_API_KEY',
-    'UPSTASH_REDIS_REST_URL',
-    'UPSTASH_REDIS_REST_TOKEN',
+    'TURSO_DATABASE_URL',
+    'TURSO_AUTH_TOKEN',
     'COURTLISTENER_API_KEY',
     'CITELAW_API_KEY',
   ];

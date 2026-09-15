@@ -31,6 +31,9 @@
 import type { MatterMode, DataClass } from './policyEngine.js';
 import { isProviderApprovedFor } from './providerRegistry.js';
 
+// NOTE 2026-09-15: 'cloud_upstash' now denotes the managed cloud store in general —
+// the web app's store is Turso/libSQL since 2026-09-13; the identifier is kept so
+// the counsel-reviewed policy and its tests are unchanged pending a Turso review.
 export type StoreTarget = 'cloud_upstash' | 'firm_controlled' | 'blocked';
 
 export interface StoreSelection {

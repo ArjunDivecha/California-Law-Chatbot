@@ -48,14 +48,11 @@ const id = await writeRedactionEnvelope({
   confidence: 0.95, privileged_bool: true, compound_risk_buckets: 0,
 });
 console.log('envelope id:', id);
-// Small sleep to ensure Upstash write propagates (auto-pipeline can
-// defer the SET batch).
-await new Promise((r) => setTimeout(r, 500));
-const { Redis } = await import('@upstash/redis');
-const r = new Redis({ url: process.env.UPSTASH_REDIS_REST_URL, token: process.env.UPSTASH_REDIS_REST_TOKEN });
-const raw = await r.get(`audit_record_envelope:${id}`);
+// Read it back from the Turso/libSQL store (the same store auditLog writes to).
+const { getLibsqlKv } = await import('../api/_lib/libsqlKv.ts');
+const raw = await getLibsqlKv().get(`audit_record_envelope:${id}`);
 if (raw == null) {
-  console.error('FAIL: envelope not found in Upstash. id =', id);
+  console.error('FAIL: envelope not found in the Turso store. id =', id);
   process.exit(1);
 }
 console.log('stored:', JSON.stringify(raw).slice(0, 250));

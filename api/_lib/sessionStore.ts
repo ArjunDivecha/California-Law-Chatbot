@@ -1,7 +1,8 @@
 /**
  * Session store for the V2 agent loop. Wraps a Redis-shaped key/value
- * store — Turso/libSQL (api/_lib/libsqlKv.ts, preferred when configured) or
- * Upstash Redis (REST) — per the schema in docs/upstash-kv-schema-v1.md (v1.0).
+ * store — Turso/libSQL (api/_lib/libsqlKv.ts) — per the key schema in
+ * docs/upstash-kv-schema-v1.md (v1.0; written for Upstash, still the schema).
+ * Upstash Redis was decommissioned 2026-09-15.
  *
  * Owners + key shapes:
  *   session:{id}:messages          List (RPUSH) of JSON-stringified Anthropic-shape messages
@@ -13,7 +14,6 @@
  * directly. Tests mock the underlying Redis client via setSessionRedis.
  */
 
-import { Redis } from '@upstash/redis';
 import { libsqlConfigured, getLibsqlKv } from './libsqlKv.js';
 import type { MatterMode, ClientAiConsentStatus } from './compliance/policyEngine.js';
 
@@ -22,7 +22,7 @@ import type { MatterMode, ClientAiConsentStatus } from './compliance/policyEngin
 // ---------------------------------------------------------------------------
 
 export interface SessionRedis {
-  // Subset of @upstash/redis methods we actually use.
+  // Redis-shaped subset implemented by LibsqlKv (web) and SqliteKv (desktop).
   rpush(key: string, ...values: string[]): Promise<number>;
   lrange(key: string, start: number, end: number): Promise<string[]>;
   hset(key: string, value: Record<string, unknown>): Promise<number>;
@@ -71,21 +71,13 @@ export function getRedis(): SessionRedis {
 function resolveRedis(): SessionRedis {
   if (injected) return injected;
   if (cached) return cached;
-  // Store selection (2026-09-13): Turso/libSQL when the Marketplace
-  // integration has injected TURSO_DATABASE_URL — same schema as the desktop
-  // app's local SQLite store — otherwise the original Upstash Redis client.
-  if (libsqlConfigured()) {
-    cached = getLibsqlKv();
-    return cached;
+  // Turso/libSQL (TURSO_DATABASE_URL injected by the Vercel Marketplace
+  // integration) — same schema as the desktop app's local SQLite store. The
+  // desktop build injects SqliteKv via setSessionRedis() instead.
+  if (!libsqlConfigured()) {
+    throw new Error('sessionStore: TURSO_DATABASE_URL not configured');
   }
-  const url = process.env.UPSTASH_REDIS_REST_URL;
-  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
-  if (!url || !token) {
-    throw new Error(
-      'sessionStore: neither TURSO_DATABASE_URL nor UPSTASH_REDIS_REST_URL / TOKEN configured',
-    );
-  }
-  cached = new Redis({ url, token }) as unknown as SessionRedis;
+  cached = getLibsqlKv();
   return cached;
 }
 

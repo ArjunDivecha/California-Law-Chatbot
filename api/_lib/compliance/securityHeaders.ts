@@ -24,7 +24,7 @@ export function buildCspHeader(): string {
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data:",
     "font-src 'self'",
-    "connect-src 'self' https://api.anthropic.com https://api.openai.com https://*.upstash.io https://*.clerk.accounts.dev https://clerk.com",
+    "connect-src 'self' https://api.anthropic.com https://api.openai.com https://*.clerk.accounts.dev https://clerk.com",
     "frame-ancestors 'none'",
     "base-uri 'self'",
     "form-action 'self'",

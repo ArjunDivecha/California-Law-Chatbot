@@ -1,6 +1,6 @@
 # Moving the web app off Upstash Redis — plan (2026-09-13)
 
-Status: **DONE 2026-09-13** — steps 1–5 shipped (see CLAUDE.md “Current state”); step 6 (remove Upstash env/dependency, delete the database) is pending a soak period. Original plan follows.
+Status: **COMPLETE 2026-09-15** — steps 1–5 shipped 2026-09-13; step 6 (remove Upstash env/dependency, empty the database) done 2026-09-15 after a two-day soak with zero fallback writes; the empty database shell awaits a console delete (management API cannot address it by id). Original plan follows.
 
 Original status line: proposal, not started. Arjun's direction on 2026-09-13: the web app at
 dancingelephant.ai should stop using Upstash, as the desktop app already has. This

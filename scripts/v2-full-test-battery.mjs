@@ -392,51 +392,38 @@ try {
 }
 
 // =========================================================================
-// GROUP G: Audit chain via Upstash KV
+// GROUP G: Audit chain via the Turso/libSQL store (moved from Upstash 2026-09-13)
 // =========================================================================
 console.log(`\n=== G. AUDIT CHAIN ===`);
 try {
-  // Pull Upstash creds via vercel CLI
+  // Pull production store creds via vercel CLI and read through the same adapter production uses
   execSync('vercel env pull /tmp/v2-prod.local --environment=production --scope team_Ey1tbKTda2OYUXPoGEwh0VKi -y 2>&1 | tail -1');
   const envText = readFileSync('/tmp/v2-prod.local', 'utf8');
-  const URL = (envText.match(/^UPSTASH_REDIS_REST_URL="?(.*?)"?$/m) || [])[1];
-  const TOKEN = (envText.match(/^UPSTASH_REDIS_REST_TOKEN="?(.*?)"?$/m) || [])[1];
-  if (URL && TOKEN) {
+  const URL = (envText.match(/^TURSO_DATABASE_URL="?(.*?)"?$/m) || [])[1];
+  const TOKEN = (envText.match(/^TURSO_AUTH_TOKEN="?(.*?)"?$/m) || [])[1];
+  if (URL) {
+    const { LibsqlKv } = await import('../api/_lib/libsqlKv.ts');
+    const kv = new LibsqlKv({ url: URL, authToken: TOKEN });
     const today = new Date().toISOString().slice(0, 10);
-    const dailyResp = await fetch(`${URL}/lrange/audit:${today}/0/5`, {
-      headers: { Authorization: `Bearer ${TOKEN}` },
-    }).then(r => r.json());
-    const auditCount = Array.isArray(dailyResp.result) ? dailyResp.result.length : 0;
+    const daily = await kv.lrange(`audit:${today}`, 0, 5);
     rec('G', 'G1: audit:YYYY-MM-DD daily list has entries',
-      auditCount > 0 ? 'PASS' : 'FAIL', `${auditCount} entries fetched`);
+      daily.length > 0 ? 'PASS' : 'FAIL', `${daily.length} entries fetched`);
 
     // Check that entries are HMAC-only — no plaintext PII
     let hasPlaintext = false;
-    for (const e of (dailyResp.result || [])) {
+    for (const e of daily) {
       if (/Pennington-Smythe|Elm Grove|Mowry|John Smith/.test(e)) hasPlaintext = true;
     }
     rec('G', 'G2: audit daily entries contain NO raw PII',
       !hasPlaintext ? 'PASS' : 'FAIL', '');
 
     // Envelope encrypted records
-    const envResp = await fetch(`${URL}/scan/0/match/audit_record_envelope:*/count/20`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${TOKEN}` },
-    }).then(r => r.json());
-    const envKeys = Array.isArray(envResp.result?.[1]) ? envResp.result[1].length : 0;
+    const envKeys = (await kv.keys()).filter((k) => k.startsWith('audit_record_envelope:')).length;
     rec('G', 'G3: audit_record_envelope:* keys present',
       envKeys > 0 ? 'PASS' : 'FAIL', `${envKeys} keys`);
-
-    // Shadow records
-    const shadowResp = await fetch(`${URL}/scan/0/match/shadow:*/count/20`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${TOKEN}` },
-    }).then(r => r.json());
-    const shadowKeys = Array.isArray(shadowResp.result?.[1]) ? shadowResp.result[1].length : 0;
-    rec('G', 'G4: shadow:* dual-fire keys present (from V1 traffic)',
-      shadowKeys > 0 ? 'PASS' : 'INFO', `${shadowKeys} keys`);
+    await kv.close();
   } else {
-    rec('G', 'G: audit chain', 'SKIP', 'Upstash creds not pulled');
+    rec('G', 'G: audit chain', 'SKIP', 'Turso creds not pulled');
   }
 } catch (e) {
   rec('G', 'G: audit chain', 'ERROR', e.message);

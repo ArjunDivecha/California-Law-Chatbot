@@ -18,7 +18,7 @@
  * report to reports/agent-loop-smoke-{date}.json.
  *
  * Env required: ANTHROPIC_API_KEY, OPENAI_API_KEY,
- * UPSTASH_REDIS_*, COURTLISTENER_API_KEY. Falls back to
+ * TURSO_DATABASE_URL/TURSO_AUTH_TOKEN, COURTLISTENER_API_KEY. Falls back to
  * /Users/arjundivecha/Dropbox/AAA Backup/.env.txt.
  *
  * Run: yarn agent:smoke
@@ -41,8 +41,8 @@ function loadEnvFallback() {
   const required = [
     'ANTHROPIC_API_KEY',
     'OPENAI_API_KEY',
-    'UPSTASH_REDIS_REST_URL',
-    'UPSTASH_REDIS_REST_TOKEN',
+    'TURSO_DATABASE_URL',
+    'TURSO_AUTH_TOKEN',
     'COURTLISTENER_API_KEY',
     'CITELAW_API_KEY',
   ];
