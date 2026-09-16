@@ -72,3 +72,7 @@ installer-pkg/*.zip
 # Local-only scratch: desktop installer backups and ad-hoc output
 installer-pkg/backup-*/
 output/
+
+# Production-data exports and audit material — never in a public repo (2026-09-15)
+reports/upstash-cleanup-*/*.json
+reports/audit-*/
